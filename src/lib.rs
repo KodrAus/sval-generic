@@ -1,3 +1,5 @@
+#![feature(generic_associated_types, associated_type_bounds)]
+
 mod impls;
 pub mod stream;
 pub mod value;

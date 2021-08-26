@@ -12,7 +12,7 @@ fn main() {
         where
             S: value::Stream<'a>,
         {
-            let mut short = |s: &str| stream.map_field("field", value::any_ref(s));
+            let mut short = |s: &str| stream.map_field("field", value::for_all(s));
 
             short("value")
         }
@@ -42,10 +42,11 @@ fn main() {
             Ok(())
         }
 
-        fn str<V: stream::ValueRef<'a, Target = str>>(&mut self, v: V) -> stream::Result {
-            match v.try_into_ref() {
-                Ok(v) => println!("borrowed: {}", v),
-                Err(stream::IntoRefError(v)) => println!("short: {}", &*v),
+        fn str<V: stream::TypedValue<'a, str>>(&mut self, v: V) -> stream::Result {
+            if let Some(v) = v.to_ref() {
+                println!("borrowed: {}", v);
+            } else {
+                println!("short: {}", &*v);
             }
 
             Ok(())
@@ -68,20 +69,25 @@ fn main() {
         }
     }
 
+    println!("1");
     MyValue.stream(MyStream(None)).unwrap();
 
     let my_struct = MyStruct {
         a: String::from("hello!"),
     };
 
+    println!("2");
     my_struct.stream(MyStream(None)).unwrap();
 
     let erased_value = &MyValue as &dyn erased::Value;
     let erased_stream = &mut MyStream(None) as &mut dyn erased::Stream<'_>;
 
+    println!("3");
     erased_value.stream(MyStream(None)).unwrap();
 
+    println!("4");
     MyValue.stream(&mut *erased_stream).unwrap();
 
+    println!("5");
     erased_value.stream(&mut *erased_stream).unwrap();
 }

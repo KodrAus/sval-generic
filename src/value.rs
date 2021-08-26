@@ -1,6 +1,13 @@
-use crate::{erased, value_ref::ValueRef};
+use crate::{
+    erased,
+    value_ref::{TypedValue, UntypedValue},
+};
 
-pub use crate::{stream::Stream, value_ref::any_ref, Error, Result};
+pub use crate::{
+    stream::Stream,
+    value_ref::{for_all, AnyRef},
+    Error, Result,
+};
 
 pub trait Value {
     fn stream<'a, S>(&'a self, stream: S) -> Result
@@ -35,9 +42,14 @@ pub trait Value {
                 Err(Error)
             }
 
-            fn str<V: ValueRef<'a, Target = str>>(&mut self, v: V) -> Result {
-                self.0 = Some(v.try_into_ref()?);
-                Ok(())
+            fn str<V: TypedValue<'a, str>>(&mut self, v: V) -> Result {
+                match v.to_ref() {
+                    Some(v) => {
+                        self.0 = Some(v);
+                        Ok(())
+                    }
+                    _ => Err(Error),
+                }
             }
         }
 
