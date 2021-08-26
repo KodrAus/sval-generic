@@ -1,5 +1,3 @@
-#![feature(generic_associated_types, associated_type_bounds)]
-
 mod impls;
 pub mod stream;
 pub mod value;
@@ -15,6 +13,6 @@ pub struct Error;
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, v: &'a impl Value) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, v: impl stream::UntypedValue<'a>) -> Result {
     v.stream(s)
 }

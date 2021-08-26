@@ -44,7 +44,10 @@ where
         Ok(())
     }
 
-    fn str<V: stream::TypedValue<'a, str>>(&mut self, v: V) -> stream::Result {
+    fn str<'v, V: stream::TypedValue<'v, str>>(&mut self, v: V) -> stream::Result
+    where
+        'v: 'a,
+    {
         self.serializer().serialize_str(&*v).unwrap();
         Ok(())
     }
@@ -69,27 +72,40 @@ where
         Ok(())
     }
 
-    fn map_key<K: stream::UntypedValue<'a>>(&mut self, k: K) -> stream::Result {
+    fn map_key<'k, K: stream::UntypedValue<'k>>(&mut self, k: K) -> stream::Result
+    where
+        'k: 'a,
+    {
         Ok(())
     }
 
-    fn map_value<V: stream::UntypedValue<'a>>(&mut self, v: V) -> stream::Result {
+    fn map_value<'v, V: stream::UntypedValue<'v>>(&mut self, v: V) -> stream::Result
+    where
+        'v: 'a,
+    {
         Ok(())
     }
 
-    fn map_entry<K: stream::UntypedValue<'a>, V: stream::UntypedValue<'a>>(
+    fn map_entry<'k, 'v, K: stream::UntypedValue<'k>, V: stream::UntypedValue<'v>>(
         &mut self,
         k: K,
         v: V,
-    ) -> stream::Result {
+    ) -> stream::Result
+    where
+        'k: 'a,
+        'v: 'a,
+    {
         Ok(())
     }
 
-    fn map_field<F: stream::TypedValue<'static, str>, V: stream::UntypedValue<'a>>(
+    fn map_field<'v, F: stream::TypedValue<'static, str>, V: stream::UntypedValue<'v>>(
         &mut self,
         f: F,
         v: V,
-    ) -> stream::Result {
+    ) -> stream::Result
+    where
+        'v: 'a,
+    {
         Ok(())
     }
 }

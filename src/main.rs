@@ -42,7 +42,10 @@ fn main() {
             Ok(())
         }
 
-        fn str<V: stream::TypedValue<'a, str>>(&mut self, v: V) -> stream::Result {
+        fn str<'v, V: stream::TypedValue<'v, str>>(&mut self, v: V) -> stream::Result
+        where
+            'v: 'a,
+        {
             if let Some(v) = v.to_ref() {
                 println!("borrowed: {}", v);
             } else {
@@ -69,25 +72,24 @@ fn main() {
         }
     }
 
-    println!("1");
     MyValue.stream(MyStream(None)).unwrap();
 
     let my_struct = MyStruct {
         a: String::from("hello!"),
     };
-
-    println!("2");
     my_struct.stream(MyStream(None)).unwrap();
 
-    let erased_value = &MyValue as &dyn erased::Value;
-    let erased_stream = &mut MyStream(None) as &mut dyn erased::Stream<'_>;
+    let erased_value = MyStruct {
+        a: String::from("hello!"),
+    };
+    let erased_value = erased::Value::new(&erased_value);
 
-    println!("3");
+    let mut erased_stream = MyStream(None);
+    let mut erased_stream = erased::Stream::new(&mut erased_stream);
+
     erased_value.stream(MyStream(None)).unwrap();
 
-    println!("4");
-    MyValue.stream(&mut *erased_stream).unwrap();
+    MyValue.stream(&mut erased_stream).unwrap();
 
-    println!("5");
-    erased_value.stream(&mut *erased_stream).unwrap();
+    erased_value.stream(&mut erased_stream).unwrap();
 }

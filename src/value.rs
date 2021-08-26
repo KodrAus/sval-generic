@@ -5,7 +5,7 @@ use crate::{
 
 pub use crate::{
     stream::Stream,
-    value_ref::{for_all, AnyRef},
+    value_ref::{for_all, ForAll},
     Error, Result,
 };
 
@@ -42,7 +42,10 @@ pub trait Value {
                 Err(Error)
             }
 
-            fn str<V: TypedValue<'a, str>>(&mut self, v: V) -> Result {
+            fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+            where
+                'v: 'a,
+            {
                 match v.to_ref() {
                     Some(v) => {
                         self.0 = Some(v);

@@ -2,8 +2,7 @@ use std::{fmt, ops::Deref};
 
 use crate::{stream::Stream, value::Value, Error, Result};
 
-// TODO: This is only worthwhile if it makes it easier to erase
-
+// TODO: Remove the `ForAll` directly and unify these again
 pub trait UntypedValue<'a> {
     type ForAll: for<'b> UntypedValue<'b>;
 
@@ -16,23 +15,23 @@ pub trait UntypedValue<'a> {
 }
 
 pub trait TypedValue<'a, T: ?Sized>: Deref<Target = T> {
-    type UntypedValue: UntypedValue<'a, ForAll = Self::ForAll>;
+    type Base: UntypedValue<'a, ForAll = Self::ForAll>;
     type ForAll: for<'b> TypedValue<'b, T> + for<'b> UntypedValue<'b>;
 
-    fn untype(&self) -> Self::UntypedValue;
-
-    fn to_ref(&self) -> Option<&'a T>;
+    fn base(&self) -> Self::Base;
 
     fn for_all(&self) -> Self::ForAll {
-        self.untype().for_all()
+        self.base().for_all()
     }
+
+    fn to_ref(&self) -> Option<&'a T>;
 
     fn stream<'b, S>(&self, stream: S) -> Result
     where
         'a: 'b,
         S: Stream<'b>,
     {
-        self.untype().stream(stream)
+        self.base().stream(stream)
     }
 }
 
@@ -40,10 +39,10 @@ impl<'a, T: ?Sized> UntypedValue<'a> for &'a T
 where
     T: Value,
 {
-    type ForAll = AnyRef<'a, T>;
+    type ForAll = ForAll<'a, T>;
 
-    fn for_all(&self) -> AnyRef<'a, T> {
-        AnyRef(*self)
+    fn for_all(&self) -> ForAll<'a, T> {
+        ForAll(*self)
     }
 
     fn stream<'b, S>(&self, stream: S) -> Result
@@ -59,10 +58,10 @@ impl<'a, T: ?Sized> TypedValue<'a, T> for &'a T
 where
     T: Value,
 {
-    type UntypedValue = Self;
-    type ForAll = AnyRef<'a, T>;
+    type Base = Self;
+    type ForAll = ForAll<'a, T>;
 
-    fn untype(&self) -> Self::UntypedValue {
+    fn base(&self) -> Self {
         self
     }
 
@@ -71,9 +70,27 @@ where
     }
 }
 
-pub struct AnyRef<'a, T: ?Sized>(pub &'a T);
+pub struct ForAll<'a, T: ?Sized>(&'a T);
 
-impl<'a, T: ?Sized> Deref for AnyRef<'a, T> {
+pub fn for_all<'a, T: ?Sized>(
+    v: &'a T,
+) -> impl for<'b> TypedValue<'b, T> + for<'b> UntypedValue<'b> + 'a
+where
+    T: Value,
+{
+    TypedValue::for_all(&v)
+}
+
+impl<'a, T: ?Sized> ForAll<'a, T>
+where
+    T: Value,
+{
+    pub fn new(v: &'a T) -> Self {
+        ForAll(v)
+    }
+}
+
+impl<'a, T: ?Sized> Deref for ForAll<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -81,14 +98,14 @@ impl<'a, T: ?Sized> Deref for AnyRef<'a, T> {
     }
 }
 
-impl<'a, 'b, T: ?Sized> UntypedValue<'a> for AnyRef<'b, T>
+impl<'a, 'b, T: ?Sized> UntypedValue<'a> for ForAll<'b, T>
 where
     T: Value,
 {
     type ForAll = Self;
 
     fn for_all(&self) -> Self {
-        AnyRef(self.0)
+        ForAll(self.0)
     }
 
     fn stream<'c, S>(&self, stream: S) -> Result
@@ -110,7 +127,10 @@ where
                 self.0.i128(v)
             }
 
-            fn str<V: TypedValue<'a, str>>(&mut self, v: V) -> Result {
+            fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+            where
+                'v: 'a,
+            {
                 self.0.str(v.for_all())
             }
 
@@ -130,27 +150,40 @@ where
                 self.0.map_end()
             }
 
-            fn map_key<K: UntypedValue<'a>>(&mut self, k: K) -> Result {
+            fn map_key<'k, K: UntypedValue<'k>>(&mut self, k: K) -> Result
+            where
+                'k: 'a,
+            {
                 self.0.map_key(k.for_all())
             }
 
-            fn map_value<V: UntypedValue<'a>>(&mut self, v: V) -> Result {
+            fn map_value<'v, V: UntypedValue<'v>>(&mut self, v: V) -> Result
+            where
+                'v: 'a,
+            {
                 self.0.map_value(v.for_all())
             }
 
-            fn map_entry<K: UntypedValue<'a>, V: UntypedValue<'a>>(
+            fn map_entry<'k, 'v, K: UntypedValue<'k>, V: UntypedValue<'v>>(
                 &mut self,
                 k: K,
                 v: V,
-            ) -> Result {
+            ) -> Result
+            where
+                'k: 'a,
+                'v: 'a,
+            {
                 self.0.map_entry(k.for_all(), v.for_all())
             }
 
-            fn map_field<F: TypedValue<'static, str>, V: UntypedValue<'a>>(
+            fn map_field<'v, F: TypedValue<'static, str>, V: UntypedValue<'v>>(
                 &mut self,
                 f: F,
                 v: V,
-            ) -> Result {
+            ) -> Result
+            where
+                'v: 'a,
+            {
                 self.0.map_field(f.for_all(), v.for_all())
             }
         }
@@ -159,27 +192,18 @@ where
     }
 }
 
-impl<'a, 'b, T: ?Sized> TypedValue<'a, T> for AnyRef<'b, T>
+impl<'a, 'b, T: ?Sized> TypedValue<'a, T> for ForAll<'b, T>
 where
     T: Value,
 {
-    type UntypedValue = Self;
+    type Base = Self;
     type ForAll = Self;
 
-    fn untype(&self) -> Self::UntypedValue {
-        AnyRef(self.0)
+    fn base(&self) -> Self {
+        ForAll(self.0)
     }
 
     fn to_ref(&self) -> Option<&'a T> {
         None
     }
-}
-
-pub fn for_all<'a, T: ?Sized>(
-    v: &'a T,
-) -> impl for<'b> TypedValue<'b, T> + for<'b> UntypedValue<'b> + 'a
-where
-    T: Value,
-{
-    TypedValue::for_all(&v)
 }

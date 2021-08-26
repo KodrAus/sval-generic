@@ -8,34 +8,49 @@ pub trait Stream<'a> {
     fn u128(&mut self, v: u128) -> Result;
     fn i128(&mut self, v: i128) -> Result;
 
-    fn str<V: TypedValue<'a, str>>(&mut self, v: V) -> Result;
+    fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+    where
+        'v: 'a;
 
     fn map_begin(&mut self, len: Option<usize>) -> Result;
     fn map_key_begin(&mut self) -> Result;
     fn map_value_begin(&mut self) -> Result;
     fn map_end(&mut self) -> Result;
 
-    fn map_key<K: UntypedValue<'a>>(&mut self, k: K) -> Result {
+    fn map_key<'k, K: UntypedValue<'k>>(&mut self, k: K) -> Result
+    where
+        'k: 'a,
+    {
         self.map_key_begin()?;
         k.stream(self)
     }
 
-    fn map_value<V: UntypedValue<'a>>(&mut self, v: V) -> Result {
+    fn map_value<'v, V: UntypedValue<'v>>(&mut self, v: V) -> Result
+    where
+        'v: 'a,
+    {
         self.map_value_begin()?;
         v.stream(self)
     }
 
-    fn map_entry<K: UntypedValue<'a>, V: UntypedValue<'a>>(&mut self, k: K, v: V) -> Result {
+    fn map_entry<'k, 'v, K: UntypedValue<'k>, V: UntypedValue<'v>>(&mut self, k: K, v: V) -> Result
+    where
+        'k: 'a,
+        'v: 'a,
+    {
         self.map_key(k)?;
         self.map_value(v)
     }
 
-    fn map_field<F: TypedValue<'static, str>, V: UntypedValue<'a>>(
+    fn map_field<'v, F: TypedValue<'static, str>, V: UntypedValue<'v>>(
         &mut self,
         f: F,
         v: V,
-    ) -> Result {
-        self.map_entry(f.for_all(), v)
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.map_entry(f.base(), v)
     }
 }
 
@@ -51,7 +66,10 @@ where
         (**self).i128(v)
     }
 
-    fn str<V: TypedValue<'b, str>>(&mut self, v: V) -> Result {
+    fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+    where
+        'v: 'b,
+    {
         (**self).str(v)
     }
 
@@ -71,23 +89,36 @@ where
         (**self).map_end()
     }
 
-    fn map_key<K: UntypedValue<'b>>(&mut self, k: K) -> Result {
+    fn map_key<'k, K: UntypedValue<'k>>(&mut self, k: K) -> Result
+    where
+        'k: 'b,
+    {
         (**self).map_key(k)
     }
 
-    fn map_value<V: UntypedValue<'b>>(&mut self, v: V) -> Result {
+    fn map_value<'v, V: UntypedValue<'v>>(&mut self, v: V) -> Result
+    where
+        'v: 'b,
+    {
         (**self).map_value(v)
     }
 
-    fn map_entry<K: UntypedValue<'b>, V: UntypedValue<'b>>(&mut self, k: K, v: V) -> Result {
+    fn map_entry<'k, 'v, K: UntypedValue<'k>, V: UntypedValue<'v>>(&mut self, k: K, v: V) -> Result
+    where
+        'k: 'b,
+        'v: 'b,
+    {
         (**self).map_entry(k, v)
     }
 
-    fn map_field<F: TypedValue<'static, str>, V: UntypedValue<'b>>(
+    fn map_field<'v, F: TypedValue<'static, str>, V: UntypedValue<'v>>(
         &mut self,
         f: F,
         v: V,
-    ) -> Result {
+    ) -> Result
+    where
+        'v: 'b,
+    {
         (**self).map_field(f, v)
     }
 }
