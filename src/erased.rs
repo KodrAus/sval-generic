@@ -218,7 +218,23 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
 
 struct UntypedValue<'a, 'b>(&'b dyn ErasedUntypedValue<'a>);
 
+impl<'a, 'b> Clone for UntypedValue<'a, 'b> {
+    fn clone(&self) -> Self {
+        UntypedValue(self.0)
+    }
+}
+
+impl<'a, 'b> Copy for UntypedValue<'a, 'b> {}
+
 struct UntypedForAll<'a, 'b>(&'b dyn ErasedUntypedValue<'a>);
+
+impl<'a, 'b> Clone for UntypedForAll<'a, 'b> {
+    fn clone(&self) -> Self {
+        UntypedForAll(self.0)
+    }
+}
+
+impl<'a, 'b> Copy for UntypedForAll<'a, 'b> {}
 
 trait ErasedUntypedValue<'a> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
@@ -240,19 +256,11 @@ where
     }
 
     fn erased_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result {
-        use value_ref::UntypedValue;
-
-        self.for_all().stream(stream)
+        value_ref::UntypedValue::stream(&value_ref::ForAll(*self), stream)
     }
 }
 
 impl<'a, 'b> value_ref::UntypedValue<'a> for UntypedValue<'a, 'b> {
-    type ForAll = UntypedForAll<'a, 'b>;
-
-    fn for_all(&self) -> UntypedForAll<'a, 'b> {
-        UntypedForAll(self.0)
-    }
-
     fn stream<'c, S>(&self, mut stream: S) -> Result
     where
         'a: 'c,
@@ -263,12 +271,6 @@ impl<'a, 'b> value_ref::UntypedValue<'a> for UntypedValue<'a, 'b> {
 }
 
 impl<'a, 'b, 'c> value_ref::UntypedValue<'c> for UntypedForAll<'a, 'b> {
-    type ForAll = Self;
-
-    fn for_all(&self) -> Self {
-        UntypedForAll(self.0)
-    }
-
     fn stream<'d, S>(&self, mut stream: S) -> Result
     where
         'c: 'd,
@@ -280,7 +282,23 @@ impl<'a, 'b, 'c> value_ref::UntypedValue<'c> for UntypedForAll<'a, 'b> {
 
 struct TypedValue<'a, 'b, T: ?Sized>(&'b dyn ErasedTypedValue<'a, T>);
 
+impl<'a, 'b, T: ?Sized> Clone for TypedValue<'a, 'b, T> {
+    fn clone(&self) -> Self {
+        TypedValue(self.0)
+    }
+}
+
+impl<'a, 'b, T: ?Sized> Copy for TypedValue<'a, 'b, T> {}
+
 struct TypedForAll<'a, 'b, T: ?Sized>(&'b dyn ErasedTypedValue<'a, T>);
+
+impl<'a, 'b, T: ?Sized> Clone for TypedForAll<'a, 'b, T> {
+    fn clone(&self) -> Self {
+        TypedForAll(self.0)
+    }
+}
+
+impl<'a, 'b, T: ?Sized> Copy for TypedForAll<'a, 'b, T> {}
 
 impl<'a, 'b, T: ?Sized> Deref for TypedForAll<'a, 'b, T> {
     type Target = T;
@@ -299,12 +317,6 @@ impl<'a, 'b, T: ?Sized> Deref for TypedValue<'a, 'b, T> {
 }
 
 trait ErasedTypedValue<'a, T: ?Sized>: Deref<Target = T> {
-    fn erased_base_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
-    where
-        'a: 'b;
-
-    fn erased_base_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result;
-
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
@@ -318,21 +330,6 @@ impl<'a, T, U: ?Sized> ErasedTypedValue<'a, U> for T
 where
     T: value_ref::TypedValue<'a, U>,
 {
-    fn erased_base_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
-    where
-        'a: 'b,
-    {
-        use value_ref::UntypedValue;
-
-        self.base().stream(stream)
-    }
-
-    fn erased_base_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result {
-        use value_ref::UntypedValue;
-
-        self.base().for_all().stream(stream)
-    }
-
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b,
@@ -341,9 +338,7 @@ where
     }
 
     fn erased_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result {
-        use value_ref::TypedValue;
-
-        self.for_all().stream(stream)
+        value_ref::UntypedValue::stream(&value_ref::ForAll(*self), stream)
     }
 
     fn erased_to_ref(&self) -> Option<&'a U> {
@@ -352,62 +347,12 @@ where
 }
 
 impl<'a, 'b, T: ?Sized> value_ref::TypedValue<'a, T> for TypedValue<'a, 'b, T> {
-    type Base = Self;
-    type ForAll = TypedForAll<'a, 'b, T>;
-
-    fn base(&self) -> Self {
-        TypedValue(self.0)
-    }
-
     fn to_ref(&self) -> Option<&'a T> {
         self.0.erased_to_ref()
-    }
-
-    fn for_all(&self) -> TypedForAll<'a, 'b, T> {
-        TypedForAll(self.0)
-    }
-
-    fn stream<'c, S>(&self, mut stream: S) -> Result
-    where
-        'a: 'c,
-        S: stream::Stream<'c>,
-    {
-        self.0.erased_stream(Stream(&mut stream))
     }
 }
 
 impl<'a, 'b, 'c, T: ?Sized> value_ref::UntypedValue<'c> for TypedValue<'a, 'b, T> {
-    type ForAll = TypedForAll<'a, 'b, T>;
-
-    fn for_all(&self) -> TypedForAll<'a, 'b, T> {
-        TypedForAll(self.0)
-    }
-
-    fn stream<'d, S>(&self, mut stream: S) -> Result
-    where
-        'c: 'd,
-        S: stream::Stream<'d>,
-    {
-        self.0.erased_base_stream_for_all(Stream(&mut stream))
-    }
-}
-
-impl<'a, 'b, 'c, T: ?Sized> value_ref::TypedValue<'c, T> for TypedForAll<'a, 'b, T> {
-    type Base = Self;
-    type ForAll = Self;
-
-    fn base(&self) -> Self {
-        TypedForAll(self.0)
-    }
-
-    fn to_ref(&self) -> Option<&'c T> {
-        self.erased_to_ref()
-    }
-
-    fn for_all(&self) -> Self {
-        TypedForAll(self.0)
-    }
-
     fn stream<'d, S>(&self, mut stream: S) -> Result
     where
         'c: 'd,
@@ -417,18 +362,18 @@ impl<'a, 'b, 'c, T: ?Sized> value_ref::TypedValue<'c, T> for TypedForAll<'a, 'b,
     }
 }
 
-impl<'a, 'b, 'c, T: ?Sized> value_ref::UntypedValue<'c> for TypedForAll<'a, 'b, T> {
-    type ForAll = Self;
-
-    fn for_all(&self) -> Self {
-        TypedForAll(self.0)
+impl<'a, 'b, 'c, T: ?Sized> value_ref::TypedValue<'c, T> for TypedForAll<'a, 'b, T> {
+    fn to_ref(&self) -> Option<&'c T> {
+        self.erased_to_ref()
     }
+}
 
+impl<'a, 'b, 'c, T: ?Sized> value_ref::UntypedValue<'c> for TypedForAll<'a, 'b, T> {
     fn stream<'d, S>(&self, mut stream: S) -> Result
     where
         'c: 'd,
         S: stream::Stream<'d>,
     {
-        self.0.erased_base_stream_for_all(Stream(&mut stream))
+        self.0.erased_stream_for_all(Stream(&mut stream))
     }
 }

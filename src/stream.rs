@@ -1,5 +1,4 @@
 pub use crate::{
-    erased,
     value_ref::{TypedValue, UntypedValue},
     Error, Result,
 };
@@ -50,7 +49,7 @@ pub trait Stream<'a> {
     where
         'v: 'a,
     {
-        self.map_entry(f.base(), v)
+        self.map_entry(f, v)
     }
 }
 

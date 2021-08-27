@@ -1,13 +1,6 @@
-use crate::{
-    erased,
-    value_ref::{TypedValue, UntypedValue},
-};
+use crate::value_ref::TypedValue;
 
-pub use crate::{
-    stream::Stream,
-    value_ref::{for_all, ForAll},
-    Error, Result,
-};
+pub use crate::{stream::Stream, value_ref::ForAll, Error, Result};
 
 pub trait Value {
     fn stream<'a, S>(&'a self, stream: S) -> Result

@@ -4,7 +4,7 @@ pub mod value;
 mod value_ref;
 
 pub mod erased;
-pub mod serde;
+//pub mod serde;
 
 pub use self::{stream::Stream, value::Value};
 
