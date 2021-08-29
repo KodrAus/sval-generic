@@ -256,7 +256,7 @@ where
     }
 
     fn erased_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result {
-        value_ref::UntypedValue::stream(&value_ref::ForAll(*self), stream)
+        self.stream_for_all(stream)
     }
 }
 
@@ -268,12 +268,26 @@ impl<'a, 'b> value_ref::UntypedValue<'a> for UntypedValue<'a, 'b> {
     {
         self.0.erased_stream(Stream(&mut stream))
     }
+
+    fn stream_for_all<'c, S>(&self, mut stream: S) -> Result
+    where
+        S: stream::Stream<'c>,
+    {
+        self.0.erased_stream_for_all(Stream(&mut stream))
+    }
 }
 
 impl<'a, 'b, 'c> value_ref::UntypedValue<'c> for UntypedForAll<'a, 'b> {
     fn stream<'d, S>(&self, mut stream: S) -> Result
     where
         'c: 'd,
+        S: stream::Stream<'d>,
+    {
+        self.0.erased_stream_for_all(Stream(&mut stream))
+    }
+
+    fn stream_for_all<'d, S>(&self, mut stream: S) -> Result
+    where
         S: stream::Stream<'d>,
     {
         self.0.erased_stream_for_all(Stream(&mut stream))
@@ -338,7 +352,7 @@ where
     }
 
     fn erased_stream_for_all<'b>(&self, stream: Stream<'b, '_>) -> Result {
-        value_ref::UntypedValue::stream(&value_ref::ForAll(*self), stream)
+        self.stream_for_all(stream)
     }
 
     fn erased_to_ref(&self) -> Option<&'a U> {
@@ -352,11 +366,18 @@ impl<'a, 'b, T: ?Sized> value_ref::TypedValue<'a, T> for TypedValue<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, 'c, T: ?Sized> value_ref::UntypedValue<'c> for TypedValue<'a, 'b, T> {
-    fn stream<'d, S>(&self, mut stream: S) -> Result
+impl<'a, 'b, T: ?Sized> value_ref::UntypedValue<'a> for TypedValue<'a, 'b, T> {
+    fn stream<'c, S>(&self, mut stream: S) -> Result
     where
-        'c: 'd,
-        S: stream::Stream<'d>,
+        'a: 'c,
+        S: stream::Stream<'c>,
+    {
+        self.0.erased_stream(Stream(&mut stream))
+    }
+
+    fn stream_for_all<'c, S>(&self, mut stream: S) -> Result
+    where
+        S: stream::Stream<'c>,
     {
         self.0.erased_stream_for_all(Stream(&mut stream))
     }
@@ -372,6 +393,13 @@ impl<'a, 'b, 'c, T: ?Sized> value_ref::UntypedValue<'c> for TypedForAll<'a, 'b, 
     fn stream<'d, S>(&self, mut stream: S) -> Result
     where
         'c: 'd,
+        S: stream::Stream<'d>,
+    {
+        self.0.erased_stream_for_all(Stream(&mut stream))
+    }
+
+    fn stream_for_all<'d, S>(&self, mut stream: S) -> Result
+    where
         S: stream::Stream<'d>,
     {
         self.0.erased_stream_for_all(Stream(&mut stream))
