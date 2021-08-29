@@ -2,47 +2,48 @@ use std::ops::Deref;
 
 use crate::{stream::Stream, value::Value, Result};
 
-pub trait UntypedValue<'a>: Copy {
-    fn stream<'b, S>(&self, stream: S) -> Result
+pub trait AnyRef<'a>: Copy {
+    fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,
         S: Stream<'b>;
 
-    fn stream_for_all<'b, S>(&self, stream: S) -> Result
+    fn stream_for_all<'b, S>(self, stream: S) -> Result
     where
         S: Stream<'b>;
 }
 
-pub trait TypedValue<'a, T: ?Sized>: UntypedValue<'a> + Deref<Target = T> {
-    fn to_ref(&self) -> Option<&'a T>;
+// TODO: Consider requirement for same `stream` impl?
+pub trait TypedRef<'a, T: ?Sized>: AnyRef<'a> + Deref<Target = T> {
+    fn to_ref(self) -> Option<&'a T>;
 }
 
-impl<'a, T: ?Sized> UntypedValue<'a> for &'a T
+impl<'a, T: ?Sized> AnyRef<'a> for &'a T
 where
     T: Value,
 {
-    fn stream<'b, S>(&self, stream: S) -> Result
+    fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,
         S: Stream<'b>,
     {
-        (**self).stream(stream)
+        (*self).stream(stream)
     }
 
-    fn stream_for_all<'b, S>(&self, stream: S) -> Result
+    fn stream_for_all<'b, S>(self, stream: S) -> Result
     where
         S: Stream<'b>,
     {
-        (**self).stream_for_all(stream)
+        (*self).stream_for_all(stream)
     }
 }
 
-impl<'a, T: ?Sized> TypedValue<'a, T> for &'a T
+impl<'a, T: ?Sized> TypedRef<'a, T> for &'a T
 where
     T: Value,
 {
-    fn to_ref(&self) -> Option<&'a T> {
-        Some(*self)
+    fn to_ref(self) -> Option<&'a T> {
+        Some(self)
     }
 }
 
@@ -57,11 +58,11 @@ impl<T: Deref> Deref for ForAll<T> {
     }
 }
 
-impl<'a, 'b, T> UntypedValue<'a> for ForAll<T>
+impl<'a, 'b, T> AnyRef<'a> for ForAll<T>
 where
-    T: UntypedValue<'b>,
+    T: AnyRef<'b>,
 {
-    fn stream<'c, S>(&self, stream: S) -> Result
+    fn stream<'c, S>(self, stream: S) -> Result
     where
         'a: 'c,
         S: Stream<'c>,
@@ -69,19 +70,20 @@ where
         self.0.stream_for_all(stream)
     }
 
-    fn stream_for_all<'c, S>(&self, stream: S) -> Result
+    fn stream_for_all<'c, S>(self, stream: S) -> Result
     where
         S: Stream<'c>,
     {
+        // TODO: Can we remove the `stream_for_all` method from `Value`?
         self.0.stream_for_all(stream)
     }
 }
 
-impl<'a, 'b, T, U: ?Sized> TypedValue<'a, U> for ForAll<T>
+impl<'a, 'b, T, U: ?Sized> TypedRef<'a, U> for ForAll<T>
 where
-    T: TypedValue<'b, U>,
+    T: TypedRef<'b, U>,
 {
-    fn to_ref(&self) -> Option<&'a U> {
+    fn to_ref(self) -> Option<&'a U> {
         None
     }
 }

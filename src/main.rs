@@ -42,7 +42,7 @@ fn main() {
             Ok(())
         }
 
-        fn str<'v, V: stream::TypedValue<'v, str>>(&mut self, v: V) -> stream::Result
+        fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
         where
             'v: 'a,
         {

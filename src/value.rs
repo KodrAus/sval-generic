@@ -1,4 +1,4 @@
-use crate::value_ref::{TypedValue, UntypedValue};
+use crate::value_ref::{AnyRef, TypedRef};
 
 pub use crate::{stream::Stream, value_ref::ForAll, Error, Result};
 
@@ -25,7 +25,7 @@ pub trait Value {
                 self.0.i128(v)
             }
 
-            fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+            fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {
@@ -48,25 +48,21 @@ pub trait Value {
                 self.0.map_end()
             }
 
-            fn map_key<'k, K: UntypedValue<'k>>(&mut self, k: K) -> Result
+            fn map_key<'k, K: AnyRef<'k>>(&mut self, k: K) -> Result
             where
                 'k: 'a,
             {
                 self.0.map_key(ForAll(k))
             }
 
-            fn map_value<'v, V: UntypedValue<'v>>(&mut self, v: V) -> Result
+            fn map_value<'v, V: AnyRef<'v>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {
                 self.0.map_value(ForAll(v))
             }
 
-            fn map_entry<'k, 'v, K: UntypedValue<'k>, V: UntypedValue<'v>>(
-                &mut self,
-                k: K,
-                v: V,
-            ) -> Result
+            fn map_entry<'k, 'v, K: AnyRef<'k>, V: AnyRef<'v>>(&mut self, k: K, v: V) -> Result
             where
                 'k: 'a,
                 'v: 'a,
@@ -74,7 +70,7 @@ pub trait Value {
                 self.0.map_entry(ForAll(k), ForAll(v))
             }
 
-            fn map_field<'v, F: TypedValue<'static, str>, V: UntypedValue<'v>>(
+            fn map_field<'v, F: TypedRef<'static, str>, V: AnyRef<'v>>(
                 &mut self,
                 f: F,
                 v: V,
@@ -117,7 +113,7 @@ pub trait Value {
                 Err(Error)
             }
 
-            fn str<'v, V: TypedValue<'v, str>>(&mut self, v: V) -> Result
+            fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {
