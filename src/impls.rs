@@ -7,13 +7,6 @@ impl Value for i128 {
     {
         stream.i128(*self)
     }
-
-    fn stream_for_all<'a, S>(&self, mut stream: S) -> value::Result
-    where
-        S: value::Stream<'a>,
-    {
-        stream.i128(*self)
-    }
 }
 
 impl Value for str {

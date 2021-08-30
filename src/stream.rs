@@ -1,5 +1,7 @@
+#[doc(inline)]
 pub use crate::{
-    value_ref::{AnyValueRef, TypedValueRef},
+    for_all::ForAll,
+    value_ref::{TypedValueRef, UnknownValueRef},
     Error, Result,
 };
 
@@ -16,7 +18,7 @@ pub trait Stream<'a> {
     fn map_value_begin(&mut self) -> Result;
     fn map_end(&mut self) -> Result;
 
-    fn map_key<'k, K: AnyValueRef<'k>>(&mut self, k: K) -> Result
+    fn map_key<'k, K: UnknownValueRef<'k>>(&mut self, k: K) -> Result
     where
         'k: 'a,
     {
@@ -24,7 +26,7 @@ pub trait Stream<'a> {
         k.stream(self)
     }
 
-    fn map_value<'v, V: AnyValueRef<'v>>(&mut self, v: V) -> Result
+    fn map_value<'v, V: UnknownValueRef<'v>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
@@ -32,7 +34,11 @@ pub trait Stream<'a> {
         v.stream(self)
     }
 
-    fn map_entry<'k, 'v, K: AnyValueRef<'k>, V: AnyValueRef<'v>>(&mut self, k: K, v: V) -> Result
+    fn map_entry<'k, 'v, K: UnknownValueRef<'k>, V: UnknownValueRef<'v>>(
+        &mut self,
+        k: K,
+        v: V,
+    ) -> Result
     where
         'k: 'a,
         'v: 'a,
@@ -41,11 +47,19 @@ pub trait Stream<'a> {
         self.map_value(v)
     }
 
-    fn map_field<'v, F: TypedValueRef<'static, str>, V: AnyValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedValueRef<'static, str>, V: UnknownValueRef<'v>>(
+        &mut self,
+        f: F,
+        v: V,
+    ) -> Result
     where
         'v: 'a,
     {
         self.map_entry(f, v)
+    }
+
+    fn for_all(&mut self) -> ForAll<&mut Self> {
+        ForAll(self)
     }
 }
 
@@ -84,21 +98,25 @@ where
         (**self).map_end()
     }
 
-    fn map_key<'k, K: AnyValueRef<'k>>(&mut self, k: K) -> Result
+    fn map_key<'k, K: UnknownValueRef<'k>>(&mut self, k: K) -> Result
     where
         'k: 'b,
     {
         (**self).map_key(k)
     }
 
-    fn map_value<'v, V: AnyValueRef<'v>>(&mut self, v: V) -> Result
+    fn map_value<'v, V: UnknownValueRef<'v>>(&mut self, v: V) -> Result
     where
         'v: 'b,
     {
         (**self).map_value(v)
     }
 
-    fn map_entry<'k, 'v, K: AnyValueRef<'k>, V: AnyValueRef<'v>>(&mut self, k: K, v: V) -> Result
+    fn map_entry<'k, 'v, K: UnknownValueRef<'k>, V: UnknownValueRef<'v>>(
+        &mut self,
+        k: K,
+        v: V,
+    ) -> Result
     where
         'k: 'b,
         'v: 'b,
@@ -106,7 +124,11 @@ where
         (**self).map_entry(k, v)
     }
 
-    fn map_field<'v, F: TypedValueRef<'static, str>, V: AnyValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedValueRef<'static, str>, V: UnknownValueRef<'v>>(
+        &mut self,
+        f: F,
+        v: V,
+    ) -> Result
     where
         'v: 'b,
     {

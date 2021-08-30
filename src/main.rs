@@ -27,7 +27,9 @@ fn main() {
         where
             S: value::Stream<'a>,
         {
-            stream.map_field("a", &*self.a)
+            stream.map_begin(Some(1))?;
+            stream.map_field("a", &*self.a)?;
+            stream.map_end()
         }
     }
 

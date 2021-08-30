@@ -72,21 +72,21 @@ where
         Ok(())
     }
 
-    fn map_key<'k, K: stream::AnyValueRef<'k>>(&mut self, k: K) -> stream::Result
+    fn map_key<'k, K: stream::UnknownValueRef<'k>>(&mut self, k: K) -> stream::Result
     where
         'k: 'a,
     {
         Ok(())
     }
 
-    fn map_value<'v, V: stream::AnyValueRef<'v>>(&mut self, v: V) -> stream::Result
+    fn map_value<'v, V: stream::UnknownValueRef<'v>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
         Ok(())
     }
 
-    fn map_entry<'k, 'v, K: stream::AnyValueRef<'k>, V: stream::AnyValueRef<'v>>(
+    fn map_entry<'k, 'v, K: stream::UnknownValueRef<'k>, V: stream::UnknownValueRef<'v>>(
         &mut self,
         k: K,
         v: V,
@@ -98,7 +98,7 @@ where
         Ok(())
     }
 
-    fn map_field<'v, F: stream::TypedValueRef<'static, str>, V: stream::AnyValueRef<'v>>(
+    fn map_field<'v, F: stream::TypedValueRef<'static, str>, V: stream::UnknownValueRef<'v>>(
         &mut self,
         f: F,
         v: V,
