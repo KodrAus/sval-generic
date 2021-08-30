@@ -2,8 +2,8 @@ use std::ops::Deref;
 
 use crate::{stream::Stream, value::Value, Result};
 
-// TODO: Consider `AnyValueRef` and `TypedValueRef`?
-pub trait AnyRef<'a>: Copy + Deref {
+
+pub trait AnyValueRef<'a>: Copy + Deref {
     fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,
@@ -22,11 +22,11 @@ pub trait AnyRef<'a>: Copy + Deref {
     }
 }
 
-pub trait TypedRef<'a, T: ?Sized>: AnyRef<'a> + Deref<Target = T> {
+pub trait TypedValueRef<'a, T: ?Sized>: AnyValueRef<'a> + Deref<Target = T> {
     fn to_ref(self) -> Option<&'a T>;
 }
 
-impl<'a, T: ?Sized> AnyRef<'a> for &'a T
+impl<'a, T: ?Sized> AnyValueRef<'a> for &'a T
 where
     T: Value,
 {
@@ -46,7 +46,7 @@ where
     }
 }
 
-impl<'a, T: ?Sized> TypedRef<'a, T> for &'a T
+impl<'a, T: ?Sized> TypedValueRef<'a, T> for &'a T
 where
     T: Value,
 {
@@ -85,9 +85,9 @@ where
     }
 }
 
-impl<'a, 'b, T> AnyRef<'a> for ForAll<T>
+impl<'a, 'b, T> AnyValueRef<'a> for ForAll<T>
 where
-    T: AnyRef<'b>,
+    T: AnyValueRef<'b>,
 {
     fn stream<'c, S>(self, stream: S) -> Result
     where
@@ -105,9 +105,9 @@ where
     }
 }
 
-impl<'a, 'b, T, U: ?Sized> TypedRef<'a, U> for ForAll<T>
+impl<'a, 'b, T, U: ?Sized> TypedValueRef<'a, U> for ForAll<T>
 where
-    T: TypedRef<'b, U>,
+    T: TypedValueRef<'b, U>,
 {
     fn to_ref(self) -> Option<&'a U> {
         None
