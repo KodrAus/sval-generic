@@ -2,18 +2,26 @@ use std::ops::Deref;
 
 use crate::{stream::Stream, value::Value, Result};
 
-pub trait AnyRef<'a>: Copy {
+// TODO: Consider `AnyValueRef` and `TypedValueRef`?
+pub trait AnyRef<'a>: Copy + Deref {
     fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,
         S: Stream<'b>;
 
+    // TODO: Can we remove this now `erased` is fixed?
     fn stream_for_all<'b, S>(self, stream: S) -> Result
     where
         S: Stream<'b>;
+
+    fn for_all(self) -> ForAll<Self>
+    where
+        Self: Sized,
+    {
+        ForAll(self)
+    }
 }
 
-// TODO: Consider requirement for same `stream` impl?
 pub trait TypedRef<'a, T: ?Sized>: AnyRef<'a> + Deref<Target = T> {
     fn to_ref(self) -> Option<&'a T>;
 }
@@ -58,6 +66,25 @@ impl<T: Deref> Deref for ForAll<T> {
     }
 }
 
+impl<T> Value for ForAll<T>
+where
+    T: Value,
+{
+    fn stream<'a, S>(&'a self, stream: S) -> Result
+    where
+        S: Stream<'a>,
+    {
+        self.0.stream_for_all(stream)
+    }
+
+    fn stream_for_all<'a, S>(&self, stream: S) -> Result
+    where
+        S: Stream<'a>,
+    {
+        self.0.stream_for_all(stream)
+    }
+}
+
 impl<'a, 'b, T> AnyRef<'a> for ForAll<T>
 where
     T: AnyRef<'b>,
@@ -74,7 +101,6 @@ where
     where
         S: Stream<'c>,
     {
-        // TODO: Can we remove the `stream_for_all` method from `Value`?
         self.0.stream_for_all(stream)
     }
 }

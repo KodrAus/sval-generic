@@ -12,7 +12,7 @@ fn main() {
         where
             S: value::Stream<'a>,
         {
-            let mut short = |s: &str| stream.map_field("field", value::ForAll(s));
+            let mut short = |s: &str| stream.map_field("field", s.for_all());
 
             short("value")
         }

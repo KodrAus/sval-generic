@@ -174,14 +174,14 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'k: 'a,
     {
-        self.0.erased_map_key(AnyRef(&k))
+        self.0.erased_map_key(AnyRef(&k, ()))
     }
 
     fn map_value<'v, V: stream::AnyRef<'v>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
-        self.0.erased_map_value(AnyRef(&v))
+        self.0.erased_map_value(AnyRef(&v, ()))
     }
 
     fn map_entry<'k, 'v, K: stream::AnyRef<'k>, V: stream::AnyRef<'v>>(
@@ -193,7 +193,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         'k: 'a,
         'v: 'a,
     {
-        self.0.erased_map_entry(AnyRef(&k), AnyRef(&v))
+        self.0.erased_map_entry(AnyRef(&k, ()), AnyRef(&v, ()))
     }
 
     fn map_field<'v, F: stream::TypedRef<'static, str>, V: stream::AnyRef<'v>>(
@@ -204,29 +204,45 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'v: 'a,
     {
-        self.0.erased_map_field(TypedRef(&f), AnyRef(&v))
+        self.0.erased_map_field(TypedRef(&f), AnyRef(&v, ()))
     }
 }
 
-struct AnyRef<'a, 'b>(&'b dyn ErasedAnyRef<'a>);
+struct AnyRef<'a, 'b>(&'b dyn ErasedAnyRef<'a>, ());
+
+impl<'a, 'b> Deref for AnyRef<'a, 'b> {
+    type Target = ();
+
+    fn deref(&self) -> &Self::Target {
+        &self.1
+    }
+}
 
 impl<'a, 'b> Clone for AnyRef<'a, 'b> {
     fn clone(&self) -> Self {
-        AnyRef(self.0)
+        AnyRef(self.0, ())
     }
 }
 
 impl<'a, 'b> Copy for AnyRef<'a, 'b> {}
 
-struct UntypedForAll<'a, 'b>(&'b dyn ErasedAnyRef<'a>);
+struct AnyForAll<'a, 'b>(&'b dyn ErasedAnyRef<'a>, ());
 
-impl<'a, 'b> Clone for UntypedForAll<'a, 'b> {
-    fn clone(&self) -> Self {
-        UntypedForAll(self.0)
+impl<'a, 'b> Deref for AnyForAll<'a, 'b> {
+    type Target = ();
+
+    fn deref(&self) -> &Self::Target {
+        &self.1
     }
 }
 
-impl<'a, 'b> Copy for UntypedForAll<'a, 'b> {}
+impl<'a, 'b> Clone for AnyForAll<'a, 'b> {
+    fn clone(&self) -> Self {
+        AnyForAll(self.0, ())
+    }
+}
+
+impl<'a, 'b> Copy for AnyForAll<'a, 'b> {}
 
 trait ErasedAnyRef<'a> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
@@ -269,7 +285,7 @@ impl<'a, 'b> value_ref::AnyRef<'a> for AnyRef<'a, 'b> {
     }
 }
 
-impl<'a, 'b, 'c> value_ref::AnyRef<'c> for UntypedForAll<'a, 'b> {
+impl<'a, 'b, 'c> value_ref::AnyRef<'c> for AnyForAll<'a, 'b> {
     fn stream<'d, S>(self, mut stream: S) -> Result
     where
         'c: 'd,

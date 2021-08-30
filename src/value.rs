@@ -7,6 +7,7 @@ pub trait Value {
     where
         S: Stream<'a>;
 
+    // TODO: Can we move this back to `ForAll`?
     fn stream_for_all<'a, S>(&self, stream: S) -> Result
     where
         S: Stream<'a>,
@@ -83,6 +84,10 @@ pub trait Value {
         }
 
         self.stream(AnyStream(stream))
+    }
+
+    fn for_all(&self) -> ForAll<&Self> {
+        ForAll(self)
     }
 
     fn to_str(&self) -> Option<&str> {
