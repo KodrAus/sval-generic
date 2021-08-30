@@ -1,3 +1,5 @@
+use crate::erased;
+
 #[doc(inline)]
 pub use crate::{
     for_all::ForAll,
@@ -60,6 +62,13 @@ pub trait Stream<'a> {
 
     fn for_all(&mut self) -> ForAll<&mut Self> {
         ForAll(self)
+    }
+
+    fn erase<'b>(&'b mut self) -> erased::Stream<'a, 'b>
+    where
+        Self: Sized,
+    {
+        erased::Stream::new(self)
     }
 }
 

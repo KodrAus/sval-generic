@@ -7,12 +7,22 @@ struct SerdeStream<S: Serializer>(Option<Serde<S>>);
 enum Serde<S: Serializer> {
     Serializer(S),
     SerializeMap(S::SerializeMap),
+    Ok(S::Ok),
 }
 
 impl<S> SerdeStream<S>
 where
     S: Serializer,
 {
+    fn new(serializer: S) -> Self {
+        SerdeStream(Some(Serde::Serializer(serializer)))
+    }
+
+    fn value(&mut self, v: impl Serialize) {
+        let r = v.serialize(self.serializer()).unwrap();
+        self.0 = Some(Serde::Ok(r));
+    }
+
     fn serializer(&mut self) -> S {
         if let Some(Serde::Serializer(s)) = self.0.take() {
             return s;
@@ -28,6 +38,31 @@ where
 
         panic!("invalid serializer")
     }
+
+    fn ok(self) -> S::Ok {
+        if let Some(Serde::Ok(r)) = self.0 {
+            return r;
+        }
+
+        panic!("invalid serializer")
+    }
+}
+
+struct SerdeValue<V>(V);
+
+impl<'a, V> Serialize for SerdeValue<V>
+where
+    V: stream::UnknownValueRef<'a>,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut stream = SerdeStream::new(serializer);
+
+        self.0.stream(&mut stream).unwrap();
+        Ok(stream.ok())
+    }
 }
 
 impl<'a, S> Stream<'a> for SerdeStream<S>
@@ -35,12 +70,12 @@ where
     S: Serializer,
 {
     fn u128(&mut self, v: u128) -> stream::Result {
-        self.serializer().serialize_u128(v).unwrap();
+        self.value(v);
         Ok(())
     }
 
     fn i128(&mut self, v: i128) -> stream::Result {
-        self.serializer().serialize_i128(v).unwrap();
+        self.value(v);
         Ok(())
     }
 
@@ -48,7 +83,7 @@ where
     where
         'v: 'a,
     {
-        self.serializer().serialize_str(&*v).unwrap();
+        self.value(&*v);
         Ok(())
     }
 
@@ -76,6 +111,7 @@ where
     where
         'k: 'a,
     {
+        self.serialize_map().serialize_key(&SerdeValue(k)).unwrap();
         Ok(())
     }
 
@@ -83,6 +119,7 @@ where
     where
         'v: 'a,
     {
+        self.serialize_map().serialize_value(&SerdeValue(v)).unwrap();
         Ok(())
     }
 
@@ -95,6 +132,7 @@ where
         'k: 'a,
         'v: 'a,
     {
+        self.serialize_map().serialize_entry(&SerdeValue(k), &SerdeValue(v)).unwrap();
         Ok(())
     }
 
@@ -106,6 +144,7 @@ where
     where
         'v: 'a,
     {
+        self.serialize_map().serialize_entry(&SerdeValue(f), &SerdeValue(v)).unwrap();
         Ok(())
     }
 }

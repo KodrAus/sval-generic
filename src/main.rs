@@ -1,5 +1,4 @@
 use sval_ref_api::{
-    erased,
     stream::{self, Stream},
     value::{self, Value},
 };
@@ -84,10 +83,10 @@ fn main() {
     let erased_value = MyStruct {
         a: String::from("hello!"),
     };
-    let erased_value = erased::Value::new(&erased_value);
+    let erased_value = erased_value.erase();
 
     let mut erased_stream = MyStream(None);
-    let mut erased_stream = erased::Stream::new(&mut erased_stream);
+    let mut erased_stream = erased_stream.erase();
 
     erased_value.stream(MyStream(None)).unwrap();
 

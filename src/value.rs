@@ -1,4 +1,7 @@
-use crate::value_ref::{TypedValueRef, UnknownValueRef};
+use crate::{
+    erased,
+    value_ref::TypedValueRef,
+};
 
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
@@ -57,6 +60,13 @@ pub trait Value {
 
     fn for_all(&self) -> ForAll<&Self> {
         ForAll(self)
+    }
+
+    fn erase<'a>(&'a self) -> erased::Value<'a>
+    where
+        Self: Sized,
+    {
+        erased::Value::new(self)
     }
 }
 
