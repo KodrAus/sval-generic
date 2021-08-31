@@ -56,12 +56,32 @@ impl<'a, 'b, S> Stream<'a> for ForAll<S>
 where
     S: Stream<'b>,
 {
+    fn u64(&mut self, v: u64) -> Result {
+        self.0.u64(v)
+    }
+
+    fn i64(&mut self, v: i64) -> Result {
+        self.0.i64(v)
+    }
+
     fn u128(&mut self, v: u128) -> Result {
         self.0.u128(v)
     }
 
     fn i128(&mut self, v: i128) -> Result {
         self.0.i128(v)
+    }
+
+    fn f64(&mut self, v: f64) -> Result {
+        self.0.f64(v)
+    }
+
+    fn bool(&mut self, v: bool) -> Result {
+        self.0.bool(v)
+    }
+
+    fn none(&mut self) -> Result {
+        self.0.none()
     }
 
     fn str<'v, V: TypedValueRef<'v, str>>(&mut self, v: V) -> Result
@@ -122,5 +142,24 @@ where
         'v: 'a,
     {
         self.0.map_field(f, ForAll(v))
+    }
+
+    fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        self.0.seq_begin(len)
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        self.0.seq_elem_begin()
+    }
+
+    fn seq_end(&mut self) -> Result {
+        self.0.seq_end()
+    }
+
+    fn seq_elem<'e, E: UnknownValueRef<'e>>(&mut self, e: E) -> Result
+    where
+        'e: 'a,
+    {
+        self.0.seq_elem(ForAll(e))
     }
 }

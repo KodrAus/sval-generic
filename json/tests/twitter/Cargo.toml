@@ -1,0 +1,26 @@
+[package]
+name = "sval-generic-api-json-twitter-tests"
+version = "0.0.0"
+authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
+edition = "2018"
+publish = false
+
+[lib]
+path = "lib.rs"
+
+[dependencies.sval-generic-api]
+path = "../../../"
+
+[dependencies.sval]
+path = "../../../../../../dev/osx/sval"
+features = ["derive", "std"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1"
+
+[dependencies.miniserde]
+version = "0.1"

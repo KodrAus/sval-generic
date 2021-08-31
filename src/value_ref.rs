@@ -33,6 +33,7 @@ where
     }
 }
 
+// TODO: Should we implement this for `String`, `Arc` etc?
 impl<'a, T: ?Sized> TypedValueRef<'a, T> for &'a T
 where
     T: Value,

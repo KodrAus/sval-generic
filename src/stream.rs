@@ -8,8 +8,13 @@ pub use crate::{
 };
 
 pub trait Stream<'a> {
+    fn u64(&mut self, v: u64) -> Result;
+    fn i64(&mut self, v: i64) -> Result;
     fn u128(&mut self, v: u128) -> Result;
     fn i128(&mut self, v: i128) -> Result;
+    fn f64(&mut self, v: f64) -> Result;
+    fn bool(&mut self, v: bool) -> Result;
+    fn none(&mut self) -> Result;
 
     fn str<'v, V: TypedValueRef<'v, str>>(&mut self, v: V) -> Result
     where
@@ -60,6 +65,18 @@ pub trait Stream<'a> {
         self.map_entry(f, v)
     }
 
+    fn seq_begin(&mut self, len: Option<usize>) -> Result;
+    fn seq_elem_begin(&mut self) -> Result;
+    fn seq_end(&mut self) -> Result;
+
+    fn seq_elem<'e, E: UnknownValueRef<'e>>(&mut self, e: E) -> Result
+    where
+        'e: 'a,
+    {
+        self.seq_elem_begin()?;
+        e.stream(self)
+    }
+
     fn for_all(&mut self) -> ForAll<&mut Self> {
         ForAll(self)
     }
@@ -76,12 +93,32 @@ impl<'a, 'b, T: ?Sized> Stream<'b> for &'a mut T
 where
     T: Stream<'b>,
 {
+    fn u64(&mut self, v: u64) -> Result {
+        (**self).u64(v)
+    }
+
+    fn i64(&mut self, v: i64) -> Result {
+        (**self).i64(v)
+    }
+
     fn u128(&mut self, v: u128) -> Result {
         (**self).u128(v)
     }
 
     fn i128(&mut self, v: i128) -> Result {
         (**self).i128(v)
+    }
+
+    fn f64(&mut self, v: f64) -> Result {
+        (**self).f64(v)
+    }
+
+    fn bool(&mut self, v: bool) -> Result {
+        (**self).bool(v)
+    }
+
+    fn none(&mut self) -> Result {
+        (**self).none()
     }
 
     fn str<'v, V: TypedValueRef<'v, str>>(&mut self, v: V) -> Result
@@ -142,5 +179,24 @@ where
         'v: 'b,
     {
         (**self).map_field(f, v)
+    }
+
+    fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        (**self).seq_begin(len)
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        (**self).seq_elem_begin()
+    }
+
+    fn seq_end(&mut self) -> Result {
+        (**self).seq_end()
+    }
+
+    fn seq_elem<'e, E: UnknownValueRef<'e>>(&mut self, e: E) -> Result
+    where
+        'e: 'b,
+    {
+        (**self).seq_elem(e)
     }
 }

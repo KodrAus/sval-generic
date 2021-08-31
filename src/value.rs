@@ -1,7 +1,4 @@
-use crate::{
-    erased,
-    value_ref::TypedValueRef,
-};
+use crate::{erased, value_ref::TypedValueRef};
 
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
@@ -15,11 +12,31 @@ pub trait Value {
         struct Extract<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for Extract<'a> {
+            fn u64(&mut self, _: u64) -> Result {
+                Err(Error)
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                Err(Error)
+            }
+
             fn u128(&mut self, _: u128) -> Result {
                 Err(Error)
             }
 
             fn i128(&mut self, _: i128) -> Result {
+                Err(Error)
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                Err(Error)
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                Err(Error)
+            }
+
+            fn none(&mut self) -> Result {
                 Err(Error)
             }
 
@@ -36,6 +53,18 @@ pub trait Value {
             }
 
             fn map_end(&mut self) -> Result {
+                Err(Error)
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                Err(Error)
+            }
+
+            fn seq_elem_begin(&mut self) -> Result {
+                Err(Error)
+            }
+
+            fn seq_end(&mut self) -> Result {
                 Err(Error)
             }
 

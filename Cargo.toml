@@ -1,9 +1,18 @@
 [package]
-name = "sval-ref-api"
-version = "0.1.0"
+name = "sval-generic-api"
+version = "0.0.0"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [
+    "derive",
+    "json",
+    "json/benches/twitter",
+    "json/tests/twitter"
+]
 
 [dependencies.serde]
 version = "1"
+
+[dependencies.sval-generic-api-derive]
+path = "derive"

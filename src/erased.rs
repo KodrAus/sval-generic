@@ -41,8 +41,13 @@ impl<'a, 'b> Stream<'a, 'b> {
 }
 
 trait ErasedStream<'a> {
+    fn erased_u64(&mut self, v: u64) -> Result;
+    fn erased_i64(&mut self, v: i64) -> Result;
     fn erased_i128(&mut self, v: i128) -> Result;
     fn erased_u128(&mut self, v: u128) -> Result;
+    fn erased_f64(&mut self, v: f64) -> Result;
+    fn erased_bool(&mut self, v: bool) -> Result;
+    fn erased_none(&mut self) -> Result;
     fn erased_str<'b, 'v>(&mut self, v: TypedValueRef<'v, 'b, str>) -> Result
     where
         'v: 'a;
@@ -71,18 +76,44 @@ trait ErasedStream<'a> {
     ) -> Result
     where
         'v: 'a;
+    fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
+    fn erased_seq_elem_begin(&mut self) -> Result;
+    fn erased_seq_end(&mut self) -> Result;
+    fn erased_seq_elem<'b, 'e>(&mut self, e: UnknownValueRef<'e, 'b>) -> Result
+    where
+        'e: 'a;
 }
 
 impl<'a, T: ?Sized> ErasedStream<'a> for T
 where
     T: stream::Stream<'a>,
 {
+    fn erased_u64(&mut self, v: u64) -> Result {
+        self.u64(v)
+    }
+
+    fn erased_i64(&mut self, v: i64) -> Result {
+        self.i64(v)
+    }
+
     fn erased_i128(&mut self, v: i128) -> Result {
         self.i128(v)
     }
 
     fn erased_u128(&mut self, v: u128) -> Result {
         self.u128(v)
+    }
+
+    fn erased_f64(&mut self, v: f64) -> Result {
+        self.f64(v)
+    }
+
+    fn erased_bool(&mut self, v: bool) -> Result {
+        self.bool(v)
+    }
+
+    fn erased_none(&mut self) -> Result {
+        self.none()
     }
 
     fn erased_str<'b, 'v>(&mut self, v: TypedValueRef<'v, 'b, str>) -> Result
@@ -144,15 +175,54 @@ where
     {
         self.map_field(f, v)
     }
+
+    fn erased_seq_begin(&mut self, len: Option<usize>) -> Result {
+        self.seq_begin(len)
+    }
+
+    fn erased_seq_elem_begin(&mut self) -> Result {
+        self.seq_elem_begin()
+    }
+
+    fn erased_seq_end(&mut self) -> Result {
+        self.seq_end()
+    }
+
+    fn erased_seq_elem<'b, 'e>(&mut self, e: UnknownValueRef<'e, 'b>) -> Result
+    where
+        'e: 'a,
+    {
+        self.seq_elem(e)
+    }
 }
 
 impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
+    fn u64(&mut self, v: u64) -> Result {
+        self.0.erased_u64(v)
+    }
+
+    fn i64(&mut self, v: i64) -> Result {
+        self.0.erased_i64(v)
+    }
+
     fn u128(&mut self, v: u128) -> Result {
         self.0.erased_u128(v)
     }
 
     fn i128(&mut self, v: i128) -> Result {
         self.0.erased_i128(v)
+    }
+
+    fn f64(&mut self, v: f64) -> Result {
+        self.0.erased_f64(v)
+    }
+
+    fn bool(&mut self, v: bool) -> Result {
+        self.0.erased_bool(v)
+    }
+
+    fn none(&mut self) -> Result {
+        self.0.erased_none()
     }
 
     fn str<'v, V: stream::TypedValueRef<'v, str>>(&mut self, v: V) -> Result
@@ -215,6 +285,25 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     {
         self.0
             .erased_map_field(TypedValueRef(&f), UnknownValueRef(&v, ()))
+    }
+
+    fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        self.0.erased_seq_begin(len)
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        self.0.erased_seq_elem_begin()
+    }
+
+    fn seq_end(&mut self) -> Result {
+        self.0.erased_seq_end()
+    }
+
+    fn seq_elem<'e, E: stream::UnknownValueRef<'e>>(&mut self, e: E) -> Result
+    where
+        'e: 'a,
+    {
+        self.0.erased_seq_elem(UnknownValueRef(&e, ()))
     }
 }
 
