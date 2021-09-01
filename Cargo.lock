@@ -138,6 +138,7 @@ dependencies = [
  "sval-generic-api-json",
  "sval-generic-api-json-twitter-tests",
  "sval_json",
+ "valuable-json",
 ]
 
 [[package]]
@@ -149,6 +150,7 @@ dependencies = [
  "serde_json",
  "sval",
  "sval-generic-api",
+ "valuable",
 ]
 
 [[package]]
@@ -185,3 +187,30 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "valuable"
+version = "0.1.0"
+source = "git+https://github.com/tokio-rs/valuable?branch=taiki-e/json#6e5eec22a19c962547e2b45d9a03e204e16b4a67"
+dependencies = [
+ "valuable-derive",
+]
+
+[[package]]
+name = "valuable-derive"
+version = "0.1.0"
+source = "git+https://github.com/tokio-rs/valuable?branch=taiki-e/json#6e5eec22a19c962547e2b45d9a03e204e16b4a67"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "valuable-json"
+version = "0.1.0"
+source = "git+https://github.com/tokio-rs/valuable?branch=taiki-e/json#6e5eec22a19c962547e2b45d9a03e204e16b4a67"
+dependencies = [
+ "ryu",
+ "valuable",
+]

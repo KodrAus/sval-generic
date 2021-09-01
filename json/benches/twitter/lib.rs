@@ -52,6 +52,11 @@ fn primitive_erased_sval_generic_api(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn primitive_valuable(b: &mut test::Bencher) {
+    b.iter(|| valuable_json::to_string(&42).unwrap());
+}
+
+#[bench]
 fn twitter_miniserde(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| miniserde::json::to_string(&s));
@@ -91,4 +96,10 @@ fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
     let s = s.erase();
 
     b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+}
+
+#[bench]
+fn twitter_valuable(b: &mut test::Bencher) {
+    let s = input_struct();
+    b.iter(|| valuable_json::to_string(&s).unwrap());
 }

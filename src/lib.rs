@@ -25,7 +25,7 @@ impl From<fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, v: impl stream::UnknownValueRef<'a>) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, v: impl stream::UnknownStreamValue<'a>) -> Result {
     v.stream(s)
 }
 
@@ -99,7 +99,7 @@ mod tests {
                 Ok(())
             }
 
-            fn str<'v, V: stream::TypedValueRef<'v, str>>(&mut self, v: V) -> stream::Result
+            fn str<'v, V: stream::StreamValue<'v, str>>(&mut self, v: V) -> stream::Result
             where
                 'v: 'a,
             {

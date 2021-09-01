@@ -1,7 +1,7 @@
 use crate::{
     stream::Stream,
     value::Value,
-    value_ref::{TypedValueRef, UnknownValueRef},
+    value_ref::{StreamValue, UnknownStreamValue},
     Result,
 };
 
@@ -20,9 +20,9 @@ where
     }
 }
 
-impl<'a, 'b, T> UnknownValueRef<'a> for ForAll<T>
+impl<'a, 'b, T> UnknownStreamValue<'a> for ForAll<T>
 where
-    T: UnknownValueRef<'b>,
+    T: UnknownStreamValue<'b>,
 {
     fn stream<'c, S>(self, stream: S) -> Result
     where
@@ -33,9 +33,9 @@ where
     }
 }
 
-impl<'a, 'b, T, U: ?Sized> TypedValueRef<'a, U> for ForAll<T>
+impl<'a, 'b, T, U: ?Sized> StreamValue<'a, U> for ForAll<T>
 where
-    T: TypedValueRef<'b, U>,
+    T: StreamValue<'b, U>,
     U: Value,
 {
     fn get(&self) -> &U {
@@ -79,7 +79,7 @@ where
         self.0.none()
     }
 
-    fn str<'v, V: TypedValueRef<'v, str>>(&mut self, v: V) -> Result
+    fn str<'v, V: StreamValue<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
@@ -102,21 +102,21 @@ where
         self.0.map_end()
     }
 
-    fn map_key<'k, K: UnknownValueRef<'k>>(&mut self, k: K) -> Result
+    fn map_key<'k, K: UnknownStreamValue<'k>>(&mut self, k: K) -> Result
     where
         'k: 'a,
     {
         self.0.map_key(ForAll(k))
     }
 
-    fn map_value<'v, V: UnknownValueRef<'v>>(&mut self, v: V) -> Result
+    fn map_value<'v, V: UnknownStreamValue<'v>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
         self.0.map_value(ForAll(v))
     }
 
-    fn map_entry<'k, 'v, K: UnknownValueRef<'k>, V: UnknownValueRef<'v>>(
+    fn map_entry<'k, 'v, K: UnknownStreamValue<'k>, V: UnknownStreamValue<'v>>(
         &mut self,
         k: K,
         v: V,
@@ -128,7 +128,7 @@ where
         self.0.map_entry(ForAll(k), ForAll(v))
     }
 
-    fn map_field<'v, F: TypedValueRef<'static, str>, V: UnknownValueRef<'v>>(
+    fn map_field<'v, F: StreamValue<'static, str>, V: UnknownStreamValue<'v>>(
         &mut self,
         f: F,
         v: V,
@@ -151,7 +151,7 @@ where
         self.0.seq_end()
     }
 
-    fn seq_elem<'e, E: UnknownValueRef<'e>>(&mut self, e: E) -> Result
+    fn seq_elem<'e, E: UnknownStreamValue<'e>>(&mut self, e: E) -> Result
     where
         'e: 'a,
     {

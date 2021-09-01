@@ -1,4 +1,4 @@
-use crate::{erased, value_ref::TypedValueRef};
+use crate::{erased, value_ref::StreamValue};
 
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
@@ -68,7 +68,7 @@ pub trait Value {
                 Err(Error)
             }
 
-            fn str<'v, V: TypedValueRef<'v, str>>(&mut self, v: V) -> Result
+            fn str<'v, V: StreamValue<'v, str>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {

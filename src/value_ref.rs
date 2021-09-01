@@ -1,6 +1,6 @@
 use crate::{for_all::ForAll, stream::Stream, value::Value, Result};
 
-pub trait UnknownValueRef<'a>: Copy {
+pub trait UnknownStreamValue<'a>: Copy {
     fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,
@@ -14,12 +14,12 @@ pub trait UnknownValueRef<'a>: Copy {
     }
 }
 
-pub trait TypedValueRef<'a, T: ?Sized + Value>: UnknownValueRef<'a> {
+pub trait StreamValue<'a, T: ?Sized + Value>: UnknownStreamValue<'a> {
     fn get(&self) -> &T;
     fn get_ref(&self) -> Option<&'a T>;
 }
 
-impl<'a, T: ?Sized> UnknownValueRef<'a> for &'a T
+impl<'a, T: ?Sized> UnknownStreamValue<'a> for &'a T
 where
     T: Value,
 {
@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<'a, T: ?Sized> TypedValueRef<'a, T> for &'a T
+impl<'a, T: ?Sized> StreamValue<'a, T> for &'a T
 where
     T: Value,
 {

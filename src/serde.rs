@@ -61,7 +61,7 @@ struct SerdeValue<V>(V);
 
 impl<'a, V> Serialize for SerdeValue<V>
 where
-    V: stream::UnknownValueRef<'a>,
+    V: stream::UnknownStreamValue<'a>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -113,7 +113,7 @@ where
         Ok(())
     }
 
-    fn str<'v, V: stream::TypedValueRef<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::StreamValue<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -141,7 +141,7 @@ where
         Ok(())
     }
 
-    fn map_key<'k, K: stream::UnknownValueRef<'k>>(&mut self, k: K) -> stream::Result
+    fn map_key<'k, K: stream::UnknownStreamValue<'k>>(&mut self, k: K) -> stream::Result
     where
         'k: 'a,
     {
@@ -149,7 +149,7 @@ where
         Ok(())
     }
 
-    fn map_value<'v, V: stream::UnknownValueRef<'v>>(&mut self, v: V) -> stream::Result
+    fn map_value<'v, V: stream::UnknownStreamValue<'v>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -159,7 +159,7 @@ where
         Ok(())
     }
 
-    fn map_entry<'k, 'v, K: stream::UnknownValueRef<'k>, V: stream::UnknownValueRef<'v>>(
+    fn map_entry<'k, 'v, K: stream::UnknownStreamValue<'k>, V: stream::UnknownStreamValue<'v>>(
         &mut self,
         k: K,
         v: V,
@@ -174,7 +174,7 @@ where
         Ok(())
     }
 
-    fn map_field<'v, F: stream::TypedValueRef<'static, str>, V: stream::UnknownValueRef<'v>>(
+    fn map_field<'v, F: stream::StreamValue<'static, str>, V: stream::UnknownStreamValue<'v>>(
         &mut self,
         f: F,
         v: V,
@@ -204,7 +204,7 @@ where
         Ok(())
     }
 
-    fn seq_elem<'e, E: stream::UnknownValueRef<'e>>(&mut self, e: E) -> stream::Result
+    fn seq_elem<'e, E: stream::UnknownStreamValue<'e>>(&mut self, e: E) -> stream::Result
     where
         'e: 'a,
     {
