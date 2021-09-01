@@ -1,4 +1,4 @@
-use serde::ser::{Serialize, SerializeMap, Serializer};
+use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::stream::{self, Stream};
 
@@ -7,6 +7,7 @@ struct SerdeStream<S: Serializer>(Option<Serde<S>>);
 enum Serde<S: Serializer> {
     Serializer(S),
     SerializeMap(S::SerializeMap),
+    SerializeSeq(S::SerializeSeq),
     Ok(S::Ok),
 }
 
@@ -33,6 +34,14 @@ where
 
     fn serialize_map(&mut self) -> S::SerializeMap {
         if let Some(Serde::SerializeMap(s)) = self.0.take() {
+            return s;
+        }
+
+        panic!("invalid serializer")
+    }
+
+    fn serialize_seq(&mut self) -> S::SerializeSeq {
+        if let Some(Serde::SerializeSeq(s)) = self.0.take() {
             return s;
         }
 
@@ -69,6 +78,16 @@ impl<'a, S> Stream<'a> for SerdeStream<S>
 where
     S: Serializer,
 {
+    fn u64(&mut self, v: u64) -> stream::Result {
+        self.value(v);
+        Ok(())
+    }
+
+    fn i64(&mut self, v: i64) -> stream::Result {
+        self.value(v);
+        Ok(())
+    }
+
     fn u128(&mut self, v: u128) -> stream::Result {
         self.value(v);
         Ok(())
@@ -79,11 +98,26 @@ where
         Ok(())
     }
 
+    fn f64(&mut self, v: f64) -> stream::Result {
+        self.value(v);
+        Ok(())
+    }
+
+    fn bool(&mut self, v: bool) -> stream::Result {
+        self.value(v);
+        Ok(())
+    }
+
+    fn none(&mut self) -> stream::Result {
+        self.value(Option::<()>::None);
+        Ok(())
+    }
+
     fn str<'v, V: stream::TypedValueRef<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
-        self.value(&*v);
+        self.value(v.get());
         Ok(())
     }
 
@@ -119,7 +153,9 @@ where
     where
         'v: 'a,
     {
-        self.serialize_map().serialize_value(&SerdeValue(v)).unwrap();
+        self.serialize_map()
+            .serialize_value(&SerdeValue(v))
+            .unwrap();
         Ok(())
     }
 
@@ -132,7 +168,9 @@ where
         'k: 'a,
         'v: 'a,
     {
-        self.serialize_map().serialize_entry(&SerdeValue(k), &SerdeValue(v)).unwrap();
+        self.serialize_map()
+            .serialize_entry(&SerdeValue(k), &SerdeValue(v))
+            .unwrap();
         Ok(())
     }
 
@@ -144,7 +182,35 @@ where
     where
         'v: 'a,
     {
-        self.serialize_map().serialize_entry(&SerdeValue(f), &SerdeValue(v)).unwrap();
+        self.serialize_map()
+            .serialize_entry(&SerdeValue(f), &SerdeValue(v))
+            .unwrap();
+        Ok(())
+    }
+
+    fn seq_begin(&mut self, len: Option<usize>) -> stream::Result {
+        self.0 = Some(Serde::SerializeSeq(
+            self.serializer().serialize_seq(len).unwrap(),
+        ));
+        Ok(())
+    }
+
+    fn seq_elem_begin(&mut self) -> stream::Result {
+        Ok(())
+    }
+
+    fn seq_end(&mut self) -> stream::Result {
+        self.serialize_seq().end().unwrap();
+        Ok(())
+    }
+
+    fn seq_elem<'e, E: stream::UnknownValueRef<'e>>(&mut self, e: E) -> stream::Result
+    where
+        'e: 'a,
+    {
+        self.serialize_seq()
+            .serialize_element(&SerdeValue(e))
+            .unwrap();
         Ok(())
     }
 }

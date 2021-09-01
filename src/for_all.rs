@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     stream::Stream,
     value::Value,
@@ -9,14 +7,6 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub struct ForAll<T>(pub(crate) T);
-
-impl<T: Deref> Deref for ForAll<T> {
-    type Target = T::Target;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
 
 impl<T> Value for ForAll<T>
 where
@@ -46,8 +36,13 @@ where
 impl<'a, 'b, T, U: ?Sized> TypedValueRef<'a, U> for ForAll<T>
 where
     T: TypedValueRef<'b, U>,
+    U: Value,
 {
-    fn to_ref(self) -> Option<&'a U> {
+    fn get(&self) -> &U {
+        self.0.get()
+    }
+
+    fn get_ref(&self) -> Option<&'a U> {
         None
     }
 }

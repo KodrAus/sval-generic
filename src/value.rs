@@ -72,7 +72,7 @@ pub trait Value {
             where
                 'v: 'a,
             {
-                match v.to_ref() {
+                match v.get_ref() {
                     Some(v) => {
                         self.0 = Some(v);
                         Ok(())

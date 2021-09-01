@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{stream, value, value_ref, Result};
 
 pub struct Value<'a>(&'a dyn ErasedValue);
@@ -252,14 +250,14 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'k: 'a,
     {
-        self.0.erased_map_key(UnknownValueRef(&k, ()))
+        self.0.erased_map_key(UnknownValueRef(&k))
     }
 
     fn map_value<'v, V: stream::UnknownValueRef<'v>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
-        self.0.erased_map_value(UnknownValueRef(&v, ()))
+        self.0.erased_map_value(UnknownValueRef(&v))
     }
 
     fn map_entry<'k, 'v, K: stream::UnknownValueRef<'k>, V: stream::UnknownValueRef<'v>>(
@@ -272,7 +270,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         'v: 'a,
     {
         self.0
-            .erased_map_entry(UnknownValueRef(&k, ()), UnknownValueRef(&v, ()))
+            .erased_map_entry(UnknownValueRef(&k), UnknownValueRef(&v))
     }
 
     fn map_field<'v, F: stream::TypedValueRef<'static, str>, V: stream::UnknownValueRef<'v>>(
@@ -284,7 +282,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         'v: 'a,
     {
         self.0
-            .erased_map_field(TypedValueRef(&f), UnknownValueRef(&v, ()))
+            .erased_map_field(TypedValueRef(&f), UnknownValueRef(&v))
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
@@ -303,23 +301,15 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'e: 'a,
     {
-        self.0.erased_seq_elem(UnknownValueRef(&e, ()))
+        self.0.erased_seq_elem(UnknownValueRef(&e))
     }
 }
 
-struct UnknownValueRef<'a, 'b>(&'b dyn ErasedUnknownValueRef<'a>, ());
-
-impl<'a, 'b> Deref for UnknownValueRef<'a, 'b> {
-    type Target = ();
-
-    fn deref(&self) -> &Self::Target {
-        &self.1
-    }
-}
+struct UnknownValueRef<'a, 'b>(&'b dyn ErasedUnknownValueRef<'a>);
 
 impl<'a, 'b> Clone for UnknownValueRef<'a, 'b> {
     fn clone(&self) -> Self {
-        UnknownValueRef(self.0, ())
+        UnknownValueRef(self.0)
     }
 }
 
@@ -363,25 +353,19 @@ impl<'a, 'b, T: ?Sized> Clone for TypedValueRef<'a, 'b, T> {
 
 impl<'a, 'b, T: ?Sized> Copy for TypedValueRef<'a, 'b, T> {}
 
-impl<'a, 'b, T: ?Sized> Deref for TypedValueRef<'a, 'b, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &**self.0
-    }
-}
-
-trait ErasedTypedValueRef<'a, T: ?Sized>: Deref<Target = T> {
+trait ErasedTypedValueRef<'a, T: ?Sized> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
 
-    fn erased_to_ref(&self) -> Option<&'a T>;
+    fn erased_get(&self) -> &T;
+    fn erased_get_ref(&self) -> Option<&'a T>;
 }
 
 impl<'a, T, U: ?Sized> ErasedTypedValueRef<'a, U> for T
 where
     T: value_ref::TypedValueRef<'a, U>,
+    U: value::Value,
 {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
@@ -390,14 +374,25 @@ where
         self.stream(stream)
     }
 
-    fn erased_to_ref(&self) -> Option<&'a U> {
-        self.to_ref()
+    fn erased_get(&self) -> &U {
+        self.get()
+    }
+
+    fn erased_get_ref(&self) -> Option<&'a U> {
+        self.get_ref()
     }
 }
 
-impl<'a, 'b, T: ?Sized> value_ref::TypedValueRef<'a, T> for TypedValueRef<'a, 'b, T> {
-    fn to_ref(self) -> Option<&'a T> {
-        self.0.erased_to_ref()
+impl<'a, 'b, T: ?Sized> value_ref::TypedValueRef<'a, T> for TypedValueRef<'a, 'b, T>
+where
+    T: value::Value,
+{
+    fn get(&self) -> &T {
+        self.0.erased_get()
+    }
+
+    fn get_ref(&self) -> Option<&'a T> {
+        self.0.erased_get_ref()
     }
 }
 

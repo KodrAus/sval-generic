@@ -101,7 +101,7 @@ where
         'v: 'a,
     {
         self.out.write_char('"')?;
-        escape_str(&*v, &mut self.out)?;
+        escape_str(v.get(), &mut self.out)?;
         self.out.write_char('"')?;
 
         Ok(())

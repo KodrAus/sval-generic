@@ -1,4 +1,7 @@
-use crate::value::{self, Value};
+use crate::{
+    value::{self, Value},
+    value_ref,
+};
 
 impl Value for () {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
@@ -6,6 +9,26 @@ impl Value for () {
         S: value::Stream<'a>,
     {
         stream.none()
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for () {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.none()
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, ()> for () {
+    fn get(&self) -> &() {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a ()> {
+        None
     }
 }
 
@@ -18,12 +41,52 @@ impl Value for bool {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for bool {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.bool(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, bool> for bool {
+    fn get(&self) -> &bool {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a bool> {
+        None
+    }
+}
+
 impl Value for u8 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.u64(*self as u64)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for u8 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.u64(self as u64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, u8> for u8 {
+    fn get(&self) -> &u8 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a u8> {
+        None
     }
 }
 
@@ -36,12 +99,52 @@ impl Value for i8 {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for i8 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.i64(self as i64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, i8> for i8 {
+    fn get(&self) -> &i8 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a i8> {
+        None
+    }
+}
+
 impl Value for u16 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.u64(*self as u64)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for u16 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.u64(self as u64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, u16> for u16 {
+    fn get(&self) -> &u16 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a u16> {
+        None
     }
 }
 
@@ -54,12 +157,52 @@ impl Value for i16 {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for i16 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.i64(self as i64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, i16> for i16 {
+    fn get(&self) -> &i16 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a i16> {
+        None
+    }
+}
+
 impl Value for u32 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.u64(*self as u64)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for u32 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.u64(self as u64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, u32> for u32 {
+    fn get(&self) -> &u32 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a u32> {
+        None
     }
 }
 
@@ -72,12 +215,81 @@ impl Value for i32 {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for i32 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.i64(self as i64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, i32> for i32 {
+    fn get(&self) -> &i32 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a i32> {
+        None
+    }
+}
+
 impl Value for u64 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.u64(*self)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for u64 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.u64(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, u64> for u64 {
+    fn get(&self) -> &u64 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a u64> {
+        None
+    }
+}
+
+impl Value for i64 {
+    fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
+    where
+        S: value::Stream<'a>,
+    {
+        stream.i64(*self)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for i64 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.i64(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, i64> for i64 {
+    fn get(&self) -> &i64 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a i64> {
+        None
     }
 }
 
@@ -90,12 +302,52 @@ impl Value for u128 {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for u128 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.u128(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, u128> for u128 {
+    fn get(&self) -> &u128 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a u128> {
+        None
+    }
+}
+
 impl Value for i128 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.i128(*self)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for i128 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.i128(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, i128> for i128 {
+    fn get(&self) -> &i128 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a i128> {
+        None
     }
 }
 
@@ -108,12 +360,52 @@ impl Value for f32 {
     }
 }
 
+impl<'a> value_ref::UnknownValueRef<'a> for f32 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.f64(self as f64)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, f32> for f32 {
+    fn get(&self) -> &f32 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a f32> {
+        None
+    }
+}
+
 impl Value for f64 {
     fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
     where
         S: value::Stream<'a>,
     {
         stream.f64(*self)
+    }
+}
+
+impl<'a> value_ref::UnknownValueRef<'a> for f64 {
+    fn stream<'b, S>(self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.f64(self)
+    }
+}
+
+impl<'a> value_ref::TypedValueRef<'a, f64> for f64 {
+    fn get(&self) -> &f64 {
+        self
+    }
+
+    fn get_ref(&self) -> Option<&'a f64> {
+        None
     }
 }
 
@@ -143,6 +435,16 @@ impl Value for String {
     }
 }
 
+impl<'a> value_ref::TypedValueRef<'a, str> for &'a String {
+    fn get(&self) -> &str {
+        &**self
+    }
+
+    fn get_ref(&self) -> Option<&'a str> {
+        Some(&**self)
+    }
+}
+
 impl<T> Value for Option<T>
 where
     T: Value,
@@ -159,6 +461,24 @@ where
 }
 
 impl<T> Value for [T]
+where
+    T: Value,
+{
+    fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
+    where
+        S: value::Stream<'a>,
+    {
+        stream.seq_begin(Some(self.len()))?;
+
+        for elem in self {
+            stream.seq_elem(elem)?;
+        }
+
+        stream.seq_end()
+    }
+}
+
+impl<T, const N: usize> Value for [T; N]
 where
     T: Value,
 {
