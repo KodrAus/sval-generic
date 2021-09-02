@@ -1,6 +1,6 @@
 use crate::{for_all::ForAll, stream::Stream, value::Value, Result};
 
-pub trait UnknownStreamValue<'a>: Copy {
+pub trait UnknownStreamValue<'a>: Value + Copy {
     fn stream<'b, S>(self, stream: S) -> Result
     where
         'a: 'b,

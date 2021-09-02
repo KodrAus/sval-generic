@@ -329,7 +329,7 @@ where
     where
         'a: 'b,
     {
-        self.stream(stream)
+        value_ref::UnknownStreamValue::stream(*self, stream)
     }
 }
 
@@ -337,6 +337,15 @@ impl<'a, 'b> value_ref::UnknownStreamValue<'a> for UnknownStreamValue<'a, 'b> {
     fn stream<'c, S>(self, mut stream: S) -> Result
     where
         'a: 'c,
+        S: stream::Stream<'c>,
+    {
+        self.0.erased_stream(Stream(&mut stream))
+    }
+}
+
+impl<'a, 'b> value::Value for UnknownStreamValue<'a, 'b> {
+    fn stream<'c, S>(&'c self, mut stream: S) -> Result
+    where
         S: stream::Stream<'c>,
     {
         self.0.erased_stream(Stream(&mut stream))
@@ -371,7 +380,7 @@ where
     where
         'a: 'b,
     {
-        self.stream(stream)
+        value_ref::UnknownStreamValue::stream(*self, stream)
     }
 
     fn erased_get(&self) -> &U {
@@ -400,6 +409,15 @@ impl<'a, 'b, T: ?Sized> value_ref::UnknownStreamValue<'a> for StreamValue<'a, 'b
     fn stream<'c, S>(self, mut stream: S) -> Result
     where
         'a: 'c,
+        S: stream::Stream<'c>,
+    {
+        self.0.erased_stream(Stream(&mut stream))
+    }
+}
+
+impl<'a, 'b, T: ?Sized> value::Value for StreamValue<'a, 'b, T> {
+    fn stream<'c, S>(&'c self, mut stream: S) -> Result
+    where
         S: stream::Stream<'c>,
     {
         self.0.erased_stream(Stream(&mut stream))
