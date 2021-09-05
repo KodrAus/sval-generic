@@ -3,6 +3,8 @@ use crate::{erased, value_ref::StreamValue};
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
 
+// TODO: This trait doesn't pull its weight. It lives outside of the system
+// with `Stream` and needs to be rethought. Try removing it entirely.
 pub trait Value {
     fn stream<'a, S>(&'a self, stream: S) -> Result
     where
