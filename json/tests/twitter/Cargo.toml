@@ -11,10 +11,6 @@ path = "lib.rs"
 [dependencies.sval-generic-api]
 path = "../../../"
 
-[dependencies.sval]
-path = "../../../../../../dev/osx/sval"
-features = ["derive", "std"]
-
 [dependencies.serde]
 version = "1"
 features = ["derive"]
