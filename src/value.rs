@@ -1,4 +1,4 @@
-use crate::{erased, value_ref::StreamValue};
+use crate::{erased, stream::Ref};
 
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
@@ -70,11 +70,11 @@ pub trait Value {
                 Err(Error)
             }
 
-            fn str<'v, V: StreamValue<'v, str>>(&mut self, v: V) -> Result
+            fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {
-                match v.get_ref() {
+                match v.try_unwrap() {
                     Some(v) => {
                         self.0 = Some(v);
                         Ok(())

@@ -4,7 +4,6 @@ mod for_all;
 mod impls;
 pub mod stream;
 pub mod value;
-mod value_ref;
 
 pub mod erased;
 pub mod serde;
@@ -25,7 +24,7 @@ impl From<fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, v: impl stream::UnknownStreamValue<'a>) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, v: &'a impl Value) -> Result {
     v.stream(s)
 }
 
@@ -99,11 +98,11 @@ mod tests {
                 Ok(())
             }
 
-            fn str<'v, V: stream::StreamValue<'v, str>>(&mut self, v: V) -> stream::Result
+            fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
             where
                 'v: 'a,
             {
-                if let Some(v) = v.get_ref() {
+                if let Some(v) = v.try_unwrap() {
                     println!("borrowed: {}", v);
                 } else {
                     println!("short: {}", v.get());

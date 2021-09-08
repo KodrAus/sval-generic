@@ -1,6 +1,6 @@
 use crate::{
+    stream,
     value::{self, Value},
-    value_ref,
 };
 
 impl Value for () {
@@ -12,7 +12,7 @@ impl Value for () {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for () {
+impl<'a> stream::UnknownRef<'a> for () {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -22,12 +22,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for () {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, ()> for () {
+impl<'a> stream::Ref<'a, ()> for () {
     fn get(&self) -> &() {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a ()> {
+    fn try_unwrap(self) -> Option<&'a ()> {
         None
     }
 }
@@ -41,7 +41,7 @@ impl Value for bool {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for bool {
+impl<'a> stream::UnknownRef<'a> for bool {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -51,12 +51,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for bool {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, bool> for bool {
+impl<'a> stream::Ref<'a, bool> for bool {
     fn get(&self) -> &bool {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a bool> {
+    fn try_unwrap(self) -> Option<&'a bool> {
         None
     }
 }
@@ -70,7 +70,7 @@ impl Value for u8 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for u8 {
+impl<'a> stream::UnknownRef<'a> for u8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -80,12 +80,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for u8 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, u8> for u8 {
+impl<'a> stream::Ref<'a, u8> for u8 {
     fn get(&self) -> &u8 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a u8> {
+    fn try_unwrap(self) -> Option<&'a u8> {
         None
     }
 }
@@ -99,7 +99,7 @@ impl Value for i8 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for i8 {
+impl<'a> stream::UnknownRef<'a> for i8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -109,12 +109,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for i8 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, i8> for i8 {
+impl<'a> stream::Ref<'a, i8> for i8 {
     fn get(&self) -> &i8 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a i8> {
+    fn try_unwrap(self) -> Option<&'a i8> {
         None
     }
 }
@@ -128,7 +128,7 @@ impl Value for u16 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for u16 {
+impl<'a> stream::UnknownRef<'a> for u16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -138,12 +138,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for u16 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, u16> for u16 {
+impl<'a> stream::Ref<'a, u16> for u16 {
     fn get(&self) -> &u16 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a u16> {
+    fn try_unwrap(self) -> Option<&'a u16> {
         None
     }
 }
@@ -157,7 +157,7 @@ impl Value for i16 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for i16 {
+impl<'a> stream::UnknownRef<'a> for i16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -167,12 +167,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for i16 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, i16> for i16 {
+impl<'a> stream::Ref<'a, i16> for i16 {
     fn get(&self) -> &i16 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a i16> {
+    fn try_unwrap(self) -> Option<&'a i16> {
         None
     }
 }
@@ -186,7 +186,7 @@ impl Value for u32 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for u32 {
+impl<'a> stream::UnknownRef<'a> for u32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -196,12 +196,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for u32 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, u32> for u32 {
+impl<'a> stream::Ref<'a, u32> for u32 {
     fn get(&self) -> &u32 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a u32> {
+    fn try_unwrap(self) -> Option<&'a u32> {
         None
     }
 }
@@ -215,7 +215,7 @@ impl Value for i32 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for i32 {
+impl<'a> stream::UnknownRef<'a> for i32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -225,12 +225,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for i32 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, i32> for i32 {
+impl<'a> stream::Ref<'a, i32> for i32 {
     fn get(&self) -> &i32 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a i32> {
+    fn try_unwrap(self) -> Option<&'a i32> {
         None
     }
 }
@@ -244,7 +244,7 @@ impl Value for u64 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for u64 {
+impl<'a> stream::UnknownRef<'a> for u64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -254,12 +254,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for u64 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, u64> for u64 {
+impl<'a> stream::Ref<'a, u64> for u64 {
     fn get(&self) -> &u64 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a u64> {
+    fn try_unwrap(self) -> Option<&'a u64> {
         None
     }
 }
@@ -273,7 +273,7 @@ impl Value for i64 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for i64 {
+impl<'a> stream::UnknownRef<'a> for i64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -283,12 +283,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for i64 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, i64> for i64 {
+impl<'a> stream::Ref<'a, i64> for i64 {
     fn get(&self) -> &i64 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a i64> {
+    fn try_unwrap(self) -> Option<&'a i64> {
         None
     }
 }
@@ -302,7 +302,7 @@ impl Value for u128 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for u128 {
+impl<'a> stream::UnknownRef<'a> for u128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -312,12 +312,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for u128 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, u128> for u128 {
+impl<'a> stream::Ref<'a, u128> for u128 {
     fn get(&self) -> &u128 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a u128> {
+    fn try_unwrap(self) -> Option<&'a u128> {
         None
     }
 }
@@ -331,7 +331,7 @@ impl Value for i128 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for i128 {
+impl<'a> stream::UnknownRef<'a> for i128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -341,12 +341,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for i128 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, i128> for i128 {
+impl<'a> stream::Ref<'a, i128> for i128 {
     fn get(&self) -> &i128 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a i128> {
+    fn try_unwrap(self) -> Option<&'a i128> {
         None
     }
 }
@@ -360,7 +360,7 @@ impl Value for f32 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for f32 {
+impl<'a> stream::UnknownRef<'a> for f32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -370,12 +370,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for f32 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, f32> for f32 {
+impl<'a> stream::Ref<'a, f32> for f32 {
     fn get(&self) -> &f32 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a f32> {
+    fn try_unwrap(self) -> Option<&'a f32> {
         None
     }
 }
@@ -389,7 +389,7 @@ impl Value for f64 {
     }
 }
 
-impl<'a> value_ref::UnknownStreamValue<'a> for f64 {
+impl<'a> stream::UnknownRef<'a> for f64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -399,12 +399,12 @@ impl<'a> value_ref::UnknownStreamValue<'a> for f64 {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, f64> for f64 {
+impl<'a> stream::Ref<'a, f64> for f64 {
     fn get(&self) -> &f64 {
         self
     }
 
-    fn get_ref(&self) -> Option<&'a f64> {
+    fn try_unwrap(self) -> Option<&'a f64> {
         None
     }
 }
@@ -435,12 +435,12 @@ impl Value for String {
     }
 }
 
-impl<'a> value_ref::StreamValue<'a, str> for &'a String {
+impl<'a> stream::Ref<'a, str> for &'a String {
     fn get(&self) -> &str {
         &**self
     }
 
-    fn get_ref(&self) -> Option<&'a str> {
+    fn try_unwrap(self) -> Option<&'a str> {
         Some(&**self)
     }
 }

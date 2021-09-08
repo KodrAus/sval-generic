@@ -1,6 +1,9 @@
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
-use crate::stream::{self, Stream};
+use crate::{
+    stream::{self, Stream},
+    value::Value,
+};
 
 struct SerdeStream<S: Serializer>(Option<Serde<S>>);
 
@@ -61,7 +64,7 @@ struct SerdeValue<V>(V);
 
 impl<'a, V> Serialize for SerdeValue<V>
 where
-    V: stream::UnknownStreamValue<'a>,
+    V: Value,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -113,7 +116,7 @@ where
         Ok(())
     }
 
-    fn str<'v, V: stream::StreamValue<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -141,7 +144,7 @@ where
         Ok(())
     }
 
-    fn map_key<'k, K: stream::UnknownStreamValue<'k>>(&mut self, k: K) -> stream::Result
+    fn map_key<'k, K: stream::UnknownRef<'k>>(&mut self, k: K) -> stream::Result
     where
         'k: 'a,
     {
@@ -149,7 +152,7 @@ where
         Ok(())
     }
 
-    fn map_value<'v, V: stream::UnknownStreamValue<'v>>(&mut self, v: V) -> stream::Result
+    fn map_value<'v, V: stream::UnknownRef<'v>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -159,7 +162,7 @@ where
         Ok(())
     }
 
-    fn map_entry<'k, 'v, K: stream::UnknownStreamValue<'k>, V: stream::UnknownStreamValue<'v>>(
+    fn map_entry<'k, 'v, K: stream::UnknownRef<'k>, V: stream::UnknownRef<'v>>(
         &mut self,
         k: K,
         v: V,
@@ -174,7 +177,7 @@ where
         Ok(())
     }
 
-    fn map_field<'v, F: stream::StreamValue<'static, str>, V: stream::UnknownStreamValue<'v>>(
+    fn map_field<'v, F: stream::Ref<'static, str>, V: stream::UnknownRef<'v>>(
         &mut self,
         f: F,
         v: V,
@@ -204,7 +207,7 @@ where
         Ok(())
     }
 
-    fn seq_elem<'e, E: stream::UnknownStreamValue<'e>>(&mut self, e: E) -> stream::Result
+    fn seq_elem<'e, E: stream::UnknownRef<'e>>(&mut self, e: E) -> stream::Result
     where
         'e: 'a,
     {

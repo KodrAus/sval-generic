@@ -4,7 +4,7 @@ use std::fmt::{self, Write};
 
 pub fn to_fmt<'a>(
     fmt: impl Write,
-    v: impl stream::UnknownStreamValue<'a>,
+    v: impl stream::UnknownRef<'a>,
 ) -> Result<(), sval_generic_api::Error> {
     v.stream(Formatter::new(fmt))
 }
@@ -96,7 +96,7 @@ where
         Ok(())
     }
 
-    fn str<'v, V: stream::StreamValue<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
