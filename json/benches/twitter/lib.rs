@@ -32,11 +32,6 @@ fn primitive_erased_serde(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn primitive_sval(b: &mut test::Bencher) {
-    b.iter(|| sval_json::to_string(&42).unwrap());
-}
-
-#[bench]
 fn primitive_sval_generic_api(b: &mut test::Bencher) {
     b.iter(|| sval_generic_api_json::to_string(&42).unwrap());
 }
@@ -74,12 +69,6 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
     let s: &dyn erased_serde::Serialize = &s;
 
     b.iter(|| serde_json::to_string(&s).unwrap());
-}
-
-#[bench]
-fn twitter_sval(b: &mut test::Bencher) {
-    let s = input_struct();
-    b.iter(|| sval_json::to_string(&s).unwrap());
 }
 
 #[bench]

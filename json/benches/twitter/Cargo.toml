@@ -17,10 +17,6 @@ path = "../../../"
 [dependencies.sval-generic-api-json]
 path = "../../"
 
-[dependencies.sval_json]
-path = "../../../../../../dev/osx/sval/json"
-features = ["std"]
-
 [dependencies.serde_json]
 version = "1"
 
