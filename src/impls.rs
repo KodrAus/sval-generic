@@ -1,3 +1,5 @@
+use std::error;
+
 use crate::{
     stream,
     value::{self, Value},
@@ -12,7 +14,7 @@ impl Value for () {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for () {
+impl<'a> stream::ValueRef<'a> for () {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -41,7 +43,7 @@ impl Value for bool {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for bool {
+impl<'a> stream::ValueRef<'a> for bool {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -70,7 +72,7 @@ impl Value for u8 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for u8 {
+impl<'a> stream::ValueRef<'a> for u8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -99,7 +101,7 @@ impl Value for i8 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for i8 {
+impl<'a> stream::ValueRef<'a> for i8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -128,7 +130,7 @@ impl Value for u16 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for u16 {
+impl<'a> stream::ValueRef<'a> for u16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -157,7 +159,7 @@ impl Value for i16 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for i16 {
+impl<'a> stream::ValueRef<'a> for i16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -186,7 +188,7 @@ impl Value for u32 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for u32 {
+impl<'a> stream::ValueRef<'a> for u32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -215,7 +217,7 @@ impl Value for i32 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for i32 {
+impl<'a> stream::ValueRef<'a> for i32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -244,7 +246,7 @@ impl Value for u64 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for u64 {
+impl<'a> stream::ValueRef<'a> for u64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -273,7 +275,7 @@ impl Value for i64 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for i64 {
+impl<'a> stream::ValueRef<'a> for i64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -302,7 +304,7 @@ impl Value for u128 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for u128 {
+impl<'a> stream::ValueRef<'a> for u128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -331,7 +333,7 @@ impl Value for i128 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for i128 {
+impl<'a> stream::ValueRef<'a> for i128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -360,7 +362,7 @@ impl Value for f32 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for f32 {
+impl<'a> stream::ValueRef<'a> for f32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -389,7 +391,7 @@ impl Value for f64 {
     }
 }
 
-impl<'a> stream::UnknownRef<'a> for f64 {
+impl<'a> stream::ValueRef<'a> for f64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -533,5 +535,14 @@ where
         S: value::Stream<'a>,
     {
         (**self).stream(stream)
+    }
+}
+
+impl Value for dyn error::Error + 'static {
+    fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
+    where
+        S: value::Stream<'a>,
+    {
+        stream.error(self)
     }
 }

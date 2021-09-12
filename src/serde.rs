@@ -1,3 +1,5 @@
+use std::{error, fmt};
+
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
@@ -116,6 +118,19 @@ where
         Ok(())
     }
 
+    fn display<V: fmt::Display>(&mut self, d: V) -> stream::Result {
+        self.serializer().collect_str(&d).unwrap();
+        Ok(())
+    }
+
+    fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> stream::Result
+    where
+        'v: 'a,
+    {
+        self.serializer().collect_str(e.get()).unwrap();
+        Ok(())
+    }
+
     fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
@@ -144,7 +159,7 @@ where
         Ok(())
     }
 
-    fn map_key<'k, K: stream::UnknownRef<'k>>(&mut self, k: K) -> stream::Result
+    fn map_key<'k, K: stream::ValueRef<'k>>(&mut self, k: K) -> stream::Result
     where
         'k: 'a,
     {
@@ -152,7 +167,7 @@ where
         Ok(())
     }
 
-    fn map_value<'v, V: stream::UnknownRef<'v>>(&mut self, v: V) -> stream::Result
+    fn map_value<'v, V: stream::ValueRef<'v>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -162,7 +177,7 @@ where
         Ok(())
     }
 
-    fn map_entry<'k, 'v, K: stream::UnknownRef<'k>, V: stream::UnknownRef<'v>>(
+    fn map_entry<'k, 'v, K: stream::ValueRef<'k>, V: stream::ValueRef<'v>>(
         &mut self,
         k: K,
         v: V,
@@ -177,7 +192,7 @@ where
         Ok(())
     }
 
-    fn map_field<'v, F: stream::Ref<'static, str>, V: stream::UnknownRef<'v>>(
+    fn map_field<'v, F: stream::Ref<'static, str>, V: stream::ValueRef<'v>>(
         &mut self,
         f: F,
         v: V,
@@ -207,7 +222,7 @@ where
         Ok(())
     }
 
-    fn seq_elem<'e, E: stream::UnknownRef<'e>>(&mut self, e: E) -> stream::Result
+    fn seq_elem<'e, E: stream::ValueRef<'e>>(&mut self, e: E) -> stream::Result
     where
         'e: 'a,
     {

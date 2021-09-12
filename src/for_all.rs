@@ -1,5 +1,7 @@
+use std::{error, fmt};
+
 use crate::{
-    stream::{Ref, Stream, UnknownRef},
+    stream::{Ref, Stream, ValueRef},
     value::Value,
     Result,
 };
@@ -19,9 +21,9 @@ where
     }
 }
 
-impl<'a, 'b, T> UnknownRef<'a> for ForAll<T>
+impl<'a, 'b, T> ValueRef<'a> for ForAll<T>
 where
-    T: UnknownRef<'b>,
+    T: ValueRef<'b>,
 {
     fn stream<'c, S>(self, stream: S) -> Result
     where
@@ -35,7 +37,7 @@ where
 impl<'a, 'b, T, U: ?Sized> Ref<'a, U> for ForAll<T>
 where
     T: Ref<'b, U>,
-    U: Value,
+    U: Value + 'static,
 {
     fn get(&self) -> &U {
         self.0.get()
@@ -78,6 +80,17 @@ where
         self.0.none()
     }
 
+    fn display<V: fmt::Display>(&mut self, d: V) -> Result {
+        self.0.display(d)
+    }
+
+    fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.error(ForAll(e))
+    }
+
     fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'a,
@@ -101,21 +114,21 @@ where
         self.0.map_end()
     }
 
-    fn map_key<'k, K: UnknownRef<'k>>(&mut self, k: K) -> Result
+    fn map_key<'k, K: ValueRef<'k>>(&mut self, k: K) -> Result
     where
         'k: 'a,
     {
         self.0.map_key(ForAll(k))
     }
 
-    fn map_value<'v, V: UnknownRef<'v>>(&mut self, v: V) -> Result
+    fn map_value<'v, V: ValueRef<'v>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
         self.0.map_value(ForAll(v))
     }
 
-    fn map_entry<'k, 'v, K: UnknownRef<'k>, V: UnknownRef<'v>>(&mut self, k: K, v: V) -> Result
+    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, k: K, v: V) -> Result
     where
         'k: 'a,
         'v: 'a,
@@ -123,7 +136,7 @@ where
         self.0.map_entry(ForAll(k), ForAll(v))
     }
 
-    fn map_field<'v, F: Ref<'static, str>, V: UnknownRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: Ref<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
     where
         'v: 'a,
     {
@@ -142,7 +155,7 @@ where
         self.0.seq_end()
     }
 
-    fn seq_elem<'e, E: UnknownRef<'e>>(&mut self, e: E) -> Result
+    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, e: E) -> Result
     where
         'e: 'a,
     {

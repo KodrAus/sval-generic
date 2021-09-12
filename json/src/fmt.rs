@@ -1,10 +1,13 @@
 use sval_generic_api::stream::{self, Stream};
 
-use std::fmt::{self, Write};
+use std::{
+    error,
+    fmt::{self, Write},
+};
 
 pub fn to_fmt<'a>(
     fmt: impl Write,
-    v: impl stream::UnknownRef<'a>,
+    v: impl stream::ValueRef<'a>,
 ) -> Result<(), sval_generic_api::Error> {
     v.stream(Formatter::new(fmt))
 }
@@ -36,6 +39,14 @@ impl<'a, W> Stream<'a> for Formatter<W>
 where
     W: Write,
 {
+    fn display<V: fmt::Display>(&mut self, v: V) -> stream::Result {
+        self.out.write_char('"')?;
+        fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
+        self.out.write_char('"')?;
+
+        Ok(())
+    }
+
     fn i64(&mut self, v: i64) -> stream::Result {
         if self.is_key {
             return Err(stream::Error);
@@ -94,6 +105,13 @@ where
         self.out.write_str(if v { "true" } else { "false" })?;
 
         Ok(())
+    }
+
+    fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(&mut self, v: V) -> stream::Result
+    where
+        'v: 'a,
+    {
+        self.display(v.get())
     }
 
     fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
@@ -264,3 +282,14 @@ static ESCAPE: [u8; 256] = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // E
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // F
 ];
+
+struct Escape<W>(W);
+
+impl<W> Write for Escape<W>
+where
+    W: Write,
+{
+    fn write_str(&mut self, s: &str) -> Result<(), fmt::Error> {
+        escape_str(s, &mut self.0)
+    }
+}

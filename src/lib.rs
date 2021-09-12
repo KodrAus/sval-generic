@@ -30,6 +30,8 @@ pub fn stream<'a>(s: impl Stream<'a>, v: &'a impl Value) -> Result {
 
 #[cfg(test)]
 mod tests {
+    use std::{error, fmt};
+
     use crate::{
         stream::{self, Stream},
         value::{self, Value},
@@ -70,6 +72,10 @@ mod tests {
         struct MyStream<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for MyStream<'a> {
+            fn display<V: fmt::Display>(&mut self, _: V) -> stream::Result {
+                Ok(())
+            }
+
             fn u64(&mut self, _: u64) -> stream::Result {
                 Ok(())
             }
@@ -95,6 +101,16 @@ mod tests {
             }
 
             fn none(&mut self) -> stream::Result {
+                Ok(())
+            }
+
+            fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(
+                &mut self,
+                _: V,
+            ) -> stream::Result
+            where
+                'v: 'a,
+            {
                 Ok(())
             }
 

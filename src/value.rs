@@ -1,11 +1,17 @@
-use crate::{erased, stream::Ref};
+use std::{error, fmt};
+
+use crate::{
+    erased,
+    stream::{Ref, ValueRef},
+};
 
 #[doc(inline)]
 pub use crate::{for_all::ForAll, stream::Stream, Error, Result};
 
-// TODO: This trait doesn't pull its weight. It lives outside of the system
-// with `Stream` and needs to be rethought. Try removing it entirely.
-pub trait Value {
+pub trait Value
+where
+    for<'a> &'a Self: ValueRef<'a>,
+{
     fn stream<'a, S>(&'a self, stream: S) -> Result
     where
         S: Stream<'a>;
@@ -39,6 +45,17 @@ pub trait Value {
             }
 
             fn none(&mut self) -> Result {
+                Err(Error)
+            }
+
+            fn display<V: fmt::Display>(&mut self, _: V) -> Result {
+                Err(Error)
+            }
+
+            fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, _: V) -> Result
+            where
+                'v: 'a,
+            {
                 Err(Error)
             }
 
