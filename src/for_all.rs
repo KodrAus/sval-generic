@@ -32,6 +32,10 @@ where
     {
         self.0.stream(ForAll(stream))
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a, 'b, T, U: ?Sized> TypedRef<'a, U> for ForAll<T>

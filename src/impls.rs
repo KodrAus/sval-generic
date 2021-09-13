@@ -22,6 +22,10 @@ impl<'a> stream::ValueRef<'a> for () {
     {
         stream.none()
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, ()> for () {
@@ -50,6 +54,10 @@ impl<'a> stream::ValueRef<'a> for bool {
         S: value::Stream<'b>,
     {
         stream.bool(self)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -80,6 +88,10 @@ impl<'a> stream::ValueRef<'a> for u8 {
     {
         stream.u64(self as u64)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, u8> for u8 {
@@ -108,6 +120,10 @@ impl<'a> stream::ValueRef<'a> for i8 {
         S: value::Stream<'b>,
     {
         stream.i64(self as i64)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -138,6 +154,10 @@ impl<'a> stream::ValueRef<'a> for u16 {
     {
         stream.u64(self as u64)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, u16> for u16 {
@@ -166,6 +186,10 @@ impl<'a> stream::ValueRef<'a> for i16 {
         S: value::Stream<'b>,
     {
         stream.i64(self as i64)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -196,6 +220,10 @@ impl<'a> stream::ValueRef<'a> for u32 {
     {
         stream.u64(self as u64)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, u32> for u32 {
@@ -224,6 +252,10 @@ impl<'a> stream::ValueRef<'a> for i32 {
         S: value::Stream<'b>,
     {
         stream.i64(self as i64)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -254,6 +286,10 @@ impl<'a> stream::ValueRef<'a> for u64 {
     {
         stream.u64(self)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, u64> for u64 {
@@ -282,6 +318,10 @@ impl<'a> stream::ValueRef<'a> for i64 {
         S: value::Stream<'b>,
     {
         stream.i64(self)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -312,6 +352,10 @@ impl<'a> stream::ValueRef<'a> for u128 {
     {
         stream.u128(self)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, u128> for u128 {
@@ -340,6 +384,10 @@ impl<'a> stream::ValueRef<'a> for i128 {
         S: value::Stream<'b>,
     {
         stream.i128(self)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 
@@ -370,6 +418,10 @@ impl<'a> stream::ValueRef<'a> for f32 {
     {
         stream.f64(self as f64)
     }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
+    }
 }
 
 impl<'a> stream::TypedRef<'a, f32> for f32 {
@@ -398,6 +450,10 @@ impl<'a> stream::ValueRef<'a> for f64 {
         S: value::Stream<'b>,
     {
         stream.f64(self)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        None
     }
 }
 

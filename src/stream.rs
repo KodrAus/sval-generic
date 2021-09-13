@@ -206,6 +206,8 @@ pub trait ValueRef<'a>: value::Value + Copy {
         'a: 'b,
         S: Stream<'b>;
 
+    fn to_str(self) -> Option<&'a str>;
+
     fn for_all(self) -> ForAll<Self>
     where
         Self: Sized,
@@ -229,6 +231,10 @@ where
         S: Stream<'b>,
     {
         (*self).stream(stream)
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        (*self).to_str()
     }
 }
 

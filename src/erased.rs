@@ -12,6 +12,7 @@ impl<'a> Value<'a> {
 
 trait ErasedValue {
     fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result;
+    fn erased_to_str(&self) -> Option<&str>;
 }
 
 impl<T: ?Sized> ErasedValue for T
@@ -21,6 +22,10 @@ where
     fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result {
         self.stream(stream)
     }
+
+    fn erased_to_str(&self) -> Option<&str> {
+        self.to_str()
+    }
 }
 
 impl<'a> value::Value for Value<'a> {
@@ -29,6 +34,10 @@ impl<'a> value::Value for Value<'a> {
         S: stream::Stream<'b>,
     {
         self.0.erased_stream(Stream(&mut stream))
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        self.0.erased_to_str()
     }
 }
 
@@ -337,6 +346,8 @@ trait ErasedValueRef<'a> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
+    
+    fn erased_to_str(&self) -> Option<&'a str>;
 }
 
 impl<'a, T> ErasedValueRef<'a> for T
@@ -349,6 +360,10 @@ where
     {
         stream::ValueRef::stream(*self, stream)
     }
+
+    fn erased_to_str(&self) -> Option<&'a str> {
+        stream::ValueRef::to_str(*self)
+    }
 }
 
 impl<'a, 'b> stream::ValueRef<'a> for ValueRef<'a, 'b> {
@@ -358,6 +373,10 @@ impl<'a, 'b> stream::ValueRef<'a> for ValueRef<'a, 'b> {
         S: stream::Stream<'c>,
     {
         self.0.erased_stream(Stream(&mut stream))
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        self.0.erased_to_str()
     }
 }
 
@@ -384,6 +403,8 @@ trait ErasedTypedRef<'a, T: ?Sized> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
+    
+    fn erased_to_str(&self) -> Option<&'a str>;
 
     fn erased_get(&self) -> &T;
     fn erased_try_unwrap(&self) -> Option<&'a T>;
@@ -399,6 +420,10 @@ where
         'a: 'b,
     {
         stream::ValueRef::stream(*self, stream)
+    }
+
+    fn erased_to_str(&self) -> Option<&'a str> {
+        stream::ValueRef::to_str(*self)
     }
 
     fn erased_get(&self) -> &U {
@@ -430,6 +455,10 @@ impl<'a, 'b, T: ?Sized> stream::ValueRef<'a> for TypedRef<'a, 'b, T> {
         S: stream::Stream<'c>,
     {
         self.0.erased_stream(Stream(&mut stream))
+    }
+
+    fn to_str(self) -> Option<&'a str> {
+        self.0.erased_to_str()
     }
 }
 
