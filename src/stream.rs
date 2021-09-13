@@ -16,11 +16,11 @@ pub trait Stream<'a> {
     fn bool(&mut self, v: bool) -> Result;
     fn none(&mut self) -> Result;
 
-    fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
     where
         'v: 'a;
 
-    fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
+    fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'a;
 
@@ -54,7 +54,7 @@ pub trait Stream<'a> {
         self.map_value(v)
     }
 
-    fn map_field<'v, F: Ref<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
     where
         'v: 'a,
     {
@@ -121,14 +121,14 @@ where
         (**self).display(d)
     }
 
-    fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
     where
         'v: 'b,
     {
         (**self).error(e)
     }
 
-    fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
+    fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'b,
     {
@@ -173,7 +173,7 @@ where
         (**self).map_entry(k, v)
     }
 
-    fn map_field<'v, F: Ref<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
     where
         'v: 'b,
     {
@@ -214,7 +214,7 @@ pub trait ValueRef<'a>: value::Value + Copy {
     }
 }
 
-pub trait Ref<'a, T: ?Sized + value::Value + 'static>: ValueRef<'a> {
+pub trait TypedRef<'a, T: ?Sized + value::Value + 'static>: ValueRef<'a> {
     fn get(&self) -> &T;
     fn try_unwrap(self) -> Option<&'a T>;
 }
@@ -232,7 +232,7 @@ where
     }
 }
 
-impl<'a, T: ?Sized> Ref<'a, T> for &'a T
+impl<'a, T: ?Sized> TypedRef<'a, T> for &'a T
 where
     T: value::Value + 'static,
 {

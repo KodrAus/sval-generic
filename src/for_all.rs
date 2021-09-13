@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 use crate::{
-    stream::{Ref, Stream, ValueRef},
+    stream::{Stream, TypedRef, ValueRef},
     value::Value,
     Result,
 };
@@ -34,9 +34,9 @@ where
     }
 }
 
-impl<'a, 'b, T, U: ?Sized> Ref<'a, U> for ForAll<T>
+impl<'a, 'b, T, U: ?Sized> TypedRef<'a, U> for ForAll<T>
 where
-    T: Ref<'b, U>,
+    T: TypedRef<'b, U>,
     U: Value + 'static,
 {
     fn get(&self) -> &U {
@@ -84,14 +84,14 @@ where
         self.0.display(d)
     }
 
-    fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
     where
         'v: 'a,
     {
         self.0.error(ForAll(e))
     }
 
-    fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
+    fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
@@ -136,7 +136,7 @@ where
         self.0.map_entry(ForAll(k), ForAll(v))
     }
 
-    fn map_field<'v, F: Ref<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
     where
         'v: 'a,
     {

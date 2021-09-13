@@ -49,10 +49,10 @@ trait ErasedStream<'a> {
     fn erased_bool(&mut self, v: bool) -> Result;
     fn erased_none(&mut self) -> Result;
     fn erased_display(&mut self, v: &dyn fmt::Display) -> Result;
-    fn erased_error<'b, 'v>(&mut self, e: Ref<'v, 'b, dyn error::Error + 'static>) -> Result
+    fn erased_error<'b, 'v>(&mut self, e: TypedRef<'v, 'b, dyn error::Error + 'static>) -> Result
     where
         'v: 'a;
-    fn erased_str<'b, 'v>(&mut self, v: Ref<'v, 'b, str>) -> Result
+    fn erased_str<'b, 'v>(&mut self, v: TypedRef<'v, 'b, str>) -> Result
     where
         'v: 'a;
     fn erased_map_begin(&mut self, len: Option<usize>) -> Result;
@@ -69,7 +69,11 @@ trait ErasedStream<'a> {
     where
         'k: 'a,
         'v: 'a;
-    fn erased_map_field<'b, 'v>(&mut self, f: Ref<'static, 'b, str>, v: ValueRef<'v, 'b>) -> Result
+    fn erased_map_field<'b, 'v>(
+        &mut self,
+        f: TypedRef<'static, 'b, str>,
+        v: ValueRef<'v, 'b>,
+    ) -> Result
     where
         'v: 'a;
     fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
@@ -116,14 +120,14 @@ where
         self.display(v)
     }
 
-    fn erased_error<'b, 'v>(&mut self, e: Ref<'v, 'b, dyn error::Error + 'static>) -> Result
+    fn erased_error<'b, 'v>(&mut self, e: TypedRef<'v, 'b, dyn error::Error + 'static>) -> Result
     where
         'v: 'a,
     {
         self.error(e)
     }
 
-    fn erased_str<'b, 'v>(&mut self, v: Ref<'v, 'b, str>) -> Result
+    fn erased_str<'b, 'v>(&mut self, v: TypedRef<'v, 'b, str>) -> Result
     where
         'v: 'a,
     {
@@ -168,7 +172,11 @@ where
         self.map_entry(k, v)
     }
 
-    fn erased_map_field<'b, 'v>(&mut self, f: Ref<'static, 'b, str>, v: ValueRef<'v, 'b>) -> Result
+    fn erased_map_field<'b, 'v>(
+        &mut self,
+        f: TypedRef<'static, 'b, str>,
+        v: ValueRef<'v, 'b>,
+    ) -> Result
     where
         'v: 'a,
     {
@@ -228,18 +236,18 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_display(&d)
     }
 
-    fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
     where
         'v: 'a,
     {
-        self.0.erased_error(Ref(&e))
+        self.0.erased_error(TypedRef(&e))
     }
 
-    fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> Result
+    fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> Result
     where
         'v: 'a,
     {
-        self.0.erased_str(Ref(&v))
+        self.0.erased_str(TypedRef(&v))
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
@@ -284,7 +292,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_map_entry(ValueRef(&k), ValueRef(&v))
     }
 
-    fn map_field<'v, F: stream::Ref<'static, str>, V: stream::ValueRef<'v>>(
+    fn map_field<'v, F: stream::TypedRef<'static, str>, V: stream::ValueRef<'v>>(
         &mut self,
         f: F,
         v: V,
@@ -292,7 +300,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'v: 'a,
     {
-        self.0.erased_map_field(Ref(&f), ValueRef(&v))
+        self.0.erased_map_field(TypedRef(&f), ValueRef(&v))
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
@@ -362,17 +370,17 @@ impl<'a, 'b> value::Value for ValueRef<'a, 'b> {
     }
 }
 
-struct Ref<'a, 'b, T: ?Sized>(&'b dyn ErasedRef<'a, T>);
+struct TypedRef<'a, 'b, T: ?Sized>(&'b dyn ErasedTypedRef<'a, T>);
 
-impl<'a, 'b, T: ?Sized> Clone for Ref<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized> Clone for TypedRef<'a, 'b, T> {
     fn clone(&self) -> Self {
-        Ref(self.0)
+        TypedRef(self.0)
     }
 }
 
-impl<'a, 'b, T: ?Sized> Copy for Ref<'a, 'b, T> {}
+impl<'a, 'b, T: ?Sized> Copy for TypedRef<'a, 'b, T> {}
 
-trait ErasedRef<'a, T: ?Sized> {
+trait ErasedTypedRef<'a, T: ?Sized> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
@@ -381,9 +389,9 @@ trait ErasedRef<'a, T: ?Sized> {
     fn erased_try_unwrap(&self) -> Option<&'a T>;
 }
 
-impl<'a, T, U: ?Sized> ErasedRef<'a, U> for T
+impl<'a, T, U: ?Sized> ErasedTypedRef<'a, U> for T
 where
-    T: stream::Ref<'a, U>,
+    T: stream::TypedRef<'a, U>,
     U: value::Value + 'static,
 {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
@@ -402,7 +410,7 @@ where
     }
 }
 
-impl<'a, 'b, T: ?Sized> stream::Ref<'a, T> for Ref<'a, 'b, T>
+impl<'a, 'b, T: ?Sized> stream::TypedRef<'a, T> for TypedRef<'a, 'b, T>
 where
     T: value::Value + 'static,
 {
@@ -415,7 +423,7 @@ where
     }
 }
 
-impl<'a, 'b, T: ?Sized> stream::ValueRef<'a> for Ref<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized> stream::ValueRef<'a> for TypedRef<'a, 'b, T> {
     fn stream<'c, S>(self, mut stream: S) -> Result
     where
         'a: 'c,
@@ -425,7 +433,7 @@ impl<'a, 'b, T: ?Sized> stream::ValueRef<'a> for Ref<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T: ?Sized> value::Value for Ref<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized> value::Value for TypedRef<'a, 'b, T> {
     fn stream<'c, S>(&'c self, mut stream: S) -> Result
     where
         S: stream::Stream<'c>,

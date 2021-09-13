@@ -104,7 +104,7 @@ mod tests {
                 Ok(())
             }
 
-            fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(
+            fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
                 &mut self,
                 _: V,
             ) -> stream::Result
@@ -114,7 +114,7 @@ mod tests {
                 Ok(())
             }
 
-            fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
+            fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
             where
                 'v: 'a,
             {

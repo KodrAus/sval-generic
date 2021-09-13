@@ -123,7 +123,10 @@ where
         Ok(())
     }
 
-    fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(&mut self, e: V) -> stream::Result
+    fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
+        &mut self,
+        e: V,
+    ) -> stream::Result
     where
         'v: 'a,
     {
@@ -131,7 +134,7 @@ where
         Ok(())
     }
 
-    fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {
@@ -192,7 +195,7 @@ where
         Ok(())
     }
 
-    fn map_field<'v, F: stream::Ref<'static, str>, V: stream::ValueRef<'v>>(
+    fn map_field<'v, F: stream::TypedRef<'static, str>, V: stream::ValueRef<'v>>(
         &mut self,
         f: F,
         v: V,

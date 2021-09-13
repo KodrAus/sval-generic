@@ -107,14 +107,17 @@ where
         Ok(())
     }
 
-    fn error<'v, V: stream::Ref<'v, dyn error::Error + 'static>>(&mut self, v: V) -> stream::Result
+    fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
+        &mut self,
+        v: V,
+    ) -> stream::Result
     where
         'v: 'a,
     {
         self.display(v.get())
     }
 
-    fn str<'v, V: stream::Ref<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
     where
         'v: 'a,
     {

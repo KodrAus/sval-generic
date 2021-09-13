@@ -2,7 +2,7 @@ use std::{error, fmt};
 
 use crate::{
     erased,
-    stream::{Ref, ValueRef},
+    stream::{TypedRef, ValueRef},
 };
 
 #[doc(inline)]
@@ -52,7 +52,7 @@ where
                 Err(Error)
             }
 
-            fn error<'v, V: Ref<'v, dyn error::Error + 'static>>(&mut self, _: V) -> Result
+            fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, _: V) -> Result
             where
                 'v: 'a,
             {
@@ -87,7 +87,7 @@ where
                 Err(Error)
             }
 
-            fn str<'v, V: Ref<'v, str>>(&mut self, v: V) -> Result
+            fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
             where
                 'v: 'a,
             {
