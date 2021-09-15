@@ -59,6 +59,19 @@ where
                 Err(Error)
             }
 
+            fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, _: T) -> Result {
+                Err(Error)
+            }
+
+            fn value_tagged_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+                &mut self,
+                _: T,
+                _: I,
+                _: Option<u64>,
+            ) -> Result {
+                Err(Error)
+            }
+
             fn map_begin(&mut self, _: Option<usize>) -> Result {
                 Err(Error)
             }
@@ -106,6 +119,24 @@ where
         stream.0
     }
 
+    fn type_tag<T: TypedRef<'static, str>>(&self, ty: T) -> TypeTagged<T, &Self> {
+        TypeTagged { ty, v: self }
+    }
+
+    fn value_tag<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+    ) -> ValueTagged<T, I, &Self> {
+        ValueTagged {
+            ty,
+            val,
+            i,
+            v: self,
+        }
+    }
+
     fn for_all(&self) -> ForAll<&Self> {
         ForAll(self)
     }
@@ -132,4 +163,16 @@ where
     fn to_str(&self) -> Option<&str> {
         (**self).to_str()
     }
+}
+
+pub struct TypeTagged<T, V> {
+    ty: T,
+    v: V,
+}
+
+pub struct ValueTagged<T, I, V> {
+    ty: T,
+    val: I,
+    i: Option<u64>,
+    v: V,
 }

@@ -64,6 +64,25 @@ trait ErasedStream<'a> {
     fn erased_str<'b, 'v>(&mut self, v: TypedRef<'v, 'b, str>) -> Result
     where
         'v: 'a;
+    fn erased_type_tagged_begin<'b>(&mut self, ty: TypedRef<'static, 'b, str>) -> Result;
+    fn erased_value_tagged_begin<'b>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        val: TypedRef<'static, 'b, str>,
+        i: Option<u64>,
+    ) -> Result;
+    fn erased_type_tagged<'b, 'v>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        v: ValueRef<'v, 'b>,
+    ) -> Result;
+    fn erased_value_tagged<'b, 'v>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        val: TypedRef<'static, 'b, str>,
+        i: Option<u64>,
+        v: ValueRef<'v, 'b>,
+    ) -> Result;
     fn erased_map_begin(&mut self, len: Option<usize>) -> Result;
     fn erased_map_key_begin(&mut self) -> Result;
     fn erased_map_value_begin(&mut self) -> Result;
@@ -85,12 +104,38 @@ trait ErasedStream<'a> {
     ) -> Result
     where
         'v: 'a;
+    fn erased_type_tagged_map_begin<'b>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        len: Option<usize>,
+    ) -> Result;
+    fn erased_type_tagged_map_end(&mut self) -> Result;
+    fn erased_value_tagged_map_begin<'b>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        val: TypedRef<'static, 'b, str>,
+        i: Option<usize>,
+    ) -> Result;
+    fn erased_value_tagged_map_end(&mut self) -> Result;
     fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
     fn erased_seq_elem_begin(&mut self) -> Result;
     fn erased_seq_end(&mut self) -> Result;
     fn erased_seq_elem<'b, 'e>(&mut self, e: ValueRef<'e, 'b>) -> Result
     where
         'e: 'a;
+    fn erased_type_tagged_seq_begin<'b>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        len: Option<usize>,
+    ) -> Result;
+    fn erased_type_tagged_seq_end(&mut self) -> Result;
+    fn erased_value_tagged_seq_begin<'b>(
+        &mut self,
+        ty: TypedRef<'static, 'b, str>,
+        val: TypedRef<'static, 'b, str>,
+        i: Option<usize>,
+    ) -> Result;
+    fn erased_value_tagged_seq_end(&mut self) -> Result;
 }
 
 impl<'a, T: ?Sized> ErasedStream<'a> for T
@@ -346,7 +391,7 @@ trait ErasedValueRef<'a> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
-    
+
     fn erased_to_str(&self) -> Option<&'a str>;
 }
 
@@ -403,7 +448,7 @@ trait ErasedTypedRef<'a, T: ?Sized> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
-    
+
     fn erased_to_str(&self) -> Option<&'a str>;
 
     fn erased_get(&self) -> &T;

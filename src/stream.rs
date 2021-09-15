@@ -1,4 +1,4 @@
-use std::{error, fmt};
+use std::{cell, error, fmt, sync};
 
 use crate::{erased, value};
 
@@ -6,71 +6,130 @@ use crate::{erased, value};
 pub use crate::{for_all::ForAll, Error, Result};
 
 pub trait Stream<'a> {
-    fn display<V: fmt::Display>(&mut self, d: V) -> Result;
+    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result;
 
-    fn u64(&mut self, v: u64) -> Result;
-    fn i64(&mut self, v: i64) -> Result;
-    fn u128(&mut self, v: u128) -> Result;
-    fn i128(&mut self, v: i128) -> Result;
-    fn f64(&mut self, v: f64) -> Result;
-    fn bool(&mut self, v: bool) -> Result;
+    fn u64(&mut self, value: u64) -> Result;
+    fn i64(&mut self, value: i64) -> Result;
+    fn u128(&mut self, value: u128) -> Result;
+    fn i128(&mut self, value: i128) -> Result;
+    fn f64(&mut self, value: f64) -> Result;
+    fn bool(&mut self, value: bool) -> Result;
     fn none(&mut self) -> Result;
 
-    fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn str<'s, S: TypedRef<'s, str>>(&mut self, value: S) -> Result
     where
-        'v: 'a;
+        's: 'a;
 
-    fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
+    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
     where
-        'v: 'a;
+        'e: 'a;
+
+    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result;
+    fn value_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        tag_type: T,
+        tag_key: V,
+        tag_index: Option<u64>,
+    ) -> Result;
+
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result;
+    fn type_tagged_end(&mut self) -> Result;
+
+    fn value_tagged_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag_type: T,
+        tag_key: K,
+        tag_index: Option<u64>,
+    ) -> Result;
+    fn value_tagged_end(&mut self) -> Result;
+
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag_type: T,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.type_tagged_begin(tag_type)?;
+        value.stream(self)?;
+        self.type_tagged_end()
+    }
+
+    fn value_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag_type: T,
+        tag_key: K,
+        tag_index: Option<u64>,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.value_tagged_begin(tag_type, tag_value, tag_index)?;
+        value.stream(self)?;
+        self.value_tagged_end()
+    }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result;
-    fn map_key_begin(&mut self) -> Result;
-    fn map_value_begin(&mut self) -> Result;
     fn map_end(&mut self) -> Result;
 
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, k: K) -> Result
+    fn map_key_begin(&mut self) -> Result;
+    fn map_key_end(&mut self) -> Result;
+
+    fn map_value_begin(&mut self) -> Result;
+    fn map_value_end(&mut self) -> Result;
+
+    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
     where
         'k: 'a,
     {
         self.map_key_begin()?;
-        k.stream(self)
+        key.stream(self)?;
+        self.map_key_end()
     }
 
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, v: V) -> Result
+    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
     where
         'v: 'a,
     {
         self.map_value_begin()?;
-        v.stream(self)
+        value.stream(self)?;
+        self.map_value_end()
     }
 
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, k: K, v: V) -> Result
+    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
     where
         'k: 'a,
         'v: 'a,
     {
-        self.map_key(k)?;
-        self.map_value(v)
+        self.map_key(key)?;
+        self.map_value(value)
     }
 
-    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
+    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result
     where
         'v: 'a,
     {
-        self.map_entry(f, v)
+        self.map_entry(field, value)
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result;
-    fn seq_elem_begin(&mut self) -> Result;
     fn seq_end(&mut self) -> Result;
 
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, e: E) -> Result
+    fn seq_elem_begin(&mut self) -> Result;
+    fn seq_elem_end(&mut self) -> Result;
+
+    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
     where
         'e: 'a,
     {
         self.seq_elem_begin()?;
-        e.stream(self)
+        elem.stream(self)?;
+        self.seq_elem_end()
     }
 
     fn for_all(&mut self) -> ForAll<&mut Self> {
@@ -85,9 +144,9 @@ pub trait Stream<'a> {
     }
 }
 
-impl<'a, 'b, T: ?Sized> Stream<'b> for &'a mut T
+impl<'a, 'b, S: ?Sized> Stream<'a> for &'b mut S
 where
-    T: Stream<'b>,
+    S: Stream<'a>,
 {
     fn u64(&mut self, v: u64) -> Result {
         (**self).u64(v)
@@ -123,16 +182,49 @@ where
 
     fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
     where
-        'v: 'b,
+        'v: 'a,
     {
         (**self).error(e)
     }
 
     fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
     where
-        'v: 'b,
+        'v: 'a,
     {
         (**self).str(v)
+    }
+
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, ty: T) -> Result {
+        (**self).type_tagged_begin(ty)
+    }
+
+    fn value_tagged_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+    ) -> Result {
+        (**self).value_tagged_begin(ty, val, i)
+    }
+
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, ty: T, v: V) -> Result
+    where
+        'v: 'a,
+    {
+        (**self).type_tagged(ty, v)
+    }
+
+    fn value_tagged<'v, T: TypedRef<'static, str>, I: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        v: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        (**self).value_tagged(ty, val, i, v)
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
@@ -153,31 +245,57 @@ where
 
     fn map_key<'k, K: ValueRef<'k>>(&mut self, k: K) -> Result
     where
-        'k: 'b,
+        'k: 'a,
     {
         (**self).map_key(k)
     }
 
     fn map_value<'v, V: ValueRef<'v>>(&mut self, v: V) -> Result
     where
-        'v: 'b,
+        'v: 'a,
     {
         (**self).map_value(v)
     }
 
     fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, k: K, v: V) -> Result
     where
-        'k: 'b,
-        'v: 'b,
+        'k: 'a,
+        'v: 'a,
     {
         (**self).map_entry(k, v)
     }
 
     fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
     where
-        'v: 'b,
+        'v: 'a,
     {
         (**self).map_field(f, v)
+    }
+
+    fn type_tagged_map_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).type_tagged_map_begin(ty, len)
+    }
+
+    fn type_tagged_map_end(&mut self) -> Result {
+        (**self).type_tagged_map_end()
+    }
+
+    fn value_tagged_map_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).value_tagged_map_begin(ty, val, i, len)
+    }
+
+    fn value_tagged_map_end(&mut self) -> Result {
+        (**self).value_tagged_map_end()
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
@@ -194,9 +312,35 @@ where
 
     fn seq_elem<'e, E: ValueRef<'e>>(&mut self, e: E) -> Result
     where
-        'e: 'b,
+        'e: 'a,
     {
         (**self).seq_elem(e)
+    }
+
+    fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).type_tagged_seq_begin(ty, len)
+    }
+
+    fn type_tagged_seq_end(&mut self) -> Result {
+        (**self).type_tagged_seq_end()
+    }
+
+    fn value_tagged_seq_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).value_tagged_seq_begin(ty, val, i, len)
+    }
+
+    fn value_tagged_seq_end(&mut self) -> Result {
+        (**self).value_tagged_seq_end()
     }
 }
 

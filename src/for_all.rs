@@ -102,6 +102,39 @@ where
         self.0.str(ForAll(v))
     }
 
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, ty: T) -> Result {
+        self.0.type_tagged_begin(ty)
+    }
+
+    fn value_tagged_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+    ) -> Result {
+        self.0.value_tagged_begin(ty, val, i)
+    }
+
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, ty: T, v: V) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.type_tagged(ty, ForAll(v))
+    }
+
+    fn value_tagged<'v, T: TypedRef<'static, str>, I: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        v: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.value_tagged(ty, val, i, ForAll(v))
+    }
+
     fn map_begin(&mut self, len: Option<usize>) -> Result {
         self.0.map_begin(len)
     }
@@ -147,6 +180,32 @@ where
         self.0.map_field(f, ForAll(v))
     }
 
+    fn type_tagged_map_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        len: Option<usize>,
+    ) -> Result {
+        self.0.type_tagged_map_begin(ty, len)
+    }
+
+    fn type_tagged_map_end(&mut self) -> Result {
+        self.0.type_tagged_map_end()
+    }
+
+    fn value_tagged_map_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        len: Option<usize>,
+    ) -> Result {
+        self.0.value_tagged_map_begin(ty, val, i, len)
+    }
+
+    fn value_tagged_map_end(&mut self) -> Result {
+        self.0.value_tagged_map_end()
+    }
+
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
         self.0.seq_begin(len)
     }
@@ -164,5 +223,31 @@ where
         'e: 'a,
     {
         self.0.seq_elem(ForAll(e))
+    }
+
+    fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        len: Option<usize>,
+    ) -> Result {
+        self.0.type_tagged_seq_begin(ty, len)
+    }
+
+    fn type_tagged_seq_end(&mut self) -> Result {
+        self.0.type_tagged_seq_end()
+    }
+
+    fn value_tagged_seq_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+        &mut self,
+        ty: T,
+        val: I,
+        i: Option<u64>,
+        len: Option<usize>,
+    ) -> Result {
+        self.0.value_tagged_seq_begin(ty, val, i, len)
+    }
+
+    fn value_tagged_seq_end(&mut self) -> Result {
+        self.0.value_tagged_seq_end()
     }
 }
