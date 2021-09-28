@@ -421,42 +421,42 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
-        self.erased_display(&fmt)
+        self.0.erased_display(&fmt)
     }
 
     fn u64(&mut self, value: u64) -> Result {
-        self.erased_u64(value)
+        self.0.erased_u64(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
-        self.erased_i64(value)
+        self.0.erased_i64(value)
     }
 
     fn u128(&mut self, value: u128) -> Result {
-        self.erased_u128(value)
+        self.0.erased_u128(value)
     }
 
     fn i128(&mut self, value: i128) -> Result {
-        self.erased_i128(value)
+        self.0.erased_i128(value)
     }
 
     fn f64(&mut self, value: f64) -> Result {
-        self.erased_f64(value)
+        self.0.erased_f64(value)
     }
 
     fn bool(&mut self, value: bool) -> Result {
-        self.erased_bool(value)
+        self.0.erased_bool(value)
     }
 
     fn none(&mut self) -> Result {
-        self.erased_none()
+        self.0.erased_none()
     }
 
     fn str<'s, T: reference::TypedRef<'s, str>>(&mut self, value: T) -> Result
     where
         's: 'a,
     {
-        self.erased_str(TypedRef(&value))
+        self.0.erased_str(TypedRef(&value))
     }
 
     fn error<'e, E: reference::TypedRef<'e, dyn error::Error + 'static>>(
@@ -466,18 +466,18 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'e: 'a,
     {
-        self.erased_error(TypedRef(&error))
+        self.0.erased_error(TypedRef(&error))
     }
 
     fn type_tag<T: reference::TypedRef<'static, str>>(&mut self, tag: tag::TypeTag<T>) -> Result {
-        self.erased_type_tag(TypedRef(&tag.ty()))
+        self.0.erased_type_tag(TypedRef(&tag.ty()))
     }
 
     fn variant_tag<T: reference::TypedRef<'static, str>, K: reference::TypedRef<'static, str>>(
         &mut self,
         tag: tag::VariantTag<T, K>,
     ) -> Result {
-        self.erased_variant_tag(
+        self.0.erased_variant_tag(
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
@@ -488,11 +488,11 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         &mut self,
         tag: tag::TypeTag<T>,
     ) -> Result {
-        self.erased_type_tagged_begin(TypedRef(&tag.ty()))
+        self.0.erased_type_tagged_begin(TypedRef(&tag.ty()))
     }
 
     fn type_tagged_end(&mut self) -> Result {
-        self.erased_type_tagged_end()
+        self.0.erased_type_tagged_end()
     }
 
     fn variant_tagged_begin<
@@ -502,7 +502,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         &mut self,
         tag: tag::VariantTag<T, K>,
     ) -> Result {
-        self.erased_variant_tagged_begin(
+        self.0.erased_variant_tagged_begin(
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
@@ -510,7 +510,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_end(&mut self) -> Result {
-        self.erased_variant_tagged_end()
+        self.0.erased_variant_tagged_end()
     }
 
     fn type_tagged<'v, T: reference::TypedRef<'static, str>, V: reference::ValueRef<'v>>(
@@ -521,7 +521,8 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'v: 'a,
     {
-        self.erased_type_tagged(TypedRef(&tag.ty()), ValueRef(&value))
+        self.0
+            .erased_type_tagged(TypedRef(&tag.ty()), ValueRef(&value))
     }
 
     fn variant_tagged<
@@ -537,7 +538,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     where
         'v: 'a,
     {
-        self.erased_variant_tagged(
+        self.0.erased_variant_tagged(
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
@@ -546,27 +547,27 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
-        self.erased_map_begin(len)
+        self.0.erased_map_begin(len)
     }
 
     fn map_end(&mut self) -> Result {
-        self.erased_map_end()
+        self.0.erased_map_end()
     }
 
     fn map_key_begin(&mut self) -> Result {
-        self.erased_map_key_begin()
+        self.0.erased_map_key_begin()
     }
 
     fn map_key_end(&mut self) -> Result {
-        self.erased_map_key_end()
+        self.0.erased_map_key_end()
     }
 
     fn map_value_begin(&mut self) -> Result {
-        self.erased_map_value_begin()
+        self.0.erased_map_value_begin()
     }
 
     fn map_value_end(&mut self) -> Result {
-        self.erased_map_value_end()
+        self.0.erased_map_value_end()
     }
 
     fn type_tagged_map_begin<T: reference::TypedRef<'static, str>>(
@@ -574,11 +575,12 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         tag: tag::TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
-        self.erased_type_tagged_map_begin(TypedRef(&tag.ty()), len)
+        self.0
+            .erased_type_tagged_map_begin(TypedRef(&tag.ty()), len)
     }
 
     fn type_tagged_map_end(&mut self) -> Result {
-        self.erased_type_tagged_map_end()
+        self.0.erased_type_tagged_map_end()
     }
 
     fn variant_tagged_map_begin<
@@ -589,7 +591,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         tag: tag::VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
-        self.erased_variant_tagged_map_begin(
+        self.0.erased_variant_tagged_map_begin(
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
@@ -598,7 +600,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_map_end(&mut self) -> Result {
-        self.erased_variant_tagged_map_end()
+        self.0.erased_variant_tagged_map_end()
     }
 
     fn map_entry<'k, 'v, K: reference::ValueRef<'k>, V: reference::ValueRef<'v>>(
@@ -610,33 +612,33 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         'k: 'a,
         'v: 'a,
     {
-        self.erased_map_entry(ValueRef(&key), ValueRef(&value))
+        self.0.erased_map_entry(ValueRef(&key), ValueRef(&value))
     }
 
     fn map_key<'k, K: reference::ValueRef<'k>>(&mut self, key: K) -> Result
     where
         'k: 'a,
     {
-        self.erased_map_key(ValueRef(&key))
+        self.0.erased_map_key(ValueRef(&key))
     }
 
     fn map_field<F: reference::TypedRef<'static, str>>(&mut self, field: F) -> Result {
-        self.erased_map_field(TypedRef(&field))
+        self.0.erased_map_field(TypedRef(&field))
     }
 
     fn map_value<'v, V: reference::ValueRef<'v>>(&mut self, value: V) -> Result
     where
         'v: 'a,
     {
-        self.erased_map_value(ValueRef(&value))
+        self.0.erased_map_value(ValueRef(&value))
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
-        self.erased_seq_begin(len)
+        self.0.erased_seq_begin(len)
     }
 
     fn seq_end(&mut self) -> Result {
-        self.erased_seq_end()
+        self.0.erased_seq_end()
     }
 
     fn type_tagged_seq_begin<T: reference::TypedRef<'static, str>>(
@@ -644,11 +646,12 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         tag: tag::TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
-        self.erased_type_tagged_seq_begin(TypedRef(&tag.ty()), len)
+        self.0
+            .erased_type_tagged_seq_begin(TypedRef(&tag.ty()), len)
     }
 
     fn type_tagged_seq_end(&mut self) -> Result {
-        self.erased_type_tagged_seq_end()
+        self.0.erased_type_tagged_seq_end()
     }
 
     fn variant_tagged_seq_begin<
@@ -659,7 +662,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         tag: tag::VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
-        self.erased_variant_tagged_seq_begin(
+        self.0.erased_variant_tagged_seq_begin(
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
@@ -668,22 +671,22 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_seq_end(&mut self) -> Result {
-        self.erased_variant_tagged_seq_end()
+        self.0.erased_variant_tagged_seq_end()
     }
 
     fn seq_elem_begin(&mut self) -> Result {
-        self.erased_seq_elem_begin()
+        self.0.erased_seq_elem_begin()
     }
 
     fn seq_elem_end(&mut self) -> Result {
-        self.erased_seq_elem_end()
+        self.0.erased_seq_elem_end()
     }
 
     fn seq_elem<'e, E: reference::ValueRef<'e>>(&mut self, elem: E) -> Result
     where
         'e: 'a,
     {
-        self.erased_seq_elem(ValueRef(&elem))
+        self.0.erased_seq_elem(ValueRef(&elem))
     }
 }
 

@@ -4,7 +4,6 @@ pub mod stream;
 pub mod value;
 
 pub mod erased;
-pub mod serde;
 
 mod for_all;
 mod impls;
@@ -112,16 +111,6 @@ mod tests {
                 Ok(())
             }
 
-            fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
-                &mut self,
-                _: V,
-            ) -> stream::Result
-            where
-                'v: 'a,
-            {
-                Ok(())
-            }
-
             fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
             where
                 'v: 'a,
@@ -135,15 +124,17 @@ mod tests {
                 Ok(())
             }
 
+            fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
+                &mut self,
+                _: V,
+            ) -> stream::Result
+            where
+                'v: 'a,
+            {
+                Ok(())
+            }
+
             fn map_begin(&mut self, _: Option<usize>) -> stream::Result {
-                Ok(())
-            }
-
-            fn map_key_begin(&mut self) -> stream::Result {
-                Ok(())
-            }
-
-            fn map_value_begin(&mut self) -> stream::Result {
                 Ok(())
             }
 
@@ -151,15 +142,31 @@ mod tests {
                 Ok(())
             }
 
+            fn map_key_begin(&mut self) -> stream::Result {
+                Ok(())
+            }
+
+            fn map_key_end(&mut self) -> stream::Result {
+                Ok(())
+            }
+
+            fn map_value_begin(&mut self) -> stream::Result {
+                Ok(())
+            }
+
+            fn map_value_end(&mut self) -> stream::Result {
+                Ok(())
+            }
+
             fn seq_begin(&mut self, _: Option<usize>) -> stream::Result {
                 Ok(())
             }
 
-            fn seq_elem_begin(&mut self) -> stream::Result {
+            fn seq_end(&mut self) -> stream::Result {
                 Ok(())
             }
 
-            fn seq_end(&mut self) -> stream::Result {
+            fn seq_elem_begin(&mut self) -> stream::Result {
                 Ok(())
             }
         }

@@ -1,0 +1,15 @@
+[package]
+name = "sval-generic-api-json-twitter-profile"
+version = "0.0.0"
+authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
+edition = "2018"
+publish = false
+
+[dependencies.serde_json]
+version = "1"
+
+[dependencies.sval-generic-api-json-twitter-tests]
+path = "../../tests/twitter"
+
+[dependencies.sval-generic-api-json]
+path = "../../"

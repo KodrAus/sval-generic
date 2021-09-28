@@ -1,7 +1,7 @@
 use crate::{
     stream::{Stream, TypedRef, ValueRef},
     value::Value,
-    Error, Result,
+    Result,
 };
 
 #[derive(Clone, Copy)]

@@ -134,6 +134,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sval-generic-api-json-twitter-profile"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "sval-generic-api-json",
+ "sval-generic-api-json-twitter-tests",
+]
+
+[[package]]
 name = "sval-generic-api-json-twitter-tests"
 version = "0.0.0"
 dependencies = [

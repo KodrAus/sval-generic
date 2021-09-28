@@ -8,6 +8,7 @@ members = [
     "derive",
     "json",
     "json/benches/twitter",
+    "json/benches/profile",
     "json/tests/twitter"
 ]
 

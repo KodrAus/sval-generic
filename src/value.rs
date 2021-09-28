@@ -1,5 +1,3 @@
-use std::{error, fmt};
-
 use crate::{
     erased,
     reference::{TypedRef, ValueRef},
@@ -59,7 +57,7 @@ where
         ForAll(self)
     }
 
-    fn erase<'a>(&'a self) -> erased::Value<'a>
+    fn erase(&self) -> erased::Value
     where
         Self: Sized,
     {

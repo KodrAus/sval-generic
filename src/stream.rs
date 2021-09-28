@@ -1,4 +1,4 @@
-use std::{cell, error, fmt, sync};
+use std::{error, fmt, sync};
 
 use crate::erased;
 
@@ -19,30 +19,37 @@ pub trait Stream<'a> {
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
+        let _ = fmt;
         Err(Error)
     }
 
     fn u64(&mut self, value: u64) -> Result {
+        let _ = value;
         Err(Error)
     }
 
     fn i64(&mut self, value: i64) -> Result {
+        let _ = value;
         Err(Error)
     }
 
     fn u128(&mut self, value: u128) -> Result {
+        let _ = value;
         Err(Error)
     }
 
     fn i128(&mut self, value: i128) -> Result {
+        let _ = value;
         Err(Error)
     }
 
     fn f64(&mut self, value: f64) -> Result {
+        let _ = value;
         Err(Error)
     }
 
     fn bool(&mut self, value: bool) -> Result {
+        let _ = value;
         Err(Error)
     }
 
@@ -54,6 +61,7 @@ pub trait Stream<'a> {
     where
         's: 'a,
     {
+        let _ = value;
         Err(Error)
     }
 
@@ -61,6 +69,7 @@ pub trait Stream<'a> {
     where
         'e: 'a,
     {
+        let _ = error;
         Err(Error)
     }
 
@@ -125,6 +134,7 @@ pub trait Stream<'a> {
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
+        let _ = len;
         Err(Error)
     }
 
@@ -208,6 +218,7 @@ pub trait Stream<'a> {
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        let _ = len;
         Err(Error)
     }
 
