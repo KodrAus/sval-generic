@@ -49,7 +49,10 @@ mod tests {
             where
                 S: value::Stream<'a>,
             {
-                let mut short = |s: &str| stream.map_field("field", s.for_all());
+                let mut short = |s: &str| {
+                    stream.map_field("field")?;
+                    stream.map_value(s.for_all())
+                };
 
                 short("value")
             }
@@ -66,8 +69,10 @@ mod tests {
                 S: value::Stream<'a>,
             {
                 stream.map_begin(Some(1))?;
-                stream.map_field("a", &self.a)?;
-                stream.map_field("b", self.b)?;
+                stream.map_field("a")?;
+                stream.map_value(&self.a)?;
+                stream.map_field("b")?;
+                stream.map_value(self.b)?;
                 stream.map_end()
             }
         }

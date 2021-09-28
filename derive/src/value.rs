@@ -40,7 +40,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     stream.map_begin(Some(#num_fields))?;
 
                     #(
-                        stream.map_field(#fieldstr, &self.#fieldname)?;
+                        stream.map_field(#fieldstr)?;
+                        stream.map_value(&self.#fieldname)?;
                     )*
 
                     stream.map_end()
