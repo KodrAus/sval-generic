@@ -161,11 +161,19 @@ where
         Ok(())
     }
 
-    fn map_value_begin(&mut self) -> stream::Result {
+    fn map_key_end(&mut self) -> stream::Result {
         self.is_key = false;
 
+        Ok(())
+    }
+
+    fn map_value_begin(&mut self) -> stream::Result {
         self.out.write_char(':')?;
 
+        Ok(())
+    }
+
+    fn map_value_end(&mut self) -> stream::Result {
         Ok(())
     }
 
@@ -196,6 +204,10 @@ where
 
         self.is_current_depth_empty = false;
 
+        Ok(())
+    }
+
+    fn seq_elem_end(&mut self) -> stream::Result {
         Ok(())
     }
 
