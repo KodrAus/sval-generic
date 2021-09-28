@@ -1,12 +1,15 @@
 use std::fmt;
 
-mod for_all;
-mod impls;
 pub mod stream;
 pub mod value;
 
 pub mod erased;
 pub mod serde;
+
+mod for_all;
+mod impls;
+mod reference;
+mod tag;
 
 pub use sval_generic_api_derive::*;
 

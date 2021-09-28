@@ -1,84 +1,179 @@
 use std::{cell, error, fmt, sync};
 
-use crate::{erased, value};
+use crate::erased;
 
 #[doc(inline)]
-pub use crate::{for_all::ForAll, Error, Result};
+pub use crate::{
+    for_all::ForAll,
+    reference::{TypedRef, ValueRef},
+    tag::{TypeTag, VariantTag},
+    Error, Result,
+};
 
 pub trait Stream<'a> {
-    fn any<'a, V: ValueRef<'a>>(&mut self, value: V) -> Result {
+    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
+    where
+        'v: 'a,
+    {
         value.stream(self)
     }
 
-    fn struct_map<'v, T: TypedRef<'static, str>, F: FnOnce(Map<&mut Self>) -> Result>(
-        &mut self,
-        tag_type: T,
-        len: Option<usize>,
-        map: F,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        let mut map = map.into_iter();
-
-        self.type_tagged_begin(tag_type)?;
-        self.map_begin(len)?;
-        map(StructMap(self))?;
-        self.map_end()?;
-        self.type_tagged_end()
+    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
+        Err(Error)
     }
 
-    fn struct_variant_map<
-        'v,
-        T: TypedRef<'static, str>,
-        K: TypedRef<'static, str>,
-        F: FnOnce(Map<&mut Self>) -> Result,
-    >(
-        &mut self,
-        tag_type: T,
-        tag_key: K,
-        tag_index: Option<u64>,
-        len: Option<usize>,
-        map: F,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        let mut map = map.into_iter();
-
-        self.variant_tagged_begin(tag_type, tag_key, tag_index)?;
-        self.map_begin(len)?;
-        map(Map(self))?;
-        self.map_end()?;
-        self.type_tagged_end()
+    fn u64(&mut self, value: u64) -> Result {
+        Err(Error)
     }
 
-    fn map<'k, 'v, I: IntoIterator<Item = (K, V)>, K: ValueRef<'k>, V: ValueRef<'v>>(
-        &mut self,
-        map: I,
-    ) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
-        let mut map = map.into_iter();
+    fn i64(&mut self, value: i64) -> Result {
+        Err(Error)
+    }
 
-        self.map_begin(map.size_hint().1)?;
-        for (k, v) in map {
-            self.map_entry(k, v)?;
-        }
+    fn u128(&mut self, value: u128) -> Result {
+        Err(Error)
+    }
+
+    fn i128(&mut self, value: i128) -> Result {
+        Err(Error)
+    }
+
+    fn f64(&mut self, value: f64) -> Result {
+        Err(Error)
+    }
+
+    fn bool(&mut self, value: bool) -> Result {
+        Err(Error)
+    }
+
+    fn none(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn str<'s, S: TypedRef<'s, str>>(&mut self, value: S) -> Result
+    where
+        's: 'a,
+    {
+        Err(Error)
+    }
+
+    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
+    where
+        'e: 'a,
+    {
+        Err(Error)
+    }
+
+    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        self.str(tag.ty())
+    }
+
+    fn variant_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+    ) -> Result {
+        self.str(tag.variant_key())
+    }
+
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        let _ = tag;
+        Ok(())
+    }
+
+    fn type_tagged_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn variant_tagged_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+    ) -> Result {
+        self.map_begin(Some(1))?;
+        self.map_key(tag)?;
+        self.map_value_begin()
+    }
+
+    fn variant_tagged_end(&mut self) -> Result {
+        self.map_value_end()?;
         self.map_end()
     }
 
-    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
-        field: F,
+        tag: TypeTag<T>,
         value: V,
     ) -> Result
     where
         'v: 'a,
     {
-        self.map_entry(field, value)
+        self.type_tagged_begin(tag)?;
+        self.any(value)?;
+        self.type_tagged_end()
+    }
+
+    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.variant_tagged_begin(tag)?;
+        self.any(value)?;
+        self.variant_tagged_end()
+    }
+
+    fn map_begin(&mut self, len: Option<usize>) -> Result {
+        Err(Error)
+    }
+
+    fn map_end(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn map_key_begin(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn map_key_end(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn map_value_begin(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn map_value_end(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn type_tagged_map_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        tag: TypeTag<T>,
+        len: Option<usize>,
+    ) -> Result {
+        self.type_tagged_begin(tag)?;
+        self.map_begin(len)
+    }
+
+    fn type_tagged_map_end(&mut self) -> Result {
+        self.map_end()?;
+        self.type_tagged_end()
+    }
+
+    fn variant_tagged_map_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        len: Option<usize>,
+    ) -> Result {
+        self.variant_tagged_begin(tag)?;
+        self.map_begin(len)
+    }
+
+    fn variant_tagged_map_end(&mut self) -> Result {
+        self.map_end()?;
+        self.variant_tagged_end()
     }
 
     fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
@@ -99,6 +194,10 @@ pub trait Stream<'a> {
         self.map_key_end()
     }
 
+    fn map_field<F: TypedRef<'static, str>>(&mut self, field: F) -> Result {
+        self.map_key(field)
+    }
+
     fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
     where
         'v: 'a,
@@ -108,14 +207,48 @@ pub trait Stream<'a> {
         self.map_value_end()
     }
 
-    fn seq<'e, I: IntoIterator<Item = E>, E: ValueRef<'e>>(&mut self, seq: I) -> Result {
-        let seq = seq.into_iter();
+    fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        Err(Error)
+    }
 
-        self.seq_begin(seq.size_hint().1)?;
-        for elem in seq {
-            self.seq_elem(elem)?;
-        }
-        self.seq_end()
+    fn seq_end(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        tag: TypeTag<T>,
+        len: Option<usize>,
+    ) -> Result {
+        self.type_tagged_begin(tag)?;
+        self.seq_begin(len)
+    }
+
+    fn type_tagged_seq_end(&mut self) -> Result {
+        self.seq_end()?;
+        self.type_tagged_end()
+    }
+
+    fn variant_tagged_seq_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        len: Option<usize>,
+    ) -> Result {
+        self.variant_tagged_begin(tag)?;
+        self.seq_begin(len)
+    }
+
+    fn variant_tagged_seq_end(&mut self) -> Result {
+        self.seq_end()?;
+        self.variant_tagged_end()
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        Err(Error)
+    }
+
+    fn seq_elem_end(&mut self) -> Result {
+        Err(Error)
     }
 
     fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
@@ -126,85 +259,6 @@ pub trait Stream<'a> {
         self.any(elem)?;
         self.seq_elem_end()
     }
-
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        tag_type: T,
-        value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        self.type_tagged_begin(tag_type)?;
-        self.any(value)?;
-        self.type_tagged_end()
-    }
-
-    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        tag_type: T,
-        tag_key: K,
-        tag_index: Option<u64>,
-        value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        self.variant_tagged_begin(tag_type, tag_value, tag_index)?;
-        self.any(value)?;
-        self.variant_tagged_end()
-    }
-
-    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result;
-
-    fn u64(&mut self, value: u64) -> Result;
-    fn i64(&mut self, value: i64) -> Result;
-    fn u128(&mut self, value: u128) -> Result;
-    fn i128(&mut self, value: i128) -> Result;
-    fn f64(&mut self, value: f64) -> Result;
-    fn bool(&mut self, value: bool) -> Result;
-    fn none(&mut self) -> Result;
-
-    fn str<'s, S: TypedRef<'s, str>>(&mut self, value: S) -> Result
-    where
-        's: 'a;
-
-    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
-    where
-        'e: 'a;
-
-    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result;
-    fn value_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
-        tag_type: T,
-        tag_key: V,
-        tag_index: Option<u64>,
-    ) -> Result;
-
-    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result;
-    fn type_tagged_end(&mut self) -> Result;
-
-    fn variant_tagged_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
-        &mut self,
-        tag_type: T,
-        tag_key: K,
-        tag_index: Option<u64>,
-    ) -> Result;
-    fn variant_tagged_end(&mut self) -> Result;
-
-    fn map_begin(&mut self, len: Option<usize>) -> Result;
-    fn map_end(&mut self) -> Result;
-
-    fn map_key_begin(&mut self) -> Result;
-    fn map_key_end(&mut self) -> Result;
-
-    fn map_value_begin(&mut self) -> Result;
-    fn map_value_end(&mut self) -> Result;
-
-    fn seq_begin(&mut self, len: Option<usize>) -> Result;
-    fn seq_end(&mut self) -> Result;
-
-    fn seq_elem_begin(&mut self) -> Result;
-    fn seq_elem_end(&mut self) -> Result;
 
     fn for_all(&mut self) -> ForAll<&mut Self> {
         ForAll(self)
@@ -222,87 +276,11 @@ impl<'a, 'b, S: ?Sized> Stream<'a> for &'b mut S
 where
     S: Stream<'a>,
 {
-    fn any<'a, V: ValueRef<'a>>(&mut self, value: V) -> Result {
+    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
+    where
+        'v: 'a,
+    {
         (**self).any(value)
-    }
-
-    fn map<'k, 'v, I: IntoIterator<Item = (K, V)>, K: ValueRef<'k>, V: ValueRef<'v>>(
-        &mut self,
-        map: I,
-    ) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
-        (**self).map(map)
-    }
-
-    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        (**self).map_field(field, value)
-    }
-
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
-        (**self).map_entry(key, value)
-    }
-
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
-    where
-        'k: 'a,
-    {
-        (**self).map_key(key)
-    }
-
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
-        (**self).map_value(value)
-    }
-
-    fn seq<'e, I: IntoIterator<Item = E>, E: ValueRef<'e>>(&mut self, seq: I) -> Result {
-        (**self).seq(seq)
-    }
-
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
-    where
-        'e: 'a,
-    {
-        (**self).seq_elem(elem)
-    }
-
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        tag_type: T,
-        value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        (**self).type_tagged(tag_type, value)
-    }
-
-    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        tag_type: T,
-        tag_key: K,
-        tag_index: Option<u64>,
-        value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
-        (**self).variant_tagged(tag_type, tag_key, tag_index, value)
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
@@ -337,7 +315,7 @@ where
         (**self).none()
     }
 
-    fn str<'s, S: TypedRef<'s, str>>(&mut self, value: S) -> Result
+    fn str<'s, T: TypedRef<'s, str>>(&mut self, value: T) -> Result
     where
         's: 'a,
     {
@@ -351,20 +329,19 @@ where
         (**self).error(error)
     }
 
-    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result {
-        (**self).type_tag(tag_type)
+    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        (**self).type_tag(tag)
     }
 
-    fn value_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
-        tag_type: T,
-        tag_key: V,
-        tag_index: Option<u64>,
+    fn variant_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
     ) -> Result {
-        (**self).value_tag(tag_type, tag_key, tag_index)
+        (**self).variant_tag(tag)
     }
 
-    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag_type: T) -> Result {
-        (**self).type_tagged_begin(tag_type)
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        (**self).type_tagged_begin(tag)
     }
 
     fn type_tagged_end(&mut self) -> Result {
@@ -373,15 +350,35 @@ where
 
     fn variant_tagged_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
         &mut self,
-        tag_type: T,
-        tag_key: K,
-        tag_index: Option<u64>,
+        tag: VariantTag<T, K>,
     ) -> Result {
-        (**self).variant_tagged_begin(tag_type, tag_key, tag_index)
+        (**self).variant_tagged_begin(tag)
     }
 
     fn variant_tagged_end(&mut self) -> Result {
         (**self).variant_tagged_end()
+    }
+
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag: TypeTag<T>,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        (**self).type_tagged(tag, value)
+    }
+
+    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        (**self).variant_tagged(tag, value)
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
@@ -408,12 +405,86 @@ where
         (**self).map_value_end()
     }
 
+    fn type_tagged_map_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        tag: TypeTag<T>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).type_tagged_map_begin(tag, len)
+    }
+
+    fn type_tagged_map_end(&mut self) -> Result {
+        (**self).type_tagged_map_end()
+    }
+
+    fn variant_tagged_map_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).variant_tagged_map_begin(tag, len)
+    }
+
+    fn variant_tagged_map_end(&mut self) -> Result {
+        (**self).variant_tagged_map_end()
+    }
+
+    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
+    where
+        'k: 'a,
+        'v: 'a,
+    {
+        (**self).map_entry(key, value)
+    }
+
+    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
+    where
+        'k: 'a,
+    {
+        (**self).map_key(key)
+    }
+
+    fn map_field<F: TypedRef<'static, str>>(&mut self, field: F) -> Result {
+        (**self).map_field(field)
+    }
+
+    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
+    where
+        'v: 'a,
+    {
+        (**self).map_value(value)
+    }
+
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
         (**self).seq_begin(len)
     }
 
     fn seq_end(&mut self) -> Result {
         (**self).seq_end()
+    }
+
+    fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
+        &mut self,
+        tag: TypeTag<T>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).type_tagged_seq_begin(tag, len)
+    }
+
+    fn type_tagged_seq_end(&mut self) -> Result {
+        (**self).type_tagged_seq_end()
+    }
+
+    fn variant_tagged_seq_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        len: Option<usize>,
+    ) -> Result {
+        (**self).variant_tagged_seq_begin(tag, len)
+    }
+
+    fn variant_tagged_seq_end(&mut self) -> Result {
+        (**self).variant_tagged_seq_end()
     }
 
     fn seq_elem_begin(&mut self) -> Result {
@@ -423,95 +494,11 @@ where
     fn seq_elem_end(&mut self) -> Result {
         (**self).seq_elem_end()
     }
-}
 
-pub struct Map<S>(S);
-
-impl<S> Map<S>
-where
-    S: Stream,
-{
-    pub fn field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result
+    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
     where
-        'v: 'a,
+        'e: 'a,
     {
-        self.0.map_field(field, value)
-    }
-
-    pub fn entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
-        self.0.map_entry(key, value)
-    }
-
-    pub fn key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
-    where
-        'k: 'a,
-    {
-        self.0.map_key(key)
-    }
-
-    pub fn value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
-        self.0.map_value(value)
-    }
-}
-
-pub trait ValueRef<'a>: value::Value + Copy {
-    fn stream<'b, S>(self, stream: S) -> Result
-    where
-        'a: 'b,
-        S: Stream<'b>;
-
-    fn to_str(self) -> Option<&'a str>;
-
-    fn for_all(self) -> ForAll<Self>
-    where
-        Self: Sized,
-    {
-        ForAll(self)
-    }
-}
-
-pub trait TypedRef<'a, T: ?Sized + value::Value + 'static>: ValueRef<'a> {
-    fn get(&self) -> &T;
-    fn try_unwrap(self) -> Option<&'a T>;
-}
-
-impl<'a, T: ?Sized> ValueRef<'a> for &'a T
-where
-    T: value::Value,
-{
-    fn stream<'b, S>(self, stream: S) -> Result
-    where
-        'a: 'b,
-        S: Stream<'b>,
-    {
-        (*self).stream(stream)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        (*self).to_str()
-    }
-}
-
-impl<'a, T: ?Sized> TypedRef<'a, T> for &'a T
-where
-    T: value::Value + 'static,
-{
-    fn get(&self) -> &T {
-        self
-    }
-
-    fn try_unwrap(self) -> Option<&'a T> {
-        Some(self)
+        (**self).seq_elem(elem)
     }
 }

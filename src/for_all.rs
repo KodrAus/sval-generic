@@ -1,7 +1,9 @@
 use std::{error, fmt};
 
 use crate::{
-    stream::{Stream, TypedRef, ValueRef},
+    reference::{TypedRef, ValueRef},
+    stream::Stream,
+    tag::{TypeTag, VariantTag},
     value::Value,
     Result,
 };
@@ -56,198 +58,229 @@ impl<'a, 'b, S> Stream<'a> for ForAll<S>
 where
     S: Stream<'b>,
 {
-    fn u64(&mut self, v: u64) -> Result {
-        self.0.u64(v)
+    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.any(ForAll(value))
     }
 
-    fn i64(&mut self, v: i64) -> Result {
-        self.0.i64(v)
+    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
+        self.0.display(fmt)
     }
 
-    fn u128(&mut self, v: u128) -> Result {
-        self.0.u128(v)
+    fn u64(&mut self, value: u64) -> Result {
+        self.0.u64(value)
     }
 
-    fn i128(&mut self, v: i128) -> Result {
-        self.0.i128(v)
+    fn i64(&mut self, value: i64) -> Result {
+        self.0.i64(value)
     }
 
-    fn f64(&mut self, v: f64) -> Result {
-        self.0.f64(v)
+    fn u128(&mut self, value: u128) -> Result {
+        self.0.u128(value)
     }
 
-    fn bool(&mut self, v: bool) -> Result {
-        self.0.bool(v)
+    fn i128(&mut self, value: i128) -> Result {
+        self.0.i128(value)
+    }
+
+    fn f64(&mut self, value: f64) -> Result {
+        self.0.f64(value)
+    }
+
+    fn bool(&mut self, value: bool) -> Result {
+        self.0.bool(value)
     }
 
     fn none(&mut self) -> Result {
         self.0.none()
     }
 
-    fn display<V: fmt::Display>(&mut self, d: V) -> Result {
-        self.0.display(d)
-    }
-
-    fn error<'v, V: TypedRef<'v, dyn error::Error + 'static>>(&mut self, e: V) -> Result
+    fn str<'s, T: TypedRef<'s, str>>(&mut self, value: T) -> Result
     where
-        'v: 'a,
+        's: 'a,
     {
-        self.0.error(ForAll(e))
+        self.0.str(ForAll(value))
     }
 
-    fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
+    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
     where
-        'v: 'a,
+        'e: 'a,
     {
-        self.0.str(ForAll(v))
+        self.0.error(ForAll(error))
     }
 
-    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, ty: T) -> Result {
-        self.0.type_tagged_begin(ty)
+    fn type_tag<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        self.0.type_tag(tag)
     }
 
-    fn value_tagged_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+    fn variant_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
-        val: I,
-        i: Option<u64>,
+        tag: VariantTag<T, K>,
     ) -> Result {
-        self.0.value_tagged_begin(ty, val, i)
+        self.0.variant_tag(tag)
     }
 
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, ty: T, v: V) -> Result
-    where
-        'v: 'a,
-    {
-        self.0.type_tagged(ty, ForAll(v))
+    fn type_tagged_begin<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+        self.0.type_tagged_begin(tag)
     }
 
-    fn value_tagged<'v, T: TypedRef<'static, str>, I: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged_end(&mut self) -> Result {
+        self.0.type_tagged_end()
+    }
+
+    fn variant_tagged_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
-        val: I,
-        i: Option<u64>,
-        v: V,
+        tag: VariantTag<T, K>,
+    ) -> Result {
+        self.0.variant_tagged_begin(tag)
+    }
+
+    fn variant_tagged_end(&mut self) -> Result {
+        self.0.variant_tagged_end()
+    }
+
+    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag: TypeTag<T>,
+        value: V,
     ) -> Result
     where
         'v: 'a,
     {
-        self.0.value_tagged(ty, val, i, ForAll(v))
+        self.0.type_tagged(tag, ForAll(value))
+    }
+
+    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+        &mut self,
+        tag: VariantTag<T, K>,
+        value: V,
+    ) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.variant_tagged(tag, ForAll(value))
     }
 
     fn map_begin(&mut self, len: Option<usize>) -> Result {
         self.0.map_begin(len)
     }
 
+    fn map_end(&mut self) -> Result {
+        self.0.map_end()
+    }
+
     fn map_key_begin(&mut self) -> Result {
         self.0.map_key_begin()
+    }
+
+    fn map_key_end(&mut self) -> Result {
+        self.0.map_key_end()
     }
 
     fn map_value_begin(&mut self) -> Result {
         self.0.map_value_begin()
     }
 
-    fn map_end(&mut self) -> Result {
-        self.0.map_end()
-    }
-
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, k: K) -> Result
-    where
-        'k: 'a,
-    {
-        self.0.map_key(ForAll(k))
-    }
-
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, v: V) -> Result
-    where
-        'v: 'a,
-    {
-        self.0.map_value(ForAll(v))
-    }
-
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, k: K, v: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
-        self.0.map_entry(ForAll(k), ForAll(v))
-    }
-
-    fn map_field<'v, F: TypedRef<'static, str>, V: ValueRef<'v>>(&mut self, f: F, v: V) -> Result
-    where
-        'v: 'a,
-    {
-        self.0.map_field(f, ForAll(v))
+    fn map_value_end(&mut self) -> Result {
+        self.0.map_value_end()
     }
 
     fn type_tagged_map_begin<T: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
+        tag: TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
-        self.0.type_tagged_map_begin(ty, len)
+        self.0.type_tagged_map_begin(tag, len)
     }
 
     fn type_tagged_map_end(&mut self) -> Result {
         self.0.type_tagged_map_end()
     }
 
-    fn value_tagged_map_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+    fn variant_tagged_map_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
-        val: I,
-        i: Option<u64>,
+        tag: VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
-        self.0.value_tagged_map_begin(ty, val, i, len)
+        self.0.variant_tagged_map_begin(tag, len)
     }
 
-    fn value_tagged_map_end(&mut self) -> Result {
-        self.0.value_tagged_map_end()
+    fn variant_tagged_map_end(&mut self) -> Result {
+        self.0.variant_tagged_map_end()
+    }
+
+    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
+    where
+        'k: 'a,
+        'v: 'a,
+    {
+        self.0.map_entry(ForAll(key), ForAll(value))
+    }
+
+    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
+    where
+        'k: 'a,
+    {
+        self.0.map_key(ForAll(key))
+    }
+
+    fn map_field<F: TypedRef<'static, str>>(&mut self, field: F) -> Result {
+        self.0.map_field(field)
+    }
+
+    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
+    where
+        'v: 'a,
+    {
+        self.0.map_value(ForAll(value))
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
         self.0.seq_begin(len)
     }
 
-    fn seq_elem_begin(&mut self) -> Result {
-        self.0.seq_elem_begin()
-    }
-
     fn seq_end(&mut self) -> Result {
         self.0.seq_end()
     }
 
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, e: E) -> Result
-    where
-        'e: 'a,
-    {
-        self.0.seq_elem(ForAll(e))
-    }
-
     fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
+        tag: TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
-        self.0.type_tagged_seq_begin(ty, len)
+        self.0.type_tagged_seq_begin(tag, len)
     }
 
     fn type_tagged_seq_end(&mut self) -> Result {
         self.0.type_tagged_seq_end()
     }
 
-    fn value_tagged_seq_begin<T: TypedRef<'static, str>, I: TypedRef<'static, str>>(
+    fn variant_tagged_seq_begin<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
         &mut self,
-        ty: T,
-        val: I,
-        i: Option<u64>,
+        tag: VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
-        self.0.value_tagged_seq_begin(ty, val, i, len)
+        self.0.variant_tagged_seq_begin(tag, len)
     }
 
-    fn value_tagged_seq_end(&mut self) -> Result {
-        self.0.value_tagged_seq_end()
+    fn variant_tagged_seq_end(&mut self) -> Result {
+        self.0.variant_tagged_seq_end()
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        self.0.seq_elem_begin()
+    }
+
+    fn seq_elem_end(&mut self) -> Result {
+        self.0.seq_elem_end()
+    }
+
+    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
+    where
+        'e: 'a,
+    {
+        self.0.seq_elem(ForAll(elem))
     }
 }
