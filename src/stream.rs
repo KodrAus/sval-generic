@@ -1,4 +1,4 @@
-use std::{error, fmt, sync};
+use std::{error, fmt};
 
 use crate::erased;
 

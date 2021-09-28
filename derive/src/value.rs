@@ -13,6 +13,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let ident = input.ident;
+    let tag = ident.to_string();
     let (impl_generics, ty_generics, _) = input.generics.split_for_impl();
 
     let dummy = Ident::new(
@@ -37,14 +38,14 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 where
                     S: sval_generic_api::Stream<'a>
                 {
-                    stream.map_begin(Some(#num_fields))?;
+                    stream.type_tagged_map_begin(sval_generic_api::value::TypeTag::new(#tag), Some(#num_fields))?;
 
                     #(
                         stream.map_field(#fieldstr)?;
                         stream.map_value(&self.#fieldname)?;
                     )*
 
-                    stream.map_end()
+                    stream.type_tagged_map_end()
                 }
             }
         };
