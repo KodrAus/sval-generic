@@ -31,6 +31,23 @@ impl<V: value::Value> Serialize for Value<V> {
     }
 }
 
+struct Display<D>(D);
+
+impl<D> Display<D> {
+    fn new(value: D) -> Self {
+        Display(value)
+    }
+}
+
+impl<D: stream::Display> Serialize for Display<D> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(&self.0)
+    }
+}
+
 enum SerdeStream<S: Serializer> {
     Serializer(Option<StreamSerializer<S>>),
     SerializeMap(Option<StreamSerializeMap<S>>),
@@ -408,6 +425,10 @@ impl<S: Serializer> SerdeStream<S> {
 impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
     fn any<'b: 'a, V: stream::ValueRef<'b>>(&mut self, v: V) -> stream::Result {
         self.serialize_any(Value::new(v))
+    }
+
+    fn display<D: stream::Display>(&mut self, v: D) -> stream::Result {
+        self.serialize_any(Display::new(v))
     }
 
     fn i64(&mut self, v: i64) -> stream::Result {

@@ -32,8 +32,6 @@ pub fn stream<'a>(s: impl Stream<'a>, v: impl reference::ValueRef<'a>) -> Result
 
 #[cfg(test)]
 mod tests {
-    use std::{error, fmt};
-
     use crate::{
         stream::{self, Stream},
         value::{self, Value},
@@ -44,10 +42,7 @@ mod tests {
         struct MyValue;
 
         impl Value for MyValue {
-            fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
-            where
-                S: value::Stream<'a>,
-            {
+            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
                 let mut short = |s: &str| {
                     stream.map_field("field")?;
                     stream.map_value(s.for_all())
@@ -63,10 +58,7 @@ mod tests {
         }
 
         impl Value for MyStruct {
-            fn stream<'a, S>(&'a self, mut stream: S) -> value::Result
-            where
-                S: value::Stream<'a>,
-            {
+            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(&self.a)?;
@@ -76,34 +68,26 @@ mod tests {
             }
         }
 
+        struct MyInnerRef<'a> {
+            a: &'a str,
+            b: i64,
+        }
+
+        impl<'a> Value for MyInnerRef<'a> {
+            fn stream<'b, S: value::Stream<'b>>(&'b self, mut stream: S) -> value::Result {
+                stream.map_begin(Some(1))?;
+                stream.map_field("a")?;
+                stream.map_value(self.a)?;
+                stream.map_field("b")?;
+                stream.map_value(self.b)?;
+                stream.map_end()
+            }
+        }
+
         struct MyStream<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for MyStream<'a> {
-            fn display<V: fmt::Display>(&mut self, _: V) -> stream::Result {
-                Ok(())
-            }
-
-            fn u64(&mut self, _: u64) -> stream::Result {
-                Ok(())
-            }
-
-            fn i64(&mut self, _: i64) -> stream::Result {
-                Ok(())
-            }
-
-            fn u128(&mut self, _: u128) -> stream::Result {
-                Ok(())
-            }
-
-            fn i128(&mut self, _: i128) -> stream::Result {
-                Ok(())
-            }
-
-            fn f64(&mut self, _: f64) -> stream::Result {
-                Ok(())
-            }
-
-            fn bool(&mut self, _: bool) -> stream::Result {
+            fn display<V: stream::Display>(&mut self, _: V) -> stream::Result {
                 Ok(())
             }
 
@@ -121,16 +105,6 @@ mod tests {
                     println!("short: {}", v.get());
                 }
 
-                Ok(())
-            }
-
-            fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
-                &mut self,
-                _: V,
-            ) -> stream::Result
-            where
-                'v: 'a,
-            {
                 Ok(())
             }
 
@@ -167,6 +141,10 @@ mod tests {
             }
 
             fn seq_elem_begin(&mut self) -> stream::Result {
+                Ok(())
+            }
+
+            fn seq_elem_end(&mut self) -> stream::Result {
                 Ok(())
             }
         }

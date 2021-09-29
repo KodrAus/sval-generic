@@ -10,58 +10,47 @@ pub use crate::{
     Error, Result,
 };
 
+pub use fmt::Display;
+
 pub trait Stream<'a> {
     fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         value.stream(self)
     }
 
-    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
-        let _ = fmt;
-        Err(Error)
-    }
+    fn display<D: Display>(&mut self, fmt: D) -> Result;
 
     fn u64(&mut self, value: u64) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
     fn u128(&mut self, value: u128) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
     fn i128(&mut self, value: i128) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
     fn f64(&mut self, value: f64) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
     fn bool(&mut self, value: bool) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value)
     }
 
-    fn none(&mut self) -> Result {
-        Err(Error)
-    }
+    fn none(&mut self) -> Result;
 
     fn str<'s: 'a, S: TypedRef<'s, str>>(&mut self, value: S) -> Result {
-        let _ = value;
-        Err(Error)
+        self.display(value.get())
     }
 
     fn error<'e: 'a, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result {
-        let _ = error;
-        Err(Error)
+        self.display(error.get())
     }
 
     fn type_tag<T: TypedRef<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
@@ -123,30 +112,17 @@ pub trait Stream<'a> {
         self.variant_tagged_end()
     }
 
-    fn map_begin(&mut self, len: Option<usize>) -> Result {
-        let _ = len;
-        Err(Error)
-    }
+    fn map_begin(&mut self, len: Option<usize>) -> Result;
 
-    fn map_end(&mut self) -> Result {
-        Err(Error)
-    }
+    fn map_end(&mut self) -> Result;
 
-    fn map_key_begin(&mut self) -> Result {
-        Err(Error)
-    }
+    fn map_key_begin(&mut self) -> Result;
 
-    fn map_key_end(&mut self) -> Result {
-        Err(Error)
-    }
+    fn map_key_end(&mut self) -> Result;
 
-    fn map_value_begin(&mut self) -> Result {
-        Err(Error)
-    }
+    fn map_value_begin(&mut self) -> Result;
 
-    fn map_value_end(&mut self) -> Result {
-        Err(Error)
-    }
+    fn map_value_end(&mut self) -> Result;
 
     fn type_tagged_map_begin<T: TypedRef<'static, str>>(
         &mut self,
@@ -201,14 +177,9 @@ pub trait Stream<'a> {
         self.map_value_end()
     }
 
-    fn seq_begin(&mut self, len: Option<usize>) -> Result {
-        let _ = len;
-        Err(Error)
-    }
+    fn seq_begin(&mut self, len: Option<usize>) -> Result;
 
-    fn seq_end(&mut self) -> Result {
-        Err(Error)
-    }
+    fn seq_end(&mut self) -> Result;
 
     fn type_tagged_seq_begin<T: TypedRef<'static, str>>(
         &mut self,
@@ -238,13 +209,9 @@ pub trait Stream<'a> {
         self.variant_tagged_end()
     }
 
-    fn seq_elem_begin(&mut self) -> Result {
-        Err(Error)
-    }
+    fn seq_elem_begin(&mut self) -> Result;
 
-    fn seq_elem_end(&mut self) -> Result {
-        Err(Error)
-    }
+    fn seq_elem_end(&mut self) -> Result;
 
     fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         self.seq_elem_begin()?;
@@ -272,7 +239,7 @@ where
         (**self).any(value)
     }
 
-    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
+    fn display<D: Display>(&mut self, fmt: D) -> Result {
         (**self).display(fmt)
     }
 
@@ -474,4 +441,8 @@ where
     fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         (**self).seq_elem(elem)
     }
+}
+
+pub fn unsupported() -> Result {
+    Err(Error)
 }

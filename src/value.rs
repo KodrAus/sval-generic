@@ -7,7 +7,7 @@ use crate::{
 #[doc(inline)]
 pub use crate::{
     for_all::ForAll,
-    stream::Stream,
+    stream::{self, Display, Stream},
     tag::{type_tag, variant_tag, TypeTag, TypeTagged, VariantTag, VariantTagged},
     Error, Result,
 };
@@ -28,8 +28,56 @@ where
                         self.0 = Some(v);
                         Ok(())
                     }
-                    _ => Err(Error),
+                    _ => stream::unsupported(),
                 }
+            }
+
+            fn display<D: Display>(&mut self, _: D) -> Result {
+                stream::unsupported()
+            }
+
+            fn none(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_begin(&mut self, _: Option<usize>) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_key_begin(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_key_end(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_value_begin(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_value_end(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn map_end(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                stream::unsupported()
+            }
+
+            fn seq_elem_begin(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn seq_elem_end(&mut self) -> Result {
+                stream::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                stream::unsupported()
             }
         }
 

@@ -195,3 +195,22 @@ which produces:
     }
 }
 ```
+
+# `Value` and `ValueRef`
+
+These traits seem very similar at first. Their relationship is roughly:
+
+```
+&'a impl Value = impl ValueRef<'a>
+```
+
+There are other implementors of `ValueRef<'a>` besides `&'a impl Value`:
+
+- Primitive types like `i32` and `bool`. That lets you pass these types by-value to stream methods instead of needing to create a borrow of them.
+- `ForAll<impl Value>`. That lets you bypass the `'a` lifetime requirement and send short-lived data through a stream.
+
+When deciding whether you should be using `Value` or `ValueRef`:
+
+- Implement `Value` for your type. You don't need to worry about `ValueRef`.
+- Prefer `fn func(v: impl Value)` over `fn func<'a>(v: impl ValueRef<'a>)`.
+- Prefer `fn func<'a>(v: impl ValueRef<'a>)` over `fn func<'a>(v: &'a impl Value)`.
