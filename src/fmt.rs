@@ -4,19 +4,19 @@ use std::{
 };
 
 use crate::{
+    source,
     stream::{self, Stream},
-    value,
 };
 
-pub struct Value<V>(V);
+pub struct Source<V>(V);
 
-impl<V> Value<V> {
-    pub fn new(value: V) -> Self {
-        Value(value)
+impl<V> Source<V> {
+    pub fn new(source: V) -> Self {
+        Source(source)
     }
 }
 
-impl<V: value::Value> Debug for Value<V> {
+impl<V: source::Source> Debug for Source<V> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.0.stream(FmtStream::new(f)).map_err(|_| fmt::Error)
     }

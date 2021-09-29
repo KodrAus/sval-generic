@@ -1,23 +1,23 @@
 use std::{error, fmt};
 
 use crate::{
-    reference::{TypedRef, ValueRef},
+    reference::{SourceRef, TypedRef},
+    source::Source,
     stream::Stream,
     tag::{TypeTag, VariantTag},
-    value::Value,
     Result,
 };
 
 #[derive(Clone, Copy)]
 pub struct ForAll<T>(pub(crate) T);
 
-impl<T: Value> Value for ForAll<T> {
+impl<T: Source> Source for ForAll<T> {
     fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
 }
 
-impl<'a, 'b, T: ValueRef<'b>> ValueRef<'a> for ForAll<T> {
+impl<'a, 'b, T: SourceRef<'b>> SourceRef<'a> for ForAll<T> {
     fn stream<'c, S: Stream<'c>>(self, stream: S) -> Result
     where
         'a: 'c,
@@ -30,7 +30,7 @@ impl<'a, 'b, T: ValueRef<'b>> ValueRef<'a> for ForAll<T> {
     }
 }
 
-impl<'a, 'b, U: Value + ?Sized + 'static, T: TypedRef<'b, U>> TypedRef<'a, U> for ForAll<T> {
+impl<'a, 'b, U: Source + ?Sized + 'static, T: TypedRef<'b, U>> TypedRef<'a, U> for ForAll<T> {
     fn get(&self) -> &U {
         self.0.get()
     }
@@ -41,7 +41,7 @@ impl<'a, 'b, U: Value + ?Sized + 'static, T: TypedRef<'b, U>> TypedRef<'a, U> fo
 }
 
 impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
-    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
+    fn any<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
         self.0.any(ForAll(value))
     }
 
@@ -115,7 +115,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: SourceRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -127,7 +127,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         'v: 'a,
         T: TypedRef<'static, str>,
         K: TypedRef<'static, str>,
-        V: ValueRef<'v>,
+        V: SourceRef<'v>,
     >(
         &mut self,
         tag: VariantTag<T, K>,
@@ -184,7 +184,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.variant_tagged_map_end()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
+    fn map_entry<'k: 'a, 'v: 'a, K: SourceRef<'k>, V: SourceRef<'v>>(
         &mut self,
         key: K,
         value: V,
@@ -192,7 +192,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.map_entry(ForAll(key), ForAll(value))
     }
 
-    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
+    fn map_key<'k: 'a, K: SourceRef<'k>>(&mut self, key: K) -> Result {
         self.0.map_key(ForAll(key))
     }
 
@@ -200,7 +200,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.map_field(field)
     }
 
-    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
+    fn map_value<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
         self.0.map_value(ForAll(value))
     }
 
@@ -244,7 +244,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.seq_elem_end()
     }
 
-    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
+    fn seq_elem<'e: 'a, E: SourceRef<'e>>(&mut self, elem: E) -> Result {
         self.0.seq_elem(ForAll(elem))
     }
 }

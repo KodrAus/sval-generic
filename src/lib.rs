@@ -1,7 +1,7 @@
 pub mod fmt;
 pub mod serde;
+pub mod source;
 pub mod stream;
-pub mod value;
 
 pub mod erased;
 
@@ -13,7 +13,7 @@ mod tag;
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{stream::Stream, value::Value};
+pub use self::{source::Source, stream::Stream};
 
 #[derive(Debug)]
 pub struct Error;
@@ -26,23 +26,23 @@ impl From<std::fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, v: impl reference::ValueRef<'a>) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, v: impl reference::SourceRef<'a>) -> Result {
     v.stream(s)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
+        source::{self, Source},
         stream::{self, Stream},
-        value::{self, Value},
     };
 
     #[test]
     fn it_works() {
-        struct MyValue;
+        struct MySource;
 
-        impl Value for MyValue {
-            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
+        impl Source for MySource {
+            fn stream<'a, S: source::Stream<'a>>(&'a self, mut stream: S) -> source::Result {
                 let mut short = |s: &str| {
                     stream.map_field("field")?;
                     stream.map_value(s.for_all())
@@ -57,8 +57,8 @@ mod tests {
             b: i64,
         }
 
-        impl Value for MyStruct {
-            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
+        impl Source for MyStruct {
+            fn stream<'a, S: source::Stream<'a>>(&'a self, mut stream: S) -> source::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(&self.a)?;
@@ -73,8 +73,8 @@ mod tests {
             b: i64,
         }
 
-        impl<'a> Value for MyInnerRef<'a> {
-            fn stream<'b, S: value::Stream<'b>>(&'b self, mut stream: S) -> value::Result {
+        impl<'a> Source for MyInnerRef<'a> {
+            fn stream<'b, S: source::Stream<'b>>(&'b self, mut stream: S) -> source::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(self.a)?;
@@ -149,7 +149,7 @@ mod tests {
             }
         }
 
-        MyValue.stream(MyStream(None)).unwrap();
+        MySource.stream(MyStream(None)).unwrap();
 
         let my_struct = MyStruct {
             a: String::from("hello!"),
@@ -168,7 +168,7 @@ mod tests {
 
         erased_value.stream(MyStream(None)).unwrap();
 
-        MyValue.stream(&mut erased_stream).unwrap();
+        MySource.stream(&mut erased_stream).unwrap();
 
         erased_value.stream(&mut erased_stream).unwrap();
     }

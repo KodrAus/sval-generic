@@ -25,7 +25,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let fieldstr = fields.named.iter().map(attr::name_of_field);
     let num_fields = fieldname.len();
 
-    let bound = parse_quote!(sval_generic_api::Value);
+    let bound = parse_quote!(sval_generic_api::Source);
     let bounded_where_clause = bound::where_clause_with_bound(&input.generics, bound);
 
     TokenStream::from(quote! {
@@ -33,12 +33,12 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         const #dummy: () = {
             extern crate sval_generic_api;
 
-            impl #impl_generics sval_generic_api::Value for #ident #ty_generics #bounded_where_clause {
+            impl #impl_generics sval_generic_api::Source for #ident #ty_generics #bounded_where_clause {
                 fn stream<'a, S>(&'a self, mut stream: S) -> sval_generic_api::Result
                 where
                     S: sval_generic_api::Stream<'a>
                 {
-                    stream.type_tagged_map_begin(sval_generic_api::value::TypeTag::new(#tag), Some(#num_fields))?;
+                    stream.type_tagged_map_begin(sval_generic_api::source::TypeTag::new(#tag), Some(#num_fields))?;
 
                     #(
                         stream.map_field(#fieldstr)?;
