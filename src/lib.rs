@@ -26,7 +26,7 @@ impl From<std::fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, v: &'a impl Value) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, v: impl reference::ValueRef<'a>) -> Result {
     v.stream(s)
 }
 

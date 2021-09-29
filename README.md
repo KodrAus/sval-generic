@@ -1,5 +1,7 @@
 # API
 
+This is an experimental alternative API for `sval` that avoids some of the costs associated with trait objects and consolidates around a few core traits.
+
 `sval` is like a blend of `serde::ser` and `serde::de`. It:
 
 - splits producers and consumers of structured data into values and streams respectively.
@@ -53,17 +55,24 @@ MyStruct {
 is streamed as:
 
 ```rust
-struct_map("MyStruct", Some(3), |mut map| {
-    map.field("a", 42)?;
-    map.field("b", true)?;
-    map.field("c", "a string")
-})?;
+type_tagged_map_begin(type_tag("MyStruct"), Some(3))?;
+
+map_field("a")?;
+map_value(42)?;
+
+map_field("b")?;
+map_value(true)?;
+
+map_field("c")?;
+map_value("a string")?;
+
+type_tagged_map_end()?;
 ```
 
 which expands to:
 
 ```rust
-type_tagged_begin("MyStruct")?;
+type_tagged_begin(type_tag("MyStruct"))?;
 map_begin(Some(3))?;
 
 map_key_begin()?;
@@ -97,7 +106,11 @@ type_tagged_end()?;
 which produces:
 
 ```json
-{ "a": 42, "b": true, "c": "a string" }
+{
+    "a": 42,
+    "b": true,
+    "c": "a string"
+}
 ```
 
 ## Field-value struct enums
@@ -123,17 +136,24 @@ MyEnum::MyVariant {
 is streamed as:
 
 ```rust
-struct_variant_map("MyEnum", "MyVariant", Some(0), Some(3), |mut map| {
-    map.field("a", 42)?;
-    map.field("b", true)?;
-    map.field("c", "a string")
-})?;
+variant_tagged_map_begin(variant_tag("MyEnum", "MyVariant", Some(0)))?;
+
+map_field("a")?;
+map_value(42)?;
+
+map_field("b")?;
+map_value(true)?;
+
+map_field("c")?;
+map_value("a string")?;
+
+variant_tagged_map_end()?;
 ```
 
 which expands to:
 
 ```rust
-variant_tagged_begin("MyEnum", "MyVariant", Some(0))?;
+variant_tagged_begin(variant_tag("MyEnum", "MyVariant", Some(0)))?;
 map_begin(Some(3))?;
 
 map_key_begin()?;
@@ -167,5 +187,11 @@ variant_tagged_end()?;
 which produces:
 
 ```json
-{ "MyVariant": { "a": 42, "b": true, "c": "a string" }}
+{
+    "MyVariant": {
+        "a": 42,
+        "b": true,
+        "c": "a string"
+    }
+}
 ```
