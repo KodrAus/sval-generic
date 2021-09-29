@@ -88,6 +88,16 @@ fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn twitter_sval_generic_api_to_serde(b: &mut test::Bencher) {
+    use sval_generic_api::Value;
+
+    let s = input_struct();
+    let s = s.to_serialize();
+
+    b.iter(|| serde_json::to_string(&s).unwrap());
+}
+
+#[bench]
 fn twitter_valuable(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| valuable_json::to_string(&s).unwrap());

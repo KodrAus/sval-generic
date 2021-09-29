@@ -1,6 +1,7 @@
 use crate::{
     erased,
     reference::{TypedRef, ValueRef},
+    serde,
 };
 
 #[doc(inline)]
@@ -57,6 +58,10 @@ where
         Self: Sized,
     {
         erased::Value::new(self)
+    }
+
+    fn to_serialize(&self) -> serde::Value<&Self> {
+        serde::Value::new(self)
     }
 }
 
