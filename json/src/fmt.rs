@@ -40,68 +40,48 @@ where
     W: Write,
 {
     fn display<V: fmt::Display>(&mut self, v: V) -> stream::Result {
-        self.out.write_char('"')?;
-        fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
-        self.out.write_char('"')?;
+        if self.is_key {
+            fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
+        } else {
+            self.out.write_char('"')?;
+            fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
+            self.out.write_char('"')?;
+        }
 
         Ok(())
     }
 
     fn i64(&mut self, v: i64) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
     fn u64(&mut self, v: u64) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
     fn i128(&mut self, v: i128) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
     fn u128(&mut self, v: u128) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
     fn f64(&mut self, v: f64) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(ryu::Buffer::new().format(v))?;
 
         Ok(())
     }
 
     fn bool(&mut self, v: bool) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str(if v { "true" } else { "false" })?;
 
         Ok(())
@@ -121,18 +101,18 @@ where
     where
         'v: 'a,
     {
-        self.out.write_char('"')?;
-        escape_str(v.get(), &mut self.out)?;
-        self.out.write_char('"')?;
+        if self.is_key {
+            escape_str(v.get(), &mut self.out)?;
+        } else {
+            self.out.write_char('"')?;
+            escape_str(v.get(), &mut self.out)?;
+            self.out.write_char('"')?;
+        }
 
         Ok(())
     }
 
     fn none(&mut self) -> stream::Result {
-        if self.is_key {
-            return Err(stream::Error);
-        }
-
         self.out.write_str("null")?;
 
         Ok(())
@@ -156,12 +136,16 @@ where
             self.out.write_char(',')?;
         }
 
+        self.out.write_char('"')?;
+
         self.is_current_depth_empty = false;
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> stream::Result {
+        self.out.write_char('"')?;
+
         self.is_key = false;
 
         Ok(())
