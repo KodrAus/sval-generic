@@ -102,3 +102,29 @@ fn twitter_valuable(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| valuable_json::to_string(&s).unwrap());
 }
+
+struct Fmt<T>(T);
+
+impl<T: std::fmt::Debug> std::fmt::Display for Fmt<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[bench]
+fn twitter_std_fmt(b: &mut test::Bencher) {
+    let s = input_struct();
+    let s = Fmt(&s);
+
+    b.iter(|| s.to_string());
+}
+
+#[bench]
+fn twitter_sval_generic_api_fmt(b: &mut test::Bencher) {
+    use sval_generic_api::Value;
+
+    let s = input_struct();
+    let s = Fmt(s.to_debug());
+
+    b.iter(|| s.to_string());
+}

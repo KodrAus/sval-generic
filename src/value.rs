@@ -1,5 +1,5 @@
 use crate::{
-    erased,
+    erased, fmt,
     reference::{TypedRef, ValueRef},
     serde,
 };
@@ -62,6 +62,10 @@ where
 
     fn to_serialize(&self) -> serde::Value<&Self> {
         serde::Value::new(self)
+    }
+
+    fn to_debug(&self) -> fmt::Value<&Self> {
+        fmt::Value::new(self)
     }
 }
 

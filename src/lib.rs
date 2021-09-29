@@ -1,5 +1,4 @@
-use std::fmt;
-
+pub mod fmt;
 pub mod serde;
 pub mod stream;
 pub mod value;
@@ -19,8 +18,8 @@ pub use self::{stream::Stream, value::Value};
 #[derive(Debug)]
 pub struct Error;
 
-impl From<fmt::Error> for Error {
-    fn from(_: fmt::Error) -> Error {
+impl From<std::fmt::Error> for Error {
+    fn from(_: std::fmt::Error) -> Error {
         Error
     }
 }
