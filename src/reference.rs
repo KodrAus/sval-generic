@@ -1,10 +1,9 @@
 use crate::{for_all::ForAll, stream::Stream, value::Value, Result};
 
 pub trait ValueRef<'a>: Value + Copy {
-    fn stream<'b, S>(self, stream: S) -> Result
+    fn stream<'b, S: Stream<'b>>(self, stream: S) -> Result
     where
-        'a: 'b,
-        S: Stream<'b>;
+        'a: 'b;
 
     fn to_str(self) -> Option<&'a str>;
 
@@ -21,14 +20,10 @@ pub trait TypedRef<'a, T: ?Sized + Value + 'static>: ValueRef<'a> {
     fn try_unwrap(self) -> Option<&'a T>;
 }
 
-impl<'a, T: ?Sized> ValueRef<'a> for &'a T
-where
-    T: Value,
-{
-    fn stream<'b, S>(self, stream: S) -> Result
+impl<'a, T: Value + ?Sized> ValueRef<'a> for &'a T {
+    fn stream<'b, S: Stream<'b>>(self, stream: S) -> Result
     where
         'a: 'b,
-        S: Stream<'b>,
     {
         (*self).stream(stream)
     }
@@ -38,10 +33,7 @@ where
     }
 }
 
-impl<'a, T: ?Sized> TypedRef<'a, T> for &'a T
-where
-    T: Value + 'static,
-{
+impl<'a, T: Value + ?Sized + 'static> TypedRef<'a, T> for &'a T {
     fn get(&self) -> &T {
         self
     }

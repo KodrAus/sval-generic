@@ -1,5 +1,6 @@
 use std::fmt;
 
+pub mod serde;
 pub mod stream;
 pub mod value;
 

@@ -1,7 +1,7 @@
 use std::error;
 
 use crate::{
-    stream,
+    reference,
     value::{self, Value},
 };
 
@@ -14,7 +14,7 @@ impl Value for () {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for () {
+impl<'a> reference::ValueRef<'a> for () {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -28,7 +28,7 @@ impl<'a> stream::ValueRef<'a> for () {
     }
 }
 
-impl<'a> stream::TypedRef<'a, ()> for () {
+impl<'a> reference::TypedRef<'a, ()> for () {
     fn get(&self) -> &() {
         self
     }
@@ -47,7 +47,7 @@ impl Value for bool {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for bool {
+impl<'a> reference::ValueRef<'a> for bool {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -61,7 +61,7 @@ impl<'a> stream::ValueRef<'a> for bool {
     }
 }
 
-impl<'a> stream::TypedRef<'a, bool> for bool {
+impl<'a> reference::TypedRef<'a, bool> for bool {
     fn get(&self) -> &bool {
         self
     }
@@ -80,7 +80,7 @@ impl Value for u8 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for u8 {
+impl<'a> reference::ValueRef<'a> for u8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -94,7 +94,7 @@ impl<'a> stream::ValueRef<'a> for u8 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, u8> for u8 {
+impl<'a> reference::TypedRef<'a, u8> for u8 {
     fn get(&self) -> &u8 {
         self
     }
@@ -113,7 +113,7 @@ impl Value for i8 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for i8 {
+impl<'a> reference::ValueRef<'a> for i8 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -127,7 +127,7 @@ impl<'a> stream::ValueRef<'a> for i8 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, i8> for i8 {
+impl<'a> reference::TypedRef<'a, i8> for i8 {
     fn get(&self) -> &i8 {
         self
     }
@@ -146,7 +146,7 @@ impl Value for u16 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for u16 {
+impl<'a> reference::ValueRef<'a> for u16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -160,7 +160,7 @@ impl<'a> stream::ValueRef<'a> for u16 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, u16> for u16 {
+impl<'a> reference::TypedRef<'a, u16> for u16 {
     fn get(&self) -> &u16 {
         self
     }
@@ -179,7 +179,7 @@ impl Value for i16 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for i16 {
+impl<'a> reference::ValueRef<'a> for i16 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -193,7 +193,7 @@ impl<'a> stream::ValueRef<'a> for i16 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, i16> for i16 {
+impl<'a> reference::TypedRef<'a, i16> for i16 {
     fn get(&self) -> &i16 {
         self
     }
@@ -212,7 +212,7 @@ impl Value for u32 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for u32 {
+impl<'a> reference::ValueRef<'a> for u32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -226,7 +226,7 @@ impl<'a> stream::ValueRef<'a> for u32 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, u32> for u32 {
+impl<'a> reference::TypedRef<'a, u32> for u32 {
     fn get(&self) -> &u32 {
         self
     }
@@ -245,7 +245,7 @@ impl Value for i32 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for i32 {
+impl<'a> reference::ValueRef<'a> for i32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -259,7 +259,7 @@ impl<'a> stream::ValueRef<'a> for i32 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, i32> for i32 {
+impl<'a> reference::TypedRef<'a, i32> for i32 {
     fn get(&self) -> &i32 {
         self
     }
@@ -278,7 +278,7 @@ impl Value for u64 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for u64 {
+impl<'a> reference::ValueRef<'a> for u64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -292,7 +292,7 @@ impl<'a> stream::ValueRef<'a> for u64 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, u64> for u64 {
+impl<'a> reference::TypedRef<'a, u64> for u64 {
     fn get(&self) -> &u64 {
         self
     }
@@ -311,7 +311,7 @@ impl Value for i64 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for i64 {
+impl<'a> reference::ValueRef<'a> for i64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -325,7 +325,7 @@ impl<'a> stream::ValueRef<'a> for i64 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, i64> for i64 {
+impl<'a> reference::TypedRef<'a, i64> for i64 {
     fn get(&self) -> &i64 {
         self
     }
@@ -344,7 +344,7 @@ impl Value for u128 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for u128 {
+impl<'a> reference::ValueRef<'a> for u128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -358,7 +358,7 @@ impl<'a> stream::ValueRef<'a> for u128 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, u128> for u128 {
+impl<'a> reference::TypedRef<'a, u128> for u128 {
     fn get(&self) -> &u128 {
         self
     }
@@ -377,7 +377,7 @@ impl Value for i128 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for i128 {
+impl<'a> reference::ValueRef<'a> for i128 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -391,7 +391,7 @@ impl<'a> stream::ValueRef<'a> for i128 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, i128> for i128 {
+impl<'a> reference::TypedRef<'a, i128> for i128 {
     fn get(&self) -> &i128 {
         self
     }
@@ -410,7 +410,7 @@ impl Value for f32 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for f32 {
+impl<'a> reference::ValueRef<'a> for f32 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -424,7 +424,7 @@ impl<'a> stream::ValueRef<'a> for f32 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, f32> for f32 {
+impl<'a> reference::TypedRef<'a, f32> for f32 {
     fn get(&self) -> &f32 {
         self
     }
@@ -443,7 +443,7 @@ impl Value for f64 {
     }
 }
 
-impl<'a> stream::ValueRef<'a> for f64 {
+impl<'a> reference::ValueRef<'a> for f64 {
     fn stream<'b, S>(self, mut stream: S) -> value::Result
     where
         'a: 'b,
@@ -457,7 +457,7 @@ impl<'a> stream::ValueRef<'a> for f64 {
     }
 }
 
-impl<'a> stream::TypedRef<'a, f64> for f64 {
+impl<'a> reference::TypedRef<'a, f64> for f64 {
     fn get(&self) -> &f64 {
         self
     }
@@ -493,7 +493,7 @@ impl Value for String {
     }
 }
 
-impl<'a> stream::TypedRef<'a, str> for &'a String {
+impl<'a> reference::TypedRef<'a, str> for &'a String {
     fn get(&self) -> &str {
         &**self
     }

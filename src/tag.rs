@@ -34,19 +34,15 @@ impl<T> TypeTag<T> {
 }
 
 impl<T: TypedRef<'static, str>> Value for TypeTag<T> {
-    fn stream<'a, S>(&'a self, mut stream: S) -> Result
-    where
-        S: Stream<'a>,
-    {
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.type_tag(*self)
     }
 }
 
 impl<'a, T: TypedRef<'static, str>> ValueRef<'a> for TypeTag<T> {
-    fn stream<'b, S>(self, mut stream: S) -> Result
+    fn stream<'b, S: Stream<'b>>(self, mut stream: S) -> Result
     where
         'a: 'b,
-        S: Stream<'b>,
     {
         stream.type_tag(self)
     }
@@ -108,19 +104,15 @@ impl<T, K> VariantTag<T, K> {
 }
 
 impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>> Value for VariantTag<T, K> {
-    fn stream<'a, S>(&'a self, mut stream: S) -> Result
-    where
-        S: Stream<'a>,
-    {
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.variant_tag(*self)
     }
 }
 
 impl<'a, T: TypedRef<'static, str>, K: TypedRef<'static, str>> ValueRef<'a> for VariantTag<T, K> {
-    fn stream<'b, S>(self, mut stream: S) -> Result
+    fn stream<'b, S: Stream<'b>>(self, mut stream: S) -> Result
     where
         'a: 'b,
-        S: Stream<'b>,
     {
         stream.variant_tag(self)
     }
@@ -142,10 +134,7 @@ impl<T, V> TypeTagged<T, V> {
 }
 
 impl<T: TypedRef<'static, str>, V: Value> Value for TypeTagged<T, V> {
-    fn stream<'a, S>(&'a self, mut stream: S) -> Result
-    where
-        S: Stream<'a>,
-    {
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.type_tagged(self.tag, &self.value)
     }
 }
@@ -164,10 +153,7 @@ impl<T, K, V> VariantTagged<T, K, V> {
 impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: Value> Value
     for VariantTagged<T, K, V>
 {
-    fn stream<'a, S>(&'a self, mut stream: S) -> Result
-    where
-        S: Stream<'a>,
-    {
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.variant_tagged(self.tag, &self.value)
     }
 }

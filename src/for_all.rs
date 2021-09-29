@@ -11,26 +11,16 @@ use crate::{
 #[derive(Clone, Copy)]
 pub struct ForAll<T>(pub(crate) T);
 
-impl<T> Value for ForAll<T>
-where
-    T: Value,
-{
-    fn stream<'a, S>(&'a self, stream: S) -> Result
-    where
-        S: Stream<'a>,
-    {
+impl<T: Value> Value for ForAll<T> {
+    fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
 }
 
-impl<'a, 'b, T> ValueRef<'a> for ForAll<T>
-where
-    T: ValueRef<'b>,
-{
-    fn stream<'c, S>(self, stream: S) -> Result
+impl<'a, 'b, T: ValueRef<'b>> ValueRef<'a> for ForAll<T> {
+    fn stream<'c, S: Stream<'c>>(self, stream: S) -> Result
     where
         'a: 'c,
-        S: Stream<'c>,
     {
         self.0.stream(ForAll(stream))
     }
@@ -40,11 +30,7 @@ where
     }
 }
 
-impl<'a, 'b, T, U: ?Sized> TypedRef<'a, U> for ForAll<T>
-where
-    T: TypedRef<'b, U>,
-    U: Value + 'static,
-{
+impl<'a, 'b, U: Value + ?Sized + 'static, T: TypedRef<'b, U>> TypedRef<'a, U> for ForAll<T> {
     fn get(&self) -> &U {
         self.0.get()
     }
@@ -54,14 +40,8 @@ where
     }
 }
 
-impl<'a, 'b, S> Stream<'a> for ForAll<S>
-where
-    S: Stream<'b>,
-{
-    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
+    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         self.0.any(ForAll(value))
     }
 
@@ -97,17 +77,11 @@ where
         self.0.none()
     }
 
-    fn str<'s, T: TypedRef<'s, str>>(&mut self, value: T) -> Result
-    where
-        's: 'a,
-    {
+    fn str<'s: 'a, T: TypedRef<'s, str>>(&mut self, value: T) -> Result {
         self.0.str(ForAll(value))
     }
 
-    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn error<'e: 'a, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result {
         self.0.error(ForAll(error))
     }
 
@@ -141,25 +115,24 @@ where
         self.0.variant_tagged_end()
     }
 
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         self.0.type_tagged(tag, ForAll(value))
     }
 
-    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn variant_tagged<
+        'v: 'a,
+        T: TypedRef<'static, str>,
+        K: TypedRef<'static, str>,
+        V: ValueRef<'v>,
+    >(
         &mut self,
         tag: VariantTag<T, K>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         self.0.variant_tagged(tag, ForAll(value))
     }
 
@@ -211,18 +184,15 @@ where
         self.0.variant_tagged_map_end()
     }
 
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
+    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result {
         self.0.map_entry(ForAll(key), ForAll(value))
     }
 
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
-    where
-        'k: 'a,
-    {
+    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
         self.0.map_key(ForAll(key))
     }
 
@@ -230,10 +200,7 @@ where
         self.0.map_field(field)
     }
 
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         self.0.map_value(ForAll(value))
     }
 
@@ -277,10 +244,7 @@ where
         self.0.seq_elem_end()
     }
 
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         self.0.seq_elem(ForAll(elem))
     }
 }

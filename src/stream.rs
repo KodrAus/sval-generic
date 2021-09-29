@@ -11,10 +11,7 @@ pub use crate::{
 };
 
 pub trait Stream<'a> {
-    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         value.stream(self)
     }
 
@@ -57,18 +54,12 @@ pub trait Stream<'a> {
         Err(Error)
     }
 
-    fn str<'s, S: TypedRef<'s, str>>(&mut self, value: S) -> Result
-    where
-        's: 'a,
-    {
+    fn str<'s: 'a, S: TypedRef<'s, str>>(&mut self, value: S) -> Result {
         let _ = value;
         Err(Error)
     }
 
-    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn error<'e: 'a, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result {
         let _ = error;
         Err(Error)
     }
@@ -107,27 +98,26 @@ pub trait Stream<'a> {
         self.map_end()
     }
 
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         self.type_tagged_begin(tag)?;
         self.any(value)?;
         self.type_tagged_end()
     }
 
-    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn variant_tagged<
+        'v: 'a,
+        T: TypedRef<'static, str>,
+        K: TypedRef<'static, str>,
+        V: ValueRef<'v>,
+    >(
         &mut self,
         tag: VariantTag<T, K>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         self.variant_tagged_begin(tag)?;
         self.any(value)?;
         self.variant_tagged_end()
@@ -186,19 +176,16 @@ pub trait Stream<'a> {
         self.variant_tagged_end()
     }
 
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
+    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result {
         self.map_key(key)?;
         self.map_value(value)
     }
 
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
-    where
-        'k: 'a,
-    {
+    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
         self.map_key_begin()?;
         self.any(key)?;
         self.map_key_end()
@@ -208,10 +195,7 @@ pub trait Stream<'a> {
         self.map_key(field)
     }
 
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         self.map_value_begin()?;
         self.any(value)?;
         self.map_value_end()
@@ -262,10 +246,7 @@ pub trait Stream<'a> {
         Err(Error)
     }
 
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         self.seq_elem_begin()?;
         self.any(elem)?;
         self.seq_elem_end()
@@ -287,10 +268,7 @@ impl<'a, 'b, S: ?Sized> Stream<'a> for &'b mut S
 where
     S: Stream<'a>,
 {
-    fn any<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         (**self).any(value)
     }
 
@@ -326,17 +304,11 @@ where
         (**self).none()
     }
 
-    fn str<'s, T: TypedRef<'s, str>>(&mut self, value: T) -> Result
-    where
-        's: 'a,
-    {
+    fn str<'s: 'a, T: TypedRef<'s, str>>(&mut self, value: T) -> Result {
         (**self).str(value)
     }
 
-    fn error<'e, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn error<'e: 'a, E: TypedRef<'e, dyn error::Error + 'static>>(&mut self, error: E) -> Result {
         (**self).error(error)
     }
 
@@ -370,25 +342,24 @@ where
         (**self).variant_tagged_end()
     }
 
-    fn type_tagged<'v, T: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         (**self).type_tagged(tag, value)
     }
 
-    fn variant_tagged<'v, T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: ValueRef<'v>>(
+    fn variant_tagged<
+        'v: 'a,
+        T: TypedRef<'static, str>,
+        K: TypedRef<'static, str>,
+        V: ValueRef<'v>,
+    >(
         &mut self,
         tag: VariantTag<T, K>,
         value: V,
-    ) -> Result
-    where
-        'v: 'a,
-    {
+    ) -> Result {
         (**self).variant_tagged(tag, value)
     }
 
@@ -440,18 +411,15 @@ where
         (**self).variant_tagged_map_end()
     }
 
-    fn map_entry<'k, 'v, K: ValueRef<'k>, V: ValueRef<'v>>(&mut self, key: K, value: V) -> Result
-    where
-        'k: 'a,
-        'v: 'a,
-    {
+    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result {
         (**self).map_entry(key, value)
     }
 
-    fn map_key<'k, K: ValueRef<'k>>(&mut self, key: K) -> Result
-    where
-        'k: 'a,
-    {
+    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
         (**self).map_key(key)
     }
 
@@ -459,10 +427,7 @@ where
         (**self).map_field(field)
     }
 
-    fn map_value<'v, V: ValueRef<'v>>(&mut self, value: V) -> Result
-    where
-        'v: 'a,
-    {
+    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         (**self).map_value(value)
     }
 
@@ -506,10 +471,7 @@ where
         (**self).seq_elem_end()
     }
 
-    fn seq_elem<'e, E: ValueRef<'e>>(&mut self, elem: E) -> Result
-    where
-        'e: 'a,
-    {
+    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         (**self).seq_elem(elem)
     }
 }

@@ -15,18 +15,13 @@ pub trait Value
 where
     for<'a> &'a Self: ValueRef<'a>,
 {
-    fn stream<'a, S>(&'a self, stream: S) -> Result
-    where
-        S: Stream<'a>;
+    fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result;
 
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for Extract<'a> {
-            fn str<'v, V: TypedRef<'v, str>>(&mut self, v: V) -> Result
-            where
-                'v: 'a,
-            {
+            fn str<'v: 'a, V: TypedRef<'v, str>>(&mut self, v: V) -> Result {
                 match v.try_unwrap() {
                     Some(v) => {
                         self.0 = Some(v);
@@ -69,10 +64,7 @@ impl<'a, T: ?Sized> Value for &'a T
 where
     T: Value,
 {
-    fn stream<'b, S>(&'b self, stream: S) -> Result
-    where
-        S: Stream<'b>,
-    {
+    fn stream<'b, S: Stream<'b>>(&'b self, stream: S) -> Result {
         (**self).stream(stream)
     }
 
