@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use crate::{
-    source,
+    value,
     stream::{self, Stream},
 };
 
@@ -10,15 +10,15 @@ use serde::ser::{
     SerializeTupleStruct, SerializeTupleVariant, Serializer,
 };
 
-pub struct Source<V>(V);
+pub struct Value<V>(V);
 
-impl<V> Source<V> {
+impl<V> Value<V> {
     pub fn new(value: V) -> Self {
-        Source(value)
+        Value(value)
     }
 }
 
-impl<V: source::Source> Serialize for Source<V> {
+impl<V: value::Value> Serialize for Value<V> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -423,8 +423,8 @@ impl<S: Serializer> SerdeStream<S> {
 }
 
 impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
-    fn any<'b: 'a, V: stream::SourceRef<'b>>(&mut self, v: V) -> stream::Result {
-        self.serialize_any(Source::new(v))
+    fn any<'b: 'a, V: stream::ValueRef<'b>>(&mut self, v: V) -> stream::Result {
+        self.serialize_any(Value::new(v))
     }
 
     fn display<D: stream::Display>(&mut self, v: D) -> stream::Result {

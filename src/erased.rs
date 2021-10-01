@@ -1,22 +1,22 @@
 use std::{error, fmt};
 
-use crate::{reference, source, stream, tag, Result};
+use crate::{reference, value, stream, tag, Result};
 
 // TODO: This public API needs to be a trait we can add OIBIT's to
-pub struct Source<'a>(&'a dyn ErasedSource);
+pub struct Value<'a>(&'a dyn ErasedValue);
 
-impl<'a> Source<'a> {
-    pub fn new(v: &'a impl source::Source) -> Self {
-        Source(v)
+impl<'a> Value<'a> {
+    pub fn new(v: &'a impl value::Value) -> Self {
+        Value(v)
     }
 }
 
-trait ErasedSource {
+trait ErasedValue {
     fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result;
     fn erased_to_str(&self) -> Option<&str>;
 }
 
-impl<T: source::Source + ?Sized> ErasedSource for T {
+impl<T: value::Value + ?Sized> ErasedValue for T {
     fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result {
         self.stream(stream)
     }
@@ -26,7 +26,7 @@ impl<T: source::Source + ?Sized> ErasedSource for T {
     }
 }
 
-impl<'a> source::Source for Source<'a> {
+impl<'a> value::Value for Value<'a> {
     fn stream<'b, S: stream::Stream<'b>>(&'b self, mut stream: S) -> Result {
         self.0.erased_stream(Stream(&mut stream))
     }
@@ -46,7 +46,7 @@ impl<'a, 'b> Stream<'a, 'b> {
 }
 
 trait ErasedStream<'a> {
-    fn erased_any<'b, 'v: 'a>(&mut self, v: SourceRef<'v, 'b>) -> Result;
+    fn erased_any<'b, 'v: 'a>(&mut self, v: ValueRef<'v, 'b>) -> Result;
     fn erased_u64(&mut self, v: u64) -> Result;
     fn erased_i64(&mut self, v: i64) -> Result;
     fn erased_i128(&mut self, v: i128) -> Result;
@@ -79,14 +79,14 @@ trait ErasedStream<'a> {
     fn erased_type_tagged<'b, 'v: 'a>(
         &mut self,
         tag_ty: TypedRef<'static, 'b, str>,
-        v: SourceRef<'v, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result;
     fn erased_variant_tagged<'b, 'v: 'a>(
         &mut self,
         tag_ty: TypedRef<'static, 'b, str>,
         tag_variant_key: TypedRef<'static, 'b, str>,
         tag_variant_index: Option<u64>,
-        v: SourceRef<'v, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result;
     fn erased_map_begin(&mut self, len: Option<usize>) -> Result;
     fn erased_map_key_begin(&mut self) -> Result;
@@ -108,12 +108,12 @@ trait ErasedStream<'a> {
         len: Option<usize>,
     ) -> Result;
     fn erased_variant_tagged_map_end(&mut self) -> Result;
-    fn erased_map_key<'b, 'k: 'a>(&mut self, k: SourceRef<'k, 'b>) -> Result;
-    fn erased_map_value<'b, 'v: 'a>(&mut self, v: SourceRef<'v, 'b>) -> Result;
+    fn erased_map_key<'b, 'k: 'a>(&mut self, k: ValueRef<'k, 'b>) -> Result;
+    fn erased_map_value<'b, 'v: 'a>(&mut self, v: ValueRef<'v, 'b>) -> Result;
     fn erased_map_entry<'b, 'k: 'a, 'v: 'a>(
         &mut self,
-        k: SourceRef<'k, 'b>,
-        v: SourceRef<'v, 'b>,
+        k: ValueRef<'k, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result;
     fn erased_map_field<'b>(&mut self, f: TypedRef<'static, 'b, str>) -> Result;
     fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
@@ -134,11 +134,11 @@ trait ErasedStream<'a> {
     fn erased_variant_tagged_seq_end(&mut self) -> Result;
     fn erased_seq_elem_begin(&mut self) -> Result;
     fn erased_seq_elem_end(&mut self) -> Result;
-    fn erased_seq_elem<'b, 'e: 'a>(&mut self, e: SourceRef<'e, 'b>) -> Result;
+    fn erased_seq_elem<'b, 'e: 'a>(&mut self, e: ValueRef<'e, 'b>) -> Result;
 }
 
 impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
-    fn erased_any<'b, 'v: 'a>(&mut self, v: SourceRef<'v, 'b>) -> Result {
+    fn erased_any<'b, 'v: 'a>(&mut self, v: ValueRef<'v, 'b>) -> Result {
         self.any(v)
     }
 
@@ -229,7 +229,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
     fn erased_type_tagged<'b, 'v: 'a>(
         &mut self,
         tag_ty: TypedRef<'static, 'b, str>,
-        v: SourceRef<'v, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result {
         self.type_tagged(tag::TypeTag::new(tag_ty), v)
     }
@@ -239,7 +239,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
         tag_ty: TypedRef<'static, 'b, str>,
         tag_variant_key: TypedRef<'static, 'b, str>,
         tag_variant_index: Option<u64>,
-        v: SourceRef<'v, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result {
         self.variant_tagged(
             tag::VariantTag::new(tag_ty, tag_variant_key, tag_variant_index),
@@ -300,18 +300,18 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
         self.variant_tagged_map_end()
     }
 
-    fn erased_map_key<'b, 'k: 'a>(&mut self, k: SourceRef<'k, 'b>) -> Result {
+    fn erased_map_key<'b, 'k: 'a>(&mut self, k: ValueRef<'k, 'b>) -> Result {
         self.map_key(k)
     }
 
-    fn erased_map_value<'b, 'v: 'a>(&mut self, v: SourceRef<'v, 'b>) -> Result {
+    fn erased_map_value<'b, 'v: 'a>(&mut self, v: ValueRef<'v, 'b>) -> Result {
         self.map_value(v)
     }
 
     fn erased_map_entry<'b, 'k: 'a, 'v: 'a>(
         &mut self,
-        k: SourceRef<'k, 'b>,
-        v: SourceRef<'v, 'b>,
+        k: ValueRef<'k, 'b>,
+        v: ValueRef<'v, 'b>,
     ) -> Result {
         self.map_entry(k, v)
     }
@@ -365,14 +365,14 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
         self.seq_elem_end()
     }
 
-    fn erased_seq_elem<'b, 'e: 'a>(&mut self, e: SourceRef<'e, 'b>) -> Result {
+    fn erased_seq_elem<'b, 'e: 'a>(&mut self, e: ValueRef<'e, 'b>) -> Result {
         self.seq_elem(e)
     }
 }
 
 impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
-    fn any<'v: 'a, V: reference::SourceRef<'v>>(&mut self, value: V) -> Result {
-        self.erased_any(SourceRef(&value))
+    fn any<'v: 'a, V: reference::ValueRef<'v>>(&mut self, value: V) -> Result {
+        self.erased_any(ValueRef(&value))
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
@@ -462,20 +462,20 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: reference::TypedRef<'static, str>, V: reference::SourceRef<'v>>(
+    fn type_tagged<'v: 'a, T: reference::TypedRef<'static, str>, V: reference::ValueRef<'v>>(
         &mut self,
         tag: tag::TypeTag<T>,
         value: V,
     ) -> Result {
         self.0
-            .erased_type_tagged(TypedRef(&tag.ty()), SourceRef(&value))
+            .erased_type_tagged(TypedRef(&tag.ty()), ValueRef(&value))
     }
 
     fn variant_tagged<
         'v: 'a,
         T: reference::TypedRef<'static, str>,
         K: reference::TypedRef<'static, str>,
-        V: reference::SourceRef<'v>,
+        V: reference::ValueRef<'v>,
     >(
         &mut self,
         tag: tag::VariantTag<T, K>,
@@ -485,7 +485,7 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
             TypedRef(&tag.ty()),
             TypedRef(&tag.variant_key()),
             tag.variant_index(),
-            SourceRef(&value),
+            ValueRef(&value),
         )
     }
 
@@ -546,24 +546,24 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_variant_tagged_map_end()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: reference::SourceRef<'k>, V: reference::SourceRef<'v>>(
+    fn map_entry<'k: 'a, 'v: 'a, K: reference::ValueRef<'k>, V: reference::ValueRef<'v>>(
         &mut self,
         key: K,
         value: V,
     ) -> Result {
-        self.0.erased_map_entry(SourceRef(&key), SourceRef(&value))
+        self.0.erased_map_entry(ValueRef(&key), ValueRef(&value))
     }
 
-    fn map_key<'k: 'a, K: reference::SourceRef<'k>>(&mut self, key: K) -> Result {
-        self.0.erased_map_key(SourceRef(&key))
+    fn map_key<'k: 'a, K: reference::ValueRef<'k>>(&mut self, key: K) -> Result {
+        self.0.erased_map_key(ValueRef(&key))
     }
 
     fn map_field<F: reference::TypedRef<'static, str>>(&mut self, field: F) -> Result {
         self.0.erased_map_field(TypedRef(&field))
     }
 
-    fn map_value<'v: 'a, V: reference::SourceRef<'v>>(&mut self, value: V) -> Result {
-        self.0.erased_map_value(SourceRef(&value))
+    fn map_value<'v: 'a, V: reference::ValueRef<'v>>(&mut self, value: V) -> Result {
+        self.0.erased_map_value(ValueRef(&value))
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result {
@@ -615,22 +615,22 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_seq_elem_end()
     }
 
-    fn seq_elem<'e: 'a, E: reference::SourceRef<'e>>(&mut self, elem: E) -> Result {
-        self.0.erased_seq_elem(SourceRef(&elem))
+    fn seq_elem<'e: 'a, E: reference::ValueRef<'e>>(&mut self, elem: E) -> Result {
+        self.0.erased_seq_elem(ValueRef(&elem))
     }
 }
 
-struct SourceRef<'a, 'b>(&'b dyn ErasedSourceRef<'a>);
+struct ValueRef<'a, 'b>(&'b dyn ErasedValueRef<'a>);
 
-impl<'a, 'b> Clone for SourceRef<'a, 'b> {
+impl<'a, 'b> Clone for ValueRef<'a, 'b> {
     fn clone(&self) -> Self {
-        SourceRef(self.0)
+        ValueRef(self.0)
     }
 }
 
-impl<'a, 'b> Copy for SourceRef<'a, 'b> {}
+impl<'a, 'b> Copy for ValueRef<'a, 'b> {}
 
-trait ErasedSourceRef<'a> {
+trait ErasedValueRef<'a> {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b;
@@ -638,20 +638,20 @@ trait ErasedSourceRef<'a> {
     fn erased_to_str(&self) -> Option<&'a str>;
 }
 
-impl<'a, T: reference::SourceRef<'a>> ErasedSourceRef<'a> for T {
+impl<'a, T: reference::ValueRef<'a>> ErasedValueRef<'a> for T {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b,
     {
-        reference::SourceRef::stream(*self, stream)
+        reference::ValueRef::stream(*self, stream)
     }
 
     fn erased_to_str(&self) -> Option<&'a str> {
-        reference::SourceRef::to_str(*self)
+        reference::ValueRef::to_str(*self)
     }
 }
 
-impl<'a, 'b> reference::SourceRef<'a> for SourceRef<'a, 'b> {
+impl<'a, 'b> reference::ValueRef<'a> for ValueRef<'a, 'b> {
     fn stream<'c, S: stream::Stream<'c>>(self, mut stream: S) -> Result
     where
         'a: 'c,
@@ -664,7 +664,7 @@ impl<'a, 'b> reference::SourceRef<'a> for SourceRef<'a, 'b> {
     }
 }
 
-impl<'a, 'b> source::Source for SourceRef<'a, 'b> {
+impl<'a, 'b> value::Value for ValueRef<'a, 'b> {
     fn stream<'c, S: stream::Stream<'c>>(&'c self, mut stream: S) -> Result {
         self.0.erased_stream(Stream(&mut stream))
     }
@@ -691,18 +691,18 @@ trait ErasedTypedRef<'a, T: ?Sized> {
     fn erased_try_unwrap(&self) -> Option<&'a T>;
 }
 
-impl<'a, U: source::Source + ?Sized + 'static, T: reference::TypedRef<'a, U>> ErasedTypedRef<'a, U>
+impl<'a, U: value::Value + ?Sized + 'static, T: reference::TypedRef<'a, U>> ErasedTypedRef<'a, U>
     for T
 {
     fn erased_stream<'b>(&self, stream: Stream<'b, '_>) -> Result
     where
         'a: 'b,
     {
-        reference::SourceRef::stream(*self, stream)
+        reference::ValueRef::stream(*self, stream)
     }
 
     fn erased_to_str(&self) -> Option<&'a str> {
-        reference::SourceRef::to_str(*self)
+        reference::ValueRef::to_str(*self)
     }
 
     fn erased_get(&self) -> &U {
@@ -714,7 +714,7 @@ impl<'a, U: source::Source + ?Sized + 'static, T: reference::TypedRef<'a, U>> Er
     }
 }
 
-impl<'a, 'b, T: source::Source + ?Sized + 'static> reference::TypedRef<'a, T>
+impl<'a, 'b, T: value::Value + ?Sized + 'static> reference::TypedRef<'a, T>
     for TypedRef<'a, 'b, T>
 {
     fn get(&self) -> &T {
@@ -726,7 +726,7 @@ impl<'a, 'b, T: source::Source + ?Sized + 'static> reference::TypedRef<'a, T>
     }
 }
 
-impl<'a, 'b, T: ?Sized> reference::SourceRef<'a> for TypedRef<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized> reference::ValueRef<'a> for TypedRef<'a, 'b, T> {
     fn stream<'c, S: stream::Stream<'c>>(self, mut stream: S) -> Result
     where
         'a: 'c,
@@ -739,7 +739,7 @@ impl<'a, 'b, T: ?Sized> reference::SourceRef<'a> for TypedRef<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T: ?Sized> source::Source for TypedRef<'a, 'b, T> {
+impl<'a, 'b, T: ?Sized> value::Value for TypedRef<'a, 'b, T> {
     fn stream<'c, S: stream::Stream<'c>>(&'c self, mut stream: S) -> Result {
         self.0.erased_stream(Stream(&mut stream))
     }

@@ -196,21 +196,21 @@ which produces:
 }
 ```
 
-# `Source` and `SourceRef`
+# `Value` and `ValueRef`
 
 These traits seem very similar at first. Their relationship is roughly:
 
 ```
-&'a impl Source = impl SourceRef<'a>
+&'a impl Value = impl ValueRef<'a>
 ```
 
-There are other implementors of `SourceRef<'a>` besides `&'a impl Source`:
+There are other implementors of `ValueRef<'a>` besides `&'a impl Value`:
 
 - Primitive types like `i32` and `bool`. That lets you pass these types by-value to stream methods instead of needing to create a borrow of them.
-- `ForAll<impl Source>`. That lets you bypass the `'a` lifetime requirement and send short-lived data through a stream.
+- `ForAll<impl Value>`. That lets you bypass the `'a` lifetime requirement and send short-lived data through a stream.
 
-When deciding whether you should be using `Source` or `SourceRef`:
+When deciding whether you should be using `Value` or `ValueRef`:
 
-- Implement `Source` for your type. You don't need to worry about `SourceRef`.
-- Prefer `fn func(v: impl Source)` over `fn func<'a>(v: impl SourceRef<'a>)`.
-- Prefer `fn func<'a>(v: impl SourceRef<'a>)` over `fn func<'a>(v: &'a impl Source)`.
+- Implement `Value` for your type. You don't need to worry about `ValueRef`.
+- Prefer `fn func(v: impl Value)` over `fn func<'a>(v: impl ValueRef<'a>)`.
+- Prefer `fn func<'a>(v: impl ValueRef<'a>)` over `fn func<'a>(v: &'a impl Value)`.

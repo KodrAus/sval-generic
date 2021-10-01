@@ -7,7 +7,7 @@ use std::{
 
 pub fn to_fmt<'a>(
     fmt: impl Write,
-    v: impl stream::SourceRef<'a>,
+    v: impl stream::ValueRef<'a>,
 ) -> Result<(), sval_generic_api::Error> {
     v.stream(Formatter::new(fmt))
 }

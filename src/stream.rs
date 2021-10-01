@@ -5,7 +5,7 @@ use crate::erased;
 #[doc(inline)]
 pub use crate::{
     for_all::ForAll,
-    reference::{SourceRef, TypedRef},
+    reference::{ValueRef, TypedRef},
     tag::{TypeTag, VariantTag},
     Error, Result,
 };
@@ -13,7 +13,7 @@ pub use crate::{
 pub use fmt::Display;
 
 pub trait Stream<'a> {
-    fn any<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
+    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         value.stream(self)
     }
 
@@ -87,7 +87,7 @@ pub trait Stream<'a> {
         self.map_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: SourceRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -101,7 +101,7 @@ pub trait Stream<'a> {
         'v: 'a,
         T: TypedRef<'static, str>,
         K: TypedRef<'static, str>,
-        V: SourceRef<'v>,
+        V: ValueRef<'v>,
     >(
         &mut self,
         tag: VariantTag<T, K>,
@@ -152,7 +152,7 @@ pub trait Stream<'a> {
         self.variant_tagged_end()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: SourceRef<'k>, V: SourceRef<'v>>(
+    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
         &mut self,
         key: K,
         value: V,
@@ -161,7 +161,7 @@ pub trait Stream<'a> {
         self.map_value(value)
     }
 
-    fn map_key<'k: 'a, K: SourceRef<'k>>(&mut self, key: K) -> Result {
+    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
         self.map_key_begin()?;
         self.any(key)?;
         self.map_key_end()
@@ -171,7 +171,7 @@ pub trait Stream<'a> {
         self.map_key(field)
     }
 
-    fn map_value<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
+    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         self.map_value_begin()?;
         self.any(value)?;
         self.map_value_end()
@@ -213,7 +213,7 @@ pub trait Stream<'a> {
 
     fn seq_elem_end(&mut self) -> Result;
 
-    fn seq_elem<'e: 'a, E: SourceRef<'e>>(&mut self, elem: E) -> Result {
+    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         self.seq_elem_begin()?;
         self.any(elem)?;
         self.seq_elem_end()
@@ -235,7 +235,7 @@ impl<'a, 'b, S: ?Sized> Stream<'a> for &'b mut S
 where
     S: Stream<'a>,
 {
-    fn any<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
+    fn any<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         (**self).any(value)
     }
 
@@ -309,7 +309,7 @@ where
         (**self).variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: SourceRef<'v>>(
+    fn type_tagged<'v: 'a, T: TypedRef<'static, str>, V: ValueRef<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -321,7 +321,7 @@ where
         'v: 'a,
         T: TypedRef<'static, str>,
         K: TypedRef<'static, str>,
-        V: SourceRef<'v>,
+        V: ValueRef<'v>,
     >(
         &mut self,
         tag: VariantTag<T, K>,
@@ -378,7 +378,7 @@ where
         (**self).variant_tagged_map_end()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: SourceRef<'k>, V: SourceRef<'v>>(
+    fn map_entry<'k: 'a, 'v: 'a, K: ValueRef<'k>, V: ValueRef<'v>>(
         &mut self,
         key: K,
         value: V,
@@ -386,7 +386,7 @@ where
         (**self).map_entry(key, value)
     }
 
-    fn map_key<'k: 'a, K: SourceRef<'k>>(&mut self, key: K) -> Result {
+    fn map_key<'k: 'a, K: ValueRef<'k>>(&mut self, key: K) -> Result {
         (**self).map_key(key)
     }
 
@@ -394,7 +394,7 @@ where
         (**self).map_field(field)
     }
 
-    fn map_value<'v: 'a, V: SourceRef<'v>>(&mut self, value: V) -> Result {
+    fn map_value<'v: 'a, V: ValueRef<'v>>(&mut self, value: V) -> Result {
         (**self).map_value(value)
     }
 
@@ -438,7 +438,7 @@ where
         (**self).seq_elem_end()
     }
 
-    fn seq_elem<'e: 'a, E: SourceRef<'e>>(&mut self, elem: E) -> Result {
+    fn seq_elem<'e: 'a, E: ValueRef<'e>>(&mut self, elem: E) -> Result {
         (**self).seq_elem(elem)
     }
 }

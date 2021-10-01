@@ -1,6 +1,6 @@
 use crate::{
-    source::Source,
-    stream::{SourceRef, Stream, TypedRef},
+    value::Value,
+    stream::{ValueRef, Stream, TypedRef},
     Result,
 };
 
@@ -25,7 +25,7 @@ impl<T> TypeTag<T> {
         self.ty
     }
 
-    pub fn value<V: Source>(&self, value: V) -> TypeTagged<T, V>
+    pub fn value<V: Value>(&self, value: V) -> TypeTagged<T, V>
     where
         T: TypedRef<'static, str>,
     {
@@ -33,13 +33,13 @@ impl<T> TypeTag<T> {
     }
 }
 
-impl<T: TypedRef<'static, str>> Source for TypeTag<T> {
+impl<T: TypedRef<'static, str>> Value for TypeTag<T> {
     fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.type_tag(*self)
     }
 }
 
-impl<'a, T: TypedRef<'static, str>> SourceRef<'a> for TypeTag<T> {
+impl<'a, T: TypedRef<'static, str>> ValueRef<'a> for TypeTag<T> {
     fn stream<'b, S: Stream<'b>>(self, mut stream: S) -> Result
     where
         'a: 'b,
@@ -94,7 +94,7 @@ impl<T, K> VariantTag<T, K> {
         self.variant_index
     }
 
-    pub fn value<V: Source>(&self, value: V) -> VariantTagged<T, K, V>
+    pub fn value<V: Value>(&self, value: V) -> VariantTagged<T, K, V>
     where
         T: TypedRef<'static, str>,
         K: TypedRef<'static, str>,
@@ -103,13 +103,13 @@ impl<T, K> VariantTag<T, K> {
     }
 }
 
-impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>> Source for VariantTag<T, K> {
+impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>> Value for VariantTag<T, K> {
     fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.variant_tag(*self)
     }
 }
 
-impl<'a, T: TypedRef<'static, str>, K: TypedRef<'static, str>> SourceRef<'a> for VariantTag<T, K> {
+impl<'a, T: TypedRef<'static, str>, K: TypedRef<'static, str>> ValueRef<'a> for VariantTag<T, K> {
     fn stream<'b, S: Stream<'b>>(self, mut stream: S) -> Result
     where
         'a: 'b,
@@ -133,7 +133,7 @@ impl<T, V> TypeTagged<T, V> {
     }
 }
 
-impl<T: TypedRef<'static, str>, V: Source> Source for TypeTagged<T, V> {
+impl<T: TypedRef<'static, str>, V: Value> Value for TypeTagged<T, V> {
     fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
         stream.type_tagged(self.tag, &self.value)
     }
@@ -150,7 +150,7 @@ impl<T, K, V> VariantTagged<T, K, V> {
     }
 }
 
-impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: Source> Source
+impl<T: TypedRef<'static, str>, K: TypedRef<'static, str>, V: Value> Value
     for VariantTagged<T, K, V>
 {
     fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {

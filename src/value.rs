@@ -1,6 +1,6 @@
 use crate::{
     erased, fmt,
-    reference::{SourceRef, TypedRef},
+    reference::{ValueRef, TypedRef},
     serde,
 };
 
@@ -12,9 +12,9 @@ pub use crate::{
     Error, Result,
 };
 
-pub trait Source
+pub trait Value
 where
-    for<'a> &'a Self: SourceRef<'a>,
+    for<'a> &'a Self: ValueRef<'a>,
 {
     fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result;
 
@@ -101,25 +101,25 @@ where
         ForAll(self)
     }
 
-    fn erase(&self) -> erased::Source
+    fn erase(&self) -> erased::Value
     where
         Self: Sized,
     {
-        erased::Source::new(self)
+        erased::Value::new(self)
     }
 
-    fn to_serialize(&self) -> serde::Source<&Self> {
-        serde::Source::new(self)
+    fn to_serialize(&self) -> serde::Value<&Self> {
+        serde::Value::new(self)
     }
 
-    fn to_debug(&self) -> fmt::Source<&Self> {
-        fmt::Source::new(self)
+    fn to_debug(&self) -> fmt::Value<&Self> {
+        fmt::Value::new(self)
     }
 }
 
-impl<'a, T: ?Sized> Source for &'a T
+impl<'a, T: ?Sized> Value for &'a T
 where
-    T: Source,
+    T: Value,
 {
     fn stream<'b, S: Stream<'b>>(&'b self, stream: S) -> Result {
         (**self).stream(stream)

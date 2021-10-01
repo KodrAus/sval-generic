@@ -12,14 +12,14 @@ extern crate proc_macro2;
 
 mod attr;
 mod bound;
-mod source;
+mod value;
 
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-#[proc_macro_derive(Source, attributes(sval_generic_api))]
+#[proc_macro_derive(Value, attributes(sval_generic_api))]
 pub fn derive_source(input: TokenStream) -> TokenStream {
-    source::derive(parse_macro_input!(input as DeriveInput))
+    value::derive(parse_macro_input!(input as DeriveInput))
 }
 
 #[proc_macro_attribute]

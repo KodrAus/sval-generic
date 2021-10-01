@@ -38,7 +38,7 @@ fn primitive_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn primitive_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::Source;
+    use sval_generic_api::Value;
 
     let s = 42;
     let s = s.erase();
@@ -79,7 +79,7 @@ fn twitter_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::Source;
+    use sval_generic_api::Value;
 
     let s = input_struct();
     let s = s.erase();
@@ -89,7 +89,7 @@ fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_sval_generic_api_to_serde(b: &mut test::Bencher) {
-    use sval_generic_api::Source;
+    use sval_generic_api::Value;
 
     let s = input_struct();
     let s = s.to_serialize();
@@ -121,7 +121,7 @@ fn twitter_std_fmt(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_sval_generic_api_fmt(b: &mut test::Bencher) {
-    use sval_generic_api::Source;
+    use sval_generic_api::Value;
 
     let s = input_struct();
     let s = Fmt(s.to_debug());
