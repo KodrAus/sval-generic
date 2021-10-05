@@ -3,7 +3,7 @@ use std::{
     fmt::{self, Debug, Display, Formatter, Write},
 };
 
-use crate::{source, tag, value, Stream};
+use crate::{source, tag, value, Receiver};
 
 pub struct Value<V>(V);
 
@@ -45,7 +45,7 @@ impl<'a, 'b: 'a> FmtStream<'a, 'b> {
     }
 }
 
-impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
+impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtStream<'fa, 'fb> {
     fn display<D: Display>(&mut self, v: D) -> crate::Result {
         struct Adapter<T>(T);
 
@@ -58,11 +58,11 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
         self.fmt(Adapter(v))
     }
 
-    fn error<'e: 'a, E: source::TypedSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: source::ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         mut e: E,
     ) -> crate::Result {
-        self.fmt(e.stream_to_value()?)
+        self.fmt(e.value()?)
     }
 
     fn i64(&mut self, v: i64) -> crate::Result {
@@ -89,19 +89,19 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
         self.fmt(v)
     }
 
-    fn str<'s: 'a, S: source::TypedSource<'s, str>>(&mut self, mut v: S) -> crate::Result {
-        self.fmt(v.stream_to_value()?)
+    fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut v: S) -> crate::Result {
+        self.fmt(v.value()?)
     }
 
     fn none(&mut self) -> crate::Result {
         self.fmt(format_args!("None"))
     }
 
-    fn type_tagged_begin<T: source::TypedSource<'static, str>>(
+    fn type_tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> crate::Result {
-        self.fmt.write_str(tag.ty.stream_to_value()?)?;
+        self.fmt.write_str(tag.ty.value()?)?;
 
         Ok(())
     }
@@ -111,15 +111,15 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
     }
 
     fn variant_tagged_begin<
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> crate::Result {
-        self.fmt.write_str(tag.ty.stream_to_value()?)?;
+        self.fmt.write_str(tag.ty.value()?)?;
         self.fmt.write_str("::")?;
-        self.fmt.write_str(tag.variant_key.stream_to_value()?)?;
+        self.fmt.write_str(tag.variant_key.value()?)?;
 
         Ok(())
     }

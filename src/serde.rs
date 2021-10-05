@@ -1,6 +1,6 @@
 use std::{cell::Cell, convert::TryInto};
 
-use crate::{source, stream, tag, value, Stream};
+use crate::{receiver, source, tag, value, Receiver};
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -60,7 +60,7 @@ impl<D> Display<D> {
     }
 }
 
-impl<D: stream::Display> Serialize for Display<D> {
+impl<D: receiver::Display> Serialize for Display<D> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -443,28 +443,28 @@ impl<S: Serializer> SerdeStream<S> {
     }
 }
 
-impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
+impl<'a, S: Serializer> Receiver<'a> for SerdeStream<S> {
     fn any<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> crate::Result {
         self.serialize_any(Source::new(v))
     }
 
-    fn display<D: stream::Display>(&mut self, v: D) -> crate::Result {
+    fn display<D: receiver::Display>(&mut self, v: D) -> crate::Result {
         self.serialize_any(Display::new(v))
-    }
-
-    fn i64(&mut self, v: i64) -> crate::Result {
-        self.serialize_any(v)
     }
 
     fn u64(&mut self, v: u64) -> crate::Result {
         self.serialize_any(v)
     }
 
-    fn i128(&mut self, v: i128) -> crate::Result {
+    fn i64(&mut self, v: i64) -> crate::Result {
         self.serialize_any(v)
     }
 
     fn u128(&mut self, v: u128) -> crate::Result {
+        self.serialize_any(v)
+    }
+
+    fn i128(&mut self, v: i128) -> crate::Result {
         self.serialize_any(v)
     }
 
@@ -480,15 +480,15 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
         self.serialize_any(None::<()>)
     }
 
-    fn str<'s: 'a, T: source::TypedSource<'s, str>>(&mut self, mut v: T) -> crate::Result {
-        self.serialize_any(v.stream_to_value()?)
+    fn str<'s: 'a, T: source::ValueSource<'s, str>>(&mut self, mut v: T) -> crate::Result {
+        self.serialize_any(v.value()?)
     }
 
-    fn type_tagged_begin<T: source::TypedSource<'static, str>>(
+    fn type_tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> crate::Result {
-        self.serializer()?.type_tag = tag.ty.stream_to_ref().ok();
+        self.serializer()?.type_tag = tag.ty.value_ref().ok();
 
         Ok(())
     }
@@ -498,16 +498,16 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
     }
 
     fn variant_tagged_begin<
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> crate::Result {
         let serializer = self.serializer()?;
 
-        serializer.type_tag = tag.ty.stream_to_ref().ok();
-        serializer.variant_tag = tag.variant_key.stream_to_ref().ok();
+        serializer.type_tag = tag.ty.value_ref().ok();
+        serializer.variant_tag = tag.variant_key.value_ref().ok();
         serializer.variant_index = tag.variant_index.and_then(|index| index.try_into().ok());
 
         Ok(())
@@ -519,6 +519,10 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
 
     fn map_begin(&mut self, len: Option<usize>) -> crate::Result {
         self.serialize_map_begin(len)
+    }
+
+    fn map_end(&mut self) -> crate::Result {
+        self.serialize_map_end()
     }
 
     fn map_key_begin(&mut self) -> crate::Result {
@@ -537,19 +541,19 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
         Ok(())
     }
 
-    fn map_field<T: source::TypedSource<'static, str>>(&mut self, mut field: T) -> crate::Result {
-        match field.stream_to_ref() {
+    fn map_field<T: source::ValueSource<'static, str>>(&mut self, mut field: T) -> crate::Result {
+        match field.value_ref() {
             Ok(field) => self.serialize_map_field(Ok(field)),
             Err(field) => self.serialize_map_field(Err(field.into_result()?)),
         }
     }
 
-    fn map_end(&mut self) -> crate::Result {
-        self.serialize_map_end()
-    }
-
     fn seq_begin(&mut self, len: Option<usize>) -> crate::Result {
         self.serialize_seq_begin(len)
+    }
+
+    fn seq_end(&mut self) -> crate::Result {
+        self.serialize_seq_end()
     }
 
     fn seq_elem_begin(&mut self) -> crate::Result {
@@ -558,9 +562,5 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
 
     fn seq_elem_end(&mut self) -> crate::Result {
         Ok(())
-    }
-
-    fn seq_end(&mut self) -> crate::Result {
-        self.serialize_seq_end()
     }
 }

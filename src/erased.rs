@@ -1,6 +1,6 @@
 use std::{error, fmt};
 
-use crate::{source, stream, tag, value, Error, Result};
+use crate::{receiver, source, tag, value, Error, Result};
 
 // TODO: This public API needs to be a trait we can add OIBIT's to
 pub struct Value<'a>(&'a dyn ErasedValue);
@@ -12,12 +12,12 @@ impl<'a> Value<'a> {
 }
 
 trait ErasedValue {
-    fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result;
+    fn erased_stream<'a>(&'a self, stream: Receiver<'a, '_>) -> Result;
     fn erased_to_str(&self) -> Option<&str>;
 }
 
 impl<T: value::Value + ?Sized> ErasedValue for T {
-    fn erased_stream<'a>(&'a self, stream: Stream<'a, '_>) -> Result {
+    fn erased_stream<'a>(&'a self, stream: Receiver<'a, '_>) -> Result {
         self.stream(stream)
     }
 
@@ -27,8 +27,8 @@ impl<T: value::Value + ?Sized> ErasedValue for T {
 }
 
 impl<'a> value::Value for Value<'a> {
-    fn stream<'b, S: stream::Stream<'b>>(&'b self, mut stream: S) -> Result {
-        self.0.erased_stream(Stream(&mut stream))
+    fn stream<'b, S: receiver::Receiver<'b>>(&'b self, mut stream: S) -> Result {
+        self.0.erased_stream(Receiver(&mut stream))
     }
 
     fn to_str(&self) -> Option<&str> {
@@ -37,15 +37,15 @@ impl<'a> value::Value for Value<'a> {
 }
 
 // TODO: This public API needs to be a trait we can add OIBIT's to
-pub struct Stream<'a, 'b>(&'b mut dyn ErasedStream<'a>);
+pub struct Receiver<'a, 'b>(&'b mut dyn ErasedReceiver<'a>);
 
-impl<'a, 'b> Stream<'a, 'b> {
-    pub fn new(s: &'b mut impl stream::Stream<'a>) -> Self {
-        Stream(s)
+impl<'a, 'b> Receiver<'a, 'b> {
+    pub fn new(s: &'b mut impl receiver::Receiver<'a>) -> Self {
+        Receiver(s)
     }
 }
 
-trait ErasedStream<'a> {
+trait ErasedReceiver<'a> {
     fn erased_any<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result;
     fn erased_u64(&mut self, v: u64) -> Result;
     fn erased_i64(&mut self, v: i64) -> Result;
@@ -57,34 +57,34 @@ trait ErasedStream<'a> {
     fn erased_display(&mut self, v: &dyn fmt::Display) -> Result;
     fn erased_error<'b, 'v: 'a>(
         &mut self,
-        e: TypedSource<'v, 'b, dyn error::Error + 'static>,
+        e: ValueSource<'v, 'b, dyn error::Error + 'static>,
     ) -> Result;
-    fn erased_str<'b, 'v: 'a>(&mut self, v: TypedSource<'v, 'b, str>) -> Result;
-    fn erased_type_tag<'b>(&mut self, tag_ty: TypedSource<'static, 'b, str>) -> Result;
+    fn erased_str<'b, 'v: 'a>(&mut self, v: ValueSource<'v, 'b, str>) -> Result;
+    fn erased_type_tag<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result;
     fn erased_variant_tag<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result;
-    fn erased_type_tagged_begin<'b>(&mut self, tag_ty: TypedSource<'static, 'b, str>) -> Result;
+    fn erased_type_tagged_begin<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result;
     fn erased_type_tagged_end(&mut self) -> Result;
     fn erased_variant_tagged_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result;
     fn erased_variant_tagged_end(&mut self) -> Result;
     fn erased_type_tagged<'b, 'v: 'a>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         v: Source<'v, 'b>,
     ) -> Result;
     fn erased_variant_tagged<'b, 'v: 'a>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         v: Source<'v, 'b>,
     ) -> Result;
@@ -96,14 +96,14 @@ trait ErasedStream<'a> {
     fn erased_map_end(&mut self) -> Result;
     fn erased_type_tagged_map_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         len: Option<usize>,
     ) -> Result;
     fn erased_type_tagged_map_end(&mut self) -> Result;
     fn erased_variant_tagged_map_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         len: Option<usize>,
     ) -> Result;
@@ -115,19 +115,19 @@ trait ErasedStream<'a> {
         k: Source<'k, 'b>,
         v: Source<'v, 'b>,
     ) -> Result;
-    fn erased_map_field<'b>(&mut self, f: TypedSource<'static, 'b, str>) -> Result;
+    fn erased_map_field<'b>(&mut self, f: ValueSource<'static, 'b, str>) -> Result;
     fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
     fn erased_seq_end(&mut self) -> Result;
     fn erased_type_tagged_seq_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         len: Option<usize>,
     ) -> Result;
     fn erased_type_tagged_seq_end(&mut self) -> Result;
     fn erased_variant_tagged_seq_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         len: Option<usize>,
     ) -> Result;
@@ -137,7 +137,7 @@ trait ErasedStream<'a> {
     fn erased_seq_elem<'b, 'e: 'a>(&mut self, e: Source<'e, 'b>) -> Result;
 }
 
-impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
+impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
     fn erased_any<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result {
         self.any(v)
     }
@@ -175,23 +175,23 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_error<'b, 'v: 'a>(
         &mut self,
-        e: TypedSource<'v, 'b, dyn error::Error + 'static>,
+        e: ValueSource<'v, 'b, dyn error::Error + 'static>,
     ) -> Result {
         self.error(e)
     }
 
-    fn erased_str<'b, 'v: 'a>(&mut self, v: TypedSource<'v, 'b, str>) -> Result {
+    fn erased_str<'b, 'v: 'a>(&mut self, v: ValueSource<'v, 'b, str>) -> Result {
         self.str(v)
     }
 
-    fn erased_type_tag<'b>(&mut self, tag_ty: TypedSource<'static, 'b, str>) -> Result {
+    fn erased_type_tag<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result {
         self.type_tag(tag::TypeTag::new(tag_ty))
     }
 
     fn erased_variant_tag<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result {
         self.variant_tag(tag::VariantTag::new(
@@ -201,7 +201,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
         ))
     }
 
-    fn erased_type_tagged_begin<'b>(&mut self, tag_ty: TypedSource<'static, 'b, str>) -> Result {
+    fn erased_type_tagged_begin<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result {
         self.type_tagged_begin(tag::TypeTag::new(tag_ty))
     }
 
@@ -211,8 +211,8 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_variant_tagged_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result {
         self.variant_tagged_begin(tag::VariantTag::new(
@@ -228,7 +228,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_type_tagged<'b, 'v: 'a>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         v: Source<'v, 'b>,
     ) -> Result {
         self.type_tagged(tag::TypeTag::new(tag_ty), v)
@@ -236,8 +236,8 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_variant_tagged<'b, 'v: 'a>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         v: Source<'v, 'b>,
     ) -> Result {
@@ -273,7 +273,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_type_tagged_map_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         len: Option<usize>,
     ) -> Result {
         self.type_tagged_map_begin(tag::TypeTag::new(tag_ty), len)
@@ -285,8 +285,8 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_variant_tagged_map_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         len: Option<usize>,
     ) -> Result {
@@ -316,7 +316,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
         self.map_entry(k, v)
     }
 
-    fn erased_map_field<'b>(&mut self, f: TypedSource<'static, 'b, str>) -> Result {
+    fn erased_map_field<'b>(&mut self, f: ValueSource<'static, 'b, str>) -> Result {
         self.map_field(f)
     }
 
@@ -330,7 +330,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_type_tagged_seq_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
         len: Option<usize>,
     ) -> Result {
         self.type_tagged_seq_begin(tag::TypeTag::new(tag_ty), len)
@@ -342,8 +342,8 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
 
     fn erased_variant_tagged_seq_begin<'b>(
         &mut self,
-        tag_ty: TypedSource<'static, 'b, str>,
-        tag_variant_key: TypedSource<'static, 'b, str>,
+        tag_ty: ValueSource<'static, 'b, str>,
+        tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
         len: Option<usize>,
     ) -> Result {
@@ -370,7 +370,7 @@ impl<'a, T: stream::Stream<'a> + ?Sized> ErasedStream<'a> for T {
     }
 }
 
-impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
+impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
     fn any<'v: 'a, V: source::Source<'v>>(&mut self, mut value: V) -> Result {
         self.erased_any(Source(&mut value))
     }
@@ -407,40 +407,40 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_none()
     }
 
-    fn str<'s: 'a, T: source::TypedSource<'s, str>>(&mut self, mut value: T) -> Result {
-        self.0.erased_str(TypedSource(&mut value))
+    fn str<'s: 'a, T: source::ValueSource<'s, str>>(&mut self, mut value: T) -> Result {
+        self.0.erased_str(ValueSource(&mut value))
     }
 
-    fn error<'e: 'a, E: source::TypedSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: source::ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         mut error: E,
     ) -> Result {
-        self.0.erased_error(TypedSource(&mut error))
+        self.0.erased_error(ValueSource(&mut error))
     }
 
-    fn type_tag<T: source::TypedSource<'static, str>>(
+    fn type_tag<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> Result {
-        self.0.erased_type_tag(TypedSource(&mut tag.ty))
+        self.0.erased_type_tag(ValueSource(&mut tag.ty))
     }
 
-    fn variant_tag<T: source::TypedSource<'static, str>, K: source::TypedSource<'static, str>>(
+    fn variant_tag<T: source::ValueSource<'static, str>, K: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> Result {
         self.0.erased_variant_tag(
-            TypedSource(&mut tag.ty),
-            TypedSource(&mut tag.variant_key),
+            ValueSource(&mut tag.ty),
+            ValueSource(&mut tag.variant_key),
             tag.variant_index,
         )
     }
 
-    fn type_tagged_begin<T: source::TypedSource<'static, str>>(
+    fn type_tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> Result {
-        self.0.erased_type_tagged_begin(TypedSource(&mut tag.ty))
+        self.0.erased_type_tagged_begin(ValueSource(&mut tag.ty))
     }
 
     fn type_tagged_end(&mut self) -> Result {
@@ -448,15 +448,15 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_begin<
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> Result {
         self.0.erased_variant_tagged_begin(
-            TypedSource(&mut tag.ty),
-            TypedSource(&mut tag.variant_key),
+            ValueSource(&mut tag.ty),
+            ValueSource(&mut tag.variant_key),
             tag.variant_index,
         )
     }
@@ -465,19 +465,19 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: source::TypedSource<'static, str>, V: source::Source<'v>>(
+    fn type_tagged<'v: 'a, T: source::ValueSource<'static, str>, V: source::Source<'v>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
         mut value: V,
     ) -> Result {
         self.0
-            .erased_type_tagged(TypedSource(&mut tag.ty), Source(&mut value))
+            .erased_type_tagged(ValueSource(&mut tag.ty), Source(&mut value))
     }
 
     fn variant_tagged<
         'v: 'a,
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
         V: source::Source<'v>,
     >(
         &mut self,
@@ -485,8 +485,8 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         mut value: V,
     ) -> Result {
         self.0.erased_variant_tagged(
-            TypedSource(&mut tag.ty),
-            TypedSource(&mut tag.variant_key),
+            ValueSource(&mut tag.ty),
+            ValueSource(&mut tag.variant_key),
             tag.variant_index,
             Source(&mut value),
         )
@@ -516,13 +516,13 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_map_value_end()
     }
 
-    fn type_tagged_map_begin<T: source::TypedSource<'static, str>>(
+    fn type_tagged_map_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
         self.0
-            .erased_type_tagged_map_begin(TypedSource(&mut tag.ty), len)
+            .erased_type_tagged_map_begin(ValueSource(&mut tag.ty), len)
     }
 
     fn type_tagged_map_end(&mut self) -> Result {
@@ -530,16 +530,16 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_map_begin<
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
         self.0.erased_variant_tagged_map_begin(
-            TypedSource(&mut tag.ty),
-            TypedSource(&mut tag.variant_key),
+            ValueSource(&mut tag.ty),
+            ValueSource(&mut tag.variant_key),
             tag.variant_index,
             len,
         )
@@ -562,8 +562,8 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_map_key(Source(&mut key))
     }
 
-    fn map_field<F: source::TypedSource<'static, str>>(&mut self, mut field: F) -> Result {
-        self.0.erased_map_field(TypedSource(&mut field))
+    fn map_field<F: source::ValueSource<'static, str>>(&mut self, mut field: F) -> Result {
+        self.0.erased_map_field(ValueSource(&mut field))
     }
 
     fn map_value<'v: 'a, V: source::Source<'v>>(&mut self, mut value: V) -> Result {
@@ -578,13 +578,13 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
         self.0.erased_seq_end()
     }
 
-    fn type_tagged_seq_begin<T: source::TypedSource<'static, str>>(
+    fn type_tagged_seq_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
         len: Option<usize>,
     ) -> Result {
         self.0
-            .erased_type_tagged_seq_begin(TypedSource(&mut tag.ty), len)
+            .erased_type_tagged_seq_begin(ValueSource(&mut tag.ty), len)
     }
 
     fn type_tagged_seq_end(&mut self) -> Result {
@@ -592,16 +592,16 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 
     fn variant_tagged_seq_begin<
-        T: source::TypedSource<'static, str>,
-        K: source::TypedSource<'static, str>,
+        T: source::ValueSource<'static, str>,
+        K: source::ValueSource<'static, str>,
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
         len: Option<usize>,
     ) -> Result {
         self.0.erased_variant_tagged_seq_begin(
-            TypedSource(&mut tag.ty),
-            TypedSource(&mut tag.variant_key),
+            ValueSource(&mut tag.ty),
+            ValueSource(&mut tag.variant_key),
             tag.variant_index,
             len,
         )
@@ -624,16 +624,22 @@ impl<'a, 'b> stream::Stream<'a> for Stream<'a, 'b> {
     }
 }
 
-struct Source<'a, 'b>(&'b mut dyn ErasedSource<'a>);
+pub struct Source<'a, 'b>(&'b mut dyn ErasedSource<'a>);
+
+impl<'a, 'b> Source<'a, 'b> {
+    pub fn new(source: &'b mut impl source::Source<'a>) -> Self {
+        Source(source)
+    }
+}
 
 trait ErasedSource<'a> {
-    fn erased_stream<'b>(&mut self, stream: Stream<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
 }
 
 impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
-    fn erased_stream<'b>(&mut self, stream: Stream<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b,
     {
@@ -642,68 +648,74 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
 }
 
 impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
-    fn stream<'c, S: stream::Stream<'c>>(&mut self, mut stream: S) -> Result
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut stream: S) -> Result
     where
         'a: 'c,
     {
-        self.0.erased_stream(Stream(&mut stream))
+        self.0.erased_stream(Receiver(&mut stream))
     }
 }
 
-struct TypedSource<'a, 'b, T: ?Sized>(&'b mut dyn ErasedTypedSource<'a, T>);
+pub struct ValueSource<'a, 'b, T: ?Sized>(&'b mut dyn ErasedValueSource<'a, T>);
 
-trait ErasedTypedSource<'a, T: ?Sized> {
-    fn erased_stream<'b>(&mut self, stream: Stream<'b, '_>) -> Result
+impl<'a, 'b, T: value::Value + ?Sized + 'static> ValueSource<'a, 'b, T> {
+    pub fn new(source: &'b mut impl source::ValueSource<'a, T>) -> Self {
+        ValueSource(source)
+    }
+}
+
+trait ErasedValueSource<'a, T: ?Sized> {
+    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
 
-    fn erased_stream_to_value(&mut self) -> Result<&T>;
-    fn erased_stream_to_ref(&mut self) -> Result<&'a T, Result<&T>>;
+    fn erased_value(&mut self) -> Result<&T>;
+    fn erased_value_ref(&mut self) -> Result<&'a T, Result<&T>>;
 }
 
-impl<'a, U: value::Value + ?Sized + 'static, T: source::TypedSource<'a, U>> ErasedTypedSource<'a, U>
+impl<'a, U: value::Value + ?Sized + 'static, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U>
     for T
 {
-    fn erased_stream<'b>(&mut self, stream: Stream<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b,
     {
         source::Source::stream(self, stream)
     }
 
-    fn erased_stream_to_value(&mut self) -> Result<&U> {
-        self.stream_to_value().map_err(Into::into)
+    fn erased_value(&mut self) -> Result<&U> {
+        self.value().map_err(Into::into)
     }
 
-    fn erased_stream_to_ref(&mut self) -> Result<&'a U, Result<&U>> {
-        self.stream_to_ref()
+    fn erased_value_ref(&mut self) -> Result<&'a U, Result<&U>> {
+        self.value_ref()
             .map_err(|e| e.into_result().map_err(Into::into))
     }
 }
 
-impl<'a, 'b, T: value::Value + ?Sized + 'static> source::TypedSource<'a, T>
-    for TypedSource<'a, 'b, T>
+impl<'a, 'b, T: value::Value + ?Sized + 'static> source::ValueSource<'a, T>
+    for ValueSource<'a, 'b, T>
 {
     type Error = Error;
 
-    fn stream_to_value(&mut self) -> Result<&T, source::ToValueError<Self::Error>> {
+    fn value(&mut self) -> Result<&T, source::ToValueError<Self::Error>> {
         self.0
-            .erased_stream_to_value()
+            .erased_value()
             .map_err(source::ToValueError::from_error)
     }
 
-    fn stream_to_ref<'c>(&'c mut self) -> Result<&'a T, source::ToRefError<&'c T, Self::Error>> {
+    fn value_ref<'c>(&'c mut self) -> Result<&'a T, source::ToRefError<&'c T, Self::Error>> {
         self.0
-            .erased_stream_to_ref()
+            .erased_value_ref()
             .map_err(source::ToRefError::from_result)
     }
 }
 
-impl<'a, 'b, T: ?Sized> source::Source<'a> for TypedSource<'a, 'b, T> {
-    fn stream<'c, S: stream::Stream<'c>>(&mut self, mut stream: S) -> Result
+impl<'a, 'b, T: ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut stream: S) -> Result
     where
         'a: 'c,
     {
-        self.0.erased_stream(Stream(&mut stream))
+        self.0.erased_stream(Receiver(&mut stream))
     }
 }

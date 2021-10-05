@@ -1,216 +1,29 @@
-# API
+# `sval`
 
-This is an experimental alternative API for `sval` that avoids some of the costs associated with trait objects and consolidates around a few core traits.
+This is an experimental redesign of the object-safe serialization framework `sval`. It avoids some of the original's key issues:
 
-`sval` is like a blend of `serde::ser` and `serde::de`. It:
+- Only supporting trait objects limits suitability. This approach uses a generic core so you can avoid indirection in both runtime and in API design, but still makes it easy to erase to an object-safe wrapper. `sval` can perform in the same ballpark as `serde`.
+- Repurposing the name `Stream`, which already has a well-known meaning in Rust as an asynchronous iterator. This approach calls these receivers of structured data `Receiver`s.
+- Not being able to represent things like structs and enums natively. This approach uses _tags_ as a concept to annotate maps and sequences with a type or variant.
+- Potential method explosion from needing to support values passed as either borrowed for a specific lifetime, borrowed for some arbitrarily-short lifetime, or borrowed for the static lifetime. This approach uses a trait to be generic over the lifetime of the value, allowing callers to get a zero-cost arbitrarily-short reference, or try get one for a specific lifetime.
 
-- splits producers and consumers of structured data into sources and streams respectively.
-- uses a flat underlying API for streams that all higher-level, value-based APIs forward to.
-- uses an opportunistic lifetime parameter to support borrowing when possible.
+## What is it?
 
-# Data model
+`sval` is a serialization API for Rust that's designed around surfacing the structure in data like the tokenizer in a parser.
 
-`sval` uses a JSON-like data model that also supports tags.
+The API is made up of a few concepts:
 
-## Unit structs
+- `Receiver`: An observer of structured data. These use a flat API that receives a sequence of invocations representing the structure of some value, like a boolean, the start of a map, or the end of a sequence.
+- `Source`: The source of structured data. It could be an instance of some concrete type, JSON in a byte buffer, data being read from a file, anything.
+- `Value`: A special kind of `Source` that can stream its structure in a side-effect-free way. It will probably be an instance of some concrete type.
 
-A Rust value like:
+## How is it different?
 
-```rust
-struct MyStruct;
+There are a few serialization frameworks out there already:
 
-MyStruct
-```
+- `serde`: Designed around separating values from specific formats by standardizing an abstract data-model for Rust objects that all values and formats can agree on. The API is split between converting serializable values into some format and deserializing values from some format.
+- `valuable`: Like a reflection API for data. It lets you inspect the shape of Rust objects where metadata is mostly known statically so you can efficiently do things like generically check whether the value of a particular named field exists with a particular type.
 
-is streamed as:
+The approach `sval` takes is a bit of a mash-up of [`serde`](https://github.com/serde-rs/serde)'s serialize and deserialize APIs into one. You can serialize by connecting a `Source` that represents some concrete type to a `Receiver` that writes it to a buffer in a particular format. You can deserialize by connecting a `Source` that represents a tokenizer for a particular format over a buffer to a `Receiver` that builds up some concrete type. It has a flat base, so data can be streamed without recursion. It also trades some correct-by-construction use of by-value receivers and associated types for easier object-safe wrapping. You can use erased versions of `Source` and `Receiver` without potentially needing an allocator.
 
-```rust
-none()?;
-```
-
-which produces:
-
-```json
-null
-```
-
-## Field-value structs
-
-A Rust value like:
-
-```rust
-struct MyStruct<'a> {
-    a: i32,
-    b: bool,
-    c: &'a str,
-}
-
-MyStruct {
-    a: 42,
-    b: true,
-    c: "a string"
-}
-```
-
-is streamed as:
-
-```rust
-type_tagged_map_begin(type_tag("MyStruct"), Some(3))?;
-
-map_field("a")?;
-map_value(42)?;
-
-map_field("b")?;
-map_value(true)?;
-
-map_field("c")?;
-map_value("a string")?;
-
-type_tagged_map_end()?;
-```
-
-which expands to:
-
-```rust
-type_tagged_begin(type_tag("MyStruct"))?;
-map_begin(Some(3))?;
-
-map_key_begin()?;
-str("a")?;
-map_key_end()?;
-
-map_value_begin()?;
-i64(42)?;
-map_value_end()?;
-
-map_key_begin()?;
-str("b")?;
-map_key_end()?;
-
-map_value_begin()?;
-bool(true)?;
-map_value_end()?;
-
-map_key_begin()?;
-str("c")?;
-map_key_end()?;
-
-map_value_begin()?;
-str("a string")?;
-map_value_end()?;
-
-map_end()?;
-type_tagged_end()?;
-```
-
-which produces:
-
-```json
-{
-    "a": 42,
-    "b": true,
-    "c": "a string"
-}
-```
-
-## Field-value struct enums
-
-A Rust value like:
-
-```rust
-enum MyEnum<'a> {
-    MyVariant {
-        a: i32,
-        b: bool,
-        c: &'a str,
-    }
-}
-
-MyEnum::MyVariant {
-    a: 42,
-    b: true,
-    c: "a string"
-}
-```
-
-is streamed as:
-
-```rust
-variant_tagged_map_begin(variant_tag("MyEnum", "MyVariant", Some(0)))?;
-
-map_field("a")?;
-map_value(42)?;
-
-map_field("b")?;
-map_value(true)?;
-
-map_field("c")?;
-map_value("a string")?;
-
-variant_tagged_map_end()?;
-```
-
-which expands to:
-
-```rust
-variant_tagged_begin(variant_tag("MyEnum", "MyVariant", Some(0)))?;
-map_begin(Some(3))?;
-
-map_key_begin()?;
-str("a")?;
-map_key_end()?;
-
-map_value_begin()?;
-i64(42)?;
-map_value_end()?;
-
-map_key_begin()?;
-str("b")?;
-map_key_end()?;
-
-map_value_begin()?;
-bool(true)?;
-map_value_end()?;
-
-map_key_begin()?;
-str("c")?;
-map_key_end()?;
-
-map_value_begin()?;
-str("a string")?;
-map_value_end()?;
-
-map_end()?;
-variant_tagged_end()?;
-```
-
-which produces:
-
-```json
-{
-    "MyVariant": {
-        "a": 42,
-        "b": true,
-        "c": "a string"
-    }
-}
-```
-
-# `Value` and `ValueRef`
-
-These traits seem very similar at first. Their relationship is roughly:
-
-```
-&'a impl Value = impl ValueRef<'a>
-```
-
-There are other implementors of `ValueRef<'a>` besides `&'a impl Value`:
-
-- Primitive types like `i32` and `bool`. That lets you pass these types by-value to stream methods instead of needing to create a borrow of them.
-- `ForAll<impl Value>`. That lets you bypass the `'a` lifetime requirement and send short-lived data through a stream.
-
-When deciding whether you should be using `Value` or `ValueRef`:
-
-- Implement `Value` for your type. You don't need to worry about `ValueRef`.
-- Prefer `fn func(v: impl Value)` over `fn func<'a>(v: impl ValueRef<'a>)`.
-- Prefer `fn func<'a>(v: impl ValueRef<'a>)` over `fn func<'a>(v: &'a impl Value)`.
+There's some overlap in the usecases served by all of these libraries, but each takes a particular set of trade-offs to best serve the needs of their users.

@@ -1,24 +1,40 @@
 use std::{error, fmt};
 
 use crate::{
-    source::{Source, ToValueError, TypedSource},
-    stream::Stream,
+    source::{ToValueError, ValueSource},
     tag::{TypeTag, VariantTag},
-    value::Value,
-    Error, Result,
+    Error, Receiver, Result, Source, Value,
 };
 
 #[derive(Clone, Copy)]
 pub struct ForAll<T>(pub(crate) T);
 
+impl<T> ForAll<T> {
+    pub fn new(value: T) -> Self {
+        ForAll(value)
+    }
+
+    pub fn by_ref(&self) -> ForAll<&T> {
+        ForAll(&self.0)
+    }
+
+    pub fn by_mut(&mut self) -> ForAll<&mut T> {
+        ForAll(&mut self.0)
+    }
+
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
 impl<T: Value> Value for ForAll<T> {
-    fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
+    fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream<'c, S: Stream<'c>>(&mut self, stream: S) -> Result
+    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
     where
         'a: 'c,
     {
@@ -26,18 +42,18 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
     }
 }
 
-impl<'a, 'b, U: Value + ?Sized + 'static, T: TypedSource<'b, U>> TypedSource<'a, U> for ForAll<T> {
+impl<'a, 'b, U: Value + ?Sized + 'static, T: ValueSource<'b, U>> ValueSource<'a, U> for ForAll<T> {
     // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
     type Error = Error;
 
-    fn stream_to_value(&mut self) -> Result<&U, ToValueError<Self::Error>> {
+    fn value(&mut self) -> Result<&U, ToValueError<Self::Error>> {
         self.0
-            .stream_to_value()
+            .value()
             .map_err(|e| ToValueError::from_error(e.into_inner().into()))
     }
 }
 
-impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
+impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn any<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
         self.0.any(ForAll(value))
     }
@@ -74,29 +90,29 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.none()
     }
 
-    fn str<'s: 'a, T: TypedSource<'s, str>>(&mut self, value: T) -> Result {
+    fn str<'s: 'a, T: ValueSource<'s, str>>(&mut self, value: T) -> Result {
         self.0.str(ForAll(value))
     }
 
-    fn error<'e: 'a, E: TypedSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         error: E,
     ) -> Result {
         self.0.error(ForAll(error))
     }
 
-    fn type_tag<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         self.0.type_tag(tag)
     }
 
-    fn variant_tag<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
         self.0.variant_tag(tag)
     }
 
-    fn type_tagged_begin<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         self.0.type_tagged_begin(tag)
     }
 
@@ -104,7 +120,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.type_tagged_end()
     }
 
-    fn variant_tagged_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
@@ -115,7 +131,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedSource<'static, str>, V: Source<'v>>(
+    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -125,8 +141,8 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
 
     fn variant_tagged<
         'v: 'a,
-        T: TypedSource<'static, str>,
-        K: TypedSource<'static, str>,
+        T: ValueSource<'static, str>,
+        K: ValueSource<'static, str>,
         V: Source<'v>,
     >(
         &mut self,
@@ -160,7 +176,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.map_value_end()
     }
 
-    fn type_tagged_map_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -172,7 +188,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.type_tagged_map_end()
     }
 
-    fn variant_tagged_map_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,
@@ -196,7 +212,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.map_key(ForAll(key))
     }
 
-    fn map_field<F: TypedSource<'static, str>>(&mut self, field: F) -> Result {
+    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
         self.0.map_field(field)
     }
 
@@ -212,7 +228,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.seq_end()
     }
 
-    fn type_tagged_seq_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -224,7 +240,7 @@ impl<'a, 'b, S: Stream<'b>> Stream<'a> for ForAll<S> {
         self.0.type_tagged_seq_end()
     }
 
-    fn variant_tagged_seq_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,

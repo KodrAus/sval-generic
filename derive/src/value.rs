@@ -34,18 +34,15 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             extern crate sval_generic_api;
 
             impl #impl_generics sval_generic_api::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'a, S>(&'a self, mut stream: S) -> sval_generic_api::Result
-                where
-                    S: sval_generic_api::Stream<'a>
-                {
-                    stream.type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
+                fn stream<'a, R: sval_generic_api::Receiver<'a>>(&'a self, mut receiver: R) -> sval_generic_api::Result {
+                    receiver.type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
                     #(
-                        stream.map_field(#fieldstr)?;
-                        stream.map_value(&self.#fieldname)?;
+                        receiver.map_field(#fieldstr)?;
+                        receiver.map_value(&self.#fieldname)?;
                     )*
 
-                    stream.type_tagged_map_end()
+                    receiver.type_tagged_map_end()
                 }
             }
         };

@@ -1,22 +1,26 @@
 use std::fmt;
 
-use crate::{for_all::ForAll, stream::Stream, value::Value, Error, Result};
+use crate::{erased, Error, ForAll, Receiver, Result, Value};
 
 pub trait Source<'a> {
-    fn stream<'b, S: Stream<'b>>(&mut self, stream: S) -> Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
     where
         'a: 'b;
 
-    fn for_all(&mut self) -> ForAll<&mut Self>
+    fn for_all(&mut self) -> ForAll<&mut Self> {
+        ForAll(self)
+    }
+
+    fn erase<'b>(&'b mut self) -> erased::Source<'a, 'b>
     where
         Self: Sized,
     {
-        ForAll(self)
+        erased::Source::new(self)
     }
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
-    fn stream<'c, S: Stream<'c>>(&mut self, stream: S) -> Result
+    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
     where
         'a: 'c,
     {
@@ -82,51 +86,62 @@ impl<E: Into<Error>> From<ToValueError<E>> for Error {
     }
 }
 
-pub trait TypedSource<'a, T: Value + ?Sized + 'static>: Source<'a> {
+pub trait ValueSource<'a, T: Value + ?Sized + 'static>: Source<'a> {
     type Error: Into<Error> + fmt::Debug;
 
-    fn stream_to_value(&mut self) -> Result<&T, ToValueError<Self::Error>>;
+    fn value(&mut self) -> Result<&T, ToValueError<Self::Error>>;
 
-    fn stream_to_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
+    fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         Err(ToRefError::from_result(
-            self.stream_to_value().map_err(|e| e.into_inner()),
+            self.value().map_err(|e| e.into_inner()),
         ))
+    }
+
+    fn for_all_typed(&mut self) -> ForAll<&mut Self> {
+        ForAll(self)
+    }
+
+    fn erase_typed<'b>(&'b mut self) -> erased::ValueSource<'a, 'b, T>
+    where
+        Self: Sized,
+    {
+        erased::ValueSource::new(self)
     }
 
     // TODO: fn stream_to_owned when we figure out how to erase it (T::Owned + 'static -> Box<dyn Any> -> Box<T> -> T?)
 }
 
-impl<'a, 'b, T: Value + ?Sized + 'static, S: TypedSource<'a, T> + ?Sized> TypedSource<'a, T>
+impl<'a, 'b, T: Value + ?Sized + 'static, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T>
     for &'b mut S
 {
     type Error = S::Error;
 
-    fn stream_to_value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
-        (**self).stream_to_value()
+    fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
+        (**self).value()
     }
 
-    fn stream_to_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
-        (**self).stream_to_ref()
+    fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
+        (**self).value_ref()
     }
 }
 
 impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream<'b, S: Stream<'b>>(&mut self, stream: S) -> Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
     where
         'a: 'b,
     {
-        (**self).stream(stream)
+        (**self).stream(receiver)
     }
 }
 
-impl<'a, T: Value + ?Sized + 'static> TypedSource<'a, T> for &'a T {
+impl<'a, T: Value + ?Sized + 'static> ValueSource<'a, T> for &'a T {
     type Error = Impossible;
 
-    fn stream_to_value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
+    fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
         Ok(self)
     }
 
-    fn stream_to_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
+    fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         Ok(self)
     }
 }

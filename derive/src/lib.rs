@@ -21,11 +21,3 @@ use syn::DeriveInput;
 pub fn derive_source(input: TokenStream) -> TokenStream {
     value::derive(parse_macro_input!(input as DeriveInput))
 }
-
-#[proc_macro_attribute]
-pub fn stream(
-    _: proc_macro::TokenStream,
-    item: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
-    item
-}

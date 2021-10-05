@@ -3,7 +3,7 @@ use std::{error, fmt};
 use crate::{
     erased,
     for_all::ForAll,
-    source::{Source, TypedSource},
+    source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
     Error, Result,
 };
@@ -11,8 +11,8 @@ use crate::{
 #[doc(inline)]
 pub use fmt::Display;
 
-pub trait Stream<'a> {
-    fn any<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
+pub trait Receiver<'a> {
+    fn any<'v: 'a, S: Source<'v>>(&mut self, mut value: S) -> Result {
         value.stream(self)
     }
 
@@ -44,29 +44,29 @@ pub trait Stream<'a> {
 
     fn none(&mut self) -> Result;
 
-    fn str<'s: 'a, S: TypedSource<'s, str>>(&mut self, mut value: S) -> Result {
-        self.display(value.stream_to_value()?)
+    fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
+        self.display(value.value()?)
     }
 
-    fn error<'e: 'a, E: TypedSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         mut error: E,
     ) -> Result {
-        self.display(error.stream_to_value()?)
+        self.display(error.value()?)
     }
 
-    fn type_tag<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         self.str(tag.ty)
     }
 
-    fn variant_tag<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
         self.str(tag.variant_key)
     }
 
-    fn type_tagged_begin<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
@@ -75,7 +75,7 @@ pub trait Stream<'a> {
         Ok(())
     }
 
-    fn variant_tagged_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
@@ -89,7 +89,7 @@ pub trait Stream<'a> {
         self.map_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedSource<'static, str>, V: Source<'v>>(
+    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -101,8 +101,8 @@ pub trait Stream<'a> {
 
     fn variant_tagged<
         'v: 'a,
-        T: TypedSource<'static, str>,
-        K: TypedSource<'static, str>,
+        T: ValueSource<'static, str>,
+        K: ValueSource<'static, str>,
         V: Source<'v>,
     >(
         &mut self,
@@ -126,7 +126,7 @@ pub trait Stream<'a> {
 
     fn map_value_end(&mut self) -> Result;
 
-    fn type_tagged_map_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -140,7 +140,7 @@ pub trait Stream<'a> {
         self.type_tagged_end()
     }
 
-    fn variant_tagged_map_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,
@@ -169,7 +169,7 @@ pub trait Stream<'a> {
         self.map_key_end()
     }
 
-    fn map_field<F: TypedSource<'static, str>>(&mut self, field: F) -> Result {
+    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
         self.map_key(field)
     }
 
@@ -183,7 +183,7 @@ pub trait Stream<'a> {
 
     fn seq_end(&mut self) -> Result;
 
-    fn type_tagged_seq_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -197,7 +197,7 @@ pub trait Stream<'a> {
         self.type_tagged_end()
     }
 
-    fn variant_tagged_seq_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,
@@ -225,19 +225,19 @@ pub trait Stream<'a> {
         ForAll(self)
     }
 
-    fn erase<'b>(&'b mut self) -> erased::Stream<'a, 'b>
+    fn erase<'b>(&'b mut self) -> erased::Receiver<'a, 'b>
     where
         Self: Sized,
     {
-        erased::Stream::new(self)
+        erased::Receiver::new(self)
     }
 }
 
-impl<'a, 'b, S: ?Sized> Stream<'a> for &'b mut S
+impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
 where
-    S: Stream<'a>,
+    R: Receiver<'a>,
 {
-    fn any<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+    fn any<'v: 'a, S: Source<'v>>(&mut self, value: S) -> Result {
         (**self).any(value)
     }
 
@@ -273,29 +273,29 @@ where
         (**self).none()
     }
 
-    fn str<'s: 'a, T: TypedSource<'s, str>>(&mut self, value: T) -> Result {
+    fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
         (**self).str(value)
     }
 
-    fn error<'e: 'a, E: TypedSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         error: E,
     ) -> Result {
         (**self).error(error)
     }
 
-    fn type_tag<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         (**self).type_tag(tag)
     }
 
-    fn variant_tag<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
         (**self).variant_tag(tag)
     }
 
-    fn type_tagged_begin<T: TypedSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         (**self).type_tagged_begin(tag)
     }
 
@@ -303,7 +303,7 @@ where
         (**self).type_tagged_end()
     }
 
-    fn variant_tagged_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
     ) -> Result {
@@ -314,7 +314,7 @@ where
         (**self).variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: TypedSource<'static, str>, V: Source<'v>>(
+    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
         tag: TypeTag<T>,
         value: V,
@@ -324,8 +324,8 @@ where
 
     fn variant_tagged<
         'v: 'a,
-        T: TypedSource<'static, str>,
-        K: TypedSource<'static, str>,
+        T: ValueSource<'static, str>,
+        K: ValueSource<'static, str>,
         V: Source<'v>,
     >(
         &mut self,
@@ -359,7 +359,7 @@ where
         (**self).map_value_end()
     }
 
-    fn type_tagged_map_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -371,7 +371,7 @@ where
         (**self).type_tagged_map_end()
     }
 
-    fn variant_tagged_map_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,
@@ -395,7 +395,7 @@ where
         (**self).map_key(key)
     }
 
-    fn map_field<F: TypedSource<'static, str>>(&mut self, field: F) -> Result {
+    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
         (**self).map_field(field)
     }
 
@@ -411,7 +411,7 @@ where
         (**self).seq_end()
     }
 
-    fn type_tagged_seq_begin<T: TypedSource<'static, str>>(
+    fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
         len: Option<usize>,
@@ -423,7 +423,7 @@ where
         (**self).type_tagged_seq_end()
     }
 
-    fn variant_tagged_seq_begin<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
+    fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
         len: Option<usize>,
@@ -454,7 +454,7 @@ pub fn unsupported() -> Result {
 
 /*
 #[async_trait]
-pub trait AsyncStream<'a> {
+pub trait AsyncReceiver<'a> {
     async fn blocking<'v: 'a, V: Source<'v>>(self, value: V) -> Result;
 
     async fn str<'s: 'a, S: AsyncTypedSource<'s, str>>(&mut self, value: S) -> Result;

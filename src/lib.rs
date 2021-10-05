@@ -2,9 +2,9 @@
 extern crate async_trait;
 
 pub mod fmt;
+pub mod receiver;
 pub mod serde;
 pub mod source;
-pub mod stream;
 pub mod tag;
 pub mod value;
 
@@ -16,7 +16,7 @@ mod impls;
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{for_all::ForAll, source::Source, stream::Stream, value::Value};
+pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value};
 
 #[derive(Debug)]
 pub struct Error;
@@ -29,7 +29,7 @@ impl From<std::fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Stream<'a>, mut v: impl Source<'a>) -> Result {
+pub fn stream<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream(s)
 }
 
@@ -41,14 +41,14 @@ pub async fn stream_non_blocking<'a>(s: impl AsyncStream<'a>, v: impl AsyncSourc
 
 #[cfg(test)]
 mod tests {
-    use crate::{source::TypedSource, stream::Display, Stream, Value};
+    use crate::{receiver::Display, source::ValueSource, Receiver, Value};
 
     #[test]
     fn it_works() {
         struct MyValue;
 
         impl Value for MyValue {
-            fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> crate::Result {
+            fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> crate::Result {
                 let mut short = |s: &str| {
                     stream.map_field("field")?;
                     stream.map_value(s.for_all())
@@ -64,7 +64,7 @@ mod tests {
         }
 
         impl Value for MyStruct {
-            fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> crate::Result {
+            fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> crate::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(&self.a)?;
@@ -80,7 +80,7 @@ mod tests {
         }
 
         impl<'a> Value for MyInnerRef<'a> {
-            fn stream<'b, S: Stream<'b>>(&'b self, mut stream: S) -> crate::Result {
+            fn stream<'b, S: Receiver<'b>>(&'b self, mut stream: S) -> crate::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(self.a)?;
@@ -92,7 +92,7 @@ mod tests {
 
         struct MyStream<'a>(Option<&'a str>);
 
-        impl<'a> Stream<'a> for MyStream<'a> {
+        impl<'a> Receiver<'a> for MyStream<'a> {
             fn display<V: Display>(&mut self, _: V) -> crate::Result {
                 Ok(())
             }
@@ -101,11 +101,11 @@ mod tests {
                 Ok(())
             }
 
-            fn str<'v, V: TypedSource<'v, str>>(&mut self, mut value: V) -> crate::Result
+            fn str<'v, V: ValueSource<'v, str>>(&mut self, mut value: V) -> crate::Result
             where
                 'v: 'a,
             {
-                match value.stream_to_ref() {
+                match value.value_ref() {
                     Ok(v) => println!("borrowed: {}", v),
                     Err(v) => println!("short: {}", v.into_result().unwrap()),
                 }
