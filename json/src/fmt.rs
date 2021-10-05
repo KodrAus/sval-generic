@@ -1,13 +1,12 @@
 use sval_generic_api::stream::{self, Stream};
 
 use std::{
-    error,
     fmt::{self, Write},
 };
 
 pub fn to_fmt<'a>(
     fmt: impl Write,
-    v: impl stream::ValueRef<'a>,
+    mut v: impl stream::Source<'a>,
 ) -> Result<(), sval_generic_api::Error> {
     v.stream(Formatter::new(fmt))
 }
@@ -87,25 +86,15 @@ where
         Ok(())
     }
 
-    fn error<'v, V: stream::TypedRef<'v, dyn error::Error + 'static>>(
-        &mut self,
-        v: V,
-    ) -> stream::Result
-    where
-        'v: 'a,
-    {
-        self.display(v.get())
-    }
-
-    fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
+    fn str<'v, V: stream::TypedSource<'v, str>>(&mut self, mut v: V) -> stream::Result
     where
         'v: 'a,
     {
         if self.is_key {
-            escape_str(v.get(), &mut self.out)?;
+            escape_str(v.stream_to_value()?, &mut self.out)?;
         } else {
             self.out.write_char('"')?;
-            escape_str(v.get(), &mut self.out)?;
+            escape_str(v.stream_to_value()?, &mut self.out)?;
             self.out.write_char('"')?;
         }
 

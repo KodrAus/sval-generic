@@ -1,7 +1,7 @@
 use std::error;
 
 use crate::{
-    reference,
+    source,
     value::{self, Value},
 };
 
@@ -14,27 +14,21 @@ impl Value for () {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for () {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for () {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
         stream.none()
     }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
-    }
 }
 
-impl<'a> reference::TypedRef<'a, ()> for () {
-    fn get(&self) -> &() {
-        self
-    }
+impl<'a> source::TypedSource<'a, ()> for () {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a ()> {
-        None
+    fn stream_to_value(&mut self) -> Result<&(), source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -47,27 +41,21 @@ impl Value for bool {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for bool {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for bool {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.bool(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.bool(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, bool> for bool {
-    fn get(&self) -> &bool {
-        self
-    }
+impl<'a> source::TypedSource<'a, bool> for bool {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a bool> {
-        None
+    fn stream_to_value(&mut self) -> Result<&bool, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -80,27 +68,21 @@ impl Value for u8 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for u8 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for u8 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.u64(self as u64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.u64(*self as u64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, u8> for u8 {
-    fn get(&self) -> &u8 {
-        self
-    }
+impl<'a> source::TypedSource<'a, u8> for u8 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a u8> {
-        None
+    fn stream_to_value(&mut self) -> Result<&u8, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -113,27 +95,21 @@ impl Value for i8 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for i8 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for i8 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.i64(self as i64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.i64(*self as i64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, i8> for i8 {
-    fn get(&self) -> &i8 {
-        self
-    }
+impl<'a> source::TypedSource<'a, i8> for i8 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a i8> {
-        None
+    fn stream_to_value(&mut self) -> Result<&i8, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -146,27 +122,21 @@ impl Value for u16 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for u16 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for u16 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.u64(self as u64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.u64(*self as u64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, u16> for u16 {
-    fn get(&self) -> &u16 {
-        self
-    }
+impl<'a> source::TypedSource<'a, u16> for u16 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a u16> {
-        None
+    fn stream_to_value(&mut self) -> Result<&u16, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -179,27 +149,21 @@ impl Value for i16 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for i16 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for i16 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.i64(self as i64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.i64(*self as i64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, i16> for i16 {
-    fn get(&self) -> &i16 {
-        self
-    }
+impl<'a> source::TypedSource<'a, i16> for i16 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a i16> {
-        None
+    fn stream_to_value(&mut self) -> Result<&i16, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -212,27 +176,21 @@ impl Value for u32 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for u32 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for u32 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.u64(self as u64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.u64(*self as u64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, u32> for u32 {
-    fn get(&self) -> &u32 {
-        self
-    }
+impl<'a> source::TypedSource<'a, u32> for u32 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a u32> {
-        None
+    fn stream_to_value(&mut self) -> Result<&u32, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -245,27 +203,21 @@ impl Value for i32 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for i32 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for i32 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.i64(self as i64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.i64(*self as i64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, i32> for i32 {
-    fn get(&self) -> &i32 {
-        self
-    }
+impl<'a> source::TypedSource<'a, i32> for i32 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a i32> {
-        None
+    fn stream_to_value(&mut self) -> Result<&i32, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -278,27 +230,21 @@ impl Value for u64 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for u64 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for u64 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.u64(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.u64(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, u64> for u64 {
-    fn get(&self) -> &u64 {
-        self
-    }
+impl<'a> source::TypedSource<'a, u64> for u64 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a u64> {
-        None
+    fn stream_to_value(&mut self) -> Result<&u64, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -311,27 +257,21 @@ impl Value for i64 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for i64 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for i64 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.i64(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.i64(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, i64> for i64 {
-    fn get(&self) -> &i64 {
-        self
-    }
+impl<'a> source::TypedSource<'a, i64> for i64 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a i64> {
-        None
+    fn stream_to_value(&mut self) -> Result<&i64, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -344,27 +284,21 @@ impl Value for u128 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for u128 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for u128 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.u128(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.u128(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, u128> for u128 {
-    fn get(&self) -> &u128 {
-        self
-    }
+impl<'a> source::TypedSource<'a, u128> for u128 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a u128> {
-        None
+    fn stream_to_value(&mut self) -> Result<&u128, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -377,27 +311,21 @@ impl Value for i128 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for i128 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for i128 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.i128(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.i128(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, i128> for i128 {
-    fn get(&self) -> &i128 {
-        self
-    }
+impl<'a> source::TypedSource<'a, i128> for i128 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a i128> {
-        None
+    fn stream_to_value(&mut self) -> Result<&i128, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -410,27 +338,21 @@ impl Value for f32 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for f32 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for f32 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.f64(self as f64)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.f64(*self as f64)
     }
 }
 
-impl<'a> reference::TypedRef<'a, f32> for f32 {
-    fn get(&self) -> &f32 {
-        self
-    }
+impl<'a> source::TypedSource<'a, f32> for f32 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a f32> {
-        None
+    fn stream_to_value(&mut self) -> Result<&f32, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -443,27 +365,21 @@ impl Value for f64 {
     }
 }
 
-impl<'a> reference::ValueRef<'a> for f64 {
-    fn stream<'b, S>(self, mut stream: S) -> value::Result
+impl<'a> source::Source<'a> for f64 {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
     where
         'a: 'b,
         S: value::Stream<'b>,
     {
-        stream.f64(self)
-    }
-
-    fn to_str(self) -> Option<&'a str> {
-        None
+        stream.f64(*self)
     }
 }
 
-impl<'a> reference::TypedRef<'a, f64> for f64 {
-    fn get(&self) -> &f64 {
-        self
-    }
+impl<'a> source::TypedSource<'a, f64> for f64 {
+    type Error = source::Impossible;
 
-    fn try_unwrap(self) -> Option<&'a f64> {
-        None
+    fn stream_to_value(&mut self) -> Result<&f64, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -474,9 +390,23 @@ impl Value for str {
     {
         stream.str(self)
     }
+}
 
-    fn to_str(&self) -> Option<&str> {
-        Some(self)
+impl<'a> source::Source<'a> for str {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.str(self)
+    }
+}
+
+impl<'a> source::TypedSource<'a, str> for str {
+    type Error = source::Impossible;
+
+    fn stream_to_value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+        Ok(self)
     }
 }
 
@@ -493,13 +423,29 @@ impl Value for String {
     }
 }
 
-impl<'a> reference::TypedRef<'a, str> for &'a String {
-    fn get(&self) -> &str {
-        &**self
+impl<'a> source::Source<'a> for String {
+    fn stream<'b, S>(&mut self, mut stream: S) -> value::Result
+    where
+        'a: 'b,
+        S: value::Stream<'b>,
+    {
+        stream.str(self.for_all())
     }
+}
 
-    fn try_unwrap(self) -> Option<&'a str> {
-        Some(&**self)
+impl<'a> source::TypedSource<'a, str> for String {
+    type Error = source::Impossible;
+
+    fn stream_to_value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+        Ok(&**self)
+    }
+}
+
+impl<'a> source::TypedSource<'a, str> for &'a String {
+    type Error = source::Impossible;
+
+    fn stream_to_value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+        Ok(&**self)
     }
 }
 

@@ -1,8 +1,9 @@
-use std::convert::TryInto;
+use std::{cell::Cell, convert::TryInto};
 
 use crate::{
-    value,
+    source,
     stream::{self, Stream},
+    value,
 };
 
 use serde::ser::{
@@ -25,6 +26,30 @@ impl<V: value::Value> Serialize for Value<V> {
     {
         let mut stream = SerdeStream::begin(serializer);
         self.0
+            .stream(&mut stream)
+            .map_err(|_| S::Error::custom("failed to serialize value"))?;
+        stream.end()
+    }
+}
+
+pub struct Source<V>(Cell<Option<V>>);
+
+impl<V> Source<V> {
+    fn new(value: V) -> Self {
+        Source(Cell::new(Some(value)))
+    }
+}
+
+impl<'a, V: source::Source<'a>> Serialize for Source<V> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut stream = SerdeStream::begin(serializer);
+
+        self.0
+            .take()
+            .ok_or_else(|| S::Error::custom("missing source"))?
             .stream(&mut stream)
             .map_err(|_| S::Error::custom("failed to serialize value"))?;
         stream.end()
@@ -156,7 +181,7 @@ impl<S: Serializer> SerdeStream<S> {
                 .map_err(|_| stream::Error),
             SerdeStream::SerializeStruct(_) => Err(stream::Error),
 
-            // If the serializer is inside a struct variant then expect the field to alreay be provided
+            // If the serializer is inside a struct variant then expect the field to already be provided
             SerdeStream::SerializeStructVariant(Some(StreamSerializeStructVariant {
                 ref mut serializer,
                 field: Some(field),
@@ -222,7 +247,7 @@ impl<S: Serializer> SerdeStream<S> {
 
                     Ok(())
                 }
-                // Begin a serializer for a stuct-like enum variant
+                // Begin a serializer for a struct-like enum variant
                 Some(StreamSerializer {
                     serializer,
                     type_tag: Some(ty),
@@ -423,8 +448,8 @@ impl<S: Serializer> SerdeStream<S> {
 }
 
 impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
-    fn any<'b: 'a, V: stream::ValueRef<'b>>(&mut self, v: V) -> stream::Result {
-        self.serialize_any(Value::new(v))
+    fn any<'b: 'a, V: stream::Source<'b>>(&mut self, v: V) -> stream::Result {
+        self.serialize_any(Source::new(v))
     }
 
     fn display<D: stream::Display>(&mut self, v: D) -> stream::Result {
@@ -459,15 +484,15 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
         self.serialize_any(None::<()>)
     }
 
-    fn str<'s: 'a, T: stream::TypedRef<'s, str>>(&mut self, v: T) -> stream::Result {
-        self.serialize_any(v.get())
+    fn str<'s: 'a, T: stream::TypedSource<'s, str>>(&mut self, mut v: T) -> stream::Result {
+        self.serialize_any(v.stream_to_value()?)
     }
 
-    fn type_tagged_begin<T: stream::TypedRef<'static, str>>(
+    fn type_tagged_begin<T: stream::TypedSource<'static, str>>(
         &mut self,
-        tag: stream::TypeTag<T>,
+        mut tag: stream::TypeTag<T>,
     ) -> stream::Result {
-        self.serializer()?.type_tag = tag.ty().try_unwrap();
+        self.serializer()?.type_tag = tag.ty.stream_to_ref().ok();
 
         Ok(())
     }
@@ -477,17 +502,17 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
     }
 
     fn variant_tagged_begin<
-        T: stream::TypedRef<'static, str>,
-        K: stream::TypedRef<'static, str>,
+        T: stream::TypedSource<'static, str>,
+        K: stream::TypedSource<'static, str>,
     >(
         &mut self,
-        tag: stream::VariantTag<T, K>,
+        mut tag: stream::VariantTag<T, K>,
     ) -> stream::Result {
         let serializer = self.serializer()?;
 
-        serializer.type_tag = tag.ty().try_unwrap();
-        serializer.variant_tag = tag.variant_key().try_unwrap();
-        serializer.variant_index = tag.variant_index().and_then(|index| index.try_into().ok());
+        serializer.type_tag = tag.ty.stream_to_ref().ok();
+        serializer.variant_tag = tag.variant_key.stream_to_ref().ok();
+        serializer.variant_index = tag.variant_index.and_then(|index| index.try_into().ok());
 
         Ok(())
     }
@@ -516,8 +541,11 @@ impl<'a, S: Serializer> Stream<'a> for SerdeStream<S> {
         Ok(())
     }
 
-    fn map_field<T: stream::TypedRef<'static, str>>(&mut self, field: T) -> stream::Result {
-        self.serialize_map_field(field.try_unwrap().ok_or(field.get()))
+    fn map_field<T: stream::TypedSource<'static, str>>(&mut self, mut field: T) -> stream::Result {
+        match field.stream_to_ref() {
+            Ok(field) => self.serialize_map_field(Ok(field)),
+            Err(field) => self.serialize_map_field(Err(field.into_result()?)),
+        }
     }
 
     fn map_end(&mut self) -> stream::Result {

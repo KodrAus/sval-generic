@@ -1,30 +1,38 @@
 use crate::{
-    erased, fmt,
-    reference::{ValueRef, TypedRef},
-    serde,
+    erased, fmt, serde,
+    source::{Source, TypedSource},
+    stream::{self, Display},
+    tag::{TypeTag, VariantTag},
 };
 
 #[doc(inline)]
 pub use crate::{
     for_all::ForAll,
-    stream::{self, Display, Stream},
-    tag::{type_tag, variant_tag, TypeTag, TypeTagged, VariantTag, VariantTagged},
+    stream::Stream,
+    tag::{type_tag, variant_tag, TypeTagged, VariantTagged},
     Error, Result,
 };
 
+#[async_trait]
 pub trait Value
 where
-    for<'a> &'a Self: ValueRef<'a>,
+    for<'a> &'a Self: Source<'a>,
 {
     fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result;
+
+    /*
+    async fn stream_non_blocking<'a, S: AsyncStream<'a>>(&'a self, stream: S) -> Result {
+        stream.blocking(self)
+    }
+    */
 
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for Extract<'a> {
-            fn str<'v: 'a, V: TypedRef<'v, str>>(&mut self, v: V) -> Result {
-                match v.try_unwrap() {
-                    Some(v) => {
+            fn str<'v: 'a, V: TypedSource<'v, str>>(&mut self, mut value: V) -> Result {
+                match value.stream_to_ref() {
+                    Ok(v) => {
                         self.0 = Some(v);
                         Ok(())
                     }
@@ -86,11 +94,11 @@ where
         stream.0
     }
 
-    fn type_tag<T: TypedRef<'static, str>>(&self, tag: TypeTag<T>) -> TypeTagged<T, &Self> {
+    fn type_tag<T: TypedSource<'static, str>>(&self, tag: TypeTag<T>) -> TypeTagged<T, &Self> {
         TypeTagged::new(tag, self)
     }
 
-    fn variant_tag<T: TypedRef<'static, str>, K: TypedRef<'static, str>>(
+    fn variant_tag<T: TypedSource<'static, str>, K: TypedSource<'static, str>>(
         &self,
         tag: VariantTag<T, K>,
     ) -> VariantTagged<T, K, &Self> {
@@ -117,10 +125,7 @@ where
     }
 }
 
-impl<'a, T: ?Sized> Value for &'a T
-where
-    T: Value,
-{
+impl<'a, T: Value + ?Sized> Value for &'a T {
     fn stream<'b, S: Stream<'b>>(&'b self, stream: S) -> Result {
         (**self).stream(stream)
     }

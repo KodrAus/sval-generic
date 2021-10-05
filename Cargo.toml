@@ -18,6 +18,9 @@ version = "1"
 [dependencies.sval-generic-api-derive]
 path = "derive"
 
+[dependencies.async-trait]
+version = "0.1"
+
 [profile.release]
 debug = true
 opt-level = 3

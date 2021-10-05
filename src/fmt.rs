@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    value,
     stream::{self, Stream},
+    value,
 };
 
 pub struct Value<V>(V);
@@ -61,11 +61,11 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
         self.fmt(Adapter(v))
     }
 
-    fn error<'e: 'a, E: stream::TypedRef<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: stream::TypedSource<'e, dyn error::Error + 'static>>(
         &mut self,
-        e: E,
+        mut e: E,
     ) -> stream::Result {
-        self.fmt(e.get())
+        self.fmt(e.stream_to_value()?)
     }
 
     fn i64(&mut self, v: i64) -> stream::Result {
@@ -92,19 +92,19 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
         self.fmt(v)
     }
 
-    fn str<'s: 'a, S: stream::TypedRef<'s, str>>(&mut self, v: S) -> stream::Result {
-        self.fmt(v.get())
+    fn str<'s: 'a, S: stream::TypedSource<'s, str>>(&mut self, mut v: S) -> stream::Result {
+        self.fmt(v.stream_to_value()?)
     }
 
     fn none(&mut self) -> stream::Result {
         self.fmt(format_args!("None"))
     }
 
-    fn type_tagged_begin<T: stream::TypedRef<'static, str>>(
+    fn type_tagged_begin<T: stream::TypedSource<'static, str>>(
         &mut self,
-        tag: stream::TypeTag<T>,
+        mut tag: stream::TypeTag<T>,
     ) -> stream::Result {
-        self.fmt.write_str(tag.ty().get())?;
+        self.fmt.write_str(tag.ty.stream_to_value()?)?;
 
         Ok(())
     }
@@ -114,15 +114,15 @@ impl<'fa, 'fb: 'fa, 'a> Stream<'a> for FmtStream<'fa, 'fb> {
     }
 
     fn variant_tagged_begin<
-        T: stream::TypedRef<'static, str>,
-        K: stream::TypedRef<'static, str>,
+        T: stream::TypedSource<'static, str>,
+        K: stream::TypedSource<'static, str>,
     >(
         &mut self,
-        tag: stream::VariantTag<T, K>,
+        mut tag: stream::VariantTag<T, K>,
     ) -> stream::Result {
-        self.fmt.write_str(tag.ty().get())?;
+        self.fmt.write_str(tag.ty.stream_to_value()?)?;
         self.fmt.write_str("::")?;
-        self.fmt.write_str(tag.variant_key().get())?;
+        self.fmt.write_str(tag.variant_key.stream_to_value()?)?;
 
         Ok(())
     }

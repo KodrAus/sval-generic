@@ -1,19 +1,22 @@
+#[macro_use]
+extern crate async_trait;
+
 pub mod fmt;
 pub mod serde;
-pub mod value;
+pub mod source;
 pub mod stream;
+pub mod value;
 
 pub mod erased;
 
 mod for_all;
 mod impls;
-mod reference;
 mod tag;
 
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{value::Value, stream::Stream};
+pub use self::{source::Source, stream::Stream, value::Value};
 
 #[derive(Debug)]
 pub struct Error;
@@ -26,15 +29,21 @@ impl From<std::fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream_value<'a>(s: impl Stream<'a>, v: impl reference::ValueRef<'a>) -> Result {
+pub fn stream<'a>(s: impl Stream<'a>, mut v: impl Source<'a>) -> Result {
     v.stream(s)
 }
+
+/*
+pub async fn stream_non_blocking<'a>(s: impl AsyncStream<'a>, v: impl AsyncSource<'a>) -> Result {
+    v.stream(s).await
+}
+*/
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        value::{self, Value},
         stream::{self, Stream},
+        value::{self, Value},
     };
 
     #[test]
@@ -95,14 +104,13 @@ mod tests {
                 Ok(())
             }
 
-            fn str<'v, V: stream::TypedRef<'v, str>>(&mut self, v: V) -> stream::Result
+            fn str<'v, V: stream::TypedSource<'v, str>>(&mut self, mut value: V) -> stream::Result
             where
                 'v: 'a,
             {
-                if let Some(v) = v.try_unwrap() {
-                    println!("borrowed: {}", v);
-                } else {
-                    println!("short: {}", v.get());
+                match value.stream_to_ref() {
+                    Ok(v) => println!("borrowed: {}", v),
+                    Err(v) => println!("short: {}", v.into_result().unwrap()),
                 }
 
                 Ok(())
