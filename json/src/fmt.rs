@@ -1,13 +1,8 @@
-use sval_generic_api::stream::{self, Stream};
+use sval_generic_api::{source::TypedSource, Source, Stream};
 
-use std::{
-    fmt::{self, Write},
-};
+use std::fmt::{self, Write};
 
-pub fn to_fmt<'a>(
-    fmt: impl Write,
-    mut v: impl stream::Source<'a>,
-) -> Result<(), sval_generic_api::Error> {
+pub fn to_fmt<'a>(fmt: impl Write, mut v: impl Source<'a>) -> Result<(), sval_generic_api::Error> {
     v.stream(Formatter::new(fmt))
 }
 
@@ -38,7 +33,7 @@ impl<'a, W> Stream<'a> for Formatter<W>
 where
     W: Write,
 {
-    fn display<V: fmt::Display>(&mut self, v: V) -> stream::Result {
+    fn display<V: fmt::Display>(&mut self, v: V) -> sval_generic_api::Result {
         if self.is_key {
             fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
         } else {
@@ -50,43 +45,43 @@ where
         Ok(())
     }
 
-    fn i64(&mut self, v: i64) -> stream::Result {
+    fn i64(&mut self, v: i64) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn u64(&mut self, v: u64) -> stream::Result {
+    fn u64(&mut self, v: u64) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn i128(&mut self, v: i128) -> stream::Result {
+    fn i128(&mut self, v: i128) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn u128(&mut self, v: u128) -> stream::Result {
+    fn u128(&mut self, v: u128) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn f64(&mut self, v: f64) -> stream::Result {
+    fn f64(&mut self, v: f64) -> sval_generic_api::Result {
         self.out.write_str(ryu::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn bool(&mut self, v: bool) -> stream::Result {
+    fn bool(&mut self, v: bool) -> sval_generic_api::Result {
         self.out.write_str(if v { "true" } else { "false" })?;
 
         Ok(())
     }
 
-    fn str<'v, V: stream::TypedSource<'v, str>>(&mut self, mut v: V) -> stream::Result
+    fn str<'v, V: TypedSource<'v, str>>(&mut self, mut v: V) -> sval_generic_api::Result
     where
         'v: 'a,
     {
@@ -101,15 +96,15 @@ where
         Ok(())
     }
 
-    fn none(&mut self) -> stream::Result {
+    fn none(&mut self) -> sval_generic_api::Result {
         self.out.write_str("null")?;
 
         Ok(())
     }
 
-    fn map_begin(&mut self, _: Option<usize>) -> stream::Result {
+    fn map_begin(&mut self, _: Option<usize>) -> sval_generic_api::Result {
         if self.is_key {
-            return Err(stream::Error);
+            return Err(sval_generic_api::Error);
         }
 
         self.is_current_depth_empty = true;
@@ -118,7 +113,7 @@ where
         Ok(())
     }
 
-    fn map_key_begin(&mut self) -> stream::Result {
+    fn map_key_begin(&mut self) -> sval_generic_api::Result {
         self.is_key = true;
 
         if !self.is_current_depth_empty {
@@ -132,7 +127,7 @@ where
         Ok(())
     }
 
-    fn map_key_end(&mut self) -> stream::Result {
+    fn map_key_end(&mut self) -> sval_generic_api::Result {
         self.out.write_char('"')?;
 
         self.is_key = false;
@@ -140,17 +135,17 @@ where
         Ok(())
     }
 
-    fn map_value_begin(&mut self) -> stream::Result {
+    fn map_value_begin(&mut self) -> sval_generic_api::Result {
         self.out.write_char(':')?;
 
         Ok(())
     }
 
-    fn map_value_end(&mut self) -> stream::Result {
+    fn map_value_end(&mut self) -> sval_generic_api::Result {
         Ok(())
     }
 
-    fn map_end(&mut self) -> stream::Result {
+    fn map_end(&mut self) -> sval_generic_api::Result {
         self.is_current_depth_empty = false;
 
         self.out.write_char('}')?;
@@ -158,9 +153,9 @@ where
         Ok(())
     }
 
-    fn seq_begin(&mut self, _: Option<usize>) -> stream::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> sval_generic_api::Result {
         if self.is_key {
-            return Err(stream::Error);
+            return Err(sval_generic_api::Error);
         }
 
         self.is_current_depth_empty = true;
@@ -170,7 +165,7 @@ where
         Ok(())
     }
 
-    fn seq_elem_begin(&mut self) -> stream::Result {
+    fn seq_elem_begin(&mut self) -> sval_generic_api::Result {
         if !self.is_current_depth_empty {
             self.out.write_char(',')?;
         }
@@ -180,11 +175,11 @@ where
         Ok(())
     }
 
-    fn seq_elem_end(&mut self) -> stream::Result {
+    fn seq_elem_end(&mut self) -> sval_generic_api::Result {
         Ok(())
     }
 
-    fn seq_end(&mut self) -> stream::Result {
+    fn seq_end(&mut self) -> sval_generic_api::Result {
         self.is_current_depth_empty = false;
 
         self.out.write_char(']')?;

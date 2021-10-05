@@ -1,9 +1,7 @@
 use std::{error, fmt};
 
-use crate::erased;
-
-#[doc(inline)]
-pub use crate::{
+use crate::{
+    erased,
     for_all::ForAll,
     source::{Source, TypedSource},
     tag::{TypeTag, VariantTag},
@@ -457,7 +455,7 @@ pub fn unsupported() -> Result {
 /*
 #[async_trait]
 pub trait AsyncStream<'a> {
-    fn blocking<'v: 'a, V: AsyncSource<'v>>(self, value: V) -> Result;
+    async fn blocking<'v: 'a, V: Source<'v>>(self, value: V) -> Result;
 
     async fn str<'s: 'a, S: AsyncTypedSource<'s, str>>(&mut self, value: S) -> Result;
 }

@@ -5,18 +5,18 @@ pub mod fmt;
 pub mod serde;
 pub mod source;
 pub mod stream;
+pub mod tag;
 pub mod value;
 
 pub mod erased;
 
 mod for_all;
 mod impls;
-mod tag;
 
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{source::Source, stream::Stream, value::Value};
+pub use self::{for_all::ForAll, source::Source, stream::Stream, value::Value};
 
 #[derive(Debug)]
 pub struct Error;
@@ -41,17 +41,14 @@ pub async fn stream_non_blocking<'a>(s: impl AsyncStream<'a>, v: impl AsyncSourc
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        stream::{self, Stream},
-        value::{self, Value},
-    };
+    use crate::{source::TypedSource, stream::Display, Stream, Value};
 
     #[test]
     fn it_works() {
         struct MyValue;
 
         impl Value for MyValue {
-            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
+            fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> crate::Result {
                 let mut short = |s: &str| {
                     stream.map_field("field")?;
                     stream.map_value(s.for_all())
@@ -67,7 +64,7 @@ mod tests {
         }
 
         impl Value for MyStruct {
-            fn stream<'a, S: value::Stream<'a>>(&'a self, mut stream: S) -> value::Result {
+            fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> crate::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(&self.a)?;
@@ -83,7 +80,7 @@ mod tests {
         }
 
         impl<'a> Value for MyInnerRef<'a> {
-            fn stream<'b, S: value::Stream<'b>>(&'b self, mut stream: S) -> value::Result {
+            fn stream<'b, S: Stream<'b>>(&'b self, mut stream: S) -> crate::Result {
                 stream.map_begin(Some(1))?;
                 stream.map_field("a")?;
                 stream.map_value(self.a)?;
@@ -96,15 +93,15 @@ mod tests {
         struct MyStream<'a>(Option<&'a str>);
 
         impl<'a> Stream<'a> for MyStream<'a> {
-            fn display<V: stream::Display>(&mut self, _: V) -> stream::Result {
+            fn display<V: Display>(&mut self, _: V) -> crate::Result {
                 Ok(())
             }
 
-            fn none(&mut self) -> stream::Result {
+            fn none(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn str<'v, V: stream::TypedSource<'v, str>>(&mut self, mut value: V) -> stream::Result
+            fn str<'v, V: TypedSource<'v, str>>(&mut self, mut value: V) -> crate::Result
             where
                 'v: 'a,
             {
@@ -116,43 +113,43 @@ mod tests {
                 Ok(())
             }
 
-            fn map_begin(&mut self, _: Option<usize>) -> stream::Result {
+            fn map_begin(&mut self, _: Option<usize>) -> crate::Result {
                 Ok(())
             }
 
-            fn map_end(&mut self) -> stream::Result {
+            fn map_end(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn map_key_begin(&mut self) -> stream::Result {
+            fn map_key_begin(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn map_key_end(&mut self) -> stream::Result {
+            fn map_key_end(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn map_value_begin(&mut self) -> stream::Result {
+            fn map_value_begin(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn map_value_end(&mut self) -> stream::Result {
+            fn map_value_end(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn seq_begin(&mut self, _: Option<usize>) -> stream::Result {
+            fn seq_begin(&mut self, _: Option<usize>) -> crate::Result {
                 Ok(())
             }
 
-            fn seq_end(&mut self) -> stream::Result {
+            fn seq_end(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn seq_elem_begin(&mut self) -> stream::Result {
+            fn seq_elem_begin(&mut self) -> crate::Result {
                 Ok(())
             }
 
-            fn seq_elem_end(&mut self) -> stream::Result {
+            fn seq_elem_end(&mut self) -> crate::Result {
                 Ok(())
             }
         }

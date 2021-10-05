@@ -1,8 +1,4 @@
-use crate::{
-    stream::{Source, Stream, TypedSource},
-    value::Value,
-    Result,
-};
+use crate::{source::TypedSource, Result, Source, Stream, Value};
 
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]

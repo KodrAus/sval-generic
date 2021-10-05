@@ -1,16 +1,11 @@
 use crate::{
-    erased, fmt, serde,
-    source::{Source, TypedSource},
-    stream::{self, Display},
-    tag::{TypeTag, VariantTag},
-};
-
-#[doc(inline)]
-pub use crate::{
+    erased, fmt,
     for_all::ForAll,
-    stream::Stream,
-    tag::{type_tag, variant_tag, TypeTagged, VariantTagged},
-    Error, Result,
+    serde,
+    source::{Source, TypedSource},
+    stream::{self, Display, Stream},
+    tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
+    Result,
 };
 
 #[async_trait]
