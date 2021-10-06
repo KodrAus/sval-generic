@@ -648,6 +648,10 @@ trait ErasedSource<'a> {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
+
+    fn erased_is_map_hint(&self) -> Option<bool>;
+
+    fn erased_is_seq_hint(&self) -> Option<bool>;
 }
 
 impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
@@ -657,6 +661,14 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
     {
         source::Source::stream(self, stream)
     }
+
+    fn erased_is_map_hint(&self) -> Option<bool> {
+        source::Source::is_map_hint(self)
+    }
+
+    fn erased_is_seq_hint(&self) -> Option<bool> {
+        source::Source::is_seq_hint(self)
+    }
 }
 
 impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
@@ -665,6 +677,14 @@ impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
         'a: 'c,
     {
         self.0.erased_stream(Receiver(&mut stream))
+    }
+
+    fn is_map_hint(&self) -> Option<bool> {
+        self.0.erased_is_map_hint()
+    }
+
+    fn is_seq_hint(&self) -> Option<bool> {
+        self.0.erased_is_seq_hint()
     }
 }
 

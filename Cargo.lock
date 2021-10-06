@@ -112,6 +112,7 @@ dependencies = [
  "async-trait",
  "serde",
  "sval-generic-api-derive",
+ "valuable",
 ]
 
 [[package]]

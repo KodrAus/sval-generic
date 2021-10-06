@@ -1,11 +1,19 @@
 use std::{borrow::ToOwned, fmt};
 
-use crate::{Error, Receiver, Result, Value};
+use crate::{receiver, Error, Receiver, Result, Value};
 
 pub trait Source<'a> {
     fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
     where
         'a: 'b;
+
+    fn is_map_hint(&self) -> Option<bool> {
+        None
+    }
+
+    fn is_seq_hint(&self) -> Option<bool> {
+        None
+    }
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
@@ -14,6 +22,14 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
         'a: 'c,
     {
         (**self).stream(stream)
+    }
+
+    fn is_map_hint(&self) -> Option<bool> {
+        (**self).is_map_hint()
+    }
+
+    fn is_seq_hint(&self) -> Option<bool> {
+        (**self).is_seq_hint()
     }
 }
 
@@ -123,6 +139,138 @@ impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
         'a: 'b,
     {
         (**self).stream(receiver)
+    }
+
+    fn is_map_hint(&self) -> Option<bool> {
+        struct Extract(Option<bool>);
+
+        impl<'a> Receiver<'a> for Extract {
+            fn display<D: fmt::Display>(&mut self, _: D) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn none(&mut self) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn map_begin(&mut self, _: Option<usize>) -> Result {
+                self.0 = Some(true);
+
+                receiver::unsupported()
+            }
+
+            fn map_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_key_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_key_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_value_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_value_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_elem_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_elem_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+        }
+
+        let mut stream = Extract(None);
+        (**self).stream(&mut stream).ok()?;
+        stream.0
+    }
+
+    fn is_seq_hint(&self) -> Option<bool> {
+        struct Extract(Option<bool>);
+
+        impl<'a> Receiver<'a> for Extract {
+            fn display<D: fmt::Display>(&mut self, _: D) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn none(&mut self) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn map_begin(&mut self, _: Option<usize>) -> Result {
+                self.0 = Some(false);
+
+                receiver::unsupported()
+            }
+
+            fn map_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_key_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_key_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_value_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn map_value_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                self.0 = Some(true);
+
+                receiver::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_elem_begin(&mut self) -> Result {
+                receiver::unsupported()
+            }
+
+            fn seq_elem_end(&mut self) -> Result {
+                receiver::unsupported()
+            }
+        }
+
+        let mut stream = Extract(None);
+        (**self).stream(&mut stream).ok()?;
+        stream.0
     }
 }
 

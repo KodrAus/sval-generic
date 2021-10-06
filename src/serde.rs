@@ -24,7 +24,7 @@ impl<V: value::Value> Serialize for Value<V> {
     where
         S: Serializer,
     {
-        let mut stream = SerdeStream::begin(serializer);
+        let mut stream = SerdeReceiver::begin(serializer);
         self.0
             .stream(&mut stream)
             .map_err(|_| S::Error::custom("failed to serialize value"))?;
@@ -32,7 +32,7 @@ impl<V: value::Value> Serialize for Value<V> {
     }
 }
 
-pub struct Source<V>(Cell<Option<V>>);
+struct Source<V>(Cell<Option<V>>);
 
 impl<V> Source<V> {
     fn new(source: V) -> Self {
@@ -40,16 +40,12 @@ impl<V> Source<V> {
     }
 }
 
-pub fn source<'a, V: source::Source<'a>>(source: V) -> Source<V> {
-    Source::new(source)
-}
-
 impl<'a, V: source::Source<'a>> Serialize for Source<V> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut stream = SerdeStream::begin(serializer);
+        let mut stream = SerdeReceiver::begin(serializer);
 
         self.0
             .take()
@@ -77,7 +73,7 @@ impl<D: receiver::Display> Serialize for Display<D> {
     }
 }
 
-enum SerdeStream<S: Serializer> {
+enum SerdeReceiver<S: Serializer> {
     Serializer(Option<StreamSerializer<S>>),
     SerializeMap(Option<StreamSerializeMap<S>>),
     SerializeStruct(Option<StreamSerializeStruct<S>>),
@@ -122,9 +118,9 @@ struct StreamSerializeTupleVariant<S: Serializer> {
     serializer: S::SerializeTupleVariant,
 }
 
-impl<S: Serializer> SerdeStream<S> {
+impl<S: Serializer> SerdeReceiver<S> {
     fn begin(serializer: S) -> Self {
-        SerdeStream::Serializer(Some(StreamSerializer {
+        SerdeReceiver::Serializer(Some(StreamSerializer {
             serializer,
             type_tag: None,
             variant_tag: None,
@@ -133,7 +129,7 @@ impl<S: Serializer> SerdeStream<S> {
     }
 
     fn end(self) -> Result<S::Ok, S::Error> {
-        if let SerdeStream::Done(ok) = self {
+        if let SerdeReceiver::Done(ok) = self {
             Ok(ok)
         } else {
             Err(S::Error::custom("the stream is incomplete"))
@@ -141,7 +137,7 @@ impl<S: Serializer> SerdeStream<S> {
     }
 
     fn serializer(&mut self) -> crate::Result<&mut StreamSerializer<S>> {
-        if let SerdeStream::Serializer(Some(ref mut stream)) = self {
+        if let SerdeReceiver::Serializer(Some(ref mut stream)) = self {
             Ok(stream)
         } else {
             Err(crate::Error)
@@ -152,9 +148,9 @@ impl<S: Serializer> SerdeStream<S> {
         match self {
             // A standard serializer can appear at any level of serialization
             // The serializer is taken by value and returns the final result
-            SerdeStream::Serializer(stream) => match stream.take() {
+            SerdeReceiver::Serializer(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(
+                    *self = SerdeReceiver::Done(
                         v.serialize(stream.serializer).map_err(|_| crate::Error)?,
                     );
 
@@ -165,62 +161,62 @@ impl<S: Serializer> SerdeStream<S> {
 
             // If the serializer is inside a map then keys and values can be serialized independently
             // Serialize a map key
-            SerdeStream::SerializeMap(Some(StreamSerializeMap {
+            SerdeReceiver::SerializeMap(Some(StreamSerializeMap {
                 ref mut serializer,
                 is_key: true,
             })) => serializer.serialize_key(&v).map_err(|_| crate::Error),
             // Serialize a map value
-            SerdeStream::SerializeMap(Some(StreamSerializeMap {
+            SerdeReceiver::SerializeMap(Some(StreamSerializeMap {
                 ref mut serializer,
                 is_key: false,
             })) => serializer.serialize_value(&v).map_err(|_| crate::Error),
-            SerdeStream::SerializeMap(_) => Err(crate::Error),
+            SerdeReceiver::SerializeMap(_) => Err(crate::Error),
 
             // If the serializer is inside a struct then expect the field to already be provided
-            SerdeStream::SerializeStruct(Some(StreamSerializeStruct {
+            SerdeReceiver::SerializeStruct(Some(StreamSerializeStruct {
                 ref mut serializer,
                 field: Some(field),
             })) => serializer
                 .serialize_field(field, &v)
                 .map_err(|_| crate::Error),
-            SerdeStream::SerializeStruct(_) => Err(crate::Error),
+            SerdeReceiver::SerializeStruct(_) => Err(crate::Error),
 
             // If the serializer is inside a struct variant then expect the field to already be provided
-            SerdeStream::SerializeStructVariant(Some(StreamSerializeStructVariant {
+            SerdeReceiver::SerializeStructVariant(Some(StreamSerializeStructVariant {
                 ref mut serializer,
                 field: Some(field),
             })) => serializer
                 .serialize_field(field, &v)
                 .map_err(|_| crate::Error),
-            SerdeStream::SerializeStructVariant(_) => Err(crate::Error),
+            SerdeReceiver::SerializeStructVariant(_) => Err(crate::Error),
 
             // If the serializer is inside a seq then serialize an element
-            SerdeStream::SerializeSeq(Some(StreamSerializeSeq { ref mut serializer })) => {
+            SerdeReceiver::SerializeSeq(Some(StreamSerializeSeq { ref mut serializer })) => {
                 serializer.serialize_element(&v).map_err(|_| crate::Error)
             }
-            SerdeStream::SerializeSeq(_) => Err(crate::Error),
+            SerdeReceiver::SerializeSeq(_) => Err(crate::Error),
 
             // If the serializer is inside a tuple struct then serialize a field
             // Fields in tuples are unnamed so they don't need to be provided
-            SerdeStream::SerializeTupleStruct(Some(StreamSerializeTupleStruct {
+            SerdeReceiver::SerializeTupleStruct(Some(StreamSerializeTupleStruct {
                 ref mut serializer,
             })) => serializer.serialize_field(&v).map_err(|_| crate::Error),
-            SerdeStream::SerializeTupleStruct(_) => Err(crate::Error),
+            SerdeReceiver::SerializeTupleStruct(_) => Err(crate::Error),
 
             // If the serializer is inside a tuple variant then serialize a field
-            SerdeStream::SerializeTupleVariant(Some(StreamSerializeTupleVariant {
+            SerdeReceiver::SerializeTupleVariant(Some(StreamSerializeTupleVariant {
                 ref mut serializer,
             })) => serializer.serialize_field(&v).map_err(|_| crate::Error),
-            SerdeStream::SerializeTupleVariant(_) => Err(crate::Error),
+            SerdeReceiver::SerializeTupleVariant(_) => Err(crate::Error),
 
             // If the serializer is already complete then we shouldn't still be sending it values
-            SerdeStream::Done(_) => Err(crate::Error),
+            SerdeReceiver::Done(_) => Err(crate::Error),
         }
     }
 
     fn serialize_map_begin(&mut self, len: Option<usize>) -> crate::Result {
         match self {
-            SerdeStream::Serializer(stream) => match stream.take() {
+            SerdeReceiver::Serializer(stream) => match stream.take() {
                 // Begin a serializer for a struct
                 Some(StreamSerializer {
                     serializer,
@@ -228,7 +224,7 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_tag: None,
                     variant_index: None,
                 }) => {
-                    *self = SerdeStream::SerializeStruct(Some(StreamSerializeStruct {
+                    *self = SerdeReceiver::SerializeStruct(Some(StreamSerializeStruct {
                         serializer: serializer
                             .serialize_struct(ty, len.ok_or(crate::Error)?)
                             .map_err(|_| crate::Error)?,
@@ -244,7 +240,7 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_tag: None,
                     variant_index: None,
                 }) => {
-                    *self = SerdeStream::SerializeMap(Some(StreamSerializeMap {
+                    *self = SerdeReceiver::SerializeMap(Some(StreamSerializeMap {
                         serializer: serializer.serialize_map(len).map_err(|_| crate::Error)?,
                         is_key: false,
                     }));
@@ -259,7 +255,7 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_index: Some(index),
                 }) => {
                     *self =
-                        SerdeStream::SerializeStructVariant(Some(StreamSerializeStructVariant {
+                        SerdeReceiver::SerializeStructVariant(Some(StreamSerializeStructVariant {
                             serializer: serializer
                                 .serialize_struct_variant(
                                     ty,
@@ -283,15 +279,15 @@ impl<S: Serializer> SerdeStream<S> {
     fn serialize_map_key_begin(&mut self) -> crate::Result {
         match self {
             // An anonymous map needs to know whether to expect a key
-            SerdeStream::SerializeMap(Some(ref mut stream)) => {
+            SerdeReceiver::SerializeMap(Some(ref mut stream)) => {
                 stream.is_key = true;
 
                 Ok(())
             }
             // Struct maps don't require key tracking
-            SerdeStream::SerializeStruct(Some(_)) => Ok(()),
+            SerdeReceiver::SerializeStruct(Some(_)) => Ok(()),
             // Struct variant maps don't require key tracking
-            SerdeStream::SerializeStructVariant(Some(_)) => Ok(()),
+            SerdeReceiver::SerializeStructVariant(Some(_)) => Ok(()),
             _ => Err(crate::Error),
         }
     }
@@ -299,15 +295,15 @@ impl<S: Serializer> SerdeStream<S> {
     fn serialize_map_key_end(&mut self) -> crate::Result {
         match self {
             // An anonymous map needs to know whether to expect a key
-            SerdeStream::SerializeMap(Some(ref mut stream)) => {
+            SerdeReceiver::SerializeMap(Some(ref mut stream)) => {
                 stream.is_key = false;
 
                 Ok(())
             }
             // Struct maps don't require key tracking
-            SerdeStream::SerializeStruct(Some(_)) => Ok(()),
+            SerdeReceiver::SerializeStruct(Some(_)) => Ok(()),
             // Struct variant maps don't require key tracking
-            SerdeStream::SerializeStructVariant(Some(_)) => Ok(()),
+            SerdeReceiver::SerializeStructVariant(Some(_)) => Ok(()),
             _ => Err(crate::Error),
         }
     }
@@ -315,7 +311,7 @@ impl<S: Serializer> SerdeStream<S> {
     fn serialize_map_field(&mut self, field: Result<&'static str, &str>) -> crate::Result {
         match self {
             // An anonymous map can accept either a static or non-static field name
-            SerdeStream::SerializeMap(Some(StreamSerializeMap {
+            SerdeReceiver::SerializeMap(Some(StreamSerializeMap {
                 ref mut serializer,
                 is_key: false,
             })) => match field {
@@ -323,12 +319,12 @@ impl<S: Serializer> SerdeStream<S> {
                 Err(field) => serializer.serialize_key(field).map_err(|_| crate::Error),
             },
             // Struct maps require a static field
-            SerdeStream::SerializeStruct(Some(ref mut stream)) => {
+            SerdeReceiver::SerializeStruct(Some(ref mut stream)) => {
                 stream.field = field.ok();
                 Ok(())
             }
             // Struct variant maps require a static field
-            SerdeStream::SerializeStructVariant(Some(ref mut stream)) => {
+            SerdeReceiver::SerializeStructVariant(Some(ref mut stream)) => {
                 stream.field = field.ok();
 
                 Ok(())
@@ -340,25 +336,25 @@ impl<S: Serializer> SerdeStream<S> {
     fn serialize_map_end(&mut self) -> crate::Result {
         match self {
             // Complete an anonymous map
-            SerdeStream::SerializeMap(stream) => match stream.take() {
+            SerdeReceiver::SerializeMap(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
             },
             // Complete a struct
-            SerdeStream::SerializeStruct(stream) => match stream.take() {
+            SerdeReceiver::SerializeStruct(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
             },
             // Complete a struct variant
-            SerdeStream::SerializeStructVariant(stream) => match stream.take() {
+            SerdeReceiver::SerializeStructVariant(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
@@ -369,7 +365,7 @@ impl<S: Serializer> SerdeStream<S> {
 
     fn serialize_seq_begin(&mut self, len: Option<usize>) -> crate::Result {
         match self {
-            SerdeStream::Serializer(stream) => match stream.take() {
+            SerdeReceiver::Serializer(stream) => match stream.take() {
                 // Begin a serializer for a tuple struct
                 Some(StreamSerializer {
                     serializer,
@@ -377,7 +373,7 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_tag: None,
                     variant_index: None,
                 }) => {
-                    *self = SerdeStream::SerializeTupleStruct(Some(StreamSerializeTupleStruct {
+                    *self = SerdeReceiver::SerializeTupleStruct(Some(StreamSerializeTupleStruct {
                         serializer: serializer
                             .serialize_tuple_struct(ty, len.ok_or(crate::Error)?)
                             .map_err(|_| crate::Error)?,
@@ -392,7 +388,7 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_tag: None,
                     variant_index: None,
                 }) => {
-                    *self = SerdeStream::SerializeSeq(Some(StreamSerializeSeq {
+                    *self = SerdeReceiver::SerializeSeq(Some(StreamSerializeSeq {
                         serializer: serializer.serialize_seq(len).map_err(|_| crate::Error)?,
                     }));
 
@@ -405,11 +401,17 @@ impl<S: Serializer> SerdeStream<S> {
                     variant_tag: Some(variant),
                     variant_index: Some(index),
                 }) => {
-                    *self = SerdeStream::SerializeTupleVariant(Some(StreamSerializeTupleVariant {
-                        serializer: serializer
-                            .serialize_tuple_variant(ty, index, variant, len.ok_or(crate::Error)?)
-                            .map_err(|_| crate::Error)?,
-                    }));
+                    *self =
+                        SerdeReceiver::SerializeTupleVariant(Some(StreamSerializeTupleVariant {
+                            serializer: serializer
+                                .serialize_tuple_variant(
+                                    ty,
+                                    index,
+                                    variant,
+                                    len.ok_or(crate::Error)?,
+                                )
+                                .map_err(|_| crate::Error)?,
+                        }));
 
                     Ok(())
                 }
@@ -423,25 +425,25 @@ impl<S: Serializer> SerdeStream<S> {
     fn serialize_seq_end(&mut self) -> crate::Result {
         match self {
             // Complete an anonymous seq
-            SerdeStream::SerializeSeq(stream) => match stream.take() {
+            SerdeReceiver::SerializeSeq(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
             },
             // Complete a tuple struct
-            SerdeStream::SerializeTupleStruct(stream) => match stream.take() {
+            SerdeReceiver::SerializeTupleStruct(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
             },
             // Complete a tuple variant
-            SerdeStream::SerializeTupleVariant(stream) => match stream.take() {
+            SerdeReceiver::SerializeTupleVariant(stream) => match stream.take() {
                 Some(stream) => {
-                    *self = SerdeStream::Done(stream.serializer.end().map_err(|_| crate::Error)?);
+                    *self = SerdeReceiver::Done(stream.serializer.end().map_err(|_| crate::Error)?);
                     Ok(())
                 }
                 None => Err(crate::Error),
@@ -451,7 +453,7 @@ impl<S: Serializer> SerdeStream<S> {
     }
 }
 
-impl<'a, S: Serializer> Receiver<'a> for SerdeStream<S> {
+impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     fn any<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> crate::Result {
         self.serialize_any(Source::new(v))
     }

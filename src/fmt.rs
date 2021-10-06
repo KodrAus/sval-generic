@@ -19,19 +19,19 @@ pub fn value<V: value::Value>(v: V) -> Value<V> {
 
 impl<V: value::Value> Debug for Value<V> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.0.stream(FmtStream::new(f)).map_err(|_| fmt::Error)
+        self.0.stream(FmtReceiver::new(f)).map_err(|_| fmt::Error)
     }
 }
 
-struct FmtStream<'a, 'b: 'a> {
+struct FmtReceiver<'a, 'b: 'a> {
     fmt: &'a mut Formatter<'b>,
     depth: usize,
     is_current_depth_empty: bool,
 }
 
-impl<'a, 'b: 'a> FmtStream<'a, 'b> {
+impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
     fn new(fmt: &'a mut Formatter<'b>) -> Self {
-        FmtStream {
+        FmtReceiver {
             depth: 0,
             is_current_depth_empty: false,
             fmt,
@@ -49,7 +49,7 @@ impl<'a, 'b: 'a> FmtStream<'a, 'b> {
     }
 }
 
-impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtStream<'fa, 'fb> {
+impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
     fn display<D: Display>(&mut self, v: D) -> crate::Result {
         struct Adapter<T>(T);
 

@@ -15,6 +15,10 @@ members = [
 [dependencies.serde]
 version = "1"
 
+[dependencies.valuable]
+git = "https://github.com/tokio-rs/valuable"
+branch = "taiki-e/json"
+
 [dependencies.sval-generic-api-derive]
 path = "derive"
 
