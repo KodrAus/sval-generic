@@ -1,4 +1,4 @@
-use std::error;
+use std::{borrow::Cow, error};
 
 use crate::{source, Receiver, Source, Value};
 
@@ -362,7 +362,7 @@ impl<'a> Source<'a> for String {
     where
         'a: 'b,
     {
-        receiver.str(self.for_all())
+        receiver.str(crate::for_all(self))
     }
 }
 
@@ -372,6 +372,10 @@ impl<'a> source::ValueSource<'a, str> for String {
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(&**self)
     }
+
+    fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
+        Ok(std::mem::take(self))
+    }
 }
 
 impl<'a> source::ValueSource<'a, str> for &'a String {
@@ -379,6 +383,51 @@ impl<'a> source::ValueSource<'a, str> for &'a String {
 
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(&**self)
+    }
+}
+
+impl<'a> Value for Cow<'a, str> {
+    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> crate::Result {
+        receiver.str(&**self)
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        if let Cow::Borrowed(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Source<'a> for Cow<'a, str> {
+    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    where
+        'a: 'b,
+    {
+        match self {
+            Cow::Borrowed(v) => receiver.str(v),
+            Cow::Owned(v) => receiver.str(crate::for_all(v)),
+        }
+    }
+}
+
+impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
+    type Error = source::Impossible;
+
+    fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+        Ok(&**self)
+    }
+
+    fn value_ref(&mut self) -> Result<&'a str, source::ToRefError<&str, Self::Error>> {
+        match self {
+            Cow::Borrowed(v) => Ok(v),
+            Cow::Owned(v) => Err(source::ToRefError::from_value(v)),
+        }
+    }
+
+    fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
+        Ok(std::mem::take(self).into_owned())
     }
 }
 

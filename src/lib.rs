@@ -39,9 +39,13 @@ pub async fn stream_non_blocking<'a>(s: impl AsyncStream<'a>, v: impl AsyncSourc
 }
 */
 
+pub fn for_all<T>(value: T) -> ForAll<T> {
+    ForAll::new(value)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{receiver::Display, source::ValueSource, Receiver, Value};
+    use crate::{erased, receiver::Display, source::ValueSource, Receiver, Value};
 
     #[test]
     fn it_works() {
@@ -51,7 +55,7 @@ mod tests {
             fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> crate::Result {
                 let mut short = |s: &str| {
                     stream.map_field("field")?;
-                    stream.map_value(s.for_all())
+                    stream.map_value(crate::for_all(s))
                 };
 
                 short("value")
@@ -90,9 +94,9 @@ mod tests {
             }
         }
 
-        struct MyStream<'a>(Option<&'a str>);
+        struct MyReceiver<'a>(Option<&'a str>);
 
-        impl<'a> Receiver<'a> for MyStream<'a> {
+        impl<'a> Receiver<'a> for MyReceiver<'a> {
             fn display<V: Display>(&mut self, _: V) -> crate::Result {
                 Ok(())
             }
@@ -154,24 +158,24 @@ mod tests {
             }
         }
 
-        MyValue.stream(MyStream(None)).unwrap();
+        MyValue.stream(MyReceiver(None)).unwrap();
 
         let my_struct = MyStruct {
             a: String::from("hello!"),
             b: 42,
         };
-        my_struct.stream(MyStream(None)).unwrap();
+        my_struct.stream(MyReceiver(None)).unwrap();
 
         let erased_value = MyStruct {
             a: String::from("hello!"),
             b: 42,
         };
-        let erased_value = erased_value.erase();
+        let erased_value = erased::value(&erased_value);
 
-        let mut erased_stream = MyStream(None);
-        let mut erased_stream = erased_stream.erase();
+        let mut erased_stream = MyReceiver(None);
+        let mut erased_stream = erased::receiver(&mut erased_stream);
 
-        erased_value.stream(MyStream(None)).unwrap();
+        erased_value.stream(MyReceiver(None)).unwrap();
 
         MyValue.stream(&mut erased_stream).unwrap();
 

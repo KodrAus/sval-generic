@@ -1,4 +1,4 @@
-use std::{error, fmt};
+use std::{borrow::ToOwned, error, fmt};
 
 use crate::{receiver, source, tag, value, Error, Result};
 
@@ -9,6 +9,10 @@ impl<'a> Value<'a> {
     pub fn new(v: &'a impl value::Value) -> Self {
         Value(v)
     }
+}
+
+pub fn value<'a>(v: &'a impl value::Value) -> Value<'a> {
+    Value::new(v)
 }
 
 trait ErasedValue {
@@ -43,6 +47,10 @@ impl<'a, 'b> Receiver<'a, 'b> {
     pub fn new(s: &'b mut impl receiver::Receiver<'a>) -> Self {
         Receiver(s)
     }
+}
+
+pub fn receiver<'a, 'b>(s: &'b mut impl receiver::Receiver<'a>) -> Receiver<'a, 'b> {
+    Receiver::new(s)
 }
 
 trait ErasedReceiver<'a> {
@@ -632,6 +640,10 @@ impl<'a, 'b> Source<'a, 'b> {
     }
 }
 
+pub fn source<'a, 'b>(source: &'b mut impl source::Source<'a>) -> Source<'a, 'b> {
+    Source::new(source)
+}
+
 trait ErasedSource<'a> {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
@@ -664,13 +676,23 @@ impl<'a, 'b, T: value::Value + ?Sized + 'static> ValueSource<'a, 'b, T> {
     }
 }
 
-trait ErasedValueSource<'a, T: ?Sized> {
+pub fn value_source<'a, 'b, T: value::Value + ?Sized + 'static>(
+    source: &'b mut impl source::ValueSource<'a, T>,
+) -> ValueSource<'a, 'b, T> {
+    ValueSource::new(source)
+}
+
+trait ErasedValueSource<'a, T: value::Value + ?Sized> {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
 
     fn erased_value(&mut self) -> Result<&T>;
     fn erased_value_ref(&mut self) -> Result<&'a T, Result<&T>>;
+    fn erased_value_owned(&mut self) -> Result<T::Owned>
+    where
+        T: ToOwned,
+        T::Owned: value::Value + 'static;
 }
 
 impl<'a, U: value::Value + ?Sized + 'static, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U>
@@ -691,6 +713,14 @@ impl<'a, U: value::Value + ?Sized + 'static, T: source::ValueSource<'a, U>> Eras
         self.value_ref()
             .map_err(|e| e.into_result().map_err(Into::into))
     }
+
+    fn erased_value_owned(&mut self) -> Result<U::Owned>
+    where
+        U: ToOwned,
+        U::Owned: value::Value + 'static,
+    {
+        self.value_owned().map_err(Into::into)
+    }
 }
 
 impl<'a, 'b, T: value::Value + ?Sized + 'static> source::ValueSource<'a, T>
@@ -709,9 +739,19 @@ impl<'a, 'b, T: value::Value + ?Sized + 'static> source::ValueSource<'a, T>
             .erased_value_ref()
             .map_err(source::ToRefError::from_result)
     }
+
+    fn value_owned(&mut self) -> Result<T::Owned, source::ToValueError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: value::Value + 'static,
+    {
+        self.0
+            .erased_value_owned()
+            .map_err(source::ToValueError::from_error)
+    }
 }
 
-impl<'a, 'b, T: ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
+impl<'a, 'b, T: value::Value + ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
     fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut stream: S) -> Result
     where
         'a: 'c,

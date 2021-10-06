@@ -1,22 +1,11 @@
-use std::fmt;
+use std::{borrow::ToOwned, fmt};
 
-use crate::{erased, Error, ForAll, Receiver, Result, Value};
+use crate::{Error, Receiver, Result, Value};
 
 pub trait Source<'a> {
     fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
     where
         'a: 'b;
-
-    fn for_all(&mut self) -> ForAll<&mut Self> {
-        ForAll(self)
-    }
-
-    fn erase<'b>(&'b mut self) -> erased::Source<'a, 'b>
-    where
-        Self: Sized,
-    {
-        erased::Source::new(self)
-    }
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
@@ -97,18 +86,13 @@ pub trait ValueSource<'a, T: Value + ?Sized + 'static>: Source<'a> {
         ))
     }
 
-    fn for_all_typed(&mut self) -> ForAll<&mut Self> {
-        ForAll(self)
-    }
-
-    fn erase_typed<'b>(&'b mut self) -> erased::ValueSource<'a, 'b, T>
+    fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
-        Self: Sized,
+        T: ToOwned,
+        T::Owned: Value + 'static,
     {
-        erased::ValueSource::new(self)
+        self.value().map(ToOwned::to_owned)
     }
-
-    // TODO: fn stream_to_owned when we figure out how to erase it (T::Owned + 'static -> Box<dyn Any> -> Box<T> -> T?)
 }
 
 impl<'a, 'b, T: Value + ?Sized + 'static, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T>
@@ -122,6 +106,14 @@ impl<'a, 'b, T: Value + ?Sized + 'static, S: ValueSource<'a, T> + ?Sized> ValueS
 
     fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         (**self).value_ref()
+    }
+
+    fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value + 'static,
+    {
+        (**self).value_owned()
     }
 }
 
@@ -143,5 +135,13 @@ impl<'a, T: Value + ?Sized + 'static> ValueSource<'a, T> for &'a T {
 
     fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         Ok(self)
+    }
+
+    fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value + 'static,
+    {
+        Ok(self.to_owned())
     }
 }

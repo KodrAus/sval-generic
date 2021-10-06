@@ -1,8 +1,5 @@
 use crate::{
-    erased, fmt,
-    for_all::ForAll,
     receiver::{self, Display, Receiver},
-    serde,
     source::{Source, ValueSource},
     tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
     Result,
@@ -98,25 +95,6 @@ where
         tag: VariantTag<T, K>,
     ) -> VariantTagged<T, K, &Self> {
         tag.tag(self)
-    }
-
-    fn for_all(&self) -> ForAll<&Self> {
-        ForAll(self)
-    }
-
-    fn erase(&self) -> erased::Value
-    where
-        Self: Sized,
-    {
-        erased::Value::new(self)
-    }
-
-    fn to_serialize(&self) -> serde::Value<&Self> {
-        serde::Value::new(self)
-    }
-
-    fn to_debug(&self) -> fmt::Value<&Self> {
-        fmt::Value::new(self)
     }
 }
 

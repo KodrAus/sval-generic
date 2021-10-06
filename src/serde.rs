@@ -15,6 +15,10 @@ impl<V> Value<V> {
     }
 }
 
+pub fn value<V: value::Value>(value: V) -> Value<V> {
+    Value::new(value)
+}
+
 impl<V: value::Value> Serialize for Value<V> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -31,9 +35,13 @@ impl<V: value::Value> Serialize for Value<V> {
 pub struct Source<V>(Cell<Option<V>>);
 
 impl<V> Source<V> {
-    fn new(value: V) -> Self {
-        Source(Cell::new(Some(value)))
+    fn new(source: V) -> Self {
+        Source(Cell::new(Some(source)))
     }
+}
+
+pub fn source<'a, V: source::Source<'a>>(source: V) -> Source<V> {
+    Source::new(source)
 }
 
 impl<'a, V: source::Source<'a>> Serialize for Source<V> {

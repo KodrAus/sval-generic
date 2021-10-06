@@ -1,8 +1,6 @@
 use std::{error, fmt};
 
 use crate::{
-    erased,
-    for_all::ForAll,
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
     Error, Result,
@@ -219,17 +217,6 @@ pub trait Receiver<'a> {
         self.seq_elem_begin()?;
         self.any(elem)?;
         self.seq_elem_end()
-    }
-
-    fn for_all(&mut self) -> ForAll<&mut Self> {
-        ForAll(self)
-    }
-
-    fn erase<'b>(&'b mut self) -> erased::Receiver<'a, 'b>
-    where
-        Self: Sized,
-    {
-        erased::Receiver::new(self)
     }
 }
 

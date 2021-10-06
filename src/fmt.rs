@@ -13,6 +13,10 @@ impl<V> Value<V> {
     }
 }
 
+pub fn value<V: value::Value>(v: V) -> Value<V> {
+    Value::new(v)
+}
+
 impl<V: value::Value> Debug for Value<V> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.0.stream(FmtStream::new(f)).map_err(|_| fmt::Error)
