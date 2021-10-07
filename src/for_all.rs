@@ -58,10 +58,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.any(ForAll(value))
     }
 
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        self.0.any(ForAll(value))
-    }
-
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
         self.0.display(fmt)
     }

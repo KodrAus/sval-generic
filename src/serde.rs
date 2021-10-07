@@ -1,6 +1,9 @@
-use std::{convert::TryInto};
+use std::convert::TryInto;
 
-use crate::{buffer::{self, BufferReceiver}, receiver, source, tag, value, Receiver};
+use crate::{
+    buffer::{self, BufferReceiver},
+    receiver, source, tag, value, Receiver,
+};
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -552,7 +555,10 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
 }
 
 impl<'a, S: Serializer> BufferReceiver<'a> for SerdeReceiver<S> {
-    fn value_source<'v: 'a, T: value::Value + ?Sized + 'v, VS: source::ValueSource<'v, T>>(&mut self, mut v: VS) -> crate::Result {
+    fn value_source<'v: 'a, T: value::Value + ?Sized + 'v, VS: source::ValueSource<'v, T>>(
+        &mut self,
+        mut v: VS,
+    ) -> crate::Result {
         self.serialize_any(Value::new(v.value()?))
     }
 }

@@ -1,14 +1,15 @@
-use std::cell::Cell;
-
 use valuable::{Listable, Mappable, Valuable, Visit};
 
-use crate::{receiver, source, value, Receiver};
+use crate::{
+    buffer::{self, BufferReceiver},
+    receiver, source, value, Receiver,
+};
 
-pub struct Value<'a, V>(DetectedValue<'a, V>, &'a V);
+pub struct Value<'a, V>(Detected<'a, V>, &'a V);
 
 impl<'a, V: value::Value> Value<'a, V> {
     pub fn new(value: &'a V) -> Self {
-        Value(DetectedValue::detect(value), value)
+        Value(Detected::detect(value), value)
     }
 }
 
@@ -16,7 +17,7 @@ pub fn value<V: value::Value>(value: &V) -> Value<V> {
     Value::new(value)
 }
 
-enum DetectedValue<'a, V> {
+enum Detected<'a, V> {
     Unknown,
     Primitive(Primitive<'a>),
     Map(Map<'a, V>),
@@ -76,20 +77,20 @@ impl<'a, V: value::Value> Listable for Sequence<'a, V> {
     }
 }
 
-impl<'a, V: value::Value> DetectedValue<'a, V> {
+impl<'a, V: value::Value> Detected<'a, V> {
     fn detect(value: &'a V) -> Self {
-        struct Detect<'a, V>(DetectedValue<'a, V>, &'a V);
+        struct Detect<'a, V>(Detected<'a, V>, &'a V);
 
         impl<'a, V> Receiver<'a> for Detect<'a, V> {
             fn display<D: receiver::Display>(&mut self, _: D) -> crate::Result {
-                self.0 = DetectedValue::Unknown;
+                self.0 = Detected::Unknown;
 
                 receiver::unsupported()
             }
 
             fn u64(&mut self, value: u64) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Unsigned(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Unsigned(value));
 
                     Ok(())
                 } else {
@@ -98,8 +99,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn i64(&mut self, value: i64) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Signed(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Signed(value));
 
                     Ok(())
                 } else {
@@ -108,8 +109,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn u128(&mut self, value: u128) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::BigUnsigned(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::BigUnsigned(value));
 
                     Ok(())
                 } else {
@@ -118,8 +119,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn i128(&mut self, value: i128) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::BigSigned(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::BigSigned(value));
 
                     Ok(())
                 } else {
@@ -128,8 +129,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn f64(&mut self, value: f64) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Float(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Float(value));
 
                     Ok(())
                 } else {
@@ -138,8 +139,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn bool(&mut self, value: bool) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Bool(value));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Bool(value));
 
                     Ok(())
                 } else {
@@ -148,8 +149,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn none(&mut self) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Unit);
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Unit);
 
                     Ok(())
                 } else {
@@ -161,8 +162,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
                 &mut self,
                 mut value: S,
             ) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Primitive(Primitive::Str(value.value_ref()?));
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Primitive(Primitive::Str(value.value_ref()?));
 
                     Ok(())
                 } else {
@@ -171,8 +172,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn map_begin(&mut self, len: Option<usize>) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Map(Map { len, map: self.1 });
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Map(Map { len, map: self.1 });
 
                     Ok(())
                 } else {
@@ -181,8 +182,8 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
 
             fn seq_begin(&mut self, len: Option<usize>) -> crate::Result {
-                if let DetectedValue::Unknown = self.0 {
-                    self.0 = DetectedValue::Sequence(Sequence { len, seq: self.1 });
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Sequence(Sequence { len, seq: self.1 });
 
                     Ok(())
                 } else {
@@ -223,7 +224,7 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
             }
         }
 
-        let mut detected = Detect(DetectedValue::Unknown, value);
+        let mut detected = Detect(Detected::Unknown, value);
         let _ = value.stream(&mut detected);
 
         detected.0
@@ -231,19 +232,17 @@ impl<'a, V: value::Value> DetectedValue<'a, V> {
 
     fn as_value(&self) -> valuable::Value<'_> {
         match self {
-            DetectedValue::Unknown => unreachable!(),
-            DetectedValue::Primitive(Primitive::Bool(value)) => valuable::Value::Bool(*value),
-            DetectedValue::Primitive(Primitive::Signed(value)) => valuable::Value::I64(*value),
-            DetectedValue::Primitive(Primitive::Unsigned(value)) => valuable::Value::U64(*value),
-            DetectedValue::Primitive(Primitive::BigSigned(value)) => valuable::Value::I128(*value),
-            DetectedValue::Primitive(Primitive::BigUnsigned(value)) => {
-                valuable::Value::U128(*value)
-            }
-            DetectedValue::Primitive(Primitive::Float(value)) => valuable::Value::F64(*value),
-            DetectedValue::Primitive(Primitive::Str(value)) => valuable::Value::String(value),
-            DetectedValue::Primitive(Primitive::Unit) => valuable::Value::Unit,
-            DetectedValue::Map(map) => valuable::Value::Mappable(map),
-            DetectedValue::Sequence(seq) => valuable::Value::Listable(seq),
+            Detected::Unknown => unreachable!(),
+            Detected::Primitive(Primitive::Bool(value)) => valuable::Value::Bool(*value),
+            Detected::Primitive(Primitive::Signed(value)) => valuable::Value::I64(*value),
+            Detected::Primitive(Primitive::Unsigned(value)) => valuable::Value::U64(*value),
+            Detected::Primitive(Primitive::BigSigned(value)) => valuable::Value::I128(*value),
+            Detected::Primitive(Primitive::BigUnsigned(value)) => valuable::Value::U128(*value),
+            Detected::Primitive(Primitive::Float(value)) => valuable::Value::F64(*value),
+            Detected::Primitive(Primitive::Str(value)) => valuable::Value::String(value),
+            Detected::Primitive(Primitive::Unit) => valuable::Value::Unit,
+            Detected::Map(map) => valuable::Value::Mappable(map),
+            Detected::Sequence(seq) => valuable::Value::Listable(seq),
         }
     }
 }
@@ -258,9 +257,9 @@ impl<'a, V: value::Value> Valuable for Value<'a, V> {
     }
 }
 
-struct ValuableReceiver<'v>(&'v mut dyn Visit);
+struct ValuableReceiver<'a>(&'a mut dyn Visit);
 
-impl<'a, 'v> Receiver<'a> for ValuableReceiver<'v> {
+impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
     fn display<D: receiver::Display>(&mut self, _: D) -> crate::Result {
         receiver::unsupported()
     }
@@ -313,21 +312,76 @@ impl<'a, 'v> Receiver<'a> for ValuableReceiver<'v> {
         Ok(())
     }
 
-    fn map_entry<'k: 'a, 'kv: 'a, K: source::Source<'k>, KV: source::Source<'kv>>(
+    fn map_entry<'k: 'a, 'v: 'a, K: source::Source<'k>, V: source::Source<'v>>(
         &mut self,
         key: K,
-        value: KV,
+        value: V,
     ) -> crate::Result {
-        self.0
-            .visit_entry(Source::new(key).as_value(), Source::new(value).as_value());
+        // In order to visit an entry we need both the key and value to be available
+        struct BufferKey<'a, V>(&'a mut dyn Visit, V);
 
-        Ok(())
+        impl<'a, 'k, 'v, V: source::Source<'v>> BufferReceiver<'k> for BufferKey<'a, V> {
+            fn value_source<
+                'b: 'k,
+                K: value::Value + ?Sized + 'b,
+                S: source::ValueSource<'b, K>,
+            >(
+                &mut self,
+                mut v: S,
+            ) -> crate::Result {
+                struct BufferValue<'a, 'k, K: ?Sized + 'k>(&'a mut dyn Visit, &'k K);
+
+                impl<'a, 'k, 'v, K: value::Value + ?Sized + 'k> BufferReceiver<'v> for BufferValue<'a, 'k, K> {
+                    fn value_source<
+                        'b: 'v,
+                        V: value::Value + ?Sized + 'b,
+                        S: source::ValueSource<'b, V>,
+                    >(
+                        &mut self,
+                        mut v: S,
+                    ) -> crate::Result {
+                        let key = self.1;
+                        let value = v.value()?;
+
+                        self.0.visit_entry(
+                            Value::new(&key).as_value(),
+                            Value::new(&value).as_value(),
+                        );
+
+                        Ok(())
+                    }
+                }
+
+                let key = v.value()?;
+
+                buffer::stream(BufferValue(self.0, key), &mut self.1)
+            }
+        }
+
+        buffer::stream(BufferKey(self.0, value), key)
     }
 
     fn seq_elem<'e: 'a, E: source::Source<'e>>(&mut self, elem: E) -> crate::Result {
-        self.0.visit_unnamed_fields(&[Source::new(elem).as_value()]);
+        struct BufferElem<'a>(&'a mut dyn Visit);
 
-        Ok(())
+        impl<'a, 'e> BufferReceiver<'e> for BufferElem<'a> {
+            fn value_source<
+                'b: 'e,
+                E: value::Value + ?Sized + 'b,
+                S: source::ValueSource<'b, E>,
+            >(
+                &mut self,
+                mut e: S,
+            ) -> crate::Result {
+                let elem = e.value()?;
+
+                self.0.visit_unnamed_fields(&[Value::new(&elem).as_value()]);
+
+                Ok(())
+            }
+        }
+
+        buffer::stream(BufferElem(self.0), elem)
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> crate::Result {
@@ -370,5 +424,3 @@ impl<'a, 'v> Receiver<'a> for ValuableReceiver<'v> {
         Ok(())
     }
 }
-
-struct Continue<'a>(&'a mut dyn Visit)

@@ -695,9 +695,7 @@ trait ErasedValueSource<'a, T: value::Value + ?Sized> {
         T::Owned: value::Value;
 }
 
-impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U>
-    for T
-{
+impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U> for T {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b,
@@ -723,9 +721,7 @@ impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSou
     }
 }
 
-impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T>
-    for ValueSource<'a, 'b, T>
-{
+impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T> for ValueSource<'a, 'b, T> {
     type Error = Error;
 
     fn value(&mut self) -> Result<&T, source::ToValueError<Self::Error>> {

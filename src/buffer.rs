@@ -1,19 +1,25 @@
 use std::borrow::Cow;
 
 use crate::{
-    Result,
-    value::Value,
-    source::{self, Source, ValueSource},
-    receiver::{self, Receiver, Display},
     for_all,
+    receiver::{self, Display, Receiver},
+    source::{self, Source, ValueSource},
+    value::Value,
+    Result,
 };
 
 pub trait BufferReceiver<'a> {
-    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(&mut self, value: S) -> Result;
+    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(
+        &mut self,
+        value: S,
+    ) -> Result;
 }
 
 impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
-    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(&mut self, value: S) -> Result {
+    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(
+        &mut self,
+        value: S,
+    ) -> Result {
         (**self).value_source(value)
     }
 }
@@ -26,6 +32,8 @@ pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
 
     impl<'a, R: BufferReceiver<'a>> Receiver<'a> for Extract<'a, R> {
         fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+            // If we receive a top-level value then we don't need to do any buffering
+            // We can just surface it to the receiver as-is
             if self.buffer.is_empty() {
                 if let Some(mut receiver) = self.receiver.take() {
                     return receiver.value_source(value);
@@ -56,9 +64,10 @@ pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
                     Ok(())
                 }
                 Err(v) => {
-                    self.buffer.push(Token::Str(Cow::Owned(v.into_result()?.to_owned())));
+                    self.buffer
+                        .push(Token::Str(Cow::Owned(v.into_result()?.to_owned())));
                     Ok(())
-                },
+                }
             }
         }
 

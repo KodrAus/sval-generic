@@ -95,9 +95,7 @@ pub trait ValueSource<'a, T: Value + ?Sized>: Source<'a> {
     }
 }
 
-impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T>
-    for &'b mut S
-{
+impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T> for &'b mut S {
     type Error = S::Error;
 
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
