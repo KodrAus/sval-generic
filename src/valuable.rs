@@ -258,59 +258,6 @@ impl<'a, V: value::Value> Valuable for Value<'a, V> {
     }
 }
 
-struct Source<V>(DetectedSource, Cell<Option<V>>);
-
-enum DetectedSource {
-    Unknown,
-    Map,
-    Sequence,
-}
-
-impl<'a, V: source::Source<'a>> Source<V> {
-    pub fn new(value: V) -> Source<V> {
-        Source(DetectedSource::detect(&value), Cell::new(Some(value)))
-    }
-}
-
-impl DetectedSource {
-    fn detect<'a>(source: &impl source::Source<'a>) -> Self {
-        match (source.is_map_hint(), source.is_seq_hint()) {
-            (Some(true), Some(false)) | (Some(true), None) => DetectedSource::Map,
-            (Some(false), Some(true)) | (None, Some(true)) => DetectedSource::Sequence,
-            (Some(false), Some(false)) => unimplemented!("try capture a primitive"),
-            _ => DetectedSource::Unknown,
-        }
-    }
-}
-
-impl<'a, V: source::Source<'a>> Valuable for Source<V> {
-    fn as_value(&self) -> valuable::Value<'_> {
-        match self.0 {
-            DetectedSource::Map => valuable::Value::Mappable(self),
-            DetectedSource::Sequence => valuable::Value::Listable(self),
-            DetectedSource::Unknown => unreachable!(),
-        }
-    }
-
-    fn visit(&self, visit: &mut dyn Visit) {
-        if let Some(mut source) = self.1.take() {
-            let _ = source.stream(ValuableReceiver(visit));
-        }
-    }
-}
-
-impl<'a, V: source::Source<'a>> Mappable for Source<V> {
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, None)
-    }
-}
-
-impl<'a, V: source::Source<'a>> Listable for Source<V> {
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, None)
-    }
-}
-
 struct ValuableReceiver<'v>(&'v mut dyn Visit);
 
 impl<'a, 'v> Receiver<'a> for ValuableReceiver<'v> {
@@ -423,3 +370,5 @@ impl<'a, 'v> Receiver<'a> for ValuableReceiver<'v> {
         Ok(())
     }
 }
+
+struct Continue<'a>(&'a mut dyn Visit)

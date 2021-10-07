@@ -42,7 +42,7 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
     }
 }
 
-impl<'a, 'b, U: Value + ?Sized + 'static, T: ValueSource<'b, U>> ValueSource<'a, U> for ForAll<T> {
+impl<'a, 'b, U: Value + ?Sized, T: ValueSource<'b, U>> ValueSource<'a, U> for ForAll<T> {
     // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
     type Error = Error;
 
@@ -55,6 +55,10 @@ impl<'a, 'b, U: Value + ?Sized + 'static, T: ValueSource<'b, U>> ValueSource<'a,
 
 impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn any<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.0.any(ForAll(value))
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
         self.0.any(ForAll(value))
     }
 

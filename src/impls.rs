@@ -15,14 +15,6 @@ impl<'a> Source<'a> for () {
     {
         receiver.none()
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, ()> for () {
@@ -45,14 +37,6 @@ impl<'a> Source<'a> for bool {
         'a: 'b,
     {
         receiver.bool(*self)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -77,14 +61,6 @@ impl<'a> Source<'a> for u8 {
     {
         receiver.u64(*self as u64)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, u8> for u8 {
@@ -107,14 +83,6 @@ impl<'a> Source<'a> for i8 {
         'a: 'b,
     {
         receiver.i64(*self as i64)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -139,14 +107,6 @@ impl<'a> Source<'a> for u16 {
     {
         receiver.u64(*self as u64)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, u16> for u16 {
@@ -169,14 +129,6 @@ impl<'a> Source<'a> for i16 {
         'a: 'b,
     {
         receiver.i64(*self as i64)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -201,14 +153,6 @@ impl<'a> Source<'a> for u32 {
     {
         receiver.u64(*self as u64)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, u32> for u32 {
@@ -231,14 +175,6 @@ impl<'a> Source<'a> for i32 {
         'a: 'b,
     {
         receiver.i64(*self as i64)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -263,14 +199,6 @@ impl<'a> Source<'a> for u64 {
     {
         receiver.u64(*self)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, u64> for u64 {
@@ -293,14 +221,6 @@ impl<'a> Source<'a> for i64 {
         'a: 'b,
     {
         receiver.i64(*self)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -325,14 +245,6 @@ impl<'a> Source<'a> for u128 {
     {
         receiver.u128(*self)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, u128> for u128 {
@@ -355,14 +267,6 @@ impl<'a> Source<'a> for i128 {
         'a: 'b,
     {
         receiver.i128(*self)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -387,14 +291,6 @@ impl<'a> Source<'a> for f32 {
     {
         receiver.f64(*self as f64)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, f32> for f32 {
@@ -418,14 +314,6 @@ impl<'a> Source<'a> for f64 {
     {
         receiver.f64(*self)
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
-    }
 }
 
 impl<'a> source::ValueSource<'a, f64> for f64 {
@@ -448,14 +336,6 @@ impl<'a> Source<'a> for str {
         'a: 'b,
     {
         receiver.str(self)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -483,14 +363,6 @@ impl<'a> Source<'a> for String {
         'a: 'b,
     {
         receiver.str(crate::for_all(self))
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 
@@ -537,14 +409,6 @@ impl<'a> Source<'a> for Cow<'a, str> {
             Cow::Borrowed(v) => receiver.str(v),
             Cow::Owned(v) => receiver.str(crate::for_all(v)),
         }
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        Some(false)
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        Some(false)
     }
 }
 

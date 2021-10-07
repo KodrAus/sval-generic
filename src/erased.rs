@@ -648,10 +648,6 @@ trait ErasedSource<'a> {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
-
-    fn erased_is_map_hint(&self) -> Option<bool>;
-
-    fn erased_is_seq_hint(&self) -> Option<bool>;
 }
 
 impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
@@ -660,14 +656,6 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
         'a: 'b,
     {
         source::Source::stream(self, stream)
-    }
-
-    fn erased_is_map_hint(&self) -> Option<bool> {
-        source::Source::is_map_hint(self)
-    }
-
-    fn erased_is_seq_hint(&self) -> Option<bool> {
-        source::Source::is_seq_hint(self)
     }
 }
 
@@ -678,25 +666,17 @@ impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
     {
         self.0.erased_stream(Receiver(&mut stream))
     }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        self.0.erased_is_map_hint()
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        self.0.erased_is_seq_hint()
-    }
 }
 
 pub struct ValueSource<'a, 'b, T: ?Sized>(&'b mut dyn ErasedValueSource<'a, T>);
 
-impl<'a, 'b, T: value::Value + ?Sized + 'static> ValueSource<'a, 'b, T> {
+impl<'a, 'b, T: value::Value + ?Sized> ValueSource<'a, 'b, T> {
     pub fn new(source: &'b mut impl source::ValueSource<'a, T>) -> Self {
         ValueSource(source)
     }
 }
 
-pub fn value_source<'a, 'b, T: value::Value + ?Sized + 'static>(
+pub fn value_source<'a, 'b, T: value::Value + ?Sized>(
     source: &'b mut impl source::ValueSource<'a, T>,
 ) -> ValueSource<'a, 'b, T> {
     ValueSource::new(source)
@@ -712,10 +692,10 @@ trait ErasedValueSource<'a, T: value::Value + ?Sized> {
     fn erased_value_owned(&mut self) -> Result<T::Owned>
     where
         T: ToOwned,
-        T::Owned: value::Value + 'static;
+        T::Owned: value::Value;
 }
 
-impl<'a, U: value::Value + ?Sized + 'static, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U>
+impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U>
     for T
 {
     fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
@@ -737,13 +717,13 @@ impl<'a, U: value::Value + ?Sized + 'static, T: source::ValueSource<'a, U>> Eras
     fn erased_value_owned(&mut self) -> Result<U::Owned>
     where
         U: ToOwned,
-        U::Owned: value::Value + 'static,
+        U::Owned: value::Value,
     {
         self.value_owned().map_err(Into::into)
     }
 }
 
-impl<'a, 'b, T: value::Value + ?Sized + 'static> source::ValueSource<'a, T>
+impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T>
     for ValueSource<'a, 'b, T>
 {
     type Error = Error;
@@ -763,7 +743,7 @@ impl<'a, 'b, T: value::Value + ?Sized + 'static> source::ValueSource<'a, T>
     fn value_owned(&mut self) -> Result<T::Owned, source::ToValueError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: value::Value + 'static,
+        T::Owned: value::Value,
     {
         self.0
             .erased_value_owned()

@@ -1,6 +1,6 @@
-use std::{cell::Cell, convert::TryInto};
+use std::{convert::TryInto};
 
-use crate::{receiver, source, tag, value, Receiver};
+use crate::{buffer::{self, BufferReceiver}, receiver, source, tag, value, Receiver};
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -26,30 +26,6 @@ impl<V: value::Value> Serialize for Value<V> {
     {
         let mut stream = SerdeReceiver::begin(serializer);
         self.0
-            .stream(&mut stream)
-            .map_err(|_| S::Error::custom("failed to serialize value"))?;
-        stream.end()
-    }
-}
-
-struct Source<V>(Cell<Option<V>>);
-
-impl<V> Source<V> {
-    fn new(source: V) -> Self {
-        Source(Cell::new(Some(source)))
-    }
-}
-
-impl<'a, V: source::Source<'a>> Serialize for Source<V> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut stream = SerdeReceiver::begin(serializer);
-
-        self.0
-            .take()
-            .ok_or_else(|| S::Error::custom("missing source"))?
             .stream(&mut stream)
             .map_err(|_| S::Error::custom("failed to serialize value"))?;
         stream.end()
@@ -455,7 +431,7 @@ impl<S: Serializer> SerdeReceiver<S> {
 
 impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     fn any<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> crate::Result {
-        self.serialize_any(Source::new(v))
+        buffer::stream(self, v)
     }
 
     fn display<D: receiver::Display>(&mut self, v: D) -> crate::Result {
@@ -572,5 +548,11 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
 
     fn seq_elem_end(&mut self) -> crate::Result {
         Ok(())
+    }
+}
+
+impl<'a, S: Serializer> BufferReceiver<'a> for SerdeReceiver<S> {
+    fn value_source<'v: 'a, T: value::Value + ?Sized + 'v, VS: source::ValueSource<'v, T>>(&mut self, mut v: VS) -> crate::Result {
+        self.serialize_any(Value::new(v.value()?))
     }
 }

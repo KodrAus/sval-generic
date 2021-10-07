@@ -1,19 +1,11 @@
 use std::{borrow::ToOwned, fmt};
 
-use crate::{receiver, Error, Receiver, Result, Value};
+use crate::{Error, Receiver, Result, Value};
 
 pub trait Source<'a> {
     fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
     where
         'a: 'b;
-
-    fn is_map_hint(&self) -> Option<bool> {
-        None
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        None
-    }
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
@@ -22,14 +14,6 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
         'a: 'c,
     {
         (**self).stream(stream)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        (**self).is_map_hint()
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        (**self).is_seq_hint()
     }
 }
 
@@ -91,7 +75,7 @@ impl<E: Into<Error>> From<ToValueError<E>> for Error {
     }
 }
 
-pub trait ValueSource<'a, T: Value + ?Sized + 'static>: Source<'a> {
+pub trait ValueSource<'a, T: Value + ?Sized>: Source<'a> {
     type Error: Into<Error> + fmt::Debug;
 
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>>;
@@ -105,13 +89,13 @@ pub trait ValueSource<'a, T: Value + ?Sized + 'static>: Source<'a> {
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value + 'static,
+        T::Owned: Value,
     {
         self.value().map(ToOwned::to_owned)
     }
 }
 
-impl<'a, 'b, T: Value + ?Sized + 'static, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T>
+impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T>
     for &'b mut S
 {
     type Error = S::Error;
@@ -127,154 +111,22 @@ impl<'a, 'b, T: Value + ?Sized + 'static, S: ValueSource<'a, T> + ?Sized> ValueS
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value + 'static,
+        T::Owned: Value,
     {
         (**self).value_owned()
     }
 }
 
 impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
     where
         'a: 'b,
     {
-        (**self).stream(receiver)
-    }
-
-    fn is_map_hint(&self) -> Option<bool> {
-        struct Extract(Option<bool>);
-
-        impl<'a> Receiver<'a> for Extract {
-            fn display<D: fmt::Display>(&mut self, _: D) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn none(&mut self) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn map_begin(&mut self, _: Option<usize>) -> Result {
-                self.0 = Some(true);
-
-                receiver::unsupported()
-            }
-
-            fn map_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_key_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_key_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_value_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_value_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn seq_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_elem_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_elem_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-        }
-
-        let mut stream = Extract(None);
-        (**self).stream(&mut stream).ok()?;
-        stream.0
-    }
-
-    fn is_seq_hint(&self) -> Option<bool> {
-        struct Extract(Option<bool>);
-
-        impl<'a> Receiver<'a> for Extract {
-            fn display<D: fmt::Display>(&mut self, _: D) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn none(&mut self) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn map_begin(&mut self, _: Option<usize>) -> Result {
-                self.0 = Some(false);
-
-                receiver::unsupported()
-            }
-
-            fn map_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_key_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_key_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_value_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn map_value_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                self.0 = Some(true);
-
-                receiver::unsupported()
-            }
-
-            fn seq_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_elem_begin(&mut self) -> Result {
-                receiver::unsupported()
-            }
-
-            fn seq_elem_end(&mut self) -> Result {
-                receiver::unsupported()
-            }
-        }
-
-        let mut stream = Extract(None);
-        (**self).stream(&mut stream).ok()?;
-        stream.0
+        receiver.value(*self)
     }
 }
 
-impl<'a, T: Value + ?Sized + 'static> ValueSource<'a, T> for &'a T {
+impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     type Error = Impossible;
 
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
@@ -288,7 +140,7 @@ impl<'a, T: Value + ?Sized + 'static> ValueSource<'a, T> for &'a T {
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value + 'static,
+        T::Owned: Value,
     {
         Ok(self.to_owned())
     }

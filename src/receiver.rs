@@ -3,6 +3,7 @@ use std::{error, fmt};
 use crate::{
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
+    value::Value,
     Error, Result,
 };
 
@@ -11,6 +12,10 @@ pub use fmt::Display;
 
 pub trait Receiver<'a> {
     fn any<'v: 'a, S: Source<'v>>(&mut self, mut value: S) -> Result {
+        value.stream(self)
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
         value.stream(self)
     }
 
@@ -226,6 +231,10 @@ where
 {
     fn any<'v: 'a, S: Source<'v>>(&mut self, value: S) -> Result {
         (**self).any(value)
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        (**self).value(value)
     }
 
     fn display<D: Display>(&mut self, fmt: D) -> Result {
