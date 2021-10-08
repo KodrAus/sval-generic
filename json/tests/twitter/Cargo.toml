@@ -11,6 +11,21 @@ path = "lib.rs"
 [dependencies.sval-generic-api]
 path = "../../../"
 
+[dependencies.sval-generic-api-json]
+path = "../../"
+
+[dependencies.sval-generic-api-serde]
+path = "../../../serde"
+
+[dependencies.sval-generic-api-valuable]
+path = "../../../valuable"
+
+[dependencies.sval-generic-api-fmt]
+path = "../../../fmt"
+
+[dependencies.sval-generic-api-erased]
+path = "../../../erased"
+
 [dependencies.serde]
 version = "1"
 features = ["derive"]
@@ -25,3 +40,7 @@ version = "0.1"
 git = "https://github.com/tokio-rs/valuable"
 branch = "taiki-e/json"
 features = ["derive"]
+
+[dependencies.valuable-json]
+git = "https://github.com/tokio-rs/valuable"
+branch = "taiki-e/json"

@@ -1,16 +1,10 @@
 #[macro_use]
 extern crate async_trait;
 
-pub mod buffer;
-pub mod fmt;
 pub mod receiver;
-pub mod serde;
 pub mod source;
 pub mod tag;
-pub mod valuable;
 pub mod value;
-
-pub mod erased;
 
 mod for_all;
 mod impls;
@@ -47,7 +41,7 @@ pub fn for_all<T>(value: T) -> ForAll<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{erased, receiver::Display, source::ValueSource, Receiver, Value};
+    use crate::{receiver::Display, source::ValueSource, Receiver, Value};
 
     #[test]
     fn it_works() {
@@ -167,20 +161,5 @@ mod tests {
             b: 42,
         };
         my_struct.stream(MyReceiver(None)).unwrap();
-
-        let erased_value = MyStruct {
-            a: String::from("hello!"),
-            b: 42,
-        };
-        let erased_value = erased::value(&erased_value);
-
-        let mut erased_stream = MyReceiver(None);
-        let mut erased_stream = erased::receiver(&mut erased_stream);
-
-        erased_value.stream(MyReceiver(None)).unwrap();
-
-        MyValue.stream(&mut erased_stream).unwrap();
-
-        erased_value.stream(&mut erased_stream).unwrap();
     }
 }

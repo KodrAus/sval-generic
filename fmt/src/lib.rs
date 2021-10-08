@@ -3,7 +3,7 @@ use std::{
     fmt::{self, Debug, Display, Formatter, Write},
 };
 
-use crate::{source, tag, value, Receiver};
+use sval_generic_api::{source, tag, value, Receiver, Result};
 
 pub struct Value<V>(V);
 
@@ -42,7 +42,7 @@ impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
         self.fmt.alternate()
     }
 
-    fn fmt(&mut self, v: impl fmt::Debug) -> crate::Result {
+    fn fmt(&mut self, v: impl fmt::Debug) -> Result {
         v.fmt(&mut self.fmt)?;
 
         Ok(())
@@ -50,7 +50,7 @@ impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
 }
 
 impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
-    fn display<D: Display>(&mut self, v: D) -> crate::Result {
+    fn display<D: Display>(&mut self, v: D) -> Result {
         struct Adapter<T>(T);
 
         impl<T: Display> Debug for Adapter<T> {
@@ -65,52 +65,52 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
     fn error<'e: 'a, E: source::ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         mut e: E,
-    ) -> crate::Result {
+    ) -> Result {
         self.fmt(e.value()?)
     }
 
-    fn i64(&mut self, v: i64) -> crate::Result {
+    fn i64(&mut self, v: i64) -> Result {
         self.fmt(v)
     }
 
-    fn u64(&mut self, v: u64) -> crate::Result {
+    fn u64(&mut self, v: u64) -> Result {
         self.fmt(v)
     }
 
-    fn i128(&mut self, v: i128) -> crate::Result {
+    fn i128(&mut self, v: i128) -> Result {
         self.fmt(v)
     }
 
-    fn u128(&mut self, v: u128) -> crate::Result {
+    fn u128(&mut self, v: u128) -> Result {
         self.fmt(v)
     }
 
-    fn f64(&mut self, v: f64) -> crate::Result {
+    fn f64(&mut self, v: f64) -> Result {
         self.fmt(v)
     }
 
-    fn bool(&mut self, v: bool) -> crate::Result {
+    fn bool(&mut self, v: bool) -> Result {
         self.fmt(v)
     }
 
-    fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut v: S) -> crate::Result {
+    fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut v: S) -> Result {
         self.fmt(v.value()?)
     }
 
-    fn none(&mut self) -> crate::Result {
+    fn none(&mut self) -> Result {
         self.fmt(format_args!("None"))
     }
 
     fn type_tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
-    ) -> crate::Result {
+    ) -> Result {
         self.fmt.write_str(tag.ty.value()?)?;
 
         Ok(())
     }
 
-    fn type_tagged_end(&mut self) -> crate::Result {
+    fn type_tagged_end(&mut self) -> Result {
         Ok(())
     }
 
@@ -120,7 +120,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
     >(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
-    ) -> crate::Result {
+    ) -> Result {
         self.fmt.write_str(tag.ty.value()?)?;
         self.fmt.write_str("::")?;
         self.fmt.write_str(tag.variant_key.value()?)?;
@@ -128,11 +128,11 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn variant_tagged_end(&mut self) -> crate::Result {
+    fn variant_tagged_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_begin(&mut self, _: Option<usize>) -> crate::Result {
+    fn map_begin(&mut self, _: Option<usize>) -> Result {
         self.is_current_depth_empty = true;
         if self.is_pretty() {
             self.depth += 1;
@@ -143,7 +143,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn map_key_begin(&mut self) -> crate::Result {
+    fn map_key_begin(&mut self) -> Result {
         if self.is_pretty() {
             if !self.is_current_depth_empty {
                 self.fmt.write_char(',')?;
@@ -160,21 +160,21 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn map_key_end(&mut self) -> crate::Result {
+    fn map_key_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_value_begin(&mut self) -> crate::Result {
+    fn map_value_begin(&mut self) -> Result {
         self.fmt.write_str(": ")?;
 
         Ok(())
     }
 
-    fn map_value_end(&mut self) -> crate::Result {
+    fn map_value_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_end(&mut self) -> crate::Result {
+    fn map_end(&mut self) -> Result {
         if self.is_pretty() {
             self.depth -= 1;
 
@@ -191,7 +191,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn seq_begin(&mut self, _: Option<usize>) -> crate::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> Result {
         self.is_current_depth_empty = true;
 
         if self.is_pretty() {
@@ -203,7 +203,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn seq_elem_begin(&mut self) -> crate::Result {
+    fn seq_elem_begin(&mut self) -> Result {
         if self.is_pretty() {
             if !self.is_current_depth_empty {
                 self.fmt.write_char(',')?;
@@ -220,11 +220,11 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn seq_elem_end(&mut self) -> crate::Result {
+    fn seq_elem_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn seq_end(&mut self) -> crate::Result {
+    fn seq_end(&mut self) -> Result {
         if self.is_pretty() {
             self.depth -= 1;
 

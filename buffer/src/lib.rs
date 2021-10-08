@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{
+use sval_generic_api::{
     for_all,
     receiver::{self, Display, Receiver},
     source::{self, Source, ValueSource},

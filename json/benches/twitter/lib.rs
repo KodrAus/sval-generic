@@ -38,7 +38,7 @@ fn primitive_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn primitive_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::{erased, Value};
+    use sval_generic_api_erased as erased;
 
     let s = 42;
     let s = erased::value(&s);
@@ -79,7 +79,7 @@ fn twitter_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::erased;
+    use sval_generic_api_erased as erased;
 
     let s = input_struct();
     let s = erased::value(&s);
@@ -89,7 +89,7 @@ fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_sval_generic_api_to_serde(b: &mut test::Bencher) {
-    use sval_generic_api::serde;
+    use sval_generic_api_serde as serde;
 
     let s = input_struct();
     let s = serde::value(s);
@@ -121,7 +121,7 @@ fn twitter_std_fmt(b: &mut test::Bencher) {
 
 #[bench]
 fn twitter_sval_generic_api_fmt(b: &mut test::Bencher) {
-    use sval_generic_api::fmt;
+    use sval_generic_api_fmt as fmt;
 
     let s = input_struct();
     let s = Fmt(fmt::value(s));

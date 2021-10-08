@@ -110,9 +110,14 @@ name = "sval-generic-api"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "serde",
  "sval-generic-api-derive",
- "valuable",
+]
+
+[[package]]
+name = "sval-generic-api-buffer"
+version = "0.0.0"
+dependencies = [
+ "sval-generic-api",
 ]
 
 [[package]]
@@ -122,6 +127,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "sval-generic-api-erased"
+version = "0.1.0"
+dependencies = [
+ "sval-generic-api",
+]
+
+[[package]]
+name = "sval-generic-api-fmt"
+version = "0.1.0"
+dependencies = [
+ "sval-generic-api",
 ]
 
 [[package]]
@@ -141,8 +160,12 @@ dependencies = [
  "miniserde",
  "serde_json",
  "sval-generic-api",
+ "sval-generic-api-erased",
+ "sval-generic-api-fmt",
  "sval-generic-api-json",
  "sval-generic-api-json-twitter-tests",
+ "sval-generic-api-serde",
+ "sval-generic-api-valuable",
  "valuable-json",
 ]
 
@@ -163,6 +186,30 @@ dependencies = [
  "serde",
  "serde_json",
  "sval-generic-api",
+ "sval-generic-api-erased",
+ "sval-generic-api-fmt",
+ "sval-generic-api-json",
+ "sval-generic-api-serde",
+ "sval-generic-api-valuable",
+ "valuable",
+ "valuable-json",
+]
+
+[[package]]
+name = "sval-generic-api-serde"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "sval-generic-api",
+ "sval-generic-api-buffer",
+]
+
+[[package]]
+name = "sval-generic-api-valuable"
+version = "0.0.0"
+dependencies = [
+ "sval-generic-api",
+ "sval-generic-api-buffer",
  "valuable",
 ]
 

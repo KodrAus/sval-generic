@@ -1,6 +1,6 @@
 use std::{borrow::ToOwned, error, fmt};
 
-use crate::{receiver, source, tag, value, Error, Result};
+use sval_generic_api::{receiver, source, tag, value, Error, Result};
 
 // TODO: This public API needs to be a trait we can add OIBIT's to
 pub struct Value<'a>(&'a dyn ErasedValue);

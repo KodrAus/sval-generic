@@ -1,9 +1,8 @@
 use valuable::{Listable, Mappable, Valuable, Visit};
 
-use crate::{
-    buffer::{self, BufferReceiver},
-    receiver, source, value, Receiver,
-};
+use sval_generic_api::{receiver, source, value, Receiver, Result};
+
+use sval_generic_api_buffer::{self as buffer, BufferReceiver};
 
 pub struct Value<'a, V>(Detected<'a, V>, &'a V);
 
@@ -82,13 +81,13 @@ impl<'a, V: value::Value> Detected<'a, V> {
         struct Detect<'a, V>(Detected<'a, V>, &'a V);
 
         impl<'a, V> Receiver<'a> for Detect<'a, V> {
-            fn display<D: receiver::Display>(&mut self, _: D) -> crate::Result {
+            fn display<D: receiver::Display>(&mut self, _: D) -> Result {
                 self.0 = Detected::Unknown;
 
                 receiver::unsupported()
             }
 
-            fn u64(&mut self, value: u64) -> crate::Result {
+            fn u64(&mut self, value: u64) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Unsigned(value));
 
@@ -98,7 +97,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn i64(&mut self, value: i64) -> crate::Result {
+            fn i64(&mut self, value: i64) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Signed(value));
 
@@ -108,7 +107,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn u128(&mut self, value: u128) -> crate::Result {
+            fn u128(&mut self, value: u128) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::BigUnsigned(value));
 
@@ -118,7 +117,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn i128(&mut self, value: i128) -> crate::Result {
+            fn i128(&mut self, value: i128) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::BigSigned(value));
 
@@ -128,7 +127,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn f64(&mut self, value: f64) -> crate::Result {
+            fn f64(&mut self, value: f64) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Float(value));
 
@@ -138,7 +137,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn bool(&mut self, value: bool) -> crate::Result {
+            fn bool(&mut self, value: bool) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Bool(value));
 
@@ -148,7 +147,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn none(&mut self) -> crate::Result {
+            fn none(&mut self) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Unit);
 
@@ -158,10 +157,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn str<'s: 'a, S: source::ValueSource<'s, str>>(
-                &mut self,
-                mut value: S,
-            ) -> crate::Result {
+            fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Str(value.value_ref()?));
 
@@ -171,7 +167,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn map_begin(&mut self, len: Option<usize>) -> crate::Result {
+            fn map_begin(&mut self, len: Option<usize>) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Map(Map { len, map: self.1 });
 
@@ -181,7 +177,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn seq_begin(&mut self, len: Option<usize>) -> crate::Result {
+            fn seq_begin(&mut self, len: Option<usize>) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Sequence(Sequence { len, seq: self.1 });
 
@@ -191,35 +187,35 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn map_end(&mut self) -> crate::Result {
+            fn map_end(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn map_key_begin(&mut self) -> crate::Result {
+            fn map_key_begin(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn map_key_end(&mut self) -> crate::Result {
+            fn map_key_end(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn map_value_begin(&mut self) -> crate::Result {
+            fn map_value_begin(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn map_value_end(&mut self) -> crate::Result {
+            fn map_value_end(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn seq_end(&mut self) -> crate::Result {
+            fn seq_end(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn seq_elem_begin(&mut self) -> crate::Result {
+            fn seq_elem_begin(&mut self) -> Result {
                 receiver::unsupported()
             }
 
-            fn seq_elem_end(&mut self) -> crate::Result {
+            fn seq_elem_end(&mut self) -> Result {
                 receiver::unsupported()
             }
         }
@@ -260,53 +256,53 @@ impl<'a, V: value::Value> Valuable for Value<'a, V> {
 struct ValuableReceiver<'a>(&'a mut dyn Visit);
 
 impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
-    fn display<D: receiver::Display>(&mut self, _: D) -> crate::Result {
+    fn display<D: receiver::Display>(&mut self, _: D) -> Result {
         receiver::unsupported()
     }
 
-    fn u64(&mut self, value: u64) -> crate::Result {
+    fn u64(&mut self, value: u64) -> Result {
         self.0.visit_value(valuable::Value::U64(value));
 
         Ok(())
     }
 
-    fn i64(&mut self, value: i64) -> crate::Result {
+    fn i64(&mut self, value: i64) -> Result {
         self.0.visit_value(valuable::Value::I64(value));
 
         Ok(())
     }
 
-    fn u128(&mut self, value: u128) -> crate::Result {
+    fn u128(&mut self, value: u128) -> Result {
         self.0.visit_value(valuable::Value::U128(value));
 
         Ok(())
     }
 
-    fn i128(&mut self, value: i128) -> crate::Result {
+    fn i128(&mut self, value: i128) -> Result {
         self.0.visit_value(valuable::Value::I128(value));
 
         Ok(())
     }
 
-    fn f64(&mut self, value: f64) -> crate::Result {
+    fn f64(&mut self, value: f64) -> Result {
         self.0.visit_value(valuable::Value::F64(value));
 
         Ok(())
     }
 
-    fn bool(&mut self, value: bool) -> crate::Result {
+    fn bool(&mut self, value: bool) -> Result {
         self.0.visit_value(valuable::Value::Bool(value));
 
         Ok(())
     }
 
-    fn none(&mut self) -> crate::Result {
+    fn none(&mut self) -> Result {
         self.0.visit_value(valuable::Value::Unit);
 
         Ok(())
     }
 
-    fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> crate::Result {
+    fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
         self.0.visit_value(valuable::Value::String(value.value()?));
 
         Ok(())
@@ -316,7 +312,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         &mut self,
         key: K,
         value: V,
-    ) -> crate::Result {
+    ) -> Result {
         // In order to visit an entry we need both the key and value to be available
         struct BufferKey<'a, V>(&'a mut dyn Visit, V);
 
@@ -328,7 +324,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
             >(
                 &mut self,
                 mut v: S,
-            ) -> crate::Result {
+            ) -> Result {
                 struct BufferValue<'a, 'k, K: ?Sized + 'k>(&'a mut dyn Visit, &'k K);
 
                 impl<'a, 'k, 'v, K: value::Value + ?Sized + 'k> BufferReceiver<'v> for BufferValue<'a, 'k, K> {
@@ -339,7 +335,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
                     >(
                         &mut self,
                         mut v: S,
-                    ) -> crate::Result {
+                    ) -> Result {
                         let key = self.1;
                         let value = v.value()?;
 
@@ -361,7 +357,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         buffer::stream(BufferKey(self.0, value), key)
     }
 
-    fn seq_elem<'e: 'a, E: source::Source<'e>>(&mut self, elem: E) -> crate::Result {
+    fn seq_elem<'e: 'a, E: source::Source<'e>>(&mut self, elem: E) -> Result {
         struct BufferElem<'a>(&'a mut dyn Visit);
 
         impl<'a, 'e> BufferReceiver<'e> for BufferElem<'a> {
@@ -372,7 +368,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
             >(
                 &mut self,
                 mut e: S,
-            ) -> crate::Result {
+            ) -> Result {
                 let elem = e.value()?;
 
                 self.0.visit_unnamed_fields(&[Value::new(&elem).as_value()]);
@@ -384,43 +380,43 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         buffer::stream(BufferElem(self.0), elem)
     }
 
-    fn map_begin(&mut self, _: Option<usize>) -> crate::Result {
+    fn map_begin(&mut self, _: Option<usize>) -> Result {
         Ok(())
     }
 
-    fn seq_begin(&mut self, _: Option<usize>) -> crate::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> Result {
         Ok(())
     }
 
-    fn map_end(&mut self) -> crate::Result {
+    fn map_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_key_begin(&mut self) -> crate::Result {
+    fn map_key_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_key_end(&mut self) -> crate::Result {
+    fn map_key_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_value_begin(&mut self) -> crate::Result {
+    fn map_value_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn map_value_end(&mut self) -> crate::Result {
+    fn map_value_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn seq_end(&mut self) -> crate::Result {
+    fn seq_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn seq_elem_begin(&mut self) -> crate::Result {
+    fn seq_elem_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn seq_elem_end(&mut self) -> crate::Result {
+    fn seq_elem_end(&mut self) -> Result {
         Ok(())
     }
 }

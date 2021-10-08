@@ -11,6 +11,18 @@ path = "lib.rs"
 [dependencies.sval-generic-api-json-twitter-tests]
 path = "../../tests/twitter"
 
+[dependencies.sval-generic-api-serde]
+path = "../../../serde"
+
+[dependencies.sval-generic-api-valuable]
+path = "../../../valuable"
+
+[dependencies.sval-generic-api-fmt]
+path = "../../../fmt"
+
+[dependencies.sval-generic-api-erased]
+path = "../../../erased"
+
 [dependencies.sval-generic-api]
 path = "../../../"
 

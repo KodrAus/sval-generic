@@ -9,6 +9,61 @@ extern crate valuable;
 
 use miniserde::Serialize as MiniSerialize;
 
+#[cfg(test)]
+fn input_json() -> String {
+    std::fs::read_to_string("./mini-twitter.json").unwrap()
+}
+
+#[cfg(test)]
+fn input_struct() -> Twitter {
+    let j = input_json();
+    serde_json::from_str(&j).unwrap()
+}
+
+#[test]
+fn sval_consistency() {
+    let s = input_struct();
+
+    assert_eq!(
+        serde_json::to_string(&s).unwrap(),
+        sval_generic_api_json::to_string(&s).unwrap()
+    );
+}
+
+#[test]
+fn sval_erased_consistency() {
+    use sval_generic_api_erased as erased;
+
+    let s = input_struct();
+
+    assert_eq!(
+        sval_generic_api_json::to_string(&s).unwrap(),
+        sval_generic_api_json::to_string(&erased::value(&s)).unwrap()
+    );
+}
+
+#[test]
+fn sval_serde_consistency() {
+    use sval_generic_api_serde as serde;
+    let s = input_struct();
+
+    assert_eq!(
+        serde_json::to_string(&s).unwrap(),
+        serde_json::to_string(&serde::value(&s)).unwrap()
+    );
+}
+
+#[test]
+fn sval_valuable_consistency() {
+    use sval_generic_api_valuable as valuable;
+    let s = input_struct();
+
+    assert_eq!(
+        valuable_json::to_string(&s).unwrap(),
+        valuable_json::to_string(&valuable::value(&s)).unwrap()
+    );
+}
+
 #[derive(Debug, Serialize, Deserialize, MiniSerialize, Value, Valuable)]
 pub struct Twitter {
     statuses: Vec<Status>,

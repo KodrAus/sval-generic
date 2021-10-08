@@ -7,17 +7,15 @@ edition = "2018"
 members = [
     "derive",
     "json",
+    "fmt",
+    "serde",
+    "valuable",
+    "erased",
+    "buffer",
     "json/benches/twitter",
     "json/benches/profile",
     "json/tests/twitter"
 ]
-
-[dependencies.serde]
-version = "1"
-
-[dependencies.valuable]
-git = "https://github.com/tokio-rs/valuable"
-branch = "taiki-e/json"
 
 [dependencies.sval-generic-api-derive]
 path = "derive"
