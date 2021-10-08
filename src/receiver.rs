@@ -166,6 +166,15 @@ pub trait Receiver<'a> {
         self.map_value(value)
     }
 
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
+        self.map_field(field)?;
+        self.map_value(value)
+    }
+
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
         self.map_key_begin()?;
         self.any(key)?;
@@ -385,6 +394,14 @@ where
         value: V,
     ) -> Result {
         (**self).map_entry(key, value)
+    }
+
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
+        (**self).map_field_entry(field, value)
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {

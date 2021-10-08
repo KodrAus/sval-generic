@@ -38,8 +38,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     receiver.type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
                     #(
-                        receiver.map_field(#fieldstr)?;
-                        receiver.map_value(&self.#fieldname)?;
+                        receiver.map_field_entry(#fieldstr, &self.#fieldname)?;
                     )*
 
                     receiver.type_tagged_map_end()

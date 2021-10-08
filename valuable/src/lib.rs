@@ -357,6 +357,14 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         buffer::stream(BufferKey(self.0, value), key)
     }
 
+    fn map_field_entry<'v: 'a, F: source::ValueSource<'static, str>, V: source::Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
+        self.map_entry(field, value)
+    }
+
     fn seq_elem<'e: 'a, E: source::Source<'e>>(&mut self, elem: E) -> Result {
         struct BufferElem<'a>(&'a mut dyn Visit);
 
@@ -371,7 +379,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
             ) -> Result {
                 let elem = e.value()?;
 
-                self.0.visit_unnamed_fields(&[Value::new(&elem).as_value()]);
+                self.0.visit_value(Value::new(&elem).as_value());
 
                 Ok(())
             }

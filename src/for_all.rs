@@ -208,6 +208,14 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.map_entry(ForAll(key), ForAll(value))
     }
 
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
+        self.0.map_field_entry(field, ForAll(value))
+    }
+
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
         self.0.map_key(ForAll(key))
     }

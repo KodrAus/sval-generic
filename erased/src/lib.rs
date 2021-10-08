@@ -123,6 +123,11 @@ trait ErasedReceiver<'a> {
         k: Source<'k, 'b>,
         v: Source<'v, 'b>,
     ) -> Result;
+    fn erased_map_field_entry<'b, 'v: 'a>(
+        &mut self,
+        f: ValueSource<'static, 'b, str>,
+        v: Source<'v, 'b>,
+    ) -> Result;
     fn erased_map_field<'b>(&mut self, f: ValueSource<'static, 'b, str>) -> Result;
     fn erased_seq_begin(&mut self, len: Option<usize>) -> Result;
     fn erased_seq_end(&mut self) -> Result;
@@ -322,6 +327,14 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         v: Source<'v, 'b>,
     ) -> Result {
         self.map_entry(k, v)
+    }
+
+    fn erased_map_field_entry<'b, 'v: 'a>(
+        &mut self,
+        f: ValueSource<'static, 'b, str>,
+        v: Source<'v, 'b>,
+    ) -> Result {
+        self.map_field_entry(f, v)
     }
 
     fn erased_map_field<'b>(&mut self, f: ValueSource<'static, 'b, str>) -> Result {
@@ -564,6 +577,15 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
     ) -> Result {
         self.0
             .erased_map_entry(Source(&mut key), Source(&mut value))
+    }
+
+    fn map_field_entry<'v: 'a, F: source::ValueSource<'static, str>, V: source::Source<'v>>(
+        &mut self,
+        mut field: F,
+        mut value: V,
+    ) -> Result {
+        self.0
+            .erased_map_field_entry(ValueSource(&mut field), Source(&mut value))
     }
 
     fn map_key<'k: 'a, K: source::Source<'k>>(&mut self, mut key: K) -> Result {
