@@ -18,6 +18,7 @@ pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value
 pub struct Error;
 
 impl From<std::fmt::Error> for Error {
+    #[inline]
     fn from(_: std::fmt::Error) -> Error {
         Error
     }

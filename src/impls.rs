@@ -66,6 +66,7 @@ impl<'a> Source<'a> for u8 {
 impl<'a> source::ValueSource<'a, u8> for u8 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&u8, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -89,6 +90,7 @@ impl<'a> Source<'a> for i8 {
 impl<'a> source::ValueSource<'a, i8> for i8 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&i8, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -112,6 +114,7 @@ impl<'a> Source<'a> for u16 {
 impl<'a> source::ValueSource<'a, u16> for u16 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&u16, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -135,6 +138,7 @@ impl<'a> Source<'a> for i16 {
 impl<'a> source::ValueSource<'a, i16> for i16 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&i16, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -158,6 +162,7 @@ impl<'a> Source<'a> for u32 {
 impl<'a> source::ValueSource<'a, u32> for u32 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&u32, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -181,6 +186,7 @@ impl<'a> Source<'a> for i32 {
 impl<'a> source::ValueSource<'a, i32> for i32 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&i32, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -204,6 +210,7 @@ impl<'a> Source<'a> for u64 {
 impl<'a> source::ValueSource<'a, u64> for u64 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&u64, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -227,6 +234,7 @@ impl<'a> Source<'a> for i64 {
 impl<'a> source::ValueSource<'a, i64> for i64 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&i64, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -250,6 +258,7 @@ impl<'a> Source<'a> for u128 {
 impl<'a> source::ValueSource<'a, u128> for u128 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&u128, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -273,6 +282,7 @@ impl<'a> Source<'a> for i128 {
 impl<'a> source::ValueSource<'a, i128> for i128 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&i128, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -296,6 +306,7 @@ impl<'a> Source<'a> for f32 {
 impl<'a> source::ValueSource<'a, f32> for f32 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&f32, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -319,6 +330,7 @@ impl<'a> Source<'a> for f64 {
 impl<'a> source::ValueSource<'a, f64> for f64 {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&f64, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -342,6 +354,7 @@ impl<'a> Source<'a> for str {
 impl<'a> source::ValueSource<'a, str> for str {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(self)
     }
@@ -352,6 +365,7 @@ impl Value for String {
         receiver.str(&**self)
     }
 
+    #[inline]
     fn to_str(&self) -> Option<&str> {
         Some(self)
     }
@@ -369,10 +383,12 @@ impl<'a> Source<'a> for String {
 impl<'a> source::ValueSource<'a, str> for String {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(&**self)
     }
 
+    #[inline]
     fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
         Ok(std::mem::take(self))
     }
@@ -381,6 +397,7 @@ impl<'a> source::ValueSource<'a, str> for String {
 impl<'a> source::ValueSource<'a, str> for &'a String {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(&**self)
     }
@@ -391,6 +408,7 @@ impl<'a> Value for Cow<'a, str> {
         receiver.str(&**self)
     }
 
+    #[inline]
     fn to_str(&self) -> Option<&str> {
         if let Cow::Borrowed(v) = self {
             Some(v)
@@ -415,10 +433,12 @@ impl<'a> Source<'a> for Cow<'a, str> {
 impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
     type Error = source::Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
         Ok(&**self)
     }
 
+    #[inline]
     fn value_ref(&mut self) -> Result<&'a str, source::ToRefError<&str, Self::Error>> {
         match self {
             Cow::Borrowed(v) => Ok(v),
@@ -426,6 +446,7 @@ impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
         }
     }
 
+    #[inline]
     fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
         Ok(std::mem::take(self).into_owned())
     }

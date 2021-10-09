@@ -80,12 +80,14 @@ pub trait ValueSource<'a, T: Value + ?Sized>: Source<'a> {
 
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>>;
 
+    #[inline]
     fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         Err(ToRefError::from_result(
             self.value().map_err(|e| e.into_inner()),
         ))
     }
 
+    #[inline]
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,
@@ -98,14 +100,17 @@ pub trait ValueSource<'a, T: Value + ?Sized>: Source<'a> {
 impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T> for &'b mut S {
     type Error = S::Error;
 
+    #[inline]
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
         (**self).value()
     }
 
+    #[inline]
     fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         (**self).value_ref()
     }
 
+    #[inline]
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,
@@ -127,14 +132,17 @@ impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
 impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     type Error = Impossible;
 
+    #[inline]
     fn value(&mut self) -> Result<&T, ToValueError<Self::Error>> {
         Ok(self)
     }
 
+    #[inline]
     fn value_ref(&mut self) -> Result<&'a T, ToRefError<&T, Self::Error>> {
         Ok(self)
     }
 
+    #[inline]
     fn value_owned(&mut self) -> Result<T::Owned, ToValueError<Self::Error>>
     where
         T: ToOwned,

@@ -125,10 +125,10 @@ where
         self.is_key = true;
 
         if !self.is_current_depth_empty {
-            self.out.write_char(',')?;
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
         }
-
-        self.out.write_char('"')?;
 
         self.is_current_depth_empty = false;
 
@@ -136,7 +136,7 @@ where
     }
 
     fn map_key_end(&mut self) -> sval_generic_api::Result {
-        self.out.write_char('"')?;
+        self.out.write_str("\":")?;
 
         self.is_key = false;
 
@@ -144,13 +144,27 @@ where
     }
 
     fn map_value_begin(&mut self) -> sval_generic_api::Result {
-        self.out.write_char(':')?;
-
         Ok(())
     }
 
     fn map_value_end(&mut self) -> sval_generic_api::Result {
         Ok(())
+    }
+
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(&mut self, mut f: F, v: V) -> sval_generic_api::Result {
+        if !self.is_current_depth_empty {
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
+        }
+
+        escape_str(f.value()?, &mut self.out)?;
+
+        self.out.write_str("\":")?;
+
+        self.is_current_depth_empty = false;
+
+        self.any(v)
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval_generic_api::Result {
@@ -193,6 +207,7 @@ This `escape_str` implementation has been shamelessly lifted from dtolnay's `min
 https://github.com/dtolnay/miniserde
 */
 
+#[inline(always)]
 fn escape_str(value: &str, mut out: impl Write) -> Result<(), fmt::Error> {
     let bytes = value.as_bytes();
     let mut start = 0;
