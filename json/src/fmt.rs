@@ -45,13 +45,25 @@ where
         Ok(())
     }
 
-    fn u64(&mut self, v: u64) -> sval_generic_api::Result {
+    fn u8(&mut self, v: u8) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
     }
 
-    fn i64(&mut self, v: i64) -> sval_generic_api::Result {
+    fn u16(&mut self, v: u16) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u32(&mut self, v: u32) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u64(&mut self, v: u64) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
         Ok(())
@@ -63,8 +75,38 @@ where
         Ok(())
     }
 
+    fn i8(&mut self, v: i8) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i16(&mut self, v: i16) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i32(&mut self, v: i32) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i64(&mut self, v: i64) -> sval_generic_api::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
     fn i128(&mut self, v: i128) -> sval_generic_api::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn f32(&mut self, v: f32) -> sval_generic_api::Result {
+        self.out.write_str(ryu::Buffer::new().format(v))?;
 
         Ok(())
     }
@@ -151,14 +193,27 @@ where
         Ok(())
     }
 
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(&mut self, mut f: F, v: V) -> sval_generic_api::Result {
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        mut f: F,
+        v: V,
+    ) -> sval_generic_api::Result {
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
         } else {
             self.out.write_char('"')?;
         }
 
-        escape_str(f.value()?, &mut self.out)?;
+        let f = f.value()?;
+
+        // Field keys are typically fields in a Rust struct
+        // so are likely to be ASCII. Rust's built-in `is_ascii`
+        // is vectorized so can check faster than we can run `escape_str`
+        if f.is_ascii() {
+            self.out.write_str(f)?;
+        } else {
+            escape_str(f, &mut self.out)?;
+        }
 
         self.out.write_str("\":")?;
 

@@ -21,8 +21,32 @@ pub trait Receiver<'a> {
 
     fn display<D: Display>(&mut self, fmt: D) -> Result;
 
+    fn u8(&mut self, value: u8) -> Result {
+        self.u16(value as u16)
+    }
+
+    fn u16(&mut self, value: u16) -> Result {
+        self.u32(value as u32)
+    }
+
+    fn u32(&mut self, value: u32) -> Result {
+        self.u64(value as u64)
+    }
+
     fn u64(&mut self, value: u64) -> Result {
         self.display(value)
+    }
+
+    fn i8(&mut self, value: i8) -> Result {
+        self.i16(value as i16)
+    }
+
+    fn i16(&mut self, value: i16) -> Result {
+        self.i32(value as i32)
+    }
+
+    fn i32(&mut self, value: i32) -> Result {
+        self.i64(value as i64)
     }
 
     fn i64(&mut self, value: i64) -> Result {
@@ -37,6 +61,10 @@ pub trait Receiver<'a> {
         self.display(value)
     }
 
+    fn f32(&mut self, value: f32) -> Result {
+        self.f64(value as f64)
+    }
+
     fn f64(&mut self, value: f64) -> Result {
         self.display(value)
     }
@@ -46,6 +74,10 @@ pub trait Receiver<'a> {
     }
 
     fn none(&mut self) -> Result;
+
+    fn char(&mut self, value: char) -> Result {
+        self.display(value)
+    }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
         self.display(value.value()?)
@@ -250,8 +282,32 @@ where
         (**self).display(fmt)
     }
 
+    fn u8(&mut self, value: u8) -> Result {
+        (**self).u8(value)
+    }
+
+    fn u16(&mut self, value: u16) -> Result {
+        (**self).u16(value)
+    }
+
+    fn u32(&mut self, value: u32) -> Result {
+        (**self).u32(value)
+    }
+
     fn u64(&mut self, value: u64) -> Result {
         (**self).u64(value)
+    }
+
+    fn i8(&mut self, value: i8) -> Result {
+        (**self).i8(value)
+    }
+
+    fn i16(&mut self, value: i16) -> Result {
+        (**self).i16(value)
+    }
+
+    fn i32(&mut self, value: i32) -> Result {
+        (**self).i32(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
@@ -266,6 +322,10 @@ where
         (**self).i128(value)
     }
 
+    fn f32(&mut self, value: f32) -> Result {
+        (**self).f32(value)
+    }
+
     fn f64(&mut self, value: f64) -> Result {
         (**self).f64(value)
     }
@@ -276,6 +336,10 @@ where
 
     fn none(&mut self) -> Result {
         (**self).none()
+    }
+
+    fn char(&mut self, value: char) -> Result {
+        (**self).char(value)
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {

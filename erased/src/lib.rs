@@ -55,10 +55,17 @@ pub fn receiver<'a, 'b>(s: &'b mut impl receiver::Receiver<'a>) -> Receiver<'a, 
 
 trait ErasedReceiver<'a> {
     fn erased_any<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result;
+    fn erased_u8(&mut self, v: u8) -> Result;
+    fn erased_u16(&mut self, v: u16) -> Result;
+    fn erased_u32(&mut self, v: u32) -> Result;
     fn erased_u64(&mut self, v: u64) -> Result;
+    fn erased_i8(&mut self, v: i8) -> Result;
+    fn erased_i16(&mut self, v: i16) -> Result;
+    fn erased_i32(&mut self, v: i32) -> Result;
     fn erased_i64(&mut self, v: i64) -> Result;
     fn erased_i128(&mut self, v: i128) -> Result;
     fn erased_u128(&mut self, v: u128) -> Result;
+    fn erased_f32(&mut self, v: f32) -> Result;
     fn erased_f64(&mut self, v: f64) -> Result;
     fn erased_bool(&mut self, v: bool) -> Result;
     fn erased_none(&mut self) -> Result;
@@ -67,6 +74,7 @@ trait ErasedReceiver<'a> {
         &mut self,
         e: ValueSource<'v, 'b, dyn error::Error + 'static>,
     ) -> Result;
+    fn erased_char(&mut self, v: char) -> Result;
     fn erased_str<'b, 'v: 'a>(&mut self, v: ValueSource<'v, 'b, str>) -> Result;
     fn erased_type_tag<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result;
     fn erased_variant_tag<'b>(
@@ -155,8 +163,32 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         self.any(v)
     }
 
+    fn erased_u8(&mut self, value: u8) -> Result {
+        self.u8(value)
+    }
+
+    fn erased_u16(&mut self, value: u16) -> Result {
+        self.u16(value)
+    }
+
+    fn erased_u32(&mut self, value: u32) -> Result {
+        self.u32(value)
+    }
+
     fn erased_u64(&mut self, v: u64) -> Result {
         self.u64(v)
+    }
+
+    fn erased_i8(&mut self, value: i8) -> Result {
+        self.i8(value)
+    }
+
+    fn erased_i16(&mut self, value: i16) -> Result {
+        self.i16(value)
+    }
+
+    fn erased_i32(&mut self, value: i32) -> Result {
+        self.i32(value)
     }
 
     fn erased_i64(&mut self, v: i64) -> Result {
@@ -169,6 +201,10 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
 
     fn erased_u128(&mut self, v: u128) -> Result {
         self.u128(v)
+    }
+
+    fn erased_f32(&mut self, value: f32) -> Result {
+        self.f32(value)
     }
 
     fn erased_f64(&mut self, v: f64) -> Result {
@@ -191,6 +227,10 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         e: ValueSource<'v, 'b, dyn error::Error + 'static>,
     ) -> Result {
         self.error(e)
+    }
+
+    fn erased_char(&mut self, v: char) -> Result {
+        self.char(v)
     }
 
     fn erased_str<'b, 'v: 'a>(&mut self, v: ValueSource<'v, 'b, str>) -> Result {
@@ -400,8 +440,32 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
         self.0.erased_display(&fmt)
     }
 
+    fn u8(&mut self, value: u8) -> Result {
+        self.0.erased_u8(value)
+    }
+
+    fn u16(&mut self, value: u16) -> Result {
+        self.0.erased_u16(value)
+    }
+
+    fn u32(&mut self, value: u32) -> Result {
+        self.0.erased_u32(value)
+    }
+
     fn u64(&mut self, value: u64) -> Result {
         self.0.erased_u64(value)
+    }
+
+    fn i8(&mut self, value: i8) -> Result {
+        self.0.erased_i8(value)
+    }
+
+    fn i16(&mut self, value: i16) -> Result {
+        self.0.erased_i16(value)
+    }
+
+    fn i32(&mut self, value: i32) -> Result {
+        self.0.erased_i32(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
@@ -414,6 +478,10 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
 
     fn i128(&mut self, value: i128) -> Result {
         self.0.erased_i128(value)
+    }
+
+    fn f32(&mut self, value: f32) -> Result {
+        self.0.erased_f32(value)
     }
 
     fn f64(&mut self, value: f64) -> Result {
@@ -430,6 +498,10 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
 
     fn str<'s: 'a, T: source::ValueSource<'s, str>>(&mut self, mut value: T) -> Result {
         self.0.erased_str(ValueSource(&mut value))
+    }
+
+    fn char(&mut self, v: char) -> Result {
+        self.0.erased_char(v)
     }
 
     fn error<'e: 'a, E: source::ValueSource<'e, dyn error::Error + 'static>>(

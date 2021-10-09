@@ -62,8 +62,32 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.display(fmt)
     }
 
+    fn u8(&mut self, value: u8) -> Result {
+        self.0.u8(value)
+    }
+
+    fn u16(&mut self, value: u16) -> Result {
+        self.0.u16(value)
+    }
+
+    fn u32(&mut self, value: u32) -> Result {
+        self.0.u32(value)
+    }
+
     fn u64(&mut self, value: u64) -> Result {
         self.0.u64(value)
+    }
+
+    fn i8(&mut self, value: i8) -> Result {
+        self.0.i8(value)
+    }
+
+    fn i16(&mut self, value: i16) -> Result {
+        self.0.i16(value)
+    }
+
+    fn i32(&mut self, value: i32) -> Result {
+        self.0.i32(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
@@ -78,6 +102,10 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.i128(value)
     }
 
+    fn f32(&mut self, value: f32) -> Result {
+        self.0.f32(value)
+    }
+
     fn f64(&mut self, value: f64) -> Result {
         self.0.f64(value)
     }
@@ -88,6 +116,10 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn none(&mut self) -> Result {
         self.0.none()
+    }
+
+    fn char(&mut self, value: char) -> Result {
+        self.0.char(value)
     }
 
     fn str<'s: 'a, T: ValueSource<'s, str>>(&mut self, value: T) -> Result {

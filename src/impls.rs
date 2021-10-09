@@ -50,7 +50,7 @@ impl<'a> source::ValueSource<'a, bool> for bool {
 
 impl Value for u8 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.u64(*self as u64)
+        receiver.u8(*self)
     }
 }
 
@@ -59,7 +59,7 @@ impl<'a> Source<'a> for u8 {
     where
         'a: 'b,
     {
-        receiver.u64(*self as u64)
+        receiver.u8(*self)
     }
 }
 
@@ -74,7 +74,7 @@ impl<'a> source::ValueSource<'a, u8> for u8 {
 
 impl Value for i8 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.i64(*self as i64)
+        receiver.i8(*self)
     }
 }
 
@@ -83,7 +83,7 @@ impl<'a> Source<'a> for i8 {
     where
         'a: 'b,
     {
-        receiver.i64(*self as i64)
+        receiver.i8(*self)
     }
 }
 
@@ -98,7 +98,7 @@ impl<'a> source::ValueSource<'a, i8> for i8 {
 
 impl Value for u16 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.u64(*self as u64)
+        receiver.u16(*self)
     }
 }
 
@@ -107,7 +107,7 @@ impl<'a> Source<'a> for u16 {
     where
         'a: 'b,
     {
-        receiver.u64(*self as u64)
+        receiver.u16(*self)
     }
 }
 
@@ -122,7 +122,7 @@ impl<'a> source::ValueSource<'a, u16> for u16 {
 
 impl Value for i16 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.i64(*self as i64)
+        receiver.i16(*self)
     }
 }
 
@@ -131,7 +131,7 @@ impl<'a> Source<'a> for i16 {
     where
         'a: 'b,
     {
-        receiver.i64(*self as i64)
+        receiver.i16(*self)
     }
 }
 
@@ -146,7 +146,7 @@ impl<'a> source::ValueSource<'a, i16> for i16 {
 
 impl Value for u32 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.u64(*self as u64)
+        receiver.u32(*self)
     }
 }
 
@@ -155,7 +155,7 @@ impl<'a> Source<'a> for u32 {
     where
         'a: 'b,
     {
-        receiver.u64(*self as u64)
+        receiver.u32(*self)
     }
 }
 
@@ -170,7 +170,7 @@ impl<'a> source::ValueSource<'a, u32> for u32 {
 
 impl Value for i32 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.i64(*self as i64)
+        receiver.i32(*self)
     }
 }
 
@@ -179,7 +179,7 @@ impl<'a> Source<'a> for i32 {
     where
         'a: 'b,
     {
-        receiver.i64(*self as i64)
+        receiver.i32(*self)
     }
 }
 
@@ -290,7 +290,7 @@ impl<'a> source::ValueSource<'a, i128> for i128 {
 
 impl Value for f32 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.f64(*self as f64)
+        receiver.f32(*self)
     }
 }
 
@@ -299,7 +299,7 @@ impl<'a> Source<'a> for f32 {
     where
         'a: 'b,
     {
-        receiver.f64(*self as f64)
+        receiver.f32(*self)
     }
 }
 
