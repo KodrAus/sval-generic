@@ -122,9 +122,9 @@ impl<S: Serializer> SerdeReceiver<S> {
         }
     }
 
-    fn serialize_any(&mut self, v: impl Serialize) -> Result {
+    fn serialize_source(&mut self, v: impl Serialize) -> Result {
         match self {
-            // A standard serializer can appear at any level of serialization
+            // A standard serializer can appear at source level of serialization
             // The serializer is taken by value and returns the final result
             SerdeReceiver::Serializer(stream) => match stream.take() {
                 Some(stream) => {
@@ -236,7 +236,7 @@ impl<S: Serializer> SerdeReceiver<S> {
 
                     Ok(())
                 }
-                // In any other case we can't begin a serializer
+                // In source other case we can't begin a serializer
                 _ => Err(Error),
             },
             _ => Err(Error),
@@ -377,7 +377,7 @@ impl<S: Serializer> SerdeReceiver<S> {
 
                     Ok(())
                 }
-                // In any other case we can't begin a serializer
+                // In source other case we can't begin a serializer
                 _ => Err(Error),
             },
             _ => Err(Error),
@@ -416,44 +416,44 @@ impl<S: Serializer> SerdeReceiver<S> {
 }
 
 impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
-    fn any<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> Result {
+    fn source<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> Result {
         buffer::stream(self, v)
     }
 
     fn display<D: receiver::Display>(&mut self, v: D) -> Result {
-        self.serialize_any(Display::new(v))
+        self.serialize_source(Display::new(v))
     }
 
     fn u64(&mut self, v: u64) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn i64(&mut self, v: i64) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn u128(&mut self, v: u128) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn i128(&mut self, v: i128) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn f64(&mut self, v: f64) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn bool(&mut self, v: bool) -> Result {
-        self.serialize_any(v)
+        self.serialize_source(v)
     }
 
     fn none(&mut self) -> Result {
-        self.serialize_any(None::<()>)
+        self.serialize_source(None::<()>)
     }
 
     fn str<'s: 'a, T: source::ValueSource<'s, str>>(&mut self, mut v: T) -> Result {
-        self.serialize_any(v.value()?)
+        self.serialize_source(v.value()?)
     }
 
     fn type_tagged_begin<T: source::ValueSource<'static, str>>(
@@ -542,6 +542,6 @@ impl<'a, S: Serializer> BufferReceiver<'a> for SerdeReceiver<S> {
         &mut self,
         mut v: VS,
     ) -> Result {
-        self.serialize_any(Value::new(v.value()?))
+        self.serialize_source(Value::new(v.value()?))
     }
 }

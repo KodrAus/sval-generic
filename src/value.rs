@@ -1,24 +1,15 @@
 use crate::{
-    receiver::{self, AsyncReceiver, Display, Receiver},
+    receiver::{self, Display, Receiver},
     source::{Source, ValueSource},
     tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
     Result,
 };
 
-#[async_trait]
 pub trait Value
 where
     for<'a> &'a Self: Source<'a>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
-
-    async fn stream_non_blocking<'a, S: AsyncReceiver<'a>>(&'a self, mut receiver: S) -> Result
-    where
-        Self: Sync,
-    {
-        // TODO: Try stream to a primitive first
-        receiver.blocking(self).await
-    }
 
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a>(Option<&'a str>);

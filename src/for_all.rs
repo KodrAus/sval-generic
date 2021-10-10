@@ -54,8 +54,8 @@ impl<'a, 'b, U: Value + ?Sized, T: ValueSource<'b, U>> ValueSource<'a, U> for Fo
 }
 
 impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
-    fn any<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.0.any(ForAll(value))
+    fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.0.source(ForAll(value))
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {

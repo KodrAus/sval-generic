@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate async_trait;
-
 pub mod receiver;
 pub mod source;
 pub mod tag;
@@ -12,12 +9,7 @@ mod impls;
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{
-    for_all::ForAll,
-    receiver::{AsyncReceiver, Receiver},
-    source::{AsyncSource, Source},
-    value::Value,
-};
+pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value};
 
 #[derive(Debug)]
 pub struct Error;
@@ -34,12 +26,6 @@ pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 pub fn stream<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream(s)
 }
-
-/*
-pub async fn stream_non_blocking<'a>(s: impl AsyncStream<'a>, v: impl AsyncSource<'a>) -> Result {
-    v.stream(s).await
-}
-*/
 
 pub fn for_all<T>(value: T) -> ForAll<T> {
     ForAll::new(value)
