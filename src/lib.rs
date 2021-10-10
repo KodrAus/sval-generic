@@ -12,7 +12,12 @@ mod impls;
 pub use sval_generic_api_derive::*;
 
 #[doc(inline)]
-pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value};
+pub use self::{
+    for_all::ForAll,
+    receiver::{AsyncReceiver, Receiver},
+    source::{AsyncSource, Source},
+    value::Value,
+};
 
 #[derive(Debug)]
 pub struct Error;

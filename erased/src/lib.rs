@@ -54,7 +54,7 @@ pub fn receiver<'a, 'b>(s: &'b mut impl receiver::Receiver<'a>) -> Receiver<'a, 
 }
 
 trait ErasedReceiver<'a> {
-    fn erased_any<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result;
+    fn erased_source<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result;
     fn erased_u8(&mut self, v: u8) -> Result;
     fn erased_u16(&mut self, v: u16) -> Result;
     fn erased_u32(&mut self, v: u32) -> Result;
@@ -159,8 +159,8 @@ trait ErasedReceiver<'a> {
 }
 
 impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
-    fn erased_any<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result {
-        self.any(v)
+    fn erased_source<'b, 'v: 'a>(&mut self, v: Source<'v, 'b>) -> Result {
+        self.source(v)
     }
 
     fn erased_u8(&mut self, value: u8) -> Result {
@@ -432,8 +432,8 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
 }
 
 impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
-    fn any<'v: 'a, V: source::Source<'v>>(&mut self, mut value: V) -> Result {
-        self.erased_any(Source(&mut value))
+    fn source<'v: 'a, V: source::Source<'v>>(&mut self, mut value: V) -> Result {
+        self.erased_source(Source(&mut value))
     }
 
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
