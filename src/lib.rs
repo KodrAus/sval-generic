@@ -1,7 +1,11 @@
+#![feature(generic_associated_types)]
+
 pub mod receiver;
 pub mod source;
 pub mod tag;
 pub mod value;
+
+pub mod generator;
 
 mod for_all;
 mod impls;

@@ -15,6 +15,46 @@ fn input_struct() -> Twitter {
 }
 
 #[bench]
+fn mytype_value_sval_generic_api(b: &mut test::Bencher) {
+    use sval_generic_api::generator::GeneratorValue;
+
+    let v = sval_generic_api::generator::MyType {
+        a: 42,
+        b: String::from("this is a really cool string!"),
+    };
+
+    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
+}
+
+#[bench]
+fn mytype_generator_value_sval_generic_api(b: &mut test::Bencher) {
+    use sval_generic_api::generator::GeneratorValue;
+
+    let v = sval_generic_api::generator::MyType {
+        a: 42,
+        b: String::from("this is a really cool string!"),
+    };
+
+    let v = v.as_value();
+
+    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
+}
+
+#[bench]
+fn mytype_generator_iter_sval_generic_api(b: &mut test::Bencher) {
+    use sval_generic_api::generator::GeneratorValue;
+
+    let v = sval_generic_api::generator::MyType {
+        a: 42,
+        b: String::from("this is a really cool string!"),
+    };
+
+    let v = v.as_value_iter();
+
+    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
+}
+
+#[bench]
 fn primitive_miniserde(b: &mut test::Bencher) {
     b.iter(|| miniserde::json::to_string(&42));
 }

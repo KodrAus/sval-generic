@@ -219,7 +219,7 @@ where
 
         self.is_current_depth_empty = false;
 
-        self.any(v)
+        self.source(v)
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval_generic_api::Result {

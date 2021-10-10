@@ -24,12 +24,6 @@ impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
     }
 }
 
-pub fn stream_blocking<'a>(
-    receiver: impl AsyncBufferReceiver<'a>,
-    mut source: impl Source<'a>,
-) -> Result {
-}
-
 pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
     struct Extract<'a, R> {
         buffer: Buffer<'a>,
