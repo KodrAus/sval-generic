@@ -42,12 +42,14 @@ fn mytype_generator_value_sval_generic_api(b: &mut test::Bencher) {
 
 #[bench]
 fn mytype_generator_iter_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::generator::GeneratorValue;
+    use sval_generic_api::generator::{GeneratorStep, GeneratorValue};
 
     let v = sval_generic_api::generator::MyType {
         a: 42,
         b: String::from("this is a really cool string!"),
     };
+
+    println!("{:?} bytes", std::mem::size_of::<<<sval_generic_api::generator::MyType as GeneratorValue>::Generator<'static> as GeneratorStep<'static>>::Machine>());
 
     let v = v.as_value_iter();
 

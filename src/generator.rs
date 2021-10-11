@@ -1,21 +1,30 @@
-use std::{marker::PhantomData, mem, ops::ControlFlow};
+use std::{marker::PhantomData, mem};
 
 use crate::{Error, Receiver, Result, Value};
 
 pub trait GeneratorValue {
     #[doc(hidden)]
-    type Generator<'a, R: Receiver<'a>>: GeneratorStep;
+    type Generator<'a>: GeneratorStep<'a>;
 
-    fn stream_begin<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Generator<'a, R, Self>;
+    #[doc(hidden)]
+    fn generator<'a>(&'a self) -> Self::Generator<'a>;
+
+    fn stream_begin<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Generator<'a, R, Self> {
+        Generator {
+            generator: self.generator(),
+            receiver,
+        }
+    }
 
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        self.stream_begin(receiver).stream()
+        self.stream_begin(receiver).into_iter().collect()
     }
 
     fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         self.stream_begin(receiver).into_iter().collect()
     }
 
+    // These just exist so we can bench the generated code
     fn as_value(&self) -> AsValue<&Self> {
         AsValue(self)
     }
@@ -26,10 +35,10 @@ pub trait GeneratorValue {
 }
 
 impl<'b, T: GeneratorValue + ?Sized> GeneratorValue for &'b T {
-    type Generator<'a, R: Receiver<'a>> = ByRef<T::Generator<'a, R>>;
+    type Generator<'a> = ByRef<T::Generator<'a>>;
 
-    fn stream_begin<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Generator<'a, R, Self> {
-        Generator(ByRef((**self).stream_begin(receiver).0))
+    fn generator<'a>(&'a self) -> Self::Generator<'a> {
+        ByRef((**self).generator())
     }
 
     fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
@@ -38,26 +47,6 @@ impl<'b, T: GeneratorValue + ?Sized> GeneratorValue for &'b T {
 
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         (**self).stream(receiver)
-    }
-}
-
-#[doc(hidden)]
-pub struct ByRef<G>(G);
-
-impl<G: GeneratorStep> GeneratorStep for ByRef<G> {
-    type Machine = G::Machine;
-    type Next = G::Next;
-
-    fn machine(self) -> Self::Machine {
-        self.0.machine()
-    }
-
-    fn stream(self) -> Result {
-        self.0.stream()
-    }
-
-    fn stream_continue(self) -> Result<Self::Next> {
-        self.0.stream_continue()
     }
 }
 
@@ -77,48 +66,74 @@ impl<V: GeneratorValue> Value for AsValueIter<V> {
     }
 }
 
-pub struct Generator<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized>(V::Generator<'a, R>);
+#[doc(hidden)]
+pub enum GeneratorFlow {
+    Yield,
+    Done,
+}
+
+#[doc(hidden)]
+pub trait GeneratorMachine<'a> {
+    fn stream_continue<R: Receiver<'a>>(&mut self, receiver: R) -> Result<GeneratorFlow>;
+    fn is_done(&self) -> bool;
+}
+
+#[doc(hidden)]
+pub trait GeneratorStep<'a> {
+    type Machine: GeneratorMachine<'a>;
+
+    const IS_TERMINAL: bool;
+
+    fn machine(self) -> Self::Machine;
+    fn stream_continue<R: Receiver<'a>>(&mut self, receiver: R) -> Result<GeneratorFlow>;
+}
+
+pub struct Generator<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> {
+    generator: V::Generator<'a>,
+    receiver: R,
+}
 
 impl<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> Generator<'a, R, V> {
-    pub fn stream(self) -> Result {
-        self.0.stream()
-    }
-
     pub fn into_iter(self) -> IntoIter<'a, R, V> {
-        IntoIter(self.0.machine())
+        IntoIter {
+            machine: self.generator.machine(),
+            receiver: self.receiver,
+        }
     }
 }
 
-pub struct IntoIter<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized>(
-    <V::Generator<'a, R> as GeneratorStep>::Machine,
-);
+pub struct IntoIter<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> {
+    machine: <V::Generator<'a> as GeneratorStep<'a>>::Machine,
+    receiver: R,
+}
 
 impl<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> Iterator for IntoIter<'a, R, V> {
     type Item = Result;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.0.stream_continue() {
-            Ok(ControlFlow::Continue(())) => Some(Ok(())),
-            Ok(ControlFlow::Break(())) => None,
+        match self.machine.stream_continue(&mut self.receiver) {
+            Ok(GeneratorFlow::Yield) => Some(Ok(())),
+            Ok(GeneratorFlow::Done) => None,
             Err(e) => Some(Err(e)),
         }
     }
 }
 
 #[doc(hidden)]
-pub trait GeneratorMachine {
-    fn stream_continue(&mut self) -> Result<ControlFlow<(), ()>>;
-    fn is_done(&self) -> bool;
-}
+pub struct ByRef<G>(G);
 
-#[doc(hidden)]
-pub trait GeneratorStep {
-    type Machine: GeneratorMachine;
-    type Next: GeneratorStep;
+impl<'a, G: GeneratorStep<'a>> GeneratorStep<'a> for ByRef<G> {
+    type Machine = G::Machine;
 
-    fn machine(self) -> Self::Machine;
-    fn stream(self) -> Result;
-    fn stream_continue(self) -> Result<Self::Next>;
+    const IS_TERMINAL: bool = G::IS_TERMINAL;
+
+    fn machine(self) -> Self::Machine {
+        self.0.machine()
+    }
+
+    fn stream_continue<R: Receiver<'a>>(&mut self, receiver: R) -> Result<GeneratorFlow> {
+        self.0.stream_continue(receiver)
+    }
 }
 
 pub struct MyType {
@@ -138,36 +153,57 @@ impl Value for MyType {
 #[allow(dead_code, unused_mut)]
 const IMPL_MYTYPE_GENERATOR: () = {
     impl GeneratorValue for MyType {
-        type Generator<'a, R: Receiver<'a>> = MyTypeGeneratorStep0<'a, R>;
+        type Generator<'a> = MyTypeGeneratorStep0<'a>;
 
-        fn stream_begin<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Generator<'a, R, Self> {
-            Generator(MyTypeGeneratorStep0 {
+        fn generator<'a>(&'a self) -> Self::Generator<'a> {
+            MyTypeGeneratorStep0 {
                 value: self,
-                receiver,
-            })
+                machine: None,
+            }
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.map_field_entry("a", &self.a)?;
+            receiver.map_field_entry("b", &self.b)?;
+
+            Ok(())
         }
     }
 
-    pub enum MyTypeGeneratorMachine<'a, R> {
-        Step0(MyTypeGeneratorStep0<'a, R>),
-        Step1(MyTypeGeneratorStep1<'a, R>),
+    pub enum MyTypeGeneratorMachine<'a> {
+        Step0(MyTypeGeneratorStep0<'a>),
+        Step1(MyTypeGeneratorStep1<'a>),
         Done,
     }
 
-    impl<'a, R: Receiver<'a>> GeneratorMachine for MyTypeGeneratorMachine<'a, R> {
-        fn stream_continue(&mut self) -> Result<ControlFlow<(), ()>> {
-            match mem::replace(self, MyTypeGeneratorMachine::Done) {
-                MyTypeGeneratorMachine::Step0(step) => {
-                    *self = MyTypeGeneratorMachine::Step1(step.stream_continue()?);
-                    Ok(ControlFlow::Continue(()))
-                }
-                // Terminal step
-                MyTypeGeneratorMachine::Step1(step) => {
-                    step.stream_continue()?;
-                    Ok(ControlFlow::Break(()))
-                }
-                // Sentinel terminal step
-                MyTypeGeneratorMachine::Done => Ok(ControlFlow::Break(())),
+    impl<'a> GeneratorMachine<'a> for MyTypeGeneratorMachine<'a> {
+        fn stream_continue<R: Receiver<'a>>(&mut self, receiver: R) -> Result<GeneratorFlow> {
+            match self {
+                // self.a
+                MyTypeGeneratorMachine::Step0(step) => match step.stream_continue(receiver)? {
+                    GeneratorFlow::Done => {
+                        *self = MyTypeGeneratorMachine::Step1(MyTypeGeneratorStep1 {
+                            value: step.value,
+                            machine: None,
+                        });
+
+                        Ok(GeneratorFlow::Yield)
+                    }
+                    GeneratorFlow::Yield => Ok(GeneratorFlow::Yield),
+                },
+
+                // self.b
+                MyTypeGeneratorMachine::Step1(step) => match step.stream_continue(receiver)? {
+                    GeneratorFlow::Done => {
+                        *self = MyTypeGeneratorMachine::Done;
+
+                        Ok(GeneratorFlow::Done)
+                    }
+                    GeneratorFlow::Yield => Ok(GeneratorFlow::Yield),
+                },
+
+                // done
+                MyTypeGeneratorMachine::Done => Ok(GeneratorFlow::Done),
             }
         }
 
@@ -176,81 +212,201 @@ const IMPL_MYTYPE_GENERATOR: () = {
         }
     }
 
-    pub struct MyTypeGeneratorStep0<'a, R> {
+    pub struct MyTypeGeneratorStep0<'a> {
         value: &'a MyType,
-        receiver: R,
+        machine: Option<<<i32 as GeneratorValue>::Generator<'a> as GeneratorStep<'a>>::Machine>,
     }
 
-    impl<'a, R: Receiver<'a>> GeneratorStep for MyTypeGeneratorStep0<'a, R> {
-        type Machine = MyTypeGeneratorMachine<'a, R>;
-        type Next = MyTypeGeneratorStep1<'a, R>;
+    impl<'a> GeneratorStep<'a> for MyTypeGeneratorStep0<'a> {
+        type Machine = MyTypeGeneratorMachine<'a>;
+
+        const IS_TERMINAL: bool = false;
 
         fn machine(self) -> Self::Machine {
             MyTypeGeneratorMachine::Step0(self)
         }
 
         #[inline]
-        fn stream(mut self) -> Result {
-            self.receiver.map_field_entry("a", &self.value.a)?;
-            self.receiver.map_field_entry("b", &self.value.b)?;
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            // primitive generator
+            if <<i32 as GeneratorValue>::Generator<'a> as GeneratorStep<'a>>::IS_TERMINAL {
+                receiver.map_field_entry("a", &self.value.a)?;
 
-            Ok(())
-        }
+                Ok(GeneratorFlow::Done)
+            }
+            // complex generator
+            else {
+                match self.machine {
+                    // key
+                    None => {
+                        receiver.map_field("a")?;
 
-        fn stream_continue(mut self) -> Result<Self::Next> {
-            self.receiver.map_field_entry("a", &self.value.a)?;
+                        self.machine = Some(self.value.a.generator().machine());
 
-            Ok(MyTypeGeneratorStep1 {
-                value: self.value,
-                receiver: self.receiver,
-            })
+                        receiver.map_value_begin()?;
+                        Ok(GeneratorFlow::Yield)
+                    }
+                    // value
+                    Some(ref mut machine) => match machine.stream_continue(&mut receiver)? {
+                        GeneratorFlow::Done => {
+                            receiver.map_value_end()?;
+                            Ok(GeneratorFlow::Done)
+                        }
+                        GeneratorFlow::Yield => Ok(GeneratorFlow::Yield),
+                    },
+                }
+            }
         }
     }
 
-    pub struct MyTypeGeneratorStep1<'a, R> {
+    pub struct MyTypeGeneratorStep1<'a> {
         value: &'a MyType,
-        receiver: R,
+        machine: Option<<<String as GeneratorValue>::Generator<'a> as GeneratorStep<'a>>::Machine>,
     }
 
-    impl<'a, R: Receiver<'a>> GeneratorStep for MyTypeGeneratorStep1<'a, R> {
-        type Machine = MyTypeGeneratorMachine<'a, R>;
-        type Next = MyTypeGeneratorDone<'a, R>;
+    impl<'a> GeneratorStep<'a> for MyTypeGeneratorStep1<'a> {
+        type Machine = MyTypeGeneratorMachine<'a>;
+
+        const IS_TERMINAL: bool = true;
 
         fn machine(self) -> Self::Machine {
             MyTypeGeneratorMachine::Step1(self)
         }
 
         #[inline]
-        fn stream(mut self) -> Result {
-            self.receiver.map_field_entry("b", &self.value.b)?;
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            // primitive generator
+            if <<String as GeneratorValue>::Generator<'a> as GeneratorStep<'a>>::IS_TERMINAL {
+                receiver.map_field_entry("b", &self.value.b)?;
 
-            Ok(())
+                Ok(GeneratorFlow::Done)
+            }
+            // complex generator
+            else {
+                match self.machine {
+                    // key
+                    None => {
+                        receiver.map_field("b")?;
+
+                        self.machine = Some(self.value.b.generator().machine());
+
+                        receiver.map_value_begin()?;
+                        Ok(GeneratorFlow::Yield)
+                    }
+                    // value
+                    Some(ref mut machine) => match machine.stream_continue(&mut receiver)? {
+                        GeneratorFlow::Done => {
+                            receiver.map_value_end()?;
+                            Ok(GeneratorFlow::Done)
+                        }
+                        GeneratorFlow::Yield => Ok(GeneratorFlow::Yield),
+                    },
+                }
+            }
         }
+    }
+};
 
-        fn stream_continue(mut self) -> Result<Self::Next> {
-            self.receiver.map_field_entry("b", &self.value.b)?;
+#[allow(dead_code, unused_mut)]
+const IMPL_I32_GENERATOR: () = {
+    impl GeneratorValue for i32 {
+        type Generator<'a> = I32Generator<'a>;
 
-            Ok(MyTypeGeneratorDone(Default::default()))
+        fn generator<'a>(&'a self) -> Self::Generator<'a> {
+            I32Generator { value: Some(self) }
         }
     }
 
-    pub struct MyTypeGeneratorDone<'a, R>(PhantomData<(&'a MyType, R)>);
+    impl<'a> GeneratorMachine<'a> for I32GeneratorMachine<'a> {
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            self.generator.stream_continue(receiver)
+        }
 
-    impl<'a, R: Receiver<'a>> GeneratorStep for MyTypeGeneratorDone<'a, R> {
-        type Machine = MyTypeGeneratorMachine<'a, R>;
-        type Next = MyTypeGeneratorDone<'a, R>;
+        fn is_done(&self) -> bool {
+            self.generator.value.is_none()
+        }
+    }
+
+    pub struct I32Generator<'a> {
+        value: Option<&'a i32>,
+    }
+
+    pub struct I32GeneratorMachine<'a> {
+        generator: I32Generator<'a>,
+    }
+
+    impl<'a> GeneratorStep<'a> for I32Generator<'a> {
+        type Machine = I32GeneratorMachine<'a>;
+
+        const IS_TERMINAL: bool = true;
 
         fn machine(self) -> Self::Machine {
-            MyTypeGeneratorMachine::Done
+            I32GeneratorMachine { generator: self }
         }
 
         #[inline]
-        fn stream(self) -> Result {
-            Ok(())
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            if let Some(value) = self.value.take() {
+                receiver.i32(*value)?;
+            }
+
+            Ok(GeneratorFlow::Done)
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const IMPL_STR_GENERATOR: () = {
+    impl GeneratorValue for str {
+        type Generator<'a> = StrGenerator<'a>;
+
+        fn generator<'a>(&'a self) -> Self::Generator<'a> {
+            StrGenerator { value: Some(self) }
+        }
+    }
+
+    impl GeneratorValue for String {
+        type Generator<'a> = StrGenerator<'a>;
+
+        fn generator<'a>(&'a self) -> Self::Generator<'a> {
+            StrGenerator { value: Some(self) }
+        }
+    }
+
+    impl<'a> GeneratorMachine<'a> for StrGeneratorMachine<'a> {
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            self.generator.stream_continue(receiver)
         }
 
-        fn stream_continue(mut self) -> Result<Self::Next> {
-            Err(Error)
+        fn is_done(&self) -> bool {
+            self.generator.value.is_none()
+        }
+    }
+
+    pub struct StrGenerator<'a> {
+        value: Option<&'a str>,
+    }
+
+    pub struct StrGeneratorMachine<'a> {
+        generator: StrGenerator<'a>,
+    }
+
+    impl<'a> GeneratorStep<'a> for StrGenerator<'a> {
+        type Machine = StrGeneratorMachine<'a>;
+
+        const IS_TERMINAL: bool = true;
+
+        fn machine(self) -> Self::Machine {
+            StrGeneratorMachine { generator: self }
+        }
+
+        #[inline]
+        fn stream_continue<R: Receiver<'a>>(&mut self, mut receiver: R) -> Result<GeneratorFlow> {
+            if let Some(value) = self.value.take() {
+                receiver.str(value)?;
+            }
+
+            Ok(GeneratorFlow::Done)
         }
     }
 };
