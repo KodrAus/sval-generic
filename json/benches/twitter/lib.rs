@@ -15,44 +15,6 @@ fn input_struct() -> Twitter {
 }
 
 #[bench]
-fn mytype_value_sval_generic_api(b: &mut test::Bencher) {
-    let v = sval_generic_api::generator::MyType {
-        a: 42,
-        b: String::from("this is a really cool string!"),
-    };
-
-    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
-}
-
-#[bench]
-fn mytype_generator_value_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::generator::GeneratorValue;
-
-    let v = sval_generic_api::generator::MyType {
-        a: 42,
-        b: String::from("this is a really cool string!"),
-    };
-
-    let v = v.as_value();
-
-    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
-}
-
-#[bench]
-fn mytype_generator_iter_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api::generator::GeneratorValue;
-
-    let v = sval_generic_api::generator::MyType {
-        a: 42,
-        b: String::from("this is a really cool string!"),
-    };
-
-    let v = v.as_value_iter();
-
-    b.iter(|| sval_generic_api_json::to_string(&v).unwrap());
-}
-
-#[bench]
 fn primitive_miniserde(b: &mut test::Bencher) {
     b.iter(|| miniserde::json::to_string(&42));
 }
@@ -107,6 +69,19 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
     let s: &dyn erased_serde::Serialize = &s;
 
     b.iter(|| serde_json::to_string(&s).unwrap());
+}
+
+#[bench]
+fn twitter_sval_generic_api_generator(b: &mut test::Bencher) {
+    use sval_generic_api::generator::GeneratorValue;
+
+    let s = input_struct();
+    let s = s.as_value_iter();
+
+    println!("{}", std::mem::size_of::<Twitter>());
+    println!("{}", std::mem::size_of::<sval_generic_api::generator::Generator<'_, sval_generic_api_json::Formatter<&mut String>, Twitter>>());
+
+    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
 }
 
 #[bench]

@@ -157,12 +157,5 @@ mod tests {
             b: 42,
         };
         my_struct.stream(MyReceiver(None)).unwrap();
-
-        println!(
-            "{:?} bytes",
-            std::mem::size_of::<
-                crate::generator::Generator<'static, MyReceiver, crate::generator::MyType>,
-            >()
-        );
     }
 }
