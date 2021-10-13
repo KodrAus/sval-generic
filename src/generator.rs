@@ -21,10 +21,12 @@ pub trait GeneratorValue {
     }
 
     // These just exist so we can bench the generated code
+    #[inline]
     fn as_value(&self) -> AsValue<&Self> {
         AsValue(self)
     }
 
+    #[inline]
     fn as_value_iter(&self) -> AsValueIter<&Self> {
         AsValueIter(self)
     }
@@ -62,6 +64,7 @@ impl<'b, T: GeneratorValue + ?Sized> GeneratorValue for &'b T {
         'b: 'a,
     = T::Generator<'a>;
 
+    #[inline]
     fn generator<'a>(&'a self) -> Self::Generator<'a> {
         (**self).generator()
     }
@@ -133,6 +136,7 @@ const _: () = {
     impl GeneratorValue for () {
         type Generator<'a> = UnitGenerator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             UnitGenerator
         }
@@ -147,6 +151,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for UnitGenerator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.none()?;
 
@@ -160,6 +165,7 @@ const _: () = {
     impl GeneratorValue for u8 {
         type Generator<'a> = U8Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             U8Generator(*self)
         }
@@ -174,6 +180,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for U8Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.u8(self.0)?;
 
@@ -187,6 +194,7 @@ const _: () = {
     impl GeneratorValue for u16 {
         type Generator<'a> = U16Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             U16Generator(*self)
         }
@@ -201,6 +209,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for U16Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.u16(self.0)?;
 
@@ -214,6 +223,7 @@ const _: () = {
     impl GeneratorValue for u32 {
         type Generator<'a> = U32Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             U32Generator(*self)
         }
@@ -228,6 +238,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for U32Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.u32(self.0)?;
 
@@ -241,6 +252,7 @@ const _: () = {
     impl GeneratorValue for u64 {
         type Generator<'a> = U64Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             U64Generator(*self)
         }
@@ -255,6 +267,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for U64Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.u64(self.0)?;
 
@@ -268,6 +281,7 @@ const _: () = {
     impl GeneratorValue for i32 {
         type Generator<'a> = I32Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             I32Generator(*self)
         }
@@ -282,6 +296,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for I32Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.i32(self.0)?;
 
@@ -295,6 +310,7 @@ const _: () = {
     impl GeneratorValue for f32 {
         type Generator<'a> = F32Generator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             F32Generator(*self)
         }
@@ -309,6 +325,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for F32Generator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.f32(self.0)?;
 
@@ -322,6 +339,7 @@ const _: () = {
     impl GeneratorValue for bool {
         type Generator<'a> = BoolGenerator;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             BoolGenerator(*self)
         }
@@ -336,6 +354,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for BoolGenerator {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.bool(self.0)?;
 
@@ -349,6 +368,7 @@ const _: () = {
     impl GeneratorValue for str {
         type Generator<'a> = StrGenerator<'a>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             StrGenerator(self)
         }
@@ -361,6 +381,7 @@ const _: () = {
     impl GeneratorValue for String {
         type Generator<'a> = StrGenerator<'a>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             StrGenerator(self)
         }
@@ -375,6 +396,7 @@ const _: () = {
     impl<'a> GeneratorImpl<'a> for StrGenerator<'a> {
         const MAY_YIELD: bool = false;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             receiver.str(self.0)?;
 
@@ -391,6 +413,7 @@ const _: () = {
             Self: 'a,
         = BoxGenerator<'a, T>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             BoxGenerator::Value { value: self }
         }
@@ -412,6 +435,7 @@ const _: () = {
     impl<'a, T: GeneratorValue + ?Sized + 'a> GeneratorImpl<'a> for BoxGenerator<'a, T> {
         const MAY_YIELD: bool = <T::Generator<'a> as GeneratorImpl<'a>>::MAY_YIELD;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             match self {
                 BoxGenerator::Value { value } => {
@@ -449,6 +473,7 @@ const _: () = {
             Self: 'a,
         = OptionGenerator<'a, T>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             OptionGenerator::Value {
                 value: self.as_ref(),
@@ -475,6 +500,7 @@ const _: () = {
     impl<'a, T: GeneratorValue + 'a> GeneratorImpl<'a> for OptionGenerator<'a, T> {
         const MAY_YIELD: bool = <T::Generator<'a>>::MAY_YIELD;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             match self {
                 OptionGenerator::Value { value: Some(value) } => {
@@ -515,6 +541,7 @@ const _: () = {
             Self: 'a,
         = TupleGenerator<'a, T, U>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             TupleGenerator {
                 value: (&self.0, &self.1),
@@ -554,6 +581,7 @@ const _: () = {
     {
         const MAY_YIELD: bool = true;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             match self.generator {
                 TupleGeneratorState::Begin => {
@@ -650,6 +678,7 @@ const _: () = {
             Self: 'a,
         = ArrayGenerator<'a, T>;
 
+        #[inline]
         fn generator<'a>(&'a self) -> Self::Generator<'a> {
             ArrayGenerator {
                 value: self,
@@ -686,6 +715,7 @@ const _: () = {
     impl<'a, T: GeneratorValue + 'a> GeneratorImpl<'a> for ArrayGenerator<'a, T> {
         const MAY_YIELD: bool = true;
 
+        #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
             match self.generator {
                 ArrayGeneratorState::Begin => {

@@ -78,9 +78,6 @@ fn twitter_sval_generic_api_generator(b: &mut test::Bencher) {
     let s = input_struct();
     let s = s.as_value_iter();
 
-    println!("{}", std::mem::size_of::<Twitter>());
-    println!("{}", std::mem::size_of::<sval_generic_api::generator::Generator<'_, sval_generic_api_json::Formatter<&mut String>, Twitter>>());
-
     b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
 }
 

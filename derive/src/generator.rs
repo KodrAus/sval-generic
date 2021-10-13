@@ -55,6 +55,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             impl sval_generic_api::generator::GeneratorValue for #ident {
                 type Generator<'a> = __Generator<'a>;
 
+                #[inline]
                 fn generator<'a>(&'a self) -> Self::Generator<'a> {
                     __Generator {
                         value: self,
@@ -92,13 +93,14 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             impl<'a> sval_generic_api::generator::GeneratorImpl<'a> for __Generator<'a> {
                 const MAY_YIELD: bool = true;
 
+                #[inline]
                 fn resume<R: sval_generic_api::Receiver<'a>>(
                     &mut self,
                     receiver: &mut R,
                 ) -> sval_generic_api::Result<sval_generic_api::generator::GeneratorState> {
                     match self.generator {
                         __GeneratorState::#begin_variant => {
-                            receiver.type_tagged_map_begin(sval_generic_api::tag::type_tag("MyType"), Some(#num_fields))?;
+                            receiver.type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
                             self.generator = #field_transition_first;
 

@@ -8,6 +8,9 @@ publish = false
 [dependencies.serde_json]
 version = "1"
 
+[dependencies.sval-generic-api]
+path = "../../../"
+
 [dependencies.sval-generic-api-json-twitter-tests]
 path = "../../tests/twitter"
 
