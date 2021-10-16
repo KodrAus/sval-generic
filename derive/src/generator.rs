@@ -1,7 +1,7 @@
-use crate::{attr, bound};
+use crate::attr;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{Data, DataStruct, DeriveInput, Fields, Ident, Type};
+use syn::{Data, DataStruct, DeriveInput, Fields, Ident};
 
 pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let fields = match input.data {
@@ -90,7 +90,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 Done,
             }
 
-            impl<'a> sval_generic_api::generator::GeneratorImpl<'a> for __Generator<'a> {
+            impl<'a> sval_generic_api::generator::Coroutine<'a> for __Generator<'a> {
                 const MAY_YIELD: bool = true;
 
                 #[inline]
