@@ -12,7 +12,7 @@ pub trait Coroutine {
     // TODO: This needs to accept a `R: Receiver<'a>`
     // That might affect the raw `fn` representation
     // So we might need to make this `Coroutine<'a, R: Receiver<'a>>`
-    fn resume(cx: Context<Self>) -> Resume;
+    fn resume<'r>(cx: Context<'r, Self>) -> Resume<'r>;
 
     #[doc(hidden)]
     fn into_raw() -> RawCoroutine {
@@ -20,67 +20,22 @@ pub trait Coroutine {
     }
 
     #[doc(hidden)]
-    unsafe fn resume_raw(cx: RawContext) -> Resume {
-        Self::resume(Context::from_raw_unchecked(cx))
+    unsafe fn resume_raw(cx: RawContext) -> RawResume {
+        Self::resume(Context::from_raw_unchecked(cx)).resume
     }
 }
 
-pub struct Resume(RawResume);
-
-#[derive(Clone, Copy)]
-enum RawResume {
-    Yield(RawCoroutine, RawSlot),
-    Return(Option<(RawCoroutine, RawSlot)>),
+pub struct Resume<'r> {
+    resume: RawResume,
+    _marker: PhantomData<&'r mut Void>,
 }
 
-enum Void {}
-
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-pub struct RawContext {
-    slot: RawSlot,
-}
-
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-struct RawSlot(*mut Void);
-
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-pub struct RawCoroutine(unsafe fn(RawContext) -> Resume);
-
-impl RawCoroutine {
-    fn new<C: Coroutine + ?Sized>() -> Self {
-        RawCoroutine(C::resume_raw)
-    }
-
-    unsafe fn resume_raw(self, cx: RawContext) -> Resume {
-        (self.0)(cx)
-    }
-}
-
-impl RawSlot {
-    fn new(slot: *mut Void) -> Self {
-        RawSlot(slot)
-    }
-}
-
-impl RawContext {
-    fn new<C: Coroutine + ?Sized>(slot: RawSlot) -> Self {
-        RawContext { slot }
-    }
-
-    unsafe fn slot_unchecked_mut<C: Coroutine + ?Sized>(&mut self) -> Pin<&mut Slot<C::State>> {
-        Pin::new_unchecked(&mut *(self.slot.0 as *mut Slot<C::State>))
-    }
-}
-
-pub struct Context<C: Coroutine + ?Sized> {
+pub struct Context<'r, C: Coroutine + ?Sized> {
     raw: RawContext,
-    _marker: PhantomData<fn(&mut Slot<C::State>)>,
+    _marker: PhantomData<&'r mut Slot<C::State>>,
 }
 
-impl<C: Coroutine + ?Sized> Context<C> {
+impl<'r, C: Coroutine + ?Sized> Context<'r, C> {
     unsafe fn from_raw_unchecked(raw: RawContext) -> Self {
         Context {
             raw,
@@ -92,14 +47,17 @@ impl<C: Coroutine + ?Sized> Context<C> {
         unsafe { self.raw.slot_unchecked_mut::<C>() }.state()
     }
 
-    pub fn yield_to<Y: Coroutine<State = C::State> + ?Sized>(self) -> Resume {
-        Resume(RawResume::Yield(Y::into_raw(), self.raw.slot))
+    pub fn yield_to<Y: Coroutine<State = C::State> + ?Sized>(self) -> Resume<'r> {
+        Resume {
+            resume: RawResume(RawResumeInner::Yield(Y::into_raw(), self.raw.slot)),
+            _marker: PhantomData,
+        }
     }
 
     pub fn yield_into<Y: Coroutine + ?Sized, R: Coroutine<State = C::State> + ?Sized>(
         mut self,
         enter: fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
-    ) -> Resume {
+    ) -> Resume<'r> {
         let continuation = self.raw.slot;
 
         let enter = {
@@ -112,13 +70,19 @@ impl<C: Coroutine + ?Sized> Context<C> {
             (unsafe { enter.get_unchecked_mut() }) as *mut Slot<Y::State> as *mut Void
         };
 
-        Resume(RawResume::Yield(Y::into_raw(), RawSlot::new(enter)))
+        Resume {
+            resume: RawResume(RawResumeInner::Yield(Y::into_raw(), RawSlot::new(enter))),
+            _marker: PhantomData,
+        }
     }
 
-    pub fn yield_return(mut self) -> Resume {
-        Resume(RawResume::Return(
-            unsafe { self.raw.slot_unchecked_mut::<C>() }.continuation_raw(),
-        ))
+    pub fn yield_return(mut self) -> Resume<'r> {
+        Resume {
+            resume: RawResume(RawResumeInner::Return(
+                unsafe { self.raw.slot_unchecked_mut::<C>() }.continuation_raw(),
+            )),
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -179,11 +143,11 @@ impl<'a, C: Coroutine + ?Sized> Driver<'a, C> {
     pub fn resume(&mut self) -> bool {
         match self.resume.take() {
             Some((co, state)) => match unsafe { co.resume_raw(RawContext::new::<C>(state)) } {
-                Resume(RawResume::Yield(resume, state)) => {
+                RawResume(RawResumeInner::Yield(resume, state)) => {
                     self.resume = Some((resume, state));
                     true
                 }
-                Resume(RawResume::Return(resume)) => {
+                RawResume(RawResumeInner::Return(resume)) => {
                     self.resume = resume;
                     self.resume.is_some()
                 }
@@ -204,5 +168,57 @@ impl<'a, C: Coroutine + ?Sized> Iterator for IntoIter<'a, C> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.resume().then(|| ())
+    }
+}
+
+enum Void {}
+
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct RawResume(RawResumeInner);
+
+#[derive(Clone, Copy)]
+enum RawResumeInner {
+    Yield(RawCoroutine, RawSlot),
+    Return(Option<(RawCoroutine, RawSlot)>),
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct RawContext {
+    slot: RawSlot,
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+struct RawSlot(*mut Void);
+
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct RawCoroutine(unsafe fn(RawContext) -> RawResume);
+
+impl RawCoroutine {
+    fn new<C: Coroutine + ?Sized>() -> Self {
+        RawCoroutine(C::resume_raw)
+    }
+
+    unsafe fn resume_raw(self, cx: RawContext) -> RawResume {
+        (self.0)(cx)
+    }
+}
+
+impl RawSlot {
+    fn new(slot: *mut Void) -> Self {
+        RawSlot(slot)
+    }
+}
+
+impl RawContext {
+    fn new<C: Coroutine + ?Sized>(slot: RawSlot) -> Self {
+        RawContext { slot }
+    }
+
+    unsafe fn slot_unchecked_mut<C: Coroutine + ?Sized>(&mut self) -> Pin<&mut Slot<C::State>> {
+        Pin::new_unchecked(&mut *(self.slot.0 as *mut Slot<C::State>))
     }
 }
