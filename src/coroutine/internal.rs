@@ -9,6 +9,9 @@ pub trait Coroutine {
 
     const MAY_YIELD: bool = true;
 
+    // TODO: This needs to accept a `R: Receiver<'a>`
+    // That might affect the raw `fn` representation
+    // So we might need to make this `Coroutine<'a, R: Receiver<'a>>`
     fn resume(cx: Context<Self>) -> Resume;
 
     #[doc(hidden)]

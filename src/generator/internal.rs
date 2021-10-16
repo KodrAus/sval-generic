@@ -10,10 +10,8 @@ pub enum GeneratorState {
 
 #[doc(hidden)]
 pub trait Coroutine<'a> {
-    // TODO: We need `MAY_YIELD` hints on `Receiver` too
     const MAY_YIELD: bool = true;
 
-    // TODO: Self: `Pin<&mut Self>`?
     fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState>;
 }
 
