@@ -7,7 +7,9 @@ use crate::{Receiver, Result};
 
 pub trait CoroutineValue {
     #[doc(hidden)]
-    type State<'a>;
+    type State<'a>
+    where
+        Self: 'a;
 
     #[doc(hidden)]
     type Coroutine<'a, R: Receiver<'a>>: Coroutine<'a, R, State = Self::State<'a>>
@@ -35,6 +37,33 @@ pub trait CoroutineValue {
         })
         .into_iter()
         .collect()
+    }
+}
+
+impl<'b, T: CoroutineValue + ?Sized> CoroutineValue for &'b T {
+    type State<'a>
+    where
+        T: 'a,
+        'b: 'a,
+    = T::State<'a>;
+
+    type Coroutine<'a, R: Receiver<'a>>
+    where
+        T: 'a,
+        'b: 'a,
+    = T::Coroutine<'a, R>;
+
+    #[inline]
+    fn state<'a>(&'a self) -> Self::State<'a> {
+        (**self).state()
+    }
+
+    fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
+        (**self).stream_iter(receiver)
+    }
+
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
+        (**self).stream(receiver)
     }
 }
 
