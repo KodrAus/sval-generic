@@ -15,6 +15,9 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let ident = input.ident;
     let tag = ident.to_string();
 
+    let generator_ident = Ident::new(&format!("Generator_{}", ident.to_string()), Span::call_site());
+    let generator_state_ident = Ident::new(&format!("GeneratorState_{}", ident.to_string()), Span::call_site());
+
     let field_ident = fields
         .named
         .iter()
@@ -38,8 +41,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
     let field_transition = field_variant
         .iter()
-        .map(|f| quote!(__GeneratorState::#f { generator: None }))
-        .chain(Some(quote!(__GeneratorState::#end_variant)))
+        .map(|f| quote!(#generator_state_ident::#f { generator: None }))
+        .chain(Some(quote!(#generator_state_ident::#end_variant)))
         .collect::<Vec<_>>();
 
     let field_transition_first = &field_transition[0];
@@ -53,13 +56,13 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             extern crate sval_generic_api;
 
             impl sval_generic_api::generator::GeneratorValue for #ident {
-                type Generator<'a> = __Generator<'a>;
+                type Generator<'a> = #generator_ident<'a>;
 
                 #[inline]
                 fn generator<'a>(&'a self) -> Self::Generator<'a> {
-                    __Generator {
+                    #generator_ident {
                         value: self,
-                        generator: __GeneratorState::Begin,
+                        generator: #generator_state_ident::Begin,
                     }
                 }
 
@@ -74,12 +77,12 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 }
             }
 
-            pub struct __Generator<'a> {
+            pub struct #generator_ident<'a> {
                 value: &'a #ident,
-                generator: __GeneratorState<'a>,
+                generator: #generator_state_ident<'a>,
             }
 
-            pub enum __GeneratorState<'a> {
+            pub enum #generator_state_ident<'a> {
                 #begin_variant,
                 #(
                     #field_variant {
@@ -90,7 +93,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 Done,
             }
 
-            impl<'a> sval_generic_api::generator::GeneratorImpl<'a> for __Generator<'a> {
+            impl<'a> sval_generic_api::generator::GeneratorImpl<'a> for #generator_ident<'a> {
                 const MAY_YIELD: bool = true;
 
                 #[inline]
@@ -99,7 +102,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     receiver: &mut R,
                 ) -> sval_generic_api::Result<sval_generic_api::generator::GeneratorState> {
                     match self.generator {
-                        __GeneratorState::#begin_variant => {
+                        #generator_state_ident::#begin_variant => {
                             receiver.type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
                             self.generator = #field_transition_first;
@@ -108,7 +111,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         },
 
                         #(
-                            __GeneratorState::#field_variant { ref mut generator } => {
+                            #generator_state_ident::#field_variant { ref mut generator } => {
                                 if !<<#field_ty as sval_generic_api::generator::GeneratorValue>::Generator<'a>>::MAY_YIELD {
                                     receiver.map_field_entry(#field_str, sval_generic_api::generator::GeneratorValue::as_value(&self.value.#field_ident))?;
                                 }
@@ -142,15 +145,15 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                             },
                         )*
 
-                        __GeneratorState::#end_variant => {
+                        #generator_state_ident::#end_variant => {
                             receiver.type_tagged_map_end()?;
 
-                            self.generator = __GeneratorState::Done;
+                            self.generator = #generator_state_ident::Done;
 
                             Ok(sval_generic_api::generator::GeneratorState::Done)
                         }
 
-                        __GeneratorState::Done => Ok(sval_generic_api::generator::GeneratorState::Done),
+                        #generator_state_ident::Done => Ok(sval_generic_api::generator::GeneratorState::Done),
                     }
                 }
             }
