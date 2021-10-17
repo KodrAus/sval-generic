@@ -1,12 +1,14 @@
 mod internal;
 pub use self::internal::*;
 
+use crate::Receiver;
+
 pub trait CoroutineValue {
     #[doc(hidden)]
     type State<'a>;
 
     #[doc(hidden)]
-    type Coroutine<'a>: Coroutine<State = Self::State<'a>>
+    type Coroutine<'a, R: Receiver<'a>>: Coroutine<'a, R, State = Self::State<'a>>
     where
         Self: 'a;
 
