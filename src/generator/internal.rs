@@ -2,13 +2,11 @@ use crate::{Receiver, Result};
 
 use super::GeneratorValue;
 
-#[doc(hidden)]
 pub enum GeneratorState {
     Yield,
     Done,
 }
 
-#[doc(hidden)]
 pub trait Coroutine<'a> {
     const MAY_YIELD: bool = true;
 
