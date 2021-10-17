@@ -3,11 +3,7 @@
 extern crate test;
 
 use sval_generic_api::{
-    Receiver,
-    Result,
-    source::ValueSource,
-    generator::GeneratorValue,
-    receiver::Display,
+    generator::GeneratorValue, receiver::Display, source::ValueSource, Receiver, Result,
 };
 use sval_generic_api_json_twitter_tests::Twitter;
 
@@ -15,8 +11,7 @@ fn main() {
     let s = input_struct();
 
     for _ in 0..30_000 {
-        let r = s.stream_iter(Empty);
-        test::black_box(r);
+        let _ = test::black_box(s.stream_iter(Empty));
     }
 }
 

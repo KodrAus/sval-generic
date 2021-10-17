@@ -15,8 +15,14 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let ident = input.ident;
     let tag = ident.to_string();
 
-    let generator_ident = Ident::new(&format!("Generator_{}", ident.to_string()), Span::call_site());
-    let generator_state_ident = Ident::new(&format!("GeneratorState_{}", ident.to_string()), Span::call_site());
+    let generator_ident = Ident::new(
+        &format!("Generator_{}", ident.to_string()),
+        Span::call_site(),
+    );
+    let generator_state_ident = Ident::new(
+        &format!("GeneratorState_{}", ident.to_string()),
+        Span::call_site(),
+    );
 
     let field_ident = fields
         .named
