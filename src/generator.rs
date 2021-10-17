@@ -1,8 +1,11 @@
-use crate::{Error, Receiver, Result, Source, Value};
+use crate::{Receiver, Result, Source, Value};
+
+mod internal;
+pub use self::internal::*;
 
 pub trait GeneratorValue {
     #[doc(hidden)]
-    type Generator<'a>: GeneratorImpl<'a>
+    type Generator<'a>: Coroutine<'a>
     where
         Self: 'a;
 
@@ -78,59 +81,6 @@ impl<'b, T: GeneratorValue + ?Sized> GeneratorValue for &'b T {
     }
 }
 
-#[doc(hidden)]
-pub enum GeneratorState {
-    Yield,
-    Done,
-}
-
-#[doc(hidden)]
-pub trait GeneratorImpl<'a> {
-    // TODO: We need `MAY_YIELD` hints on `Receiver` too
-    const MAY_YIELD: bool = true;
-
-    // TODO: Self: `Pin<&mut Self>`?
-    fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState>;
-}
-
-pub struct Generator<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized + 'a> {
-    generator: V::Generator<'a>,
-    receiver: R,
-}
-
-impl<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> Generator<'a, R, V> {
-    pub fn begin(receiver: R, value: &'a V) -> Self {
-        Generator {
-            generator: value.generator(),
-            receiver,
-        }
-    }
-
-    pub fn into_iter(self) -> IntoIter<'a, R, V> {
-        IntoIter {
-            generator: self.generator,
-            receiver: self.receiver,
-        }
-    }
-}
-
-pub struct IntoIter<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized + 'a> {
-    generator: V::Generator<'a>,
-    receiver: R,
-}
-
-impl<'a, R: Receiver<'a>, V: GeneratorValue + ?Sized> Iterator for IntoIter<'a, R, V> {
-    type Item = Result;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.generator.resume(&mut self.receiver) {
-            Ok(GeneratorState::Yield) => Some(Ok(())),
-            Ok(GeneratorState::Done) => None,
-            Err(e) => Some(Err(e)),
-        }
-    }
-}
-
 #[allow(dead_code, unused_mut)]
 const _: () = {
     impl GeneratorValue for () {
@@ -148,7 +98,7 @@ const _: () = {
 
     pub struct UnitGenerator;
 
-    impl<'a> GeneratorImpl<'a> for UnitGenerator {
+    impl<'a> Coroutine<'a> for UnitGenerator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -177,7 +127,7 @@ const _: () = {
 
     pub struct U8Generator(u8);
 
-    impl<'a> GeneratorImpl<'a> for U8Generator {
+    impl<'a> Coroutine<'a> for U8Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -206,7 +156,7 @@ const _: () = {
 
     pub struct U16Generator(u16);
 
-    impl<'a> GeneratorImpl<'a> for U16Generator {
+    impl<'a> Coroutine<'a> for U16Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -235,7 +185,7 @@ const _: () = {
 
     pub struct U32Generator(u32);
 
-    impl<'a> GeneratorImpl<'a> for U32Generator {
+    impl<'a> Coroutine<'a> for U32Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -264,7 +214,7 @@ const _: () = {
 
     pub struct U64Generator(u64);
 
-    impl<'a> GeneratorImpl<'a> for U64Generator {
+    impl<'a> Coroutine<'a> for U64Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -293,7 +243,7 @@ const _: () = {
 
     pub struct I32Generator(i32);
 
-    impl<'a> GeneratorImpl<'a> for I32Generator {
+    impl<'a> Coroutine<'a> for I32Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -322,7 +272,7 @@ const _: () = {
 
     pub struct F32Generator(f32);
 
-    impl<'a> GeneratorImpl<'a> for F32Generator {
+    impl<'a> Coroutine<'a> for F32Generator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -351,7 +301,7 @@ const _: () = {
 
     pub struct BoolGenerator(bool);
 
-    impl<'a> GeneratorImpl<'a> for BoolGenerator {
+    impl<'a> Coroutine<'a> for BoolGenerator {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -393,7 +343,7 @@ const _: () = {
 
     pub struct StrGenerator<'a>(&'a str);
 
-    impl<'a> GeneratorImpl<'a> for StrGenerator<'a> {
+    impl<'a> Coroutine<'a> for StrGenerator<'a> {
         const MAY_YIELD: bool = false;
 
         #[inline]
@@ -430,10 +380,10 @@ const _: () = {
         Resume {
             generator: Box<<T as GeneratorValue>::Generator<'a>>,
         },
-    };
+    }
 
-    impl<'a, T: GeneratorValue + ?Sized + 'a> GeneratorImpl<'a> for BoxGenerator<'a, T> {
-        const MAY_YIELD: bool = <T::Generator<'a> as GeneratorImpl<'a>>::MAY_YIELD;
+    impl<'a, T: GeneratorValue + ?Sized + 'a> Coroutine<'a> for BoxGenerator<'a, T> {
+        const MAY_YIELD: bool = <T::Generator<'a> as Coroutine<'a>>::MAY_YIELD;
 
         #[inline]
         fn resume<R: Receiver<'a>>(&mut self, receiver: &mut R) -> Result<GeneratorState> {
@@ -465,8 +415,6 @@ const _: () = {
 
 #[allow(dead_code, unused_mut)]
 const _: () = {
-    use std::marker::PhantomData;
-
     impl<T: GeneratorValue> GeneratorValue for Option<T> {
         type Generator<'a>
         where
@@ -497,7 +445,7 @@ const _: () = {
         },
     }
 
-    impl<'a, T: GeneratorValue + 'a> GeneratorImpl<'a> for OptionGenerator<'a, T> {
+    impl<'a, T: GeneratorValue + 'a> Coroutine<'a> for OptionGenerator<'a, T> {
         const MAY_YIELD: bool = <T::Generator<'a>>::MAY_YIELD;
 
         #[inline]
@@ -533,8 +481,6 @@ const _: () = {
 
 #[allow(dead_code, unused_mut)]
 const _: () = {
-    use std::marker::PhantomData;
-
     impl<T: GeneratorValue, U: GeneratorValue> GeneratorValue for (T, U) {
         type Generator<'a>
         where
@@ -564,6 +510,7 @@ const _: () = {
         generator: TupleGeneratorState<'a, T, U>,
     }
 
+    #[allow(non_camel_case_types)]
     pub enum TupleGeneratorState<'a, T: GeneratorValue + 'a, U: GeneratorValue + 'a> {
         Begin,
         Field_0 {
@@ -576,7 +523,7 @@ const _: () = {
         Done,
     }
 
-    impl<'a, T: GeneratorValue + 'a, U: GeneratorValue + 'a> GeneratorImpl<'a>
+    impl<'a, T: GeneratorValue + 'a, U: GeneratorValue + 'a> Coroutine<'a>
         for TupleGenerator<'a, T, U>
     {
         const MAY_YIELD: bool = true;
@@ -670,8 +617,6 @@ const _: () = {
 
 #[allow(dead_code, unused_mut)]
 const _: () = {
-    use std::marker::PhantomData;
-
     impl<T: GeneratorValue> GeneratorValue for Vec<T> {
         type Generator<'a>
         where
@@ -712,7 +657,7 @@ const _: () = {
         Done,
     }
 
-    impl<'a, T: GeneratorValue + 'a> GeneratorImpl<'a> for ArrayGenerator<'a, T> {
+    impl<'a, T: GeneratorValue + 'a> Coroutine<'a> for ArrayGenerator<'a, T> {
         const MAY_YIELD: bool = true;
 
         #[inline]

@@ -5,6 +5,7 @@ pub mod source;
 pub mod tag;
 pub mod value;
 
+pub mod coroutine;
 pub mod generator;
 
 mod for_all;
