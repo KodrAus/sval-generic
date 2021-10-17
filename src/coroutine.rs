@@ -127,11 +127,8 @@ const _: () = {
 
         const MAY_YIELD: bool = false;
 
-        fn resume<'resume>(
-            cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
-            receiver.none()?;
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            cx.receiver().none()?;
 
             cx.yield_return()
         }
@@ -162,11 +159,10 @@ const _: () = {
 
         const MAY_YIELD: bool = false;
 
-        fn resume<'resume>(
-            mut cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
-            receiver.i32(*cx.state())?;
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.i32(*state)?;
 
             cx.yield_return()
         }
@@ -270,11 +266,9 @@ const _: () = {
 
         const MAY_YIELD: bool = true;
 
-        fn resume<'resume>(
-            mut cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
-            receiver.type_tagged_map_begin(tag::type_tag("MyType"), Some(2))?;
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            cx.receiver()
+                .type_tagged_map_begin(tag::type_tag("MyType"), Some(2))?;
 
             cx.yield_to::<MyTypeCoroutineField_a>()
         }
@@ -284,13 +278,12 @@ const _: () = {
     impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineField_a {
         type State = MyTypeCoroutineState<'a>;
 
-        fn resume<'resume>(
-            mut cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
             // Fast path: we don't need to yield into `a`
             if !<<i32 as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
-                receiver.map_field_entry("a", &cx.state().value.a)?;
+                let (receiver, state) = cx.state();
+
+                receiver.map_field_entry("a", &state.value.a)?;
 
                 cx.yield_to::<MyTypeCoroutineField_b>()
             }
@@ -301,19 +294,20 @@ const _: () = {
                     type State = MyTypeCoroutineState<'a>;
 
                     fn resume<'resume>(
-                        mut cx: Context<'a, 'resume, R, Self>,
-                        receiver: &mut R,
-                    ) -> Result<Resume<'a, 'resume, R, Self>> {
+                        mut cx: Context<'resume, R, Self>,
+                    ) -> Result<Resume<'resume, Self>> {
+                        let (receiver, state) = cx.state();
+
                         receiver.map_value_end()?;
 
-                        cx.state().exit_field_a();
+                        state.exit_field_a();
 
                         cx.yield_to::<MyTypeCoroutineField_b>()
                     }
                 }
 
-                receiver.map_field("a")?;
-                receiver.map_value_begin()?;
+                cx.receiver().map_field("a")?;
+                cx.receiver().map_value_begin()?;
 
                 cx.yield_into::<<i32 as CoroutineValue>::Coroutine<'a, R>, MyTypeCoroutineEndField_a>(|state| {
                     state.enter_field_a()
@@ -326,13 +320,12 @@ const _: () = {
     impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineField_b {
         type State = MyTypeCoroutineState<'a>;
 
-        fn resume<'resume>(
-            mut cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
             // Fast path: we don't need to yield into `b`
             if !<<i32 as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
-                receiver.map_field_entry("b", &cx.state().value.b)?;
+                let (receiver, state) = cx.state();
+
+                receiver.map_field_entry("b", &state.value.b)?;
 
                 cx.yield_to::<MyTypeCoroutineEnd>()
             }
@@ -343,19 +336,20 @@ const _: () = {
                     type State = MyTypeCoroutineState<'a>;
 
                     fn resume<'resume>(
-                        mut cx: Context<'a, 'resume, R, Self>,
-                        receiver: &mut R,
-                    ) -> Result<Resume<'a, 'resume, R, Self>> {
+                        mut cx: Context<'resume, R, Self>,
+                    ) -> Result<Resume<'resume, Self>> {
+                        let (receiver, state) = cx.state();
+
                         receiver.map_value_end()?;
 
-                        cx.state().exit_field_b();
+                        state.exit_field_b();
 
                         cx.yield_to::<MyTypeCoroutineEnd>()
                     }
                 }
 
-                receiver.map_field("b")?;
-                receiver.map_value_begin()?;
+                cx.receiver().map_field("b")?;
+                cx.receiver().map_value_begin()?;
 
                 cx.yield_into::<<i32 as CoroutineValue>::Coroutine<'a, R>, MyTypeCoroutineEndField_b>(|state| {
                     state.enter_field_b()
@@ -368,11 +362,8 @@ const _: () = {
     impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineEnd {
         type State = MyTypeCoroutineState<'a>;
 
-        fn resume<'resume>(
-            mut cx: Context<'a, 'resume, R, Self>,
-            receiver: &mut R,
-        ) -> Result<Resume<'a, 'resume, R, Self>> {
-            receiver.type_tagged_map_end()?;
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            cx.receiver().type_tagged_map_end()?;
 
             cx.yield_return()
         }
