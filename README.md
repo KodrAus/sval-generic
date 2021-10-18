@@ -128,7 +128,7 @@ const _: () = {
         Done,
     }
 
-    impl<'a> Coroutine<'a> for Generator_Twitter<'a> {
+    impl<'a> Generator<'a> for Generator_Twitter<'a> {
         const MAY_YIELD: bool = true;
 
         fn resume<R: Receiver<'a>>(
