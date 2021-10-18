@@ -33,6 +33,30 @@ fn sval_consistency() {
 }
 
 #[test]
+fn sval_generator_consistency() {
+    use sval_generic_api::generator::GeneratorValue;
+
+    let s = input_struct();
+
+    assert_eq!(
+        serde_json::to_string(&s).unwrap(),
+        sval_generic_api_json::to_string(&s.as_value_iter()).unwrap()
+    );
+}
+
+#[test]
+fn sval_coroutine_consistency() {
+    use sval_generic_api::coroutine::CoroutineValue;
+
+    let s = input_struct();
+
+    assert_eq!(
+        serde_json::to_string(&s).unwrap(),
+        sval_generic_api_json::to_string(&s.as_value_iter()).unwrap()
+    );
+}
+
+#[test]
 fn sval_erased_consistency() {
     use sval_generic_api_erased as erased;
 
