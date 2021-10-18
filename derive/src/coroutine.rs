@@ -189,7 +189,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                             cx.receiver().map_field(#field_str)?;
                             cx.receiver().map_value_begin()?;
 
-                            cx.yield_into::<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R>, Exit>(|state| {
+                            cx.yield_into::<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R>, Exit, _>(|state| {
                                 state.#field_enter()
                             })
                         }

@@ -512,7 +512,7 @@ const _: () = {
                     }
                 }
 
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(|state| {
                     state.enter_value()
                 })
             }
@@ -608,9 +608,9 @@ const _: () = {
                             }
                         }
 
-                        cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
-                            state.enter_value()
-                        })
+                        cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(
+                            |state| state.enter_value(),
+                        )
                     }
                 }
                 None => {
@@ -747,7 +747,7 @@ const _: () = {
 
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(|state| {
                     state.enter_elem()
                 })
             }
@@ -899,7 +899,7 @@ const _: () = {
 
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>>(|state| {
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>, _>(|state| {
                     state.enter_field_0()
                 })
             }
@@ -937,7 +937,7 @@ const _: () = {
 
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<U as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>>(|state| {
+                cx.yield_into::<<U as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>, _>(|state| {
                     state.enter_field_1()
                 })
             }

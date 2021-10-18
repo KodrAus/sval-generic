@@ -152,9 +152,10 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
     pub fn yield_into<
         Y: Coroutine<'sval, R> + ?Sized,
         T: Coroutine<'sval, R, State = C::State> + ?Sized,
+        F: Fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
     >(
         mut self,
-        enter: fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
+        enter: F,
     ) -> Result<Resume<'resume, C>> {
         let continuation = self.raw.slot;
 
