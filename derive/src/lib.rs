@@ -9,6 +9,7 @@ extern crate syn;
 
 mod attr;
 mod bound;
+mod coroutine;
 mod generator;
 mod value;
 
@@ -23,4 +24,9 @@ pub fn derive_source(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Generator, attributes(sval_generic_api))]
 pub fn derive_generator(input: TokenStream) -> TokenStream {
     generator::derive(parse_macro_input!(input as DeriveInput))
+}
+
+#[proc_macro_derive(Coroutine, attributes(sval_generic_api))]
+pub fn derive_coroutine(input: TokenStream) -> TokenStream {
+    coroutine::derive(parse_macro_input!(input as DeriveInput))
 }
