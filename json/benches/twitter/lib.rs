@@ -82,6 +82,16 @@ fn twitter_sval_generic_api_generator(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn twitter_sval_generic_api_coroutine(b: &mut test::Bencher) {
+    use sval_generic_api::coroutine::CoroutineValue;
+
+    let s = input_struct();
+    let s = s.as_value_iter();
+
+    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+}
+
+#[bench]
 fn twitter_sval_generic_api(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| sval_generic_api_json::to_string(&s).unwrap());

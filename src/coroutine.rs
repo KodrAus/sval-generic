@@ -3,7 +3,7 @@ use std::pin::Pin;
 mod internal;
 pub use self::internal::*;
 
-use crate::{tag, Receiver, Result, Source, Value};
+use crate::{Receiver, Result, Source, Value};
 
 pub trait CoroutineValue {
     #[doc(hidden)]
@@ -137,6 +137,176 @@ const _: () = {
 
 #[allow(dead_code, unused_mut)]
 const _: () = {
+    impl CoroutineValue for bool {
+        type State<'a> = bool;
+
+        type Coroutine<'a, R: Receiver<'a>> = BoolCoroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.bool(*self)
+        }
+    }
+
+    pub struct BoolCoroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for BoolCoroutine {
+        type State = bool;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.bool(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    impl CoroutineValue for u8 {
+        type State<'a> = u8;
+
+        type Coroutine<'a, R: Receiver<'a>> = U8Coroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.u8(*self)
+        }
+    }
+
+    pub struct U8Coroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for U8Coroutine {
+        type State = u8;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.u8(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    impl CoroutineValue for u16 {
+        type State<'a> = u16;
+
+        type Coroutine<'a, R: Receiver<'a>> = U16Coroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.u16(*self)
+        }
+    }
+
+    pub struct U16Coroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for U16Coroutine {
+        type State = u16;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.u16(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    impl CoroutineValue for u32 {
+        type State<'a> = u32;
+
+        type Coroutine<'a, R: Receiver<'a>> = U32Coroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.u32(*self)
+        }
+    }
+
+    pub struct U32Coroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for U32Coroutine {
+        type State = u32;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.u32(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    impl CoroutineValue for u64 {
+        type State<'a> = u64;
+
+        type Coroutine<'a, R: Receiver<'a>> = U64Coroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.u64(*self)
+        }
+    }
+
+    pub struct U64Coroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for U64Coroutine {
+        type State = u64;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.u64(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
     impl CoroutineValue for i32 {
         type State<'a> = i32;
 
@@ -169,201 +339,619 @@ const _: () = {
     }
 };
 
-pub struct MyType {
-    pub a: i32,
-    pub b: i32,
-}
-
-#[allow(dead_code, unused_mut, non_camel_case_types)]
+#[allow(dead_code, unused_mut)]
 const _: () = {
-    impl CoroutineValue for MyType {
-        type State<'a> = MyTypeCoroutineState<'a>;
+    impl CoroutineValue for f32 {
+        type State<'a> = f32;
 
-        type Coroutine<'a, R: Receiver<'a>> = MyTypeCoroutine;
+        type Coroutine<'a, R: Receiver<'a>> = F32Coroutine;
 
         #[inline]
         fn state<'a>(&'a self) -> Self::State<'a> {
-            MyTypeCoroutineState {
+            *self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.f32(*self)
+        }
+    }
+
+    pub struct F32Coroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for F32Coroutine {
+        type State = f32;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.f32(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    impl CoroutineValue for str {
+        type State<'a> = &'a str;
+
+        type Coroutine<'a, R: Receiver<'a>> = StrCoroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.str(self)
+        }
+    }
+
+    impl CoroutineValue for String {
+        type State<'a> = &'a str;
+
+        type Coroutine<'a, R: Receiver<'a>> = StrCoroutine;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            self
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.str(self)
+        }
+    }
+
+    pub struct StrCoroutine;
+
+    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for StrCoroutine {
+        type State = &'a str;
+
+        const MAY_YIELD: bool = false;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.str(*state)?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    use std::marker::PhantomData;
+
+    impl<T: CoroutineValue + ?Sized> CoroutineValue for Box<T> {
+        type State<'a>
+        where
+            Self: 'a,
+        = BoxCoroutineState<'a, T>;
+
+        type Coroutine<'a, R: Receiver<'a>>
+        where
+            Self: 'a,
+        = BoxCoroutine<'a, T>;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            BoxCoroutineState {
+                value: self,
+                slot: None,
+            }
+        }
+
+        #[inline]
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            (**self).stream(receiver)
+        }
+
+        #[inline]
+        fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
+            (**self).stream_iter(receiver)
+        }
+    }
+
+    pub struct BoxCoroutineState<'a, T: CoroutineValue + ?Sized> {
+        value: &'a T,
+        slot: Option<Box<Slot<<T as CoroutineValue>::State<'a>>>>,
+    }
+
+    impl<'a, T: CoroutineValue + ?Sized> BoxCoroutineState<'a, T> {
+        #[inline]
+        fn enter_value(self: Pin<&mut Self>) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.slot = Some(Box::new(Slot::new(self_mut.value.state())));
+
+            match self_mut.slot {
+                Some(ref mut slot) => unsafe { Pin::new_unchecked(slot) },
+                None => unreachable!(),
+            }
+        }
+
+        #[inline]
+        fn exit_value(self: Pin<&mut Self>) {
+            unsafe { self.get_unchecked_mut() }.slot = None;
+        }
+    }
+
+    pub struct BoxCoroutine<'a, T: ?Sized>(PhantomData<&'a T>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue + 'a + ?Sized> Coroutine<'a, R>
+        for BoxCoroutine<'a, T>
+    {
+        type State = BoxCoroutineState<'a, T>;
+
+        const MAY_YIELD: bool =
+            <<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, mut state) = cx.state();
+
+            if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
+                receiver.source(state.value.as_value())?;
+
+                cx.yield_return()
+            } else {
+                struct Exit<'a, T: ?Sized>(PhantomData<&'a T>);
+                impl<'a, R: Receiver<'a>, T: CoroutineValue + ?Sized> Coroutine<'a, R> for Exit<'a, T> {
+                    type State = BoxCoroutineState<'a, T>;
+
+                    fn resume<'resume>(
+                        mut cx: Context<'resume, R, Self>,
+                    ) -> Result<Resume<'resume, Self>> {
+                        let (_, state) = cx.state();
+
+                        state.exit_value();
+
+                        cx.yield_return()
+                    }
+                }
+
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
+                    state.enter_value()
+                })
+            }
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    use std::marker::PhantomData;
+
+    impl<T: CoroutineValue> CoroutineValue for Option<T> {
+        type State<'a>
+        where
+            Self: 'a,
+        = OptionCoroutineState<'a, T>;
+
+        type Coroutine<'a, R: Receiver<'a>>
+        where
+            Self: 'a,
+        = OptionCoroutine<'a, T>;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            OptionCoroutineState {
+                value: self.as_ref(),
+                slot: None,
+            }
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            if let Some(value) = self {
+                receiver.source(value.as_value())
+            } else {
+                receiver.none()
+            }
+        }
+    }
+
+    pub struct OptionCoroutineState<'a, T: CoroutineValue> {
+        value: Option<&'a T>,
+        slot: Option<Slot<<T as CoroutineValue>::State<'a>>>,
+    }
+
+    impl<'a, T: CoroutineValue> OptionCoroutineState<'a, T> {
+        #[inline]
+        fn enter_value(self: Pin<&mut Self>) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.slot = Some(Slot::new(self_mut.value.unwrap().state()));
+
+            match self_mut.slot {
+                Some(ref mut slot) => unsafe { Pin::new_unchecked(slot) },
+                None => unreachable!(),
+            }
+        }
+
+        #[inline]
+        fn exit_value(self: Pin<&mut Self>) {
+            unsafe { self.get_unchecked_mut() }.slot = None;
+        }
+    }
+
+    pub struct OptionCoroutine<'a, T>(PhantomData<&'a [T]>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue + 'a> Coroutine<'a, R> for OptionCoroutine<'a, T> {
+        type State = OptionCoroutineState<'a, T>;
+
+        const MAY_YIELD: bool =
+            <<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, mut state) = cx.state();
+
+            match state.value {
+                Some(value) => {
+                    if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
+                        receiver.source(value.as_value())?;
+
+                        cx.yield_return()
+                    } else {
+                        struct Exit<'a, T>(PhantomData<&'a T>);
+                        impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for Exit<'a, T> {
+                            type State = OptionCoroutineState<'a, T>;
+
+                            fn resume<'resume>(
+                                mut cx: Context<'resume, R, Self>,
+                            ) -> Result<Resume<'resume, Self>> {
+                                let (_, state) = cx.state();
+
+                                state.exit_value();
+
+                                cx.yield_return()
+                            }
+                        }
+
+                        cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
+                            state.enter_value()
+                        })
+                    }
+                }
+                None => {
+                    receiver.none()?;
+
+                    cx.yield_return()
+                }
+            }
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut)]
+const _: () = {
+    use std::marker::PhantomData;
+
+    impl<T: CoroutineValue> CoroutineValue for Vec<T> {
+        type State<'a>
+        where
+            Self: 'a,
+        = ArrayCoroutineState<'a, T>;
+
+        type Coroutine<'a, R: Receiver<'a>>
+        where
+            Self: 'a,
+        = ArrayCoroutineBegin<'a, T>;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            ArrayCoroutineState {
+                value: self,
+                index: 0,
+                element: None,
+            }
+        }
+
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.seq_begin(Some(self.len()))?;
+
+            for elem in self {
+                receiver.seq_elem(elem.as_value())?;
+            }
+
+            receiver.seq_end()
+        }
+    }
+
+    pub struct ArrayCoroutineState<'a, T: CoroutineValue> {
+        value: &'a [T],
+        index: usize,
+        element: Option<Slot<<T as CoroutineValue>::State<'a>>>,
+    }
+
+    impl<'a, T: CoroutineValue> ArrayCoroutineState<'a, T> {
+        #[inline]
+        fn next_element(self: Pin<&mut Self>) -> usize {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.index += 1;
+            self_mut.index
+        }
+
+        #[inline]
+        fn enter_elem(self: Pin<&mut Self>) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.element = Some(Slot::new(self_mut.value[self_mut.index].state()));
+
+            match self_mut.element {
+                Some(ref mut elem) => unsafe { Pin::new_unchecked(elem) },
+                None => unreachable!(),
+            }
+        }
+
+        #[inline]
+        fn exit_elem(self: Pin<&mut Self>) {
+            unsafe { self.get_unchecked_mut() }.element = None;
+        }
+    }
+
+    pub struct ArrayCoroutineBegin<'a, T>(PhantomData<&'a [T]>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for ArrayCoroutineBegin<'a, T> {
+        type State = ArrayCoroutineState<'a, T>;
+
+        const MAY_YIELD: bool = true;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, state) = cx.state();
+
+            receiver.seq_begin(Some(state.value.len()))?;
+
+            if state.value.len() == 0 {
+                cx.yield_to::<ArrayCoroutineEnd<T>>()
+            } else {
+                cx.yield_to::<ArrayCoroutineElement<T>>()
+            }
+        }
+    }
+
+    struct ArrayCoroutineElement<'a, T>(PhantomData<&'a [T]>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for ArrayCoroutineElement<'a, T> {
+        type State = ArrayCoroutineState<'a, T>;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            let (receiver, mut state) = cx.state();
+
+            if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
+                receiver.seq_elem(state.value[state.index].as_value())?;
+
+                if state.as_mut().next_element() == state.value.len() {
+                    cx.yield_to::<ArrayCoroutineEnd<T>>()
+                } else {
+                    cx.yield_self()
+                }
+            } else {
+                struct Exit<'a, T>(PhantomData<&'a [T]>);
+                impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for Exit<'a, T> {
+                    type State = ArrayCoroutineState<'a, T>;
+
+                    fn resume<'resume>(
+                        mut cx: Context<'resume, R, Self>,
+                    ) -> Result<Resume<'resume, Self>> {
+                        let (receiver, mut state) = cx.state();
+
+                        receiver.seq_elem_end()?;
+
+                        if state.as_mut().next_element() == state.value.len() {
+                            cx.yield_to::<ArrayCoroutineEnd<T>>()
+                        } else {
+                            cx.yield_to::<ArrayCoroutineElement<T>>()
+                        }
+                    }
+                }
+
+                receiver.seq_elem_begin()?;
+
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>>(|state| {
+                    state.enter_elem()
+                })
+            }
+        }
+    }
+
+    struct ArrayCoroutineEnd<'a, T>(PhantomData<&'a [T]>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for ArrayCoroutineEnd<'a, T> {
+        type State = ArrayCoroutineState<'a, T>;
+
+        fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
+            cx.receiver().seq_end()?;
+
+            cx.yield_return()
+        }
+    }
+};
+
+#[allow(dead_code, unused_mut, non_camel_case_types)]
+const _: () = {
+    use std::marker::PhantomData;
+
+    impl<T: CoroutineValue, U: CoroutineValue> CoroutineValue for (T, U) {
+        type State<'a>
+        where
+            Self: 'a,
+        = TupleCoroutineState<'a, T, U>;
+
+        type Coroutine<'a, R: Receiver<'a>>
+        where
+            Self: 'a,
+        = TupleCoroutineBegin<'a, T, U>;
+
+        #[inline]
+        fn state<'a>(&'a self) -> Self::State<'a> {
+            TupleCoroutineState {
                 value: self,
                 field: None,
             }
         }
 
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-            receiver.type_tagged_map_begin(tag::type_tag("MyType"), Some(2))?;
+            receiver.seq_begin(Some(2))?;
 
-            receiver.map_field_entry("a", &self.a)?;
-            receiver.map_field_entry("b", &self.b)?;
+            receiver.seq_elem(self.0.as_value())?;
+            receiver.seq_elem(self.1.as_value())?;
 
-            receiver.type_tagged_map_end()
+            receiver.seq_end()
         }
     }
 
-    pub struct MyTypeCoroutineState<'a> {
-        value: &'a MyType,
-        field: Option<MyTypeCoroutineField<'a>>,
+    pub struct TupleCoroutineState<'a, T: CoroutineValue, U: CoroutineValue> {
+        value: &'a (T, U),
+        field: Option<TupleCoroutineStateField<'a, T, U>>,
     }
 
-    enum MyTypeCoroutineField<'a> {
-        Field_a(Slot<<i32 as CoroutineValue>::State<'a>>),
-        Field_b(Slot<<i32 as CoroutineValue>::State<'a>>),
+    enum TupleCoroutineStateField<'a, T: CoroutineValue + 'a, U: CoroutineValue + 'a> {
+        Field_0(Slot<<T as CoroutineValue>::State<'a>>),
+        Field_1(Slot<<U as CoroutineValue>::State<'a>>),
     }
 
-    impl<'a> MyTypeCoroutineState<'a> {
+    impl<'a, T: CoroutineValue, U: CoroutineValue> TupleCoroutineState<'a, T, U> {
         #[inline]
-        fn enter_field_a(
-            self: Pin<&mut Self>,
-        ) -> Pin<&mut Slot<<i32 as CoroutineValue>::State<'a>>> {
+        fn enter_field_0(self: Pin<&mut Self>) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
             let self_mut = unsafe { self.get_unchecked_mut() };
 
-            self_mut.field = Some(MyTypeCoroutineField::Field_a(Slot::new(
-                self_mut.value.a.state(),
+            self_mut.field = Some(TupleCoroutineStateField::Field_0(Slot::new(
+                self_mut.value.0.state(),
             )));
 
-            if let Some(MyTypeCoroutineField::Field_a(ref mut slot)) = self_mut.field {
-                unsafe { Pin::new_unchecked(slot) }
-            } else {
-                unreachable!()
+            match self_mut.field {
+                Some(TupleCoroutineStateField::Field_0(ref mut slot)) => unsafe {
+                    Pin::new_unchecked(slot)
+                },
+                _ => unreachable!(),
             }
         }
 
         #[inline]
-        fn exit_field_a(self: Pin<&mut Self>) {
-            let self_mut = unsafe { self.get_unchecked_mut() };
-
-            self_mut.field = None;
+        fn exit_field_0(self: Pin<&mut Self>) {
+            unsafe { self.get_unchecked_mut() }.field = None;
         }
 
         #[inline]
-        fn enter_field_b(
-            self: Pin<&mut Self>,
-        ) -> Pin<&mut Slot<<i32 as CoroutineValue>::State<'a>>> {
+        fn enter_field_1(self: Pin<&mut Self>) -> Pin<&mut Slot<<U as CoroutineValue>::State<'a>>> {
             let self_mut = unsafe { self.get_unchecked_mut() };
 
-            self_mut.field = Some(MyTypeCoroutineField::Field_b(Slot::new(
-                self_mut.value.b.state(),
+            self_mut.field = Some(TupleCoroutineStateField::Field_1(Slot::new(
+                self_mut.value.1.state(),
             )));
 
-            if let Some(MyTypeCoroutineField::Field_b(ref mut slot)) = self_mut.field {
-                unsafe { Pin::new_unchecked(slot) }
-            } else {
-                unreachable!()
+            match self_mut.field {
+                Some(TupleCoroutineStateField::Field_1(ref mut slot)) => unsafe {
+                    Pin::new_unchecked(slot)
+                },
+                _ => unreachable!(),
             }
         }
 
         #[inline]
-        fn exit_field_b(self: Pin<&mut Self>) {
-            let self_mut = unsafe { self.get_unchecked_mut() };
-
-            self_mut.field = None;
+        fn exit_field_1(self: Pin<&mut Self>) {
+            unsafe { self.get_unchecked_mut() }.field = None;
         }
     }
 
-    pub struct MyTypeCoroutine;
-
-    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutine {
-        type State = MyTypeCoroutineState<'a>;
+    pub struct TupleCoroutineBegin<'a, T, U>(PhantomData<&'a (T, U)>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+        for TupleCoroutineBegin<'a, T, U>
+    {
+        type State = TupleCoroutineState<'a, T, U>;
 
         const MAY_YIELD: bool = true;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            cx.receiver()
-                .type_tagged_map_begin(tag::type_tag("MyType"), Some(2))?;
+            cx.receiver().seq_begin(Some(2))?;
 
-            cx.yield_to::<MyTypeCoroutineField_a>()
+            cx.yield_to::<TupleCoroutineField_0<T, U>>()
         }
     }
 
-    struct MyTypeCoroutineField_a;
-    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineField_a {
-        type State = MyTypeCoroutineState<'a>;
+    struct TupleCoroutineField_0<'a, T, U>(PhantomData<&'a (T, U)>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+        for TupleCoroutineField_0<'a, T, U>
+    {
+        type State = TupleCoroutineState<'a, T, U>;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            // Fast path: we don't need to yield into `a`
-            if !<<i32 as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
-                let (receiver, state) = cx.state();
+            let (receiver, mut state) = cx.state();
 
-                receiver.map_field_entry("a", &state.value.a)?;
+            if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
+                receiver.seq_elem(state.value.0.as_value())?;
 
-                cx.yield_to::<MyTypeCoroutineField_b>()
-            }
-            // Slow path: we do need to yield into `a`
-            else {
-                struct MyTypeCoroutineEndField_a;
-                impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineEndField_a {
-                    type State = MyTypeCoroutineState<'a>;
+                cx.yield_to::<TupleCoroutineField_1<T, U>>()
+            } else {
+                struct Exit<'a, T, U>(PhantomData<&'a (T, U)>);
+                impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+                    for Exit<'a, T, U>
+                {
+                    type State = TupleCoroutineState<'a, T, U>;
 
                     fn resume<'resume>(
                         mut cx: Context<'resume, R, Self>,
                     ) -> Result<Resume<'resume, Self>> {
-                        let (receiver, state) = cx.state();
+                        cx.receiver().seq_elem_end()?;
 
-                        receiver.map_value_end()?;
-
-                        state.exit_field_a();
-
-                        cx.yield_to::<MyTypeCoroutineField_b>()
+                        cx.yield_to::<TupleCoroutineField_1<T, U>>()
                     }
                 }
 
-                cx.receiver().map_field("a")?;
-                cx.receiver().map_value_begin()?;
+                receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<i32 as CoroutineValue>::Coroutine<'a, R>, MyTypeCoroutineEndField_a>(|state| {
-                    state.enter_field_a()
+                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>>(|state| {
+                    state.enter_field_0()
                 })
             }
         }
     }
 
-    struct MyTypeCoroutineField_b;
-    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineField_b {
-        type State = MyTypeCoroutineState<'a>;
+    struct TupleCoroutineField_1<'a, T, U>(PhantomData<&'a (T, U)>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+        for TupleCoroutineField_1<'a, T, U>
+    {
+        type State = TupleCoroutineState<'a, T, U>;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            // Fast path: we don't need to yield into `b`
-            if !<<i32 as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
-                let (receiver, state) = cx.state();
+            let (receiver, mut state) = cx.state();
 
-                receiver.map_field_entry("b", &state.value.b)?;
+            if !<<U as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
+                receiver.seq_elem(state.value.1.as_value())?;
 
-                cx.yield_to::<MyTypeCoroutineEnd>()
-            }
-            // Slow path: we do need to yield into `b`
-            else {
-                struct MyTypeCoroutineEndField_b;
-                impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineEndField_b {
-                    type State = MyTypeCoroutineState<'a>;
+                cx.yield_to::<TupleCoroutineEnd<T, U>>()
+            } else {
+                struct Exit<'a, T, U>(PhantomData<&'a (T, U)>);
+                impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+                    for Exit<'a, T, U>
+                {
+                    type State = TupleCoroutineState<'a, T, U>;
 
                     fn resume<'resume>(
                         mut cx: Context<'resume, R, Self>,
                     ) -> Result<Resume<'resume, Self>> {
-                        let (receiver, state) = cx.state();
+                        cx.receiver().seq_elem_end()?;
 
-                        receiver.map_value_end()?;
-
-                        state.exit_field_b();
-
-                        cx.yield_to::<MyTypeCoroutineEnd>()
+                        cx.yield_to::<TupleCoroutineEnd<T, U>>()
                     }
                 }
 
-                cx.receiver().map_field("b")?;
-                cx.receiver().map_value_begin()?;
+                receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<i32 as CoroutineValue>::Coroutine<'a, R>, MyTypeCoroutineEndField_b>(|state| {
-                    state.enter_field_b()
+                cx.yield_into::<<U as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>>(|state| {
+                    state.enter_field_1()
                 })
             }
         }
     }
 
-    struct MyTypeCoroutineEnd;
-    impl<'a, R: Receiver<'a>> Coroutine<'a, R> for MyTypeCoroutineEnd {
-        type State = MyTypeCoroutineState<'a>;
+    struct TupleCoroutineEnd<'a, T, U>(PhantomData<&'a (T, U)>);
+    impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
+        for TupleCoroutineEnd<'a, T, U>
+    {
+        type State = TupleCoroutineState<'a, T, U>;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            cx.receiver().type_tagged_map_end()?;
+            cx.receiver().seq_end()?;
 
             cx.yield_return()
         }

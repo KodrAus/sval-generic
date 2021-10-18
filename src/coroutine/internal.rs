@@ -131,6 +131,14 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
     }
 
     #[inline]
+    pub fn yield_self(self) -> Result<Resume<'resume, C>> {
+        Ok(Resume {
+            resume: RawResume(RawResumeInner::Yield(C::into_raw(), self.raw.slot)),
+            _marker: PhantomData,
+        })
+    }
+
+    #[inline]
     pub fn yield_to<Y: Coroutine<'sval, R, State = C::State> + ?Sized>(
         self,
     ) -> Result<Resume<'resume, C>> {

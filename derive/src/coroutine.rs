@@ -122,11 +122,11 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
             impl<'a> #coroutine_state_ident<'a> {
                 #(
-                    fn #field_enter(self: std::pin::Pin<&mut Self>) -> std::pin::Pin<sval_generic_api::coroutine::Slot<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::State<'a>>> {
+                    fn #field_enter(self: std::pin::Pin<&mut Self>) -> std::pin::Pin<&mut sval_generic_api::coroutine::Slot<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::State<'a>>> {
                         let self_mut = unsafe { self.get_unchecked_mut() };
 
                         self_mut.field = Some(#coroutine_state_field_ident::#coroutine_state_field_variant(sval_generic_api::coroutine::Slot::new(
-                            self_mut.value.#field_ident.state(),
+                            sval_generic_api::coroutine::CoroutineValue::state(&self_mut.value.#field_ident),
                         )));
 
                         if let Some(#coroutine_state_field_ident::#coroutine_state_field_variant(ref mut slot)) = self_mut.field {
@@ -151,7 +151,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 const MAY_YIELD: bool = true;
 
                 fn resume<'resume>(mut cx: sval_generic_api::coroutine::Context<'resume, R, Self>) -> sval_generic_api::Result<sval_generic_api::coroutine::Resume<'resume, Self>> {
-                    cx.receiver().type_tagged_map_begin(#tag, Some(#num_fields))?;
+                    cx.receiver().type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
                     cx.yield_to::<#transition_begin>()
                 }
@@ -166,7 +166,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         if !<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R> as sval_generic_api::coroutine::Coroutine<'a, R>>::MAY_YIELD {
                             let (receiver, state) = cx.state();
 
-                            receiver.map_field_entry(#field_str, &state.value.#field_ident)?;
+                            receiver.map_field_entry(#field_str, sval_generic_api::coroutine::CoroutineValue::as_value(&state.value.#field_ident))?;
 
                             cx.yield_to::<#transition_field>()
                         }
