@@ -1,5 +1,5 @@
 use std::{
-    marker::{PhantomData, PhantomPinned},
+    marker::{PhantomData, PhantomPinned, Unpin},
     pin::Pin,
 };
 
@@ -29,12 +29,17 @@ pub struct Driver<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?
     _marker: PhantomData<&'driver mut Slot<C::State>>,
 }
 
+impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Unpin
+    for Driver<'sval, 'driver, R, C>
+{
+}
+
 impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized>
     Driver<'sval, 'driver, R, C>
 {
     #[inline]
-    pub fn new(receiver: R, mut slot: Pin<&'driver mut Slot<C::State>>) -> Self {
-        let begin = RawSlot::new::<R, C>(slot.as_mut());
+    pub fn new(receiver: R, slot: &'driver mut Slot<C::State>) -> Self {
+        let begin = RawSlot::new::<R, C>(unsafe { Pin::new_unchecked(slot) });
 
         Driver {
             resume: Some((C::into_raw(), begin)),
@@ -95,9 +100,10 @@ pub struct Context<'resume, R: ?Sized, C: ?Sized> {
     _marker: PhantomData<fn(&'resume mut C, &'resume mut R)>,
 }
 
+#[repr(C)]
 pub struct Slot<S> {
-    state: S,
     continuation: Option<(RawCoroutine, RawSlot)>,
+    state: S,
     _pin: PhantomPinned,
 }
 
@@ -131,7 +137,7 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
     }
 
     #[inline]
-    pub fn yield_self(self) -> Result<Resume<'resume, C>> {
+    pub fn yield_resume_self(self) -> Result<Resume<'resume, C>> {
         Ok(Resume {
             resume: RawResume(RawResumeInner::Yield(C::into_raw(), self.raw.slot)),
             _marker: PhantomData,
@@ -139,7 +145,7 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
     }
 
     #[inline]
-    pub fn yield_to<Y: Coroutine<'sval, R, State = C::State> + ?Sized>(
+    pub fn yield_resume<Y: Coroutine<'sval, R, State = C::State> + ?Sized>(
         self,
     ) -> Result<Resume<'resume, C>> {
         Ok(Resume {
@@ -149,13 +155,12 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
     }
 
     #[inline]
-    pub fn yield_into<
+    pub fn yield_into_resume<
         Y: Coroutine<'sval, R> + ?Sized,
         T: Coroutine<'sval, R, State = C::State> + ?Sized,
-        F: Fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
     >(
         mut self,
-        enter: F,
+        enter: fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
     ) -> Result<Resume<'resume, C>> {
         let continuation = self.raw.slot;
 
@@ -165,6 +170,52 @@ impl<'sval, 'resume, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Contex
             enter
                 .as_mut()
                 .continue_with_raw(T::into_raw(), continuation);
+
+            RawSlot::new::<R, Y>(enter)
+        };
+
+        Ok(Resume {
+            resume: RawResume(RawResumeInner::Yield(Y::into_raw(), enter)),
+            _marker: PhantomData,
+        })
+    }
+
+    #[inline]
+    pub fn yield_into_resume_self<Y: Coroutine<'sval, R> + ?Sized>(
+        mut self,
+        enter: fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
+    ) -> Result<Resume<'resume, C>> {
+        let continuation = self.raw.slot;
+
+        let enter = {
+            let mut enter = enter(self.slot().state());
+
+            enter
+                .as_mut()
+                .continue_with_raw(C::into_raw(), continuation);
+
+            RawSlot::new::<R, Y>(enter)
+        };
+
+        Ok(Resume {
+            resume: RawResume(RawResumeInner::Yield(Y::into_raw(), enter)),
+            _marker: PhantomData,
+        })
+    }
+
+    #[inline]
+    pub fn yield_into_return<Y: Coroutine<'sval, R> + ?Sized>(
+        mut self,
+        enter: fn(Pin<&mut C::State>) -> Pin<&mut Slot<Y::State>>,
+    ) -> Result<Resume<'resume, C>> {
+        let continuation = self.raw.slot;
+
+        let enter = {
+            let mut enter = enter(self.slot().state());
+
+            enter
+                .as_mut()
+                .continue_with_raw(RawCoroutine::return_raw(), continuation);
 
             RawSlot::new::<R, Y>(enter)
         };
@@ -188,8 +239,8 @@ impl<S> Slot<S> {
     #[inline]
     pub fn new(state: S) -> Self {
         Slot {
-            state,
             continuation: None,
+            state,
             _pin: PhantomPinned,
         }
     }
@@ -259,6 +310,17 @@ impl RawCoroutine {
     #[inline]
     unsafe fn resume_raw(self, cx: RawContext) -> Result<RawResume> {
         (self.0)(cx)
+    }
+
+    #[inline]
+    fn return_raw() -> RawCoroutine {
+        RawCoroutine(|cx| {
+            let continuation = unsafe { &mut *(cx.slot.0 as *mut Slot<Void>) }
+                .continuation
+                .take();
+
+            Ok(RawResume(RawResumeInner::Return(continuation)))
+        })
     }
 }
 

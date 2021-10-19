@@ -1,7 +1,7 @@
 use std::pin::Pin;
 
 mod internal;
-pub use self::internal::*;
+pub use self::internal::{Context, Coroutine, Driver, Resume, Slot};
 
 use crate::{Receiver, Result, Source, Value};
 
@@ -22,21 +22,17 @@ pub trait CoroutineValue {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         let mut state = Slot::new(self.state());
 
-        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
-            Pin::new_unchecked(&mut state)
-        })
-        .into_iter()
-        .collect()
+        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, &mut state)
+            .into_iter()
+            .collect()
     }
 
     fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         let mut state = Slot::new(self.state());
 
-        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
-            Pin::new_unchecked(&mut state)
-        })
-        .into_iter()
-        .collect()
+        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, &mut state)
+            .into_iter()
+            .collect()
     }
 
     // These just exist so we can bench the generated code
@@ -473,11 +469,6 @@ const _: () = {
                 None => unreachable!(),
             }
         }
-
-        #[inline]
-        fn exit_value(self: Pin<&mut Self>) {
-            unsafe { self.get_unchecked_mut() }.slot = None;
-        }
     }
 
     pub struct BoxCoroutine<'a, T: ?Sized>(PhantomData<&'a T>);
@@ -497,22 +488,7 @@ const _: () = {
 
                 cx.yield_return()
             } else {
-                struct Exit<'a, T: ?Sized>(PhantomData<&'a T>);
-                impl<'a, R: Receiver<'a>, T: CoroutineValue + ?Sized> Coroutine<'a, R> for Exit<'a, T> {
-                    type State = BoxCoroutineState<'a, T>;
-
-                    fn resume<'resume>(
-                        mut cx: Context<'resume, R, Self>,
-                    ) -> Result<Resume<'resume, Self>> {
-                        let (_, state) = cx.state();
-
-                        state.exit_value();
-
-                        cx.yield_return()
-                    }
-                }
-
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(|state| {
+                cx.yield_into_return::<<T as CoroutineValue>::Coroutine<'a, R>>(|state| {
                     state.enter_value()
                 })
             }
@@ -569,11 +545,6 @@ const _: () = {
                 None => unreachable!(),
             }
         }
-
-        #[inline]
-        fn exit_value(self: Pin<&mut Self>) {
-            unsafe { self.get_unchecked_mut() }.slot = None;
-        }
     }
 
     pub struct OptionCoroutine<'a, T>(PhantomData<&'a [T]>);
@@ -593,24 +564,9 @@ const _: () = {
 
                         cx.yield_return()
                     } else {
-                        struct Exit<'a, T>(PhantomData<&'a T>);
-                        impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for Exit<'a, T> {
-                            type State = OptionCoroutineState<'a, T>;
-
-                            fn resume<'resume>(
-                                mut cx: Context<'resume, R, Self>,
-                            ) -> Result<Resume<'resume, Self>> {
-                                let (_, state) = cx.state();
-
-                                state.exit_value();
-
-                                cx.yield_return()
-                            }
-                        }
-
-                        cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(
-                            |state| state.enter_value(),
-                        )
+                        cx.yield_into_return::<<T as CoroutineValue>::Coroutine<'a, R>>(|state| {
+                            state.enter_value()
+                        })
                     }
                 }
                 None => {
@@ -666,18 +622,28 @@ const _: () = {
 
     impl<'a, T: CoroutineValue> ArrayCoroutineState<'a, T> {
         #[inline]
-        fn next_element(self: Pin<&mut Self>) -> usize {
-            let self_mut = unsafe { self.get_unchecked_mut() };
-
-            self_mut.index += 1;
-            self_mut.index
+        fn last_element(&self) -> bool {
+            self.index == self.value.len() - 1
         }
 
         #[inline]
-        fn enter_elem(self: Pin<&mut Self>) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
+        fn next_element(self: Pin<&mut Self>) -> usize {
             let self_mut = unsafe { self.get_unchecked_mut() };
 
-            self_mut.element = Some(Slot::new(self_mut.value[self_mut.index].state()));
+            let i = self_mut.index;
+            self_mut.index += 1;
+            i
+        }
+
+        #[inline]
+        fn enter_elem(
+            mut self: Pin<&mut Self>,
+        ) -> Pin<&mut Slot<<T as CoroutineValue>::State<'a>>> {
+            let i = self.as_mut().next_element();
+
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.element = Some(Slot::new(self_mut.value[i].state()));
 
             match self_mut.element {
                 Some(ref mut elem) => unsafe { Pin::new_unchecked(elem) },
@@ -686,8 +652,10 @@ const _: () = {
         }
 
         #[inline]
-        fn exit_elem(self: Pin<&mut Self>) {
-            unsafe { self.get_unchecked_mut() }.element = None;
+        fn exit_elem(self: Pin<&mut Self>) -> bool {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.element.take().is_some()
         }
     }
 
@@ -703,9 +671,9 @@ const _: () = {
             receiver.seq_begin(Some(state.value.len()))?;
 
             if state.value.len() == 0 {
-                cx.yield_to::<ArrayCoroutineEnd<T>>()
+                cx.yield_resume::<ArrayCoroutineEnd<T>>()
             } else {
-                cx.yield_to::<ArrayCoroutineElement<T>>()
+                cx.yield_resume::<ArrayCoroutineElement<T>>()
             }
         }
     }
@@ -718,38 +686,33 @@ const _: () = {
             let (receiver, mut state) = cx.state();
 
             if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
-                receiver.seq_elem(state.value[state.index].as_value())?;
+                if state.last_element() {
+                    let i = state.as_mut().next_element();
+                    receiver.seq_elem(state.value[i].as_value())?;
 
-                if state.as_mut().next_element() == state.value.len() {
-                    cx.yield_to::<ArrayCoroutineEnd<T>>()
+                    cx.yield_resume::<ArrayCoroutineEnd<T>>()
                 } else {
-                    cx.yield_self()
+                    let i = state.as_mut().next_element();
+                    receiver.seq_elem(state.value[i].as_value())?;
+
+                    cx.yield_resume_self()
                 }
             } else {
-                struct Exit<'a, T>(PhantomData<&'a [T]>);
-                impl<'a, R: Receiver<'a>, T: CoroutineValue> Coroutine<'a, R> for Exit<'a, T> {
-                    type State = ArrayCoroutineState<'a, T>;
-
-                    fn resume<'resume>(
-                        mut cx: Context<'resume, R, Self>,
-                    ) -> Result<Resume<'resume, Self>> {
-                        let (receiver, mut state) = cx.state();
-
-                        receiver.seq_elem_end()?;
-
-                        if state.as_mut().next_element() == state.value.len() {
-                            cx.yield_to::<ArrayCoroutineEnd<T>>()
-                        } else {
-                            cx.yield_to::<ArrayCoroutineElement<T>>()
-                        }
-                    }
+                if state.as_mut().exit_elem() {
+                    receiver.seq_elem_end()?;
                 }
 
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T>, _>(|state| {
-                    state.enter_elem()
-                })
+                if state.as_mut().last_element() {
+                    cx.yield_into_resume::<<T as CoroutineValue>::Coroutine<'a, R>, ArrayCoroutineEnd<T>>(|state| {
+                        state.enter_elem()
+                    })
+                } else {
+                    cx.yield_into_resume_self::<<T as CoroutineValue>::Coroutine<'a, R>>(|state| {
+                        state.enter_elem()
+                    })
+                }
             }
         }
     }
@@ -759,7 +722,13 @@ const _: () = {
         type State = ArrayCoroutineState<'a, T>;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            cx.receiver().seq_end()?;
+            let (receiver, state) = cx.state();
+
+            if state.exit_elem() {
+                receiver.seq_elem_end()?;
+            }
+
+            receiver.seq_end()?;
 
             cx.yield_return()
         }
@@ -827,11 +796,6 @@ const _: () = {
         }
 
         #[inline]
-        fn exit_field_0(self: Pin<&mut Self>) {
-            unsafe { self.get_unchecked_mut() }.field = None;
-        }
-
-        #[inline]
         fn enter_field_1(self: Pin<&mut Self>) -> Pin<&mut Slot<<U as CoroutineValue>::State<'a>>> {
             let self_mut = unsafe { self.get_unchecked_mut() };
 
@@ -848,8 +812,10 @@ const _: () = {
         }
 
         #[inline]
-        fn exit_field_1(self: Pin<&mut Self>) {
-            unsafe { self.get_unchecked_mut() }.field = None;
+        fn exit_field(self: Pin<&mut Self>) -> bool {
+            let self_mut = unsafe { self.get_unchecked_mut() };
+
+            self_mut.field.take().is_some()
         }
     }
 
@@ -864,7 +830,7 @@ const _: () = {
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
             cx.receiver().seq_begin(Some(2))?;
 
-            cx.yield_to::<TupleCoroutineField_0<T, U>>()
+            cx.yield_resume::<TupleCoroutineField_0<T, U>>()
         }
     }
 
@@ -880,28 +846,13 @@ const _: () = {
             if !<<T as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
                 receiver.seq_elem(state.value.0.as_value())?;
 
-                cx.yield_to::<TupleCoroutineField_1<T, U>>()
+                cx.yield_resume::<TupleCoroutineField_1<T, U>>()
             } else {
-                struct Exit<'a, T, U>(PhantomData<&'a (T, U)>);
-                impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
-                    for Exit<'a, T, U>
-                {
-                    type State = TupleCoroutineState<'a, T, U>;
-
-                    fn resume<'resume>(
-                        mut cx: Context<'resume, R, Self>,
-                    ) -> Result<Resume<'resume, Self>> {
-                        cx.receiver().seq_elem_end()?;
-
-                        cx.yield_to::<TupleCoroutineField_1<T, U>>()
-                    }
-                }
-
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<T as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>, _>(|state| {
-                    state.enter_field_0()
-                })
+                cx.yield_into_resume::<<T as CoroutineValue>::Coroutine<'a, R>, TupleCoroutineField_1<T, U>>(
+                    |state| state.enter_field_0(),
+                )
             }
         }
     }
@@ -915,31 +866,20 @@ const _: () = {
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
             let (receiver, mut state) = cx.state();
 
+            if state.as_mut().exit_field() {
+                receiver.seq_elem_end()?;
+            }
+
             if !<<U as CoroutineValue>::Coroutine<'a, R> as Coroutine<'a, R>>::MAY_YIELD {
                 receiver.seq_elem(state.value.1.as_value())?;
 
-                cx.yield_to::<TupleCoroutineEnd<T, U>>()
+                cx.yield_resume::<TupleCoroutineEnd<T, U>>()
             } else {
-                struct Exit<'a, T, U>(PhantomData<&'a (T, U)>);
-                impl<'a, R: Receiver<'a>, T: CoroutineValue, U: CoroutineValue> Coroutine<'a, R>
-                    for Exit<'a, T, U>
-                {
-                    type State = TupleCoroutineState<'a, T, U>;
-
-                    fn resume<'resume>(
-                        mut cx: Context<'resume, R, Self>,
-                    ) -> Result<Resume<'resume, Self>> {
-                        cx.receiver().seq_elem_end()?;
-
-                        cx.yield_to::<TupleCoroutineEnd<T, U>>()
-                    }
-                }
-
                 receiver.seq_elem_begin()?;
 
-                cx.yield_into::<<U as CoroutineValue>::Coroutine<'a, R>, Exit<T, U>, _>(|state| {
-                    state.enter_field_1()
-                })
+                cx.yield_into_resume::<<U as CoroutineValue>::Coroutine<'a, R>, TupleCoroutineEnd<T, U>>(
+                    |state| state.enter_field_1(),
+                )
             }
         }
     }
@@ -951,7 +891,13 @@ const _: () = {
         type State = TupleCoroutineState<'a, T, U>;
 
         fn resume<'resume>(mut cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>> {
-            cx.receiver().seq_end()?;
+            let (receiver, state) = cx.state();
+
+            if state.exit_field() {
+                receiver.seq_elem_end()?;
+            }
+
+            receiver.seq_end()?;
 
             cx.yield_return()
         }

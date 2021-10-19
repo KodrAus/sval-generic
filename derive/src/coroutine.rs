@@ -49,11 +49,6 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         .map(|f| Ident::new(&format!("enter_field_{}", f.to_string()), Span::call_site()))
         .collect::<Vec<_>>();
 
-    let field_exit = field_ident
-        .iter()
-        .map(|f| Ident::new(&format!("exit_field_{}", f.to_string()), Span::call_site()))
-        .collect::<Vec<_>>();
-
     let coroutine_state_field_variant = field_ident
         .iter()
         .map(|f| Ident::new(&format!("Field_{}", f.to_string()), Span::call_site()))
@@ -137,11 +132,9 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     }
                 )*
 
-                #(
-                    fn #field_exit(self: std::pin::Pin<&mut Self>) {
-                        unsafe { self.get_unchecked_mut() }.field = None;
-                    }
-                )*
+                fn exit_field(self: std::pin::Pin<&mut Self>) -> bool {
+                    unsafe { self.get_unchecked_mut() }.field.take().is_some()
+                }
             }
 
             pub struct #coroutine_begin_ident;
@@ -153,7 +146,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 fn resume<'resume>(mut cx: sval_generic_api::coroutine::Context<'resume, R, Self>) -> sval_generic_api::Result<sval_generic_api::coroutine::Resume<'resume, Self>> {
                     cx.receiver().type_tagged_map_begin(sval_generic_api::tag::type_tag(#tag), Some(#num_fields))?;
 
-                    cx.yield_to::<#transition_begin>()
+                    cx.yield_resume::<#transition_begin>()
                 }
             }
 
@@ -163,33 +156,22 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     type State = #coroutine_state_ident<'a>;
 
                     fn resume<'resume>(mut cx: sval_generic_api::coroutine::Context<'resume, R, Self>) -> sval_generic_api::Result<sval_generic_api::coroutine::Resume<'resume, Self>> {
-                        if !<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R> as sval_generic_api::coroutine::Coroutine<'a, R>>::MAY_YIELD {
-                            let (receiver, state) = cx.state();
+                        let (receiver, state) = cx.state();
 
+                        if !<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R> as sval_generic_api::coroutine::Coroutine<'a, R>>::MAY_YIELD {
                             receiver.map_field_entry(#field_str, sval_generic_api::coroutine::CoroutineValue::as_value(&state.value.#field_ident))?;
 
-                            cx.yield_to::<#transition_field>()
+                            cx.yield_resume::<#transition_field>()
                         }
                         else {
-                            struct Exit;
-                            impl<'a, R: sval_generic_api::Receiver<'a>> sval_generic_api::coroutine::Coroutine<'a, R> for Exit {
-                                type State = #coroutine_state_ident<'a>;
-
-                                fn resume<'resume>(mut cx: sval_generic_api::coroutine::Context<'resume, R, Self>) -> sval_generic_api::Result<sval_generic_api::coroutine::Resume<'resume, Self>> {
-                                    let (receiver, state) = cx.state();
-
-                                    receiver.map_value_end()?;
-
-                                    state.#field_exit();
-
-                                    cx.yield_to::<#transition_field>()
-                                }
+                            if state.exit_field() {
+                                receiver.map_value_end()?;
                             }
 
-                            cx.receiver().map_field(#field_str)?;
-                            cx.receiver().map_value_begin()?;
+                            receiver.map_field(#field_str)?;
+                            receiver.map_value_begin()?;
 
-                            cx.yield_into::<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R>, Exit, _>(|state| {
+                            cx.yield_into_resume::<<#field_ty as sval_generic_api::coroutine::CoroutineValue>::Coroutine<'a, R>, #transition_field>(|state| {
                                 state.#field_enter()
                             })
                         }
@@ -202,7 +184,13 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 type State = #coroutine_state_ident<'a>;
 
                 fn resume<'resume>(mut cx: sval_generic_api::coroutine::Context<'resume, R, Self>) -> sval_generic_api::Result<sval_generic_api::coroutine::Resume<'resume, Self>> {
-                    cx.receiver().type_tagged_map_end()?;
+                    let (receiver, state) = cx.state();
+
+                    if state.exit_field() {
+                        receiver.map_value_end()?;
+                    }
+
+                    receiver.type_tagged_map_end()?;
 
                     cx.yield_return()
                 }

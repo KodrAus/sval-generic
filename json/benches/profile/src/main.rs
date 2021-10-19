@@ -3,7 +3,7 @@
 extern crate test;
 
 use sval_generic_api::{
-    generator::GeneratorValue, receiver::Display, source::ValueSource, Receiver, Result,
+    coroutine::CoroutineValue, receiver::Display, source::ValueSource, Receiver, Result,
 };
 use sval_generic_api_json_twitter_tests::Twitter;
 
