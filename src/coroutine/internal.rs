@@ -10,6 +10,9 @@ pub trait Coroutine<'sval, R: Receiver<'sval>> {
 
     const MAY_YIELD: bool = true;
 
+    // TODO: Refactor this to accept `R` generically
+    // Tweak `RawCoroutine::resume_raw` to accept a type for `R`
+    // That way we could make `Coroutine` compatible with `Source`
     fn resume<'resume>(cx: Context<'resume, R, Self>) -> Result<Resume<'resume, Self>>;
 
     #[doc(hidden)]
@@ -23,25 +26,25 @@ pub trait Coroutine<'sval, R: Receiver<'sval>> {
     }
 }
 
-pub struct Driver<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> {
+pub struct RefMut<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> {
     resume: Option<(RawCoroutine, RawSlot)>,
     receiver: R,
     _marker: PhantomData<&'driver mut Slot<C::State>>,
 }
 
 impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Unpin
-    for Driver<'sval, 'driver, R, C>
+    for RefMut<'sval, 'driver, R, C>
 {
 }
 
 impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized>
-    Driver<'sval, 'driver, R, C>
+    RefMut<'sval, 'driver, R, C>
 {
     #[inline]
-    pub fn new(receiver: R, slot: &'driver mut Slot<C::State>) -> Self {
-        let begin = RawSlot::new::<R, C>(unsafe { Pin::new_unchecked(slot) });
+    pub fn new(receiver: R, slot: Pin<&'driver mut Slot<C::State>>) -> Self {
+        let begin = RawSlot::new::<R, C>(slot);
 
-        Driver {
+        RefMut {
             resume: Some((C::into_raw(), begin)),
             receiver,
             _marker: PhantomData,
@@ -73,7 +76,7 @@ impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized>
 }
 
 pub struct IntoIter<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized>(
-    Driver<'sval, 'driver, R, C>,
+    RefMut<'sval, 'driver, R, C>,
 );
 
 impl<'sval, 'driver, R: Receiver<'sval>, C: Coroutine<'sval, R> + ?Sized> Iterator

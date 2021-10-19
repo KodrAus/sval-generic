@@ -1,7 +1,7 @@
 use std::pin::Pin;
 
 mod internal;
-pub use self::internal::{Context, Coroutine, Driver, Resume, Slot};
+pub use self::internal::{Context, Coroutine, RefMut, Resume, Slot};
 
 use crate::{Receiver, Result, Source, Value};
 
@@ -22,17 +22,21 @@ pub trait CoroutineValue {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         let mut state = Slot::new(self.state());
 
-        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, &mut state)
-            .into_iter()
-            .collect()
+        RefMut::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
+            Pin::new_unchecked(&mut state)
+        })
+        .into_iter()
+        .collect()
     }
 
     fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         let mut state = Slot::new(self.state());
 
-        Driver::<R, Self::Coroutine<'a, R>>::new(receiver, &mut state)
-            .into_iter()
-            .collect()
+        RefMut::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
+            Pin::new_unchecked(&mut state)
+        })
+        .into_iter()
+        .collect()
     }
 
     // These just exist so we can bench the generated code
