@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [dependencies.sval-generic-api]
 path = "../../../"
+features = ["derive"]
 
 [dependencies.sval-generic-api-json]
 path = "../../"
@@ -25,6 +26,9 @@ path = "../../../fmt"
 
 [dependencies.sval-generic-api-erased]
 path = "../../../erased"
+
+[dependencies.sval-generic-api-coroutine]
+path = "../../../coroutine"
 
 [dependencies.serde]
 version = "1"

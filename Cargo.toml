@@ -5,6 +5,7 @@ edition = "2018"
 
 [workspace]
 members = [
+    "coroutine",
     "derive",
     "json",
     "fmt",
@@ -17,8 +18,10 @@ members = [
     "json/tests/twitter"
 ]
 
-[dependencies.sval-generic-api-derive]
+[dependencies.derive]
+package = "sval-generic-api-derive"
 path = "derive"
+optional = true
 
 [profile.release]
 debug = true

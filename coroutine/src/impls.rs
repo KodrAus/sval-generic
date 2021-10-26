@@ -1,121 +1,30 @@
-use std::pin::Pin;
-
-mod internal;
-pub use self::internal::{Context, Coroutine, RefMut, Resume, Slot};
-
-use crate::{Receiver, Result, Source, Value};
-
-pub trait CoroutineValue {
-    #[doc(hidden)]
-    type State<'a>
-    where
-        Self: 'a;
-
-    #[doc(hidden)]
-    type Coroutine<'a, R: Receiver<'a>>: Coroutine<'a, R, State = Self::State<'a>>
-    where
-        Self: 'a;
-
-    #[doc(hidden)]
-    fn state<'a>(&'a self) -> Self::State<'a>;
-
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        let mut state = Slot::new(self.state());
-
-        RefMut::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
-            Pin::new_unchecked(&mut state)
-        })
-        .into_iter()
-        .collect()
-    }
-
-    fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        let mut state = Slot::new(self.state());
-
-        RefMut::<R, Self::Coroutine<'a, R>>::new(receiver, unsafe {
-            Pin::new_unchecked(&mut state)
-        })
-        .into_iter()
-        .collect()
-    }
-
-    // These just exist so we can bench the generated code
-    #[inline]
-    fn as_value(&self) -> AsValue<&Self> {
-        AsValue(self)
-    }
-
-    #[inline]
-    fn as_value_iter(&self) -> AsValueIter<&Self> {
-        AsValueIter(self)
-    }
-}
-
-pub struct AsValue<V>(V);
-
-impl<V: CoroutineValue> Value for AsValue<V> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        self.0.stream(receiver)
-    }
-}
-
-impl<'a, V: CoroutineValue + ?Sized> Source<'a> for AsValue<&'a V> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
-    where
-        'a: 'b,
-    {
-        self.0.stream(receiver)
-    }
-}
-
-pub struct AsValueIter<V>(V);
-
-impl<V: CoroutineValue> Value for AsValueIter<V> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        self.0.stream_iter(receiver)
-    }
-}
-
-impl<'b, T: CoroutineValue + ?Sized> CoroutineValue for &'b T {
-    type State<'a>
-    where
-        T: 'a,
-        'b: 'a,
-    = T::State<'a>;
-
-    type Coroutine<'a, R: Receiver<'a>>
-    where
-        T: 'a,
-        'b: 'a,
-    = T::Coroutine<'a, R>;
-
-    #[inline]
-    fn state<'a>(&'a self) -> Self::State<'a> {
-        (**self).state()
-    }
-
-    fn stream_iter<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        (**self).stream_iter(receiver)
-    }
-
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        (**self).stream(receiver)
-    }
-}
+use crate::{
+    Result,
+    Receiver,
+    source::{Coroutine, CoroutineSource, Slot},
+    value::CoroutineValue,
+};
 
 #[allow(dead_code, unused_mut)]
 const _: () = {
     impl CoroutineValue for () {
-        type State<'a> = ();
-
-        type Coroutine<'a, R: Receiver<'a>> = UnitCoroutine;
+        type Source<'a> = ();
 
         #[inline]
-        fn state<'a>(&'a self) -> Self::State<'a> {
+        fn source<'a>(&'a self) -> Self::Source<'a> {
             ()
         }
 
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.none()
+        }
+    }
+
+    impl<'a> CoroutineSource<'a> for () {
+        type Coroutine<R: Receiver<'a>> = UnitCoroutine;
+
+        #[inline]
+        fn stream<R: Receiver<'a>>(self, mut receiver: R) -> Result {
             receiver.none()
         }
     }
@@ -138,16 +47,23 @@ const _: () = {
 #[allow(dead_code, unused_mut)]
 const _: () = {
     impl CoroutineValue for bool {
-        type State<'a> = bool;
-
-        type Coroutine<'a, R: Receiver<'a>> = BoolCoroutine;
+        type Source<'a> = bool;
 
         #[inline]
-        fn state<'a>(&'a self) -> Self::State<'a> {
+        fn source<'a>(&'a self) -> Self::Source<'a> {
             *self
         }
 
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+            receiver.bool(*self)
+        }
+    }
+
+    impl<'a> CoroutineSource<'a> for bool {
+        type Coroutine<R: Receiver<'a>> = BoolCoroutine;
+
+        #[inline]
+        fn stream<R: Receiver<'a>>(self, mut receiver: R) -> Result {
             receiver.bool(*self)
         }
     }
@@ -172,12 +88,10 @@ const _: () = {
 #[allow(dead_code, unused_mut)]
 const _: () = {
     impl CoroutineValue for u8 {
-        type State<'a> = u8;
-
-        type Coroutine<'a, R: Receiver<'a>> = U8Coroutine;
+        type Source<'a> = u8;
 
         #[inline]
-        fn state<'a>(&'a self) -> Self::State<'a> {
+        fn source<'a>(&'a self) -> Self::Source<'a> {
             *self
         }
 

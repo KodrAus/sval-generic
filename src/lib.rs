@@ -1,17 +1,13 @@
-#![feature(generic_associated_types)]
-
 pub mod receiver;
 pub mod source;
 pub mod tag;
 pub mod value;
 
-pub mod coroutine;
-pub mod generator;
-
 mod for_all;
 mod impls;
 
-pub use sval_generic_api_derive::*;
+#[cfg(feature = "derive")]
+pub use derive::*;
 
 #[doc(inline)]
 pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value};
