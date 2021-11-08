@@ -1,4 +1,7 @@
-use crate::{source::ValueSource, Receiver, Result, Source, Value};
+use crate::{
+    source::{StreamState, ValueSource},
+    Receiver, Result, Source, Value,
+};
 
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
@@ -29,17 +32,24 @@ impl<T> TypeTag<T> {
 }
 
 impl Value for TypeTag<&'static str> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> Result {
-        stream.type_tag(*self)
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.type_tag(*self)
     }
 }
 
 impl<'a, T: ValueSource<'static, str>> Source<'a> for TypeTag<T> {
-    fn stream<'b, S: Receiver<'b>>(&mut self, mut stream: S) -> Result
+    fn stream<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<StreamState>
     where
         'a: 'b,
     {
-        stream.type_tag(self.by_mut())
+        self.stream_to_end(receiver).map(|_| StreamState::Done)
+    }
+
+    fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.type_tag(self.by_mut())
     }
 }
 
@@ -90,19 +100,26 @@ impl<T, K> VariantTag<T, K> {
 }
 
 impl Value for VariantTag<&'static str, &'static str> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> Result {
-        stream.variant_tag(*self)
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.variant_tag(*self)
     }
 }
 
 impl<'a, T: ValueSource<'static, str>, K: ValueSource<'static, str>> Source<'a>
     for VariantTag<T, K>
 {
-    fn stream<'b, S: Receiver<'b>>(&mut self, mut stream: S) -> Result
+    fn stream<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<StreamState>
     where
         'a: 'b,
     {
-        stream.variant_tag(self.by_mut())
+        self.stream_to_end(receiver).map(|_| StreamState::Done)
+    }
+
+    fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.variant_tag(self.by_mut())
     }
 }
 
@@ -120,8 +137,8 @@ impl<T, V> TypeTagged<T, V> {
 }
 
 impl<V: Value> Value for TypeTagged<&'static str, V> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> Result {
-        stream.type_tagged(self.tag, &self.value)
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.type_tagged(self.tag, &self.value)
     }
 }
 
@@ -139,7 +156,7 @@ impl<T, K, V> VariantTagged<T, K, V> {
 }
 
 impl<V: Value> Value for VariantTagged<&'static str, &'static str, V> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> Result {
-        stream.variant_tagged(self.tag, &self.value)
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.variant_tagged(self.tag, &self.value)
     }
 }

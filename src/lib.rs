@@ -10,7 +10,13 @@ mod impls;
 pub use derive::*;
 
 #[doc(inline)]
-pub use self::{for_all::ForAll, receiver::Receiver, source::Source, value::Value};
+pub use self::{
+    for_all::{for_all, ForAll},
+    receiver::Receiver,
+    source::{stream, Source},
+    tag::{type_tag, variant_tag},
+    value::Value,
+};
 
 #[derive(Debug)]
 pub struct Error;
@@ -24,81 +30,103 @@ impl From<std::fmt::Error> for Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn stream<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
-    v.stream(s)
-}
-
-pub fn for_all<T>(value: T) -> ForAll<T> {
-    ForAll::new(value)
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{receiver::Display, source::ValueSource, Receiver, Value};
+    mod my_value {
+        use crate::value::{self, Value};
 
-    #[test]
-    fn it_works() {
-        struct MyValue;
+        pub struct MyValue;
 
         impl Value for MyValue {
-            fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> crate::Result {
+            fn stream<'a, S: value::Receiver<'a>>(&'a self, mut receiver: S) -> value::Result {
                 let mut short = |s: &str| {
-                    stream.map_field("field")?;
-                    stream.map_value(crate::for_all(s))
+                    receiver.map_field("field")?;
+                    receiver.map_value(crate::for_all(s))
                 };
 
                 short("value")
             }
         }
 
-        struct MyStruct {
-            a: String,
-            b: i64,
+        pub struct MyStruct {
+            pub a: String,
+            pub b: i64,
         }
 
         impl Value for MyStruct {
-            fn stream<'a, S: Receiver<'a>>(&'a self, mut stream: S) -> crate::Result {
-                stream.map_begin(Some(1))?;
-                stream.map_field("a")?;
-                stream.map_value(&self.a)?;
-                stream.map_field("b")?;
-                stream.map_value(self.b)?;
-                stream.map_end()
+            fn stream<'a, S: value::Receiver<'a>>(&'a self, mut receiver: S) -> value::Result {
+                receiver.map_begin(Some(1))?;
+                receiver.map_field("a")?;
+                receiver.map_value(&self.a)?;
+                receiver.map_field("b")?;
+                receiver.map_value(self.b)?;
+                receiver.map_end()
             }
         }
 
-        struct MyInnerRef<'a> {
-            a: &'a str,
-            b: i64,
+        pub struct MyInnerRef<'a> {
+            pub a: &'a str,
+            pub b: i64,
         }
 
         impl<'a> Value for MyInnerRef<'a> {
-            fn stream<'b, S: Receiver<'b>>(&'b self, mut stream: S) -> crate::Result {
-                stream.map_begin(Some(1))?;
-                stream.map_field("a")?;
-                stream.map_value(self.a)?;
-                stream.map_field("b")?;
-                stream.map_value(self.b)?;
-                stream.map_end()
+            fn stream<'b, S: value::Receiver<'b>>(&'b self, mut receiver: S) -> value::Result {
+                receiver.map_begin(Some(1))?;
+                receiver.map_field("a")?;
+                receiver.map_value(self.a)?;
+                receiver.map_field("b")?;
+                receiver.map_value(self.b)?;
+                receiver.map_end()
             }
         }
+    }
 
-        struct MyReceiver<'a>(Option<&'a str>);
+    mod my_source {
+        use crate::source::{self, Source};
+
+        pub struct MySource<'a>(pub Vec<&'a str>);
+
+        impl<'a> Source<'a> for MySource<'a> {
+            fn stream<'b, R: source::Receiver<'b>>(
+                &mut self,
+                receiver: R,
+            ) -> source::Result<source::StreamState>
+            where
+                'a: 'b,
+            {
+                match self.0.pop() {
+                    Some(mut next) => {
+                        next.stream_to_end(receiver)?;
+                        Ok(source::StreamState::Yield)
+                    }
+                    None => Ok(source::StreamState::Done),
+                }
+            }
+        }
+    }
+
+    mod my_receiver {
+        use crate::receiver::{self, Receiver};
+
+        pub struct MyReceiver<'a>(pub Option<&'a str>);
 
         impl<'a> Receiver<'a> for MyReceiver<'a> {
-            fn display<V: Display>(&mut self, _: V) -> crate::Result {
+            fn display<V: receiver::Display>(&mut self, _: V) -> receiver::Result {
                 Ok(())
             }
 
-            fn none(&mut self) -> crate::Result {
+            fn none(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn str<'v, V: ValueSource<'v, str>>(&mut self, mut value: V) -> crate::Result
+            fn str<'v, V: receiver::ValueSource<'v, str>>(
+                &mut self,
+                mut value: V,
+            ) -> receiver::Result
             where
                 'v: 'a,
             {
-                match value.value_ref() {
+                match value.take_ref() {
                     Ok(v) => println!("borrowed: {}", v),
                     Err(v) => println!("short: {}", v.into_result().unwrap()),
                 }
@@ -106,46 +134,53 @@ mod tests {
                 Ok(())
             }
 
-            fn map_begin(&mut self, _: Option<usize>) -> crate::Result {
+            fn map_begin(&mut self, _: Option<usize>) -> receiver::Result {
                 Ok(())
             }
 
-            fn map_end(&mut self) -> crate::Result {
+            fn map_end(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn map_key_begin(&mut self) -> crate::Result {
+            fn map_key_begin(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn map_key_end(&mut self) -> crate::Result {
+            fn map_key_end(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn map_value_begin(&mut self) -> crate::Result {
+            fn map_value_begin(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn map_value_end(&mut self) -> crate::Result {
+            fn map_value_end(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn seq_begin(&mut self, _: Option<usize>) -> crate::Result {
+            fn seq_begin(&mut self, _: Option<usize>) -> receiver::Result {
                 Ok(())
             }
 
-            fn seq_end(&mut self) -> crate::Result {
+            fn seq_end(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn seq_elem_begin(&mut self) -> crate::Result {
+            fn seq_elem_begin(&mut self) -> receiver::Result {
                 Ok(())
             }
 
-            fn seq_elem_end(&mut self) -> crate::Result {
+            fn seq_elem_end(&mut self) -> receiver::Result {
                 Ok(())
             }
         }
+    }
+
+    #[test]
+    fn it_works() {
+        use crate::{Source, Value};
+
+        use self::{my_receiver::*, my_source::*, my_value::*};
 
         MyValue.stream(MyReceiver(None)).unwrap();
 
@@ -154,5 +189,9 @@ mod tests {
             b: 42,
         };
         my_struct.stream(MyReceiver(None)).unwrap();
+
+        let mut my_source = MySource(vec!["a", "b", "c"]);
+
+        my_source.stream_to_end(MyReceiver(None)).unwrap();
     }
 }

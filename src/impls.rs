@@ -9,7 +9,15 @@ impl Value for () {
 }
 
 impl<'a> Source<'a> for () {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -20,7 +28,7 @@ impl<'a> Source<'a> for () {
 impl<'a> source::ValueSource<'a, ()> for () {
     type Error = source::Impossible;
 
-    fn value(&mut self) -> Result<&(), source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&(), source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -32,7 +40,15 @@ impl Value for bool {
 }
 
 impl<'a> Source<'a> for bool {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -43,7 +59,7 @@ impl<'a> Source<'a> for bool {
 impl<'a> source::ValueSource<'a, bool> for bool {
     type Error = source::Impossible;
 
-    fn value(&mut self) -> Result<&bool, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&bool, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -55,7 +71,15 @@ impl Value for u8 {
 }
 
 impl<'a> Source<'a> for u8 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -67,7 +91,7 @@ impl<'a> source::ValueSource<'a, u8> for u8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&u8, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&u8, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -79,7 +103,15 @@ impl Value for i8 {
 }
 
 impl<'a> Source<'a> for i8 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -91,7 +123,7 @@ impl<'a> source::ValueSource<'a, i8> for i8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&i8, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&i8, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -103,7 +135,15 @@ impl Value for u16 {
 }
 
 impl<'a> Source<'a> for u16 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -115,7 +155,7 @@ impl<'a> source::ValueSource<'a, u16> for u16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&u16, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&u16, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -127,7 +167,15 @@ impl Value for i16 {
 }
 
 impl<'a> Source<'a> for i16 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -139,7 +187,7 @@ impl<'a> source::ValueSource<'a, i16> for i16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&i16, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&i16, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -151,7 +199,15 @@ impl Value for u32 {
 }
 
 impl<'a> Source<'a> for u32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -163,7 +219,7 @@ impl<'a> source::ValueSource<'a, u32> for u32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&u32, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&u32, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -175,7 +231,15 @@ impl Value for i32 {
 }
 
 impl<'a> Source<'a> for i32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -187,7 +251,7 @@ impl<'a> source::ValueSource<'a, i32> for i32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&i32, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&i32, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -199,7 +263,15 @@ impl Value for u64 {
 }
 
 impl<'a> Source<'a> for u64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -211,7 +283,7 @@ impl<'a> source::ValueSource<'a, u64> for u64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&u64, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&u64, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -223,7 +295,15 @@ impl Value for i64 {
 }
 
 impl<'a> Source<'a> for i64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -235,7 +315,7 @@ impl<'a> source::ValueSource<'a, i64> for i64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&i64, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&i64, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -247,7 +327,15 @@ impl Value for u128 {
 }
 
 impl<'a> Source<'a> for u128 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -259,7 +347,7 @@ impl<'a> source::ValueSource<'a, u128> for u128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&u128, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&u128, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -271,7 +359,15 @@ impl Value for i128 {
 }
 
 impl<'a> Source<'a> for i128 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -283,7 +379,7 @@ impl<'a> source::ValueSource<'a, i128> for i128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&i128, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&i128, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -295,7 +391,15 @@ impl Value for f32 {
 }
 
 impl<'a> Source<'a> for f32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -307,7 +411,7 @@ impl<'a> source::ValueSource<'a, f32> for f32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&f32, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&f32, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -319,7 +423,15 @@ impl Value for f64 {
 }
 
 impl<'a> Source<'a> for f64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -331,7 +443,7 @@ impl<'a> source::ValueSource<'a, f64> for f64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&f64, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&f64, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -343,7 +455,15 @@ impl Value for str {
 }
 
 impl<'a> Source<'a> for str {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -355,7 +475,7 @@ impl<'a> source::ValueSource<'a, str> for str {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -372,7 +492,15 @@ impl Value for String {
 }
 
 impl<'a> Source<'a> for String {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -384,12 +512,12 @@ impl<'a> source::ValueSource<'a, str> for String {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
         Ok(&**self)
     }
 
     #[inline]
-    fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
+    fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
         Ok(std::mem::take(self))
     }
 }
@@ -398,7 +526,7 @@ impl<'a> source::ValueSource<'a, str> for &'a String {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
         Ok(&**self)
     }
 }
@@ -419,7 +547,15 @@ impl<'a> Value for Cow<'a, str> {
 }
 
 impl<'a> Source<'a> for Cow<'a, str> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver)
+            .map(|_| source::StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -434,20 +570,20 @@ impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
     type Error = source::Impossible;
 
     #[inline]
-    fn value(&mut self) -> Result<&str, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
         Ok(&**self)
     }
 
     #[inline]
-    fn value_ref(&mut self) -> Result<&'a str, source::ToRefError<&str, Self::Error>> {
+    fn take_ref(&mut self) -> Result<&'a str, source::TakeRefError<&str, Self::Error>> {
         match self {
             Cow::Borrowed(v) => Ok(v),
-            Cow::Owned(v) => Err(source::ToRefError::from_value(v)),
+            Cow::Owned(v) => Err(source::TakeRefError::from_value(v)),
         }
     }
 
     #[inline]
-    fn value_owned(&mut self) -> Result<String, source::ToValueError<Self::Error>> {
+    fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
         Ok(std::mem::take(self).into_owned())
     }
 }

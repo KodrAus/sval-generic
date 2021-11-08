@@ -1,10 +1,14 @@
 use std::{error, fmt};
 
 use crate::{
-    source::{ToValueError, ValueSource},
+    source::{StreamState, TakeError, ValueSource},
     tag::{TypeTag, VariantTag},
     Error, Receiver, Result, Source, Value,
 };
+
+pub fn for_all<T>(value: T) -> ForAll<T> {
+    ForAll::new(value)
+}
 
 #[derive(Clone, Copy)]
 pub struct ForAll<T>(pub(crate) T);
@@ -34,11 +38,18 @@ impl<T: Value> Value for ForAll<T> {
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
+    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<StreamState>
     where
         'a: 'c,
     {
         self.0.stream(ForAll(stream))
+    }
+
+    fn stream_to_end<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
+    where
+        'a: 'c,
+    {
+        self.0.stream_to_end(ForAll(stream))
     }
 }
 
@@ -46,10 +57,10 @@ impl<'a, 'b, U: Value + ?Sized, T: ValueSource<'b, U>> ValueSource<'a, U> for Fo
     // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
     type Error = Error;
 
-    fn value(&mut self) -> Result<&U, ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&U, TakeError<Self::Error>> {
         self.0
-            .value()
-            .map_err(|e| ToValueError::from_error(e.into_inner().into()))
+            .take()
+            .map_err(|e| TakeError::from_error(e.into_error().into()))
     }
 }
 

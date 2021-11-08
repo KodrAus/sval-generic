@@ -1,18 +1,18 @@
-use std::{error, fmt};
+use std::error;
 
 use crate::{
-    source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
     value::Value,
-    Error, Result,
+    Error,
 };
 
-#[doc(inline)]
-pub use fmt::Display;
+pub use crate::{source::ValueSource, Result, Source};
+
+pub use std::fmt::Display;
 
 pub trait Receiver<'a> {
-    fn source<'v: 'a, S: Source<'v>>(&mut self, mut value: S) -> Result {
-        value.stream(self)
+    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
+        source.stream_to_end(self)
     }
 
     fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
@@ -80,14 +80,14 @@ pub trait Receiver<'a> {
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
-        self.display(value.value()?)
+        self.display(value.take()?)
     }
 
     fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
         &mut self,
         mut error: E,
     ) -> Result {
-        self.display(error.value()?)
+        self.display(error.take()?)
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {

@@ -1,15 +1,18 @@
 use crate::{
-    receiver::{self, Display, Receiver},
+    receiver::{self, Display},
     source::{Source, ValueSource},
     tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
-    Result,
 };
+
+pub use crate::{Receiver, Result};
 
 pub trait Value
 where
     for<'a> &'a Self: Source<'a>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
+
+    // TODO: is_unbuffered()
 
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a>(Option<&'a str>);
@@ -24,7 +27,7 @@ where
             }
 
             fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
-                match value.value_ref() {
+                match value.take_ref() {
                     Ok(v) => {
                         self.0 = Some(v);
                         Ok(())
@@ -74,9 +77,9 @@ where
             }
         }
 
-        let mut stream = Extract(None);
-        self.stream(&mut stream).ok()?;
-        stream.0
+        let mut receiver = Extract(None);
+        self.stream(&mut receiver).ok()?;
+        receiver.0
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&self, tag: TypeTag<T>) -> TypeTagged<T, &Self> {
