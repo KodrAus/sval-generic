@@ -2,9 +2,12 @@ use std::{borrow::ToOwned, fmt};
 
 use crate::{Error, Value};
 
-pub use crate::{Receiver, Result};
+pub use crate::{
+    tag::{type_tag, variant_tag},
+    Receiver, Result,
+};
 
-pub fn stream<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
+pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream_to_end(s)
 }
 

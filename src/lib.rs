@@ -13,8 +13,7 @@ pub use derive::*;
 pub use self::{
     for_all::{for_all, ForAll},
     receiver::Receiver,
-    source::{stream, Source},
-    tag::{type_tag, variant_tag},
+    source::Source,
     value::Value,
 };
 
@@ -55,12 +54,10 @@ mod tests {
 
         impl Value for MyStruct {
             fn stream<'a, S: value::Receiver<'a>>(&'a self, mut receiver: S) -> value::Result {
-                receiver.map_begin(Some(1))?;
-                receiver.map_field("a")?;
-                receiver.map_value(&self.a)?;
-                receiver.map_field("b")?;
-                receiver.map_value(self.b)?;
-                receiver.map_end()
+                receiver.type_tagged_map_begin(value::type_tag("MyStruct"), Some(1))?;
+                receiver.map_field_entry("a", &self.a)?;
+                receiver.map_field_entry("b", &self.b)?;
+                receiver.type_tagged_map_end()
             }
         }
 
@@ -84,7 +81,10 @@ mod tests {
     mod my_source {
         use crate::source::{self, Source};
 
-        pub struct MySource<'a>(pub Vec<&'a str>);
+        pub struct MySource<'a> {
+            pub remaining: Vec<&'a str>,
+            pub current: Option<&'a str>,
+        }
 
         impl<'a> Source<'a> for MySource<'a> {
             fn stream<'b, R: source::Receiver<'b>>(
@@ -94,13 +94,20 @@ mod tests {
             where
                 'a: 'b,
             {
-                match self.0.pop() {
-                    Some(mut next) => {
-                        next.stream_to_end(receiver)?;
-                        Ok(source::StreamState::Yield)
+                if let Some(ref mut current) = self.current {
+                    match current.stream(receiver)? {
+                        source::StreamState::Yield => return Ok(source::StreamState::Yield),
+                        source::StreamState::Done => self.current = None,
                     }
-                    None => Ok(source::StreamState::Done),
                 }
+
+                if let Some(next) = self.remaining.pop() {
+                    self.current = Some(next);
+
+                    return Ok(source::StreamState::Yield);
+                }
+
+                Ok(source::StreamState::Done)
             }
         }
     }
@@ -190,8 +197,10 @@ mod tests {
         };
         my_struct.stream(MyReceiver(None)).unwrap();
 
-        let mut my_source = MySource(vec!["a", "b", "c"]);
-
+        let mut my_source = MySource {
+            current: None,
+            remaining: vec!["a", "b", "c"],
+        };
         my_source.stream_to_end(MyReceiver(None)).unwrap();
     }
 }

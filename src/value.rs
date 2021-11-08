@@ -4,7 +4,14 @@ use crate::{
     tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
 };
 
-pub use crate::{Receiver, Result};
+pub use crate::{
+    tag::{type_tag, variant_tag},
+    Receiver, Result,
+};
+
+pub fn stream<'a>(s: impl Receiver<'a>, v: &'a impl Value) -> Result {
+    v.stream(s)
+}
 
 pub trait Value
 where
