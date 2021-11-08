@@ -137,8 +137,24 @@ impl<T, V> TypeTagged<T, V> {
 }
 
 impl<V: Value> Value for TypeTagged<&'static str, V> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.type_tagged(self.tag, &self.value)
+    }
+}
+
+impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for TypeTagged<T, S> {
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.type_tagged(self.tag.by_mut(), &mut self.value)
     }
 }
 
@@ -158,5 +174,23 @@ impl<T, K, V> VariantTagged<T, K, V> {
 impl<V: Value> Value for VariantTagged<&'static str, &'static str, V> {
     fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
         receiver.variant_tagged(self.tag, &self.value)
+    }
+}
+
+impl<'a, T: ValueSource<'static, str>, K: ValueSource<'static, str>, S: Source<'a>> Source<'a>
+    for VariantTagged<T, K, S>
+{
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<StreamState>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| StreamState::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.variant_tagged(self.tag.by_mut(), &mut self.value)
     }
 }
