@@ -1,11 +1,11 @@
 use std::error;
 
-use crate::{value::Value, Error};
+use crate::value::Value;
 
 pub use crate::{
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
-    Result,
+    Error, Result,
 };
 
 pub use std::fmt::Display;

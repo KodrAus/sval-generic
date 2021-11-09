@@ -1,8 +1,13 @@
 use std::{borrow::ToOwned, error, fmt};
 
-use sval_generic_api::{receiver, source, tag, value, Error, Result};
+use sval_generic_api::{
+    receiver,
+    source::{self, StreamState},
+    tag, value, Error, Result,
+};
 
 // TODO: This public API needs to be a trait we can add OIBIT's to
+// pub trait Value { fn erase(&'a self) -> Value<'a> }
 pub struct Value<'a>(&'a dyn ErasedValue);
 
 impl<'a> Value<'a> {
@@ -16,13 +21,13 @@ pub fn value<'a>(v: &'a impl value::Value) -> Value<'a> {
 }
 
 trait ErasedValue {
-    fn erased_stream<'a>(&'a self, stream: Receiver<'a, '_>) -> Result;
+    fn erased_stream<'a>(&'a self, receiver: Receiver<'a, '_>) -> Result;
     fn erased_to_str(&self) -> Option<&str>;
 }
 
 impl<T: value::Value + ?Sized> ErasedValue for T {
-    fn erased_stream<'a>(&'a self, stream: Receiver<'a, '_>) -> Result {
-        self.stream(stream)
+    fn erased_stream<'a>(&'a self, receiver: Receiver<'a, '_>) -> Result {
+        self.stream(receiver)
     }
 
     fn erased_to_str(&self) -> Option<&str> {
@@ -31,8 +36,8 @@ impl<T: value::Value + ?Sized> ErasedValue for T {
 }
 
 impl<'a> value::Value for Value<'a> {
-    fn stream<'b, S: receiver::Receiver<'b>>(&'b self, mut stream: S) -> Result {
-        self.0.erased_stream(Receiver(&mut stream))
+    fn stream<'b, S: receiver::Receiver<'b>>(&'b self, mut receiver: S) -> Result {
+        self.0.erased_stream(Receiver(&mut receiver))
     }
 
     fn to_str(&self) -> Option<&str> {
@@ -739,26 +744,44 @@ pub fn source<'a, 'b>(source: &'b mut impl source::Source<'a>) -> Source<'a, 'b>
 }
 
 trait ErasedSource<'a> {
-    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    where
+        'a: 'b;
+
+    fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
 }
 
 impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
-    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
     where
         'a: 'b,
     {
-        source::Source::stream(self, stream)
+        source::Source::stream(self, receiver)
+    }
+
+    fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
+    where
+        'a: 'b,
+    {
+        source::Source::stream_to_end(self, receiver)
     }
 }
 
 impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut stream: S) -> Result
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<StreamState>
     where
         'a: 'c,
     {
-        self.0.erased_stream(Receiver(&mut stream))
+        self.0.erased_stream(Receiver(&mut receiver))
+    }
+
+    fn stream_to_end<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result
+    where
+        'a: 'c,
+    {
+        self.0.erased_stream_to_end(Receiver(&mut receiver))
     }
 }
 
@@ -777,75 +800,89 @@ pub fn value_source<'a, 'b, T: value::Value + ?Sized>(
 }
 
 trait ErasedValueSource<'a, T: value::Value + ?Sized> {
-    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    where
+        'a: 'b;
+    fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
     where
         'a: 'b;
 
-    fn erased_value(&mut self) -> Result<&T>;
-    fn erased_value_ref(&mut self) -> Result<&'a T, Result<&T>>;
-    fn erased_value_owned(&mut self) -> Result<T::Owned>
+    fn erased_take(&mut self) -> Result<&T>;
+    fn erased_take_ref(&mut self) -> Result<&'a T, Result<&T>>;
+    fn erased_take_owned(&mut self) -> Result<T::Owned>
     where
         T: ToOwned,
         T::Owned: value::Value;
 }
 
 impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U> for T {
-    fn erased_stream<'b>(&mut self, stream: Receiver<'b, '_>) -> Result
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
     where
         'a: 'b,
     {
-        source::Source::stream(self, stream)
+        source::Source::stream(self, receiver)
     }
 
-    fn erased_value(&mut self) -> Result<&U> {
-        self.value().map_err(Into::into)
+    fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
+    where
+        'a: 'b,
+    {
+        source::Source::stream_to_end(self, receiver)
     }
 
-    fn erased_value_ref(&mut self) -> Result<&'a U, Result<&U>> {
-        self.value_ref()
-            .map_err(|e| e.into_result().map_err(Into::into))
+    fn erased_take(&mut self) -> Result<&U> {
+        source::ValueSource::take(self).map_err(Into::into)
     }
 
-    fn erased_value_owned(&mut self) -> Result<U::Owned>
+    fn erased_take_ref(&mut self) -> Result<&'a U, Result<&U>> {
+        source::ValueSource::take_ref(self).map_err(|e| e.into_result().map_err(Into::into))
+    }
+
+    fn erased_take_owned(&mut self) -> Result<U::Owned>
     where
         U: ToOwned,
         U::Owned: value::Value,
     {
-        self.value_owned().map_err(Into::into)
+        source::ValueSource::take_owned(self).map_err(Into::into)
     }
 }
 
 impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T> for ValueSource<'a, 'b, T> {
     type Error = Error;
 
-    fn value(&mut self) -> Result<&T, source::ToValueError<Self::Error>> {
-        self.0
-            .erased_value()
-            .map_err(source::ToValueError::from_error)
+    fn take(&mut self) -> Result<&T, source::TakeError<Self::Error>> {
+        self.0.erased_take().map_err(source::TakeError::from_error)
     }
 
-    fn value_ref<'c>(&'c mut self) -> Result<&'a T, source::ToRefError<&'c T, Self::Error>> {
+    fn take_ref<'c>(&'c mut self) -> Result<&'a T, source::TakeRefError<&'c T, Self::Error>> {
         self.0
-            .erased_value_ref()
-            .map_err(source::ToRefError::from_result)
+            .erased_take_ref()
+            .map_err(source::TakeRefError::from_result)
     }
 
-    fn value_owned(&mut self) -> Result<T::Owned, source::ToValueError<Self::Error>>
+    fn take_owned(&mut self) -> Result<T::Owned, source::TakeError<Self::Error>>
     where
         T: ToOwned,
         T::Owned: value::Value,
     {
         self.0
-            .erased_value_owned()
-            .map_err(source::ToValueError::from_error)
+            .erased_take_owned()
+            .map_err(source::TakeError::from_error)
     }
 }
 
 impl<'a, 'b, T: value::Value + ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut stream: S) -> Result
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<StreamState>
     where
         'a: 'c,
     {
-        self.0.erased_stream(Receiver(&mut stream))
+        self.0.erased_stream(Receiver(&mut receiver))
+    }
+
+    fn stream_to_end<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result
+    where
+        'a: 'c,
+    {
+        self.0.erased_stream_to_end(Receiver(&mut receiver))
     }
 }

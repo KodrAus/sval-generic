@@ -1,10 +1,10 @@
 use std::{borrow::ToOwned, fmt};
 
-use crate::{Error, Value};
+use crate::Value;
 
 pub use crate::{
     tag::{type_tag, variant_tag},
-    Receiver, Result,
+    Error, Receiver, Result,
 };
 
 pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {

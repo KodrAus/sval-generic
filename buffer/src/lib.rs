@@ -1,9 +1,9 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::VecDeque};
 
 use sval_generic_api::{
     for_all,
     receiver::{self, Display, Receiver},
-    source::{self, Source, ValueSource},
+    source::{self, Source, StreamState, ValueSource},
     value::Value,
     Result,
 };
@@ -126,11 +126,11 @@ pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     Ok(())
 }
 
-struct Buffer<'a>(Vec<Token<'a>>);
+struct Buffer<'a>(VecDeque<Token<'a>>);
 
 impl<'a> Buffer<'a> {
     fn new() -> Self {
-        Buffer(Vec::new())
+        Buffer(VecDeque::new())
     }
 
     fn is_empty(&self) -> bool {
@@ -138,7 +138,7 @@ impl<'a> Buffer<'a> {
     }
 
     fn push(&mut self, token: Token<'a>) {
-        self.0.push(token);
+        self.0.push_back(token);
     }
 }
 
@@ -162,26 +162,28 @@ impl<'a> Value for Buffer<'a> {
 }
 
 impl<'a> Source<'a> for Buffer<'a> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<StreamState>
     where
         'a: 'b,
     {
-        for token in &self.0 {
+        if let Some(token) = self.0.pop_front() {
             match token {
                 Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
                 Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
                 Token::Bool(value) => receiver.bool(*value)?,
             }
+
+            Ok(StreamState::Yield)
         }
 
-        Ok(())
+        Ok(StreamState::Done)
     }
 }
 
 impl<'a> ValueSource<'a, Buffer<'a>> for Buffer<'a> {
     type Error = source::Impossible;
 
-    fn value(&mut self) -> Result<&Buffer<'a>, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&Buffer<'a>, source::ToValueError<Self::Error>> {
         Ok(self)
     }
 }
