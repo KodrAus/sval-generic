@@ -86,8 +86,8 @@ impl<T, E> TakeRefError<T, E> {
         TakeRefError(r)
     }
 
-    pub fn into_result(self) -> Result<T, E> {
-        self.0
+    pub fn into_result(self) -> Result<T, TakeError<E>> {
+        self.0.map_err(TakeError)
     }
 }
 

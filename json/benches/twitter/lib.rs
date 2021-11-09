@@ -71,24 +71,24 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
     b.iter(|| serde_json::to_string(&s).unwrap());
 }
 
+/*
 #[bench]
-fn twitter_sval_generic_api_generator(b: &mut test::Bencher) {
-    use sval_generic_api::generator::GeneratorValue;
+fn twitter_sval_generic_api_coroutine(b: &mut test::Bencher) {
+    use sval_generic_api_coroutine::value::CoroutineValue;
 
     let s = input_struct();
     let s = s.as_value_iter();
 
     b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
 }
+*/
 
 #[bench]
-fn twitter_sval_generic_api_coroutine(b: &mut test::Bencher) {
-    use sval_generic_api::coroutine::CoroutineValue;
+fn twitter_sval_is_unbuffered(b: &mut test::Bencher) {
+    use sval_generic_api::Value;
 
     let s = input_struct();
-    let s = s.as_value_iter();
-
-    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+    b.iter(|| s.is_unbuffered());
 }
 
 #[bench]

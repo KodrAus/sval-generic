@@ -2,7 +2,7 @@ use valuable::{Listable, Mappable, Valuable, Visit};
 
 use sval_generic_api::{receiver, source, value, Receiver, Result};
 
-use sval_generic_api_buffer::{self as buffer, BufferReceiver};
+use sval_generic_api_buffer::{buffer, BufferReceiver};
 
 pub struct Value<'a, V>(Detected<'a, V>, &'a V);
 
@@ -159,7 +159,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
 
             fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
                 if let Detected::Unknown = self.0 {
-                    self.0 = Detected::Primitive(Primitive::Str(value.value_ref()?));
+                    self.0 = Detected::Primitive(Primitive::Str(value.take_ref()?));
 
                     Ok(())
                 } else {
@@ -303,7 +303,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
     }
 
     fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
-        self.0.visit_value(valuable::Value::String(value.value()?));
+        self.0.visit_value(valuable::Value::String(value.take()?));
 
         Ok(())
     }
@@ -337,7 +337,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
                         mut v: S,
                     ) -> Result {
                         let key = self.1;
-                        let value = v.value()?;
+                        let value = v.take()?;
 
                         self.0.visit_entry(
                             Value::new(&key).as_value(),
@@ -348,13 +348,13 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
                     }
                 }
 
-                let key = v.value()?;
+                let key = v.take()?;
 
-                buffer::stream(BufferValue(self.0, key), &mut self.1)
+                buffer(BufferValue(self.0, key), &mut self.1)
             }
         }
 
-        buffer::stream(BufferKey(self.0, value), key)
+        buffer(BufferKey(self.0, value), key)
     }
 
     fn map_field_entry<'v: 'a, F: source::ValueSource<'static, str>, V: source::Source<'v>>(
@@ -377,7 +377,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
                 &mut self,
                 mut e: S,
             ) -> Result {
-                let elem = e.value()?;
+                let elem = e.take()?;
 
                 self.0.visit_value(Value::new(&elem).as_value());
 
@@ -385,7 +385,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
             }
         }
 
-        buffer::stream(BufferElem(self.0), elem)
+        buffer(BufferElem(self.0), elem)
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> Result {

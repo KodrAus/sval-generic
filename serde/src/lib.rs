@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use sval_generic_api::{receiver, source, tag, value, Error, Receiver, Result};
 
-use sval_generic_api_buffer::{self as buffer, BufferReceiver};
+use sval_generic_api_buffer::{buffer, BufferReceiver};
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -417,7 +417,7 @@ impl<S: Serializer> SerdeReceiver<S> {
 
 impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     fn source<'b: 'a, V: source::Source<'b>>(&mut self, v: V) -> Result {
-        buffer::stream(self, v)
+        buffer(self, v)
     }
 
     fn display<D: receiver::Display>(&mut self, v: D) -> Result {
@@ -453,14 +453,14 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     }
 
     fn str<'s: 'a, T: source::ValueSource<'s, str>>(&mut self, mut v: T) -> Result {
-        self.serialize_source(v.value()?)
+        self.serialize_source(v.take()?)
     }
 
     fn type_tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> Result {
-        self.serializer()?.type_tag = tag.ty.value_ref().ok();
+        self.serializer()?.type_tag = tag.ty.take_ref().ok();
 
         Ok(())
     }
@@ -478,8 +478,8 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     ) -> Result {
         let serializer = self.serializer()?;
 
-        serializer.type_tag = tag.ty.value_ref().ok();
-        serializer.variant_tag = tag.variant_key.value_ref().ok();
+        serializer.type_tag = tag.ty.take_ref().ok();
+        serializer.variant_tag = tag.variant_key.take_ref().ok();
         serializer.variant_index = tag.variant_index.and_then(|index| index.try_into().ok());
 
         Ok(())
@@ -514,7 +514,7 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
     }
 
     fn map_field<T: source::ValueSource<'static, str>>(&mut self, mut field: T) -> Result {
-        match field.value_ref() {
+        match field.take_ref() {
             Ok(field) => self.serialize_map_field(Ok(field)),
             Err(field) => self.serialize_map_field(Err(field.into_result()?)),
         }
@@ -542,6 +542,6 @@ impl<'a, S: Serializer> BufferReceiver<'a> for SerdeReceiver<S> {
         &mut self,
         mut v: VS,
     ) -> Result {
-        self.serialize_source(Value::new(v.value()?))
+        self.serialize_source(Value::new(v.take()?))
     }
 }

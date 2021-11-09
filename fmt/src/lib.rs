@@ -66,7 +66,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         &mut self,
         mut e: E,
     ) -> Result {
-        self.fmt(e.value()?)
+        self.fmt(e.take()?)
     }
 
     fn i64(&mut self, v: i64) -> Result {
@@ -94,7 +94,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
     }
 
     fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut v: S) -> Result {
-        self.fmt(v.value()?)
+        self.fmt(v.take()?)
     }
 
     fn none(&mut self) -> Result {
@@ -105,7 +105,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> Result {
-        self.fmt.write_str(tag.ty.value()?)?;
+        self.fmt.write_str(tag.ty.take()?)?;
 
         Ok(())
     }
@@ -121,9 +121,9 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> Result {
-        self.fmt.write_str(tag.ty.value()?)?;
+        self.fmt.write_str(tag.ty.take()?)?;
         self.fmt.write_str("::")?;
-        self.fmt.write_str(tag.variant_key.value()?)?;
+        self.fmt.write_str(tag.variant_key.take()?)?;
 
         Ok(())
     }

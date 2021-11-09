@@ -24,7 +24,7 @@ impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
     }
 }
 
-pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
+pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
     struct Extract<'a, R> {
         buffer: Buffer<'a>,
         receiver: Option<R>,
@@ -58,7 +58,7 @@ pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
         }
 
         fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
-            match value.value_ref() {
+            match value.take_ref() {
                 Ok(v) => {
                     self.buffer.push(Token::Str(Cow::Borrowed(v)));
                     Ok(())
@@ -117,7 +117,7 @@ pub fn stream<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
         receiver: Some(receiver),
     };
 
-    source.stream(&mut extract)?;
+    source.stream_to_end(&mut extract)?;
 
     if let Some(mut receiver) = extract.receiver.take() {
         receiver.value_source(extract.buffer)?;
@@ -168,22 +168,22 @@ impl<'a> Source<'a> for Buffer<'a> {
     {
         if let Some(token) = self.0.pop_front() {
             match token {
-                Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
+                Token::Str(Cow::Borrowed(value)) => receiver.str(value)?,
                 Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
-                Token::Bool(value) => receiver.bool(*value)?,
+                Token::Bool(value) => receiver.bool(value)?,
             }
 
             Ok(StreamState::Yield)
+        } else {
+            Ok(StreamState::Done)
         }
-
-        Ok(StreamState::Done)
     }
 }
 
 impl<'a> ValueSource<'a, Buffer<'a>> for Buffer<'a> {
     type Error = source::Impossible;
 
-    fn take(&mut self) -> Result<&Buffer<'a>, source::ToValueError<Self::Error>> {
+    fn take(&mut self) -> Result<&Buffer<'a>, source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
