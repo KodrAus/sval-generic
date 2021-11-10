@@ -11,6 +11,12 @@ version = "1"
 [dependencies.sval-generic-api]
 path = "../../../"
 
+[dependencies.sval-generic-api-serde]
+path = "../../../serde"
+
+[dependencies.sval-generic-api-valuable]
+path = "../../../valuable"
+
 [dependencies.sval-generic-api-json-twitter-tests]
 path = "../../tests/twitter"
 

@@ -28,6 +28,7 @@ impl<'a> Source<'a> for () {
 impl<'a> source::ValueSource<'a, ()> for () {
     type Error = source::Impossible;
 
+    #[inline]
     fn take(&mut self) -> Result<&(), source::TakeError<Self::Error>> {
         Ok(self)
     }

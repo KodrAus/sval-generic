@@ -3,7 +3,10 @@ use std::{
     fmt::{self, Debug, Display, Formatter, Write},
 };
 
-use sval_generic_api::{value, receiver::{self, Receiver}};
+use sval_generic_api::{
+    receiver::{self, Receiver},
+    value,
+};
 
 pub struct Value<V>(V);
 

@@ -172,6 +172,8 @@ dependencies = [
  "sval-generic-api",
  "sval-generic-api-json",
  "sval-generic-api-json-twitter-tests",
+ "sval-generic-api-serde",
+ "sval-generic-api-valuable",
 ]
 
 [[package]]

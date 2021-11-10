@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::VecDeque};
+use std::borrow::Cow;
 
 use sval_generic_api::{
     for_all,
@@ -40,7 +40,8 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
                 }
             }
 
-            value.stream(self)
+            //value.stream(self)
+            receiver::unsupported()
         }
 
         fn display<D: Display>(&mut self, _: D) -> Result {
@@ -52,13 +53,14 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
         }
 
         fn bool(&mut self, value: bool) -> Result {
-            self.buffer.push(Token::Bool(value));
+            /*self.buffer.push(Token::Bool(value));
 
-            Ok(())
+            Ok(())*/
+            receiver::unsupported()
         }
 
         fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
-            match value.take_ref() {
+            /*match value.take_ref() {
                 Ok(v) => {
                     self.buffer.push(Token::Str(Cow::Borrowed(v)));
                     Ok(())
@@ -68,7 +70,8 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
                         .push(Token::Str(Cow::Owned(v.into_result()?.to_owned())));
                     Ok(())
                 }
-            }
+            }*/
+            receiver::unsupported()
         }
 
         fn map_begin(&mut self, _: Option<usize>) -> Result {
@@ -126,19 +129,25 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     Ok(())
 }
 
-struct Buffer<'a>(VecDeque<Token<'a>>);
+struct Buffer<'a> {
+    buf: Vec<Token<'a>>,
+    idx: usize,
+}
 
 impl<'a> Buffer<'a> {
     fn new() -> Self {
-        Buffer(VecDeque::new())
+        Buffer {
+            buf: Vec::new(),
+            idx: 0,
+        }
     }
 
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.buf.is_empty()
     }
 
     fn push(&mut self, token: Token<'a>) {
-        self.0.push_back(token);
+        self.buf.push(token);
     }
 }
 
@@ -149,7 +158,7 @@ enum Token<'a> {
 
 impl<'a> Value for Buffer<'a> {
     fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
-        for token in &self.0 {
+        for token in &self.buf {
             match token {
                 Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
                 Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
@@ -166,16 +175,19 @@ impl<'a> Source<'a> for Buffer<'a> {
     where
         'a: 'b,
     {
-        if let Some(token) = self.0.pop_front() {
-            match token {
-                Token::Str(Cow::Borrowed(value)) => receiver.str(value)?,
-                Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
-                Token::Bool(value) => receiver.bool(value)?,
-            }
+        match self.buf.get(self.idx) {
+            Some(token) => {
+                self.idx += 1;
 
-            Ok(StreamState::Yield)
-        } else {
-            Ok(StreamState::Done)
+                match token {
+                    Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
+                    Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
+                    Token::Bool(value) => receiver.bool(*value)?,
+                }
+
+                Ok(StreamState::Yield)
+            }
+            None => Ok(StreamState::Done),
         }
     }
 }
@@ -183,6 +195,7 @@ impl<'a> Source<'a> for Buffer<'a> {
 impl<'a> ValueSource<'a, Buffer<'a>> for Buffer<'a> {
     type Error = source::Impossible;
 
+    #[inline]
     fn take(&mut self) -> Result<&Buffer<'a>, source::TakeError<Self::Error>> {
         Ok(self)
     }

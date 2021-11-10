@@ -204,10 +204,11 @@ where
 }
 
 impl<'a, T: Value + ?Sized> Value for &'a T {
-    fn stream<'b, S: Receiver<'b>>(&'b self, stream: S) -> Result {
-        (**self).stream(stream)
+    fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
+        (**self).stream(receiver)
     }
 
+    #[inline]
     fn to_str(&self) -> Option<&str> {
         (**self).to_str()
     }
