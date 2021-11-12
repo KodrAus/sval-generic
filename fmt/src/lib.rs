@@ -14,13 +14,13 @@ impl<V> Value<V> {
     pub fn new(source: V) -> Self {
         Value(source)
     }
+
+    pub fn get(&self) -> &V {
+        &self.0
+    }
 }
 
 pub fn value<V: value::Value>(v: V) -> Value<V> {
-    Value::new(v)
-}
-
-pub fn display<V: fmt::Display>(v: V) -> Value<V> {
     Value::new(v)
 }
 
@@ -75,26 +75,19 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         self.fmt(Adapter(v))
     }
 
-    fn error<'e: 'a, E: receiver::ValueSource<'e, dyn error::Error + 'static>>(
-        &mut self,
-        mut e: E,
-    ) -> receiver::Result {
-        self.fmt(e.take()?)
+    fn u64(&mut self, v: u64) -> receiver::Result {
+        self.fmt(v)
     }
 
     fn i64(&mut self, v: i64) -> receiver::Result {
         self.fmt(v)
     }
 
-    fn u64(&mut self, v: u64) -> receiver::Result {
+    fn u128(&mut self, v: u128) -> receiver::Result {
         self.fmt(v)
     }
 
     fn i128(&mut self, v: i128) -> receiver::Result {
-        self.fmt(v)
-    }
-
-    fn u128(&mut self, v: u128) -> receiver::Result {
         self.fmt(v)
     }
 
@@ -106,12 +99,19 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         self.fmt(v)
     }
 
+    fn none(&mut self) -> receiver::Result {
+        self.fmt(format_args!("None"))
+    }
+
     fn str<'s: 'a, S: receiver::ValueSource<'s, str>>(&mut self, mut v: S) -> receiver::Result {
         self.fmt(v.take()?)
     }
 
-    fn none(&mut self) -> receiver::Result {
-        self.fmt(format_args!("None"))
+    fn error<'e: 'a, E: receiver::ValueSource<'e, dyn error::Error + 'static>>(
+        &mut self,
+        mut e: E,
+    ) -> receiver::Result {
+        self.fmt(e.take()?)
     }
 
     fn type_tagged_begin<T: receiver::ValueSource<'static, str>>(
@@ -156,6 +156,23 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
+    fn map_end(&mut self) -> receiver::Result {
+        if self.is_pretty() {
+            self.depth -= 1;
+
+            if !self.is_current_depth_empty {
+                self.fmt.write_str(",\n")?;
+                pad(&mut self.fmt, self.depth)?;
+            }
+        }
+
+        self.fmt.write_char('}')?;
+
+        self.is_current_depth_empty = false;
+
+        Ok(())
+    }
+
     fn map_key_begin(&mut self) -> receiver::Result {
         if self.is_pretty() {
             if !self.is_current_depth_empty {
@@ -187,7 +204,19 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn map_end(&mut self) -> receiver::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> receiver::Result {
+        self.is_current_depth_empty = true;
+
+        if self.is_pretty() {
+            self.depth += 1;
+        }
+
+        self.fmt.write_char('[')?;
+
+        Ok(())
+    }
+
+    fn seq_end(&mut self) -> receiver::Result {
         if self.is_pretty() {
             self.depth -= 1;
 
@@ -197,21 +226,9 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
             }
         }
 
-        self.fmt.write_char('}')?;
+        self.fmt.write_char(']')?;
 
         self.is_current_depth_empty = false;
-
-        Ok(())
-    }
-
-    fn seq_begin(&mut self, _: Option<usize>) -> receiver::Result {
-        self.is_current_depth_empty = true;
-
-        if self.is_pretty() {
-            self.depth += 1;
-        }
-
-        self.fmt.write_char('[')?;
 
         Ok(())
     }
@@ -234,23 +251,6 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
     }
 
     fn seq_elem_end(&mut self) -> receiver::Result {
-        Ok(())
-    }
-
-    fn seq_end(&mut self) -> receiver::Result {
-        if self.is_pretty() {
-            self.depth -= 1;
-
-            if !self.is_current_depth_empty {
-                self.fmt.write_str(",\n")?;
-                pad(&mut self.fmt, self.depth)?;
-            }
-        }
-
-        self.fmt.write_char(']')?;
-
-        self.is_current_depth_empty = false;
-
         Ok(())
     }
 }

@@ -27,6 +27,12 @@ pub trait Source<'a> {
     }
 }
 
+#[must_use]
+pub enum Stream {
+    Yield,
+    Done,
+}
+
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     fn stream<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
     where
@@ -43,10 +49,88 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     }
 }
 
-#[must_use]
-pub enum Stream {
-    Yield,
-    Done,
+pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> {
+    type Error: Into<Error> + fmt::Debug;
+
+    fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a R, TakeRefError<&T, Self::Error>> {
+        Err(TakeRefError::from_value(self.take()?))
+    }
+
+    #[inline]
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value,
+    {
+        self.take().map(ToOwned::to_owned)
+    }
+}
+
+impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?Sized>
+    ValueSource<'a, T, R> for &'b mut S
+{
+    type Error = S::Error;
+
+    #[inline]
+    fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
+        (**self).take()
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a R, TakeRefError<&T, Self::Error>> {
+        (**self).take_ref()
+    }
+
+    #[inline]
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value,
+    {
+        (**self).take_owned()
+    }
+}
+
+impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| Stream::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.value(*self)
+    }
+}
+
+impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
+    type Error = Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a T, TakeRefError<&T, Self::Error>> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value,
+    {
+        Ok(self.to_owned())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -54,6 +138,29 @@ pub enum Impossible {}
 
 impl From<Impossible> for Error {
     fn from(_: Impossible) -> Error {
+        unreachable!()
+    }
+}
+
+impl Value for Impossible {
+    fn stream<'a, R: Receiver<'a>>(&'a self, _: R) -> Result {
+        unreachable!()
+    }
+}
+
+impl<'a> Source<'a> for Impossible {
+    fn stream<'b, R: Receiver<'b>>(&mut self, _: R) -> Result<Stream>
+    where
+        'a: 'b,
+    {
+        unreachable!()
+    }
+}
+
+impl<'a, V: Value + ?Sized, U: Value + ?Sized> ValueSource<'a, V, U> for Impossible {
+    type Error = Impossible;
+
+    fn take(&mut self) -> Result<&V, TakeError<Self::Error>> {
         unreachable!()
     }
 }
@@ -110,87 +217,5 @@ impl<T, E: Into<Error>> From<TakeRefError<T, E>> for Error {
 impl<T, E> From<TakeError<E>> for TakeRefError<T, E> {
     fn from(err: TakeError<E>) -> TakeRefError<T, E> {
         TakeRefError::from_error(err.into_error())
-    }
-}
-
-pub trait ValueSource<'a, T: Value + ?Sized>: Source<'a> {
-    type Error: Into<Error> + fmt::Debug;
-
-    fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
-
-    #[inline]
-    fn take_ref(&mut self) -> Result<&'a T, TakeRefError<&T, Self::Error>> {
-        Err(TakeRefError::from_value(self.take()?))
-    }
-
-    #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
-    where
-        T: ToOwned,
-        T::Owned: Value,
-    {
-        self.take().map(ToOwned::to_owned)
-    }
-}
-
-impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, T> for &'b mut S {
-    type Error = S::Error;
-
-    #[inline]
-    fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
-        (**self).take()
-    }
-
-    #[inline]
-    fn take_ref(&mut self) -> Result<&'a T, TakeRefError<&T, Self::Error>> {
-        (**self).take_ref()
-    }
-
-    #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
-    where
-        T: ToOwned,
-        T::Owned: Value,
-    {
-        (**self).take_owned()
-    }
-}
-
-impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-    where
-        'a: 'b,
-    {
-        receiver.value(*self)
-    }
-}
-
-impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
-    type Error = Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
-        Ok(self)
-    }
-
-    #[inline]
-    fn take_ref(&mut self) -> Result<&'a T, TakeRefError<&T, Self::Error>> {
-        Ok(self)
-    }
-
-    #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
-    where
-        T: ToOwned,
-        T::Owned: Value,
-    {
-        Ok(self.to_owned())
     }
 }

@@ -785,21 +785,21 @@ impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
     }
 }
 
-pub struct ValueSource<'a, 'b, T: ?Sized>(&'b mut dyn ErasedValueSource<'a, T>);
+pub struct ValueSource<'a, 'b, T: ?Sized, U: ?Sized = T>(&'b mut dyn ErasedValueSource<'a, T, U>);
 
-impl<'a, 'b, T: value::Value + ?Sized> ValueSource<'a, 'b, T> {
-    pub fn new(source: &'b mut impl source::ValueSource<'a, T>) -> Self {
+impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> ValueSource<'a, 'b, T, U> {
+    pub fn new(source: &'b mut impl source::ValueSource<'a, T, U>) -> Self {
         ValueSource(source)
     }
 }
 
-pub fn value_source<'a, 'b, T: value::Value + ?Sized>(
-    source: &'b mut impl source::ValueSource<'a, T>,
-) -> ValueSource<'a, 'b, T> {
+pub fn value_source<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized>(
+    source: &'b mut impl source::ValueSource<'a, T, U>,
+) -> ValueSource<'a, 'b, T, U> {
     ValueSource::new(source)
 }
 
-trait ErasedValueSource<'a, T: value::Value + ?Sized> {
+trait ErasedValueSource<'a, T: value::Value + ?Sized, U: value::Value + ?Sized> {
     fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b;
@@ -808,14 +808,16 @@ trait ErasedValueSource<'a, T: value::Value + ?Sized> {
         'a: 'b;
 
     fn erased_take(&mut self) -> Result<&T>;
-    fn erased_take_ref(&mut self) -> Result<&'a T, Result<&T>>;
+    fn erased_take_ref(&mut self) -> Result<&'a U, Result<&T>>;
     fn erased_take_owned(&mut self) -> Result<T::Owned>
     where
         T: ToOwned,
         T::Owned: value::Value;
 }
 
-impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U> for T {
+impl<'a, U: value::Value + ?Sized, V: value::Value + ?Sized, T: source::ValueSource<'a, U, V>>
+    ErasedValueSource<'a, U, V> for T
+{
     fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b,
@@ -834,7 +836,7 @@ impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSou
         source::ValueSource::take(self).map_err(Into::into)
     }
 
-    fn erased_take_ref(&mut self) -> Result<&'a U, Result<&U>> {
+    fn erased_take_ref(&mut self) -> Result<&'a V, Result<&U>> {
         source::ValueSource::take_ref(self).map_err(|e| e.into_result().map_err(Into::into))
     }
 
@@ -847,14 +849,16 @@ impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSou
     }
 }
 
-impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T> for ValueSource<'a, 'b, T> {
+impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> source::ValueSource<'a, T, U>
+    for ValueSource<'a, 'b, T, U>
+{
     type Error = Error;
 
     fn take(&mut self) -> Result<&T, source::TakeError<Self::Error>> {
         self.0.erased_take().map_err(source::TakeError::from_error)
     }
 
-    fn take_ref<'c>(&'c mut self) -> Result<&'a T, source::TakeRefError<&'c T, Self::Error>> {
+    fn take_ref<'c>(&'c mut self) -> Result<&'a U, source::TakeRefError<&'c T, Self::Error>> {
         self.0
             .erased_take_ref()
             .map_err(source::TakeRefError::from_result)
@@ -871,7 +875,9 @@ impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T> for ValueSourc
     }
 }
 
-impl<'a, 'b, T: value::Value + ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
+impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> source::Source<'a>
+    for ValueSource<'a, 'b, T, U>
+{
     fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
     where
         'a: 'c,

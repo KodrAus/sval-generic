@@ -53,7 +53,9 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
     }
 }
 
-impl<'a, 'b, U: Value + ?Sized, T: ValueSource<'b, U>> ValueSource<'a, U> for ForAll<T> {
+impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> ValueSource<'a, U, V>
+    for ForAll<T>
+{
     // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
     type Error = Error;
 
@@ -65,10 +67,6 @@ impl<'a, 'b, U: Value + ?Sized, T: ValueSource<'b, U>> ValueSource<'a, U> for Fo
 }
 
 impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
-    fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.0.source(ForAll(value))
-    }
-
     fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
         self.0.display(fmt)
     }
@@ -144,6 +142,10 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.error(ForAll(error))
     }
 
+    fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.0.source(ForAll(value))
+    }
+
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         self.0.type_tag(tag)
     }
@@ -203,22 +205,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.map_end()
     }
 
-    fn map_key_begin(&mut self) -> Result {
-        self.0.map_key_begin()
-    }
-
-    fn map_key_end(&mut self) -> Result {
-        self.0.map_key_end()
-    }
-
-    fn map_value_begin(&mut self) -> Result {
-        self.0.map_value_begin()
-    }
-
-    fn map_value_end(&mut self) -> Result {
-        self.0.map_value_end()
-    }
-
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
@@ -243,6 +229,22 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.variant_tagged_map_end()
     }
 
+    fn map_key_begin(&mut self) -> Result {
+        self.0.map_key_begin()
+    }
+
+    fn map_key_end(&mut self) -> Result {
+        self.0.map_key_end()
+    }
+
+    fn map_value_begin(&mut self) -> Result {
+        self.0.map_value_begin()
+    }
+
+    fn map_value_end(&mut self) -> Result {
+        self.0.map_value_end()
+    }
+
     fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
@@ -259,12 +261,12 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.map_field_entry(field, ForAll(value))
     }
 
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        self.0.map_key(ForAll(key))
-    }
-
     fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
         self.0.map_field(field)
+    }
+
+    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+        self.0.map_key(ForAll(key))
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {

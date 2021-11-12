@@ -1,30 +1,13 @@
 use std::borrow::Cow;
 
 use sval_generic_api::{
-    for_all,
-    receiver::{self, Display, Receiver},
+    receiver::{Display, Receiver},
     source::{self, Source, Stream, ValueSource},
     value::Value,
     Result,
 };
 
 use sval_generic_api_fmt as fmt;
-
-pub trait BufferReceiver<'a> {
-    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(
-        &mut self,
-        value: S,
-    ) -> Result;
-}
-
-impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
-    fn value_source<'v: 'a, T: Value + ?Sized + 'v, S: ValueSource<'v, T>>(
-        &mut self,
-        value: S,
-    ) -> Result {
-        (**self).value_source(value)
-    }
-}
 
 pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
     struct Extract<'a, R> {
@@ -33,6 +16,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     }
 
     impl<'a, R: BufferReceiver<'a>> Extract<'a, R> {
+        #[inline]
         fn top_level_receiver(&mut self) -> Option<R> {
             if self.buffer.is_empty() {
                 self.receiver.take()
@@ -43,19 +27,30 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     }
 
     impl<'a, R: BufferReceiver<'a>> Receiver<'a> for Extract<'a, R> {
-        fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-            if let Some(receiver) = self.top_level_receiver() {
-                receiver.value_source(value)
-            } else {
-                value.stream(self)
-            }
-        }
-
         fn display<D: Display>(&mut self, value: D) -> Result {
-            if let Some(receiver) = self.top_level_receiver() {
-                // TODO: Can't actually use `ValueSource` for this...
-                // The lifetime is too short, we typically need `'static`...
-                receiver.value_source(source::for_all(&fmt::display(value)))
+            if let Some(mut receiver) = self.top_level_receiver() {
+                struct Adapter<D>(fmt::Value<D>);
+
+                impl<'a, D: Display> Source<'a> for Adapter<D> {
+                    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
+                    where
+                        'a: 'b,
+                    {
+                        receiver.display(self.0.get())?;
+
+                        Ok(Stream::Done)
+                    }
+                }
+
+                impl<'a, D: Display> ValueSource<'a, fmt::Value<D>, source::Impossible> for Adapter<D> {
+                    type Error = source::Impossible;
+
+                    fn take(&mut self) -> Result<&fmt::Value<D>, source::TakeError<Self::Error>> {
+                        Ok(&self.0)
+                    }
+                }
+
+                receiver.value_source(Adapter(fmt::Value::new(value)))
             } else {
                 self.buffer.push(Token::Display(value.to_string()));
 
@@ -64,8 +59,8 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
         }
 
         fn none(&mut self) -> Result {
-            if let Some(receiver) = self.top_level_receiver() {
-                receiver.value_source(value)
+            if let Some(mut receiver) = self.top_level_receiver() {
+                receiver.value_source(&Option::None::<()>)
             } else {
                 self.buffer.push(Token::None);
 
@@ -73,33 +68,31 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             }
         }
 
-        fn bool(&mut self, value: bool) -> Result {
-            if let Some(receiver) = self.top_level_receiver() {
-                receiver.value_source(value)
-            } else {
-                self.buffer.push(Token::Bool(value));
-
-                Ok(())
-            }
-        }
-
         fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
-            if let Some(receiver) = self.top_level_receiver() {
+            if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
                 match value.take_ref() {
                     Ok(v) => {
                         self.buffer.push(Token::Str(Cow::Borrowed(v)));
-    
+
                         Ok(())
                     }
                     Err(v) => {
                         self.buffer
                             .push(Token::Str(Cow::Owned(v.into_result()?.to_owned())));
-    
+
                         Ok(())
                     }
                 }
+            }
+        }
+
+        fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+            if let Some(mut receiver) = self.top_level_receiver() {
+                receiver.value_source(value)
+            } else {
+                value.stream(self)
             }
         }
 
@@ -178,6 +171,22 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     Ok(())
 }
 
+pub trait BufferReceiver<'a> {
+    fn value_source<'v: 'a, T: Value + ?Sized, R: Value + ?Sized + 'v, S: ValueSource<'v, T, R>>(
+        &mut self,
+        value: S,
+    ) -> Result;
+}
+
+impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
+    fn value_source<'v: 'a, T: Value + ?Sized, U: Value + ?Sized + 'v, S: ValueSource<'v, T, U>>(
+        &mut self,
+        value: S,
+    ) -> Result {
+        (**self).value_source(value)
+    }
+}
+
 struct Buffer<'a> {
     buf: Vec<Token<'a>>,
     idx: usize,
@@ -200,21 +209,10 @@ impl<'a> Buffer<'a> {
     }
 }
 
-enum Token<'a> {
-    Display(String),
-    Str(Cow<'a, str>),
-    Bool(bool),
-    None,
-}
-
 impl<'a> Value for Buffer<'a> {
     fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
         for token in &self.buf {
-            match token {
-                Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
-                Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
-                Token::Bool(value) => receiver.bool(*value)?,
-            }
+            token.stream(&mut receiver)?;
         }
 
         Ok(())
@@ -230,11 +228,7 @@ impl<'a> Source<'a> for Buffer<'a> {
             Some(token) => {
                 self.idx += 1;
 
-                match token {
-                    Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
-                    Token::Str(Cow::Owned(value)) => receiver.str(for_all(value))?,
-                    Token::Bool(value) => receiver.bool(*value)?,
-                }
+                token.stream(&mut receiver)?;
 
                 Ok(Stream::Yield)
             }
@@ -249,5 +243,42 @@ impl<'a> ValueSource<'a, Buffer<'a>> for Buffer<'a> {
     #[inline]
     fn take(&mut self) -> Result<&Buffer<'a>, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+enum Token<'a> {
+    Display(String),
+    Str(Cow<'a, str>),
+    None,
+    MapBegin(Option<usize>),
+    MapEnd,
+    MapKeyBegin,
+    MapKeyEnd,
+    MapValueBegin,
+    MapValueEnd,
+    SeqBegin(Option<usize>),
+    SeqEnd,
+    SeqElemBegin,
+    SeqElemEnd,
+}
+
+impl<'a> Token<'a> {
+    fn stream(&self, mut receiver: impl Receiver<'a>) -> Result {
+        match self {
+            Token::Str(Cow::Borrowed(value)) => receiver.str(*value),
+            Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value)),
+            Token::Display(value) => receiver.display(value),
+            Token::None => receiver.none(),
+            Token::MapBegin(len) => receiver.map_begin(*len),
+            Token::MapEnd => receiver.map_end(),
+            Token::MapKeyBegin => receiver.map_key_begin(),
+            Token::MapKeyEnd => receiver.map_key_end(),
+            Token::MapValueBegin => receiver.map_value_begin(),
+            Token::MapValueEnd => receiver.map_value_end(),
+            Token::SeqBegin(len) => receiver.seq_begin(*len),
+            Token::SeqEnd => receiver.seq_end(),
+            Token::SeqElemBegin => receiver.seq_elem_begin(),
+            Token::SeqElemEnd => receiver.seq_elem_end(),
+        }
     }
 }

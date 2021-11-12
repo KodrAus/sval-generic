@@ -444,10 +444,6 @@ impl<S: Serializer> SerdeReceiver<S> {
 }
 
 impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
-    fn source<'b: 'a, V: receiver::Source<'b>>(&mut self, v: V) -> receiver::Result {
-        buffer(self, v)
-    }
-
     fn display<D: receiver::Display>(&mut self, v: D) -> receiver::Result {
         self.serialize_source(Display::new(v))
     }
@@ -482,6 +478,10 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
 
     fn str<'s: 'a, T: receiver::ValueSource<'s, str>>(&mut self, mut v: T) -> receiver::Result {
         self.serialize_source(v.take()?)
+    }
+
+    fn source<'b: 'a, V: receiver::Source<'b>>(&mut self, v: V) -> receiver::Result {
+        buffer(self, v)
     }
 
     fn type_tagged_begin<T: receiver::ValueSource<'static, str>>(
@@ -569,7 +569,12 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
 }
 
 impl<'a, S: Serializer> BufferReceiver<'a> for SerdeReceiver<S> {
-    fn value_source<'v: 'a, T: value::Value + ?Sized + 'v, VS: receiver::ValueSource<'v, T>>(
+    fn value_source<
+        'v: 'a,
+        T: value::Value + ?Sized,
+        U: value::Value + ?Sized + 'v,
+        VS: receiver::ValueSource<'v, T, U>,
+    >(
         &mut self,
         mut v: VS,
     ) -> receiver::Result {

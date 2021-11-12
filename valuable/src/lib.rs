@@ -177,16 +177,6 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn seq_begin(&mut self, len: Option<usize>) -> Result {
-                if let Detected::Unknown = self.0 {
-                    self.0 = Detected::Sequence(Sequence { len, seq: self.1 });
-
-                    Ok(())
-                } else {
-                    receiver::unsupported()
-                }
-            }
-
             fn map_end(&mut self) -> Result {
                 receiver::unsupported()
             }
@@ -205,6 +195,16 @@ impl<'a, V: value::Value> Detected<'a, V> {
 
             fn map_value_end(&mut self) -> Result {
                 receiver::unsupported()
+            }
+
+            fn seq_begin(&mut self, len: Option<usize>) -> Result {
+                if let Detected::Unknown = self.0 {
+                    self.0 = Detected::Sequence(Sequence { len, seq: self.1 });
+
+                    Ok(())
+                } else {
+                    receiver::unsupported()
+                }
             }
 
             fn seq_end(&mut self) -> Result {
@@ -319,8 +319,9 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         impl<'a, 'k, 'v, V: source::Source<'v>> BufferReceiver<'k> for BufferKey<'a, V> {
             fn value_source<
                 'b: 'k,
-                K: value::Value + ?Sized + 'b,
-                S: source::ValueSource<'b, K>,
+                K: value::Value + ?Sized,
+                R: value::Value + ?Sized + 'b,
+                S: source::ValueSource<'b, K, R>,
             >(
                 &mut self,
                 mut v: S,
@@ -330,8 +331,9 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
                 impl<'a, 'k, 'v, K: value::Value + ?Sized + 'k> BufferReceiver<'v> for BufferValue<'a, 'k, K> {
                     fn value_source<
                         'b: 'v,
-                        V: value::Value + ?Sized + 'b,
-                        S: source::ValueSource<'b, V>,
+                        V: value::Value + ?Sized,
+                        R: value::Value + ?Sized + 'b,
+                        S: source::ValueSource<'b, V, R>,
                     >(
                         &mut self,
                         mut v: S,
@@ -371,8 +373,9 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         impl<'a, 'e> BufferReceiver<'e> for BufferElem<'a> {
             fn value_source<
                 'b: 'e,
-                E: value::Value + ?Sized + 'b,
-                S: source::ValueSource<'b, E>,
+                E: value::Value + ?Sized,
+                R: value::Value + ?Sized + 'b,
+                S: source::ValueSource<'b, E, R>,
             >(
                 &mut self,
                 mut e: S,
