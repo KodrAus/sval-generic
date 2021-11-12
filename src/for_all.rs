@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 use crate::{
-    source::{StreamState, TakeError, ValueSource},
+    source::{Stream, TakeError, ValueSource},
     tag::{TypeTag, VariantTag},
     Error, Receiver, Result, Source, Value,
 };
@@ -38,7 +38,7 @@ impl<T: Value> Value for ForAll<T> {
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<StreamState>
+    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<Stream>
     where
         'a: 'c,
     {

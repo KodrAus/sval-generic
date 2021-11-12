@@ -3,6 +3,7 @@ use std::{borrow::ToOwned, fmt};
 use crate::Value;
 
 pub use crate::{
+    for_all::{for_all, ForAll},
     tag::{type_tag, variant_tag},
     Error, Receiver, Result,
 };
@@ -12,7 +13,7 @@ pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result
 }
 
 pub trait Source<'a> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
     where
         'a: 'b;
 
@@ -20,14 +21,14 @@ pub trait Source<'a> {
     where
         'a: 'b,
     {
-        while let StreamState::Yield = self.stream(&mut receiver)? {}
+        while let Stream::Yield = self.stream(&mut receiver)? {}
 
         Ok(())
     }
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
-    fn stream<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<StreamState>
+    fn stream<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {
@@ -43,7 +44,7 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
 }
 
 #[must_use]
-pub enum StreamState {
+pub enum Stream {
     Yield,
     Done,
 }
@@ -156,11 +157,11 @@ impl<'a, 'b, T: Value + ?Sized, S: ValueSource<'a, T> + ?Sized> ValueSource<'a, 
 }
 
 impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| StreamState::Done)
+        self.stream_to_end(receiver).map(|_| Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result

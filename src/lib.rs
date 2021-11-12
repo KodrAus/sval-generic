@@ -9,12 +9,10 @@ mod impls;
 #[cfg(feature = "derive")]
 pub use derive::*;
 
-#[doc(inline)]
 pub use self::{
-    for_all::{for_all, ForAll},
     receiver::Receiver,
-    source::Source,
-    value::Value,
+    source::{stream_to_end, Source},
+    value::{stream, Value},
 };
 
 #[derive(Debug)]
@@ -40,7 +38,7 @@ mod tests {
             fn stream<'a, S: value::Receiver<'a>>(&'a self, mut receiver: S) -> value::Result {
                 let mut short = |s: &str| {
                     receiver.map_field("field")?;
-                    receiver.map_value(crate::for_all(s))
+                    receiver.map_value(value::for_all(s))
                 };
 
                 short("value")
@@ -90,24 +88,24 @@ mod tests {
             fn stream<'b, R: source::Receiver<'b>>(
                 &mut self,
                 receiver: R,
-            ) -> source::Result<source::StreamState>
+            ) -> source::Result<source::Stream>
             where
                 'a: 'b,
             {
                 if let Some(ref mut current) = self.current {
                     match current.stream(receiver)? {
-                        source::StreamState::Yield => return Ok(source::StreamState::Yield),
-                        source::StreamState::Done => self.current = None,
+                        source::Stream::Yield => return Ok(source::Stream::Yield),
+                        source::Stream::Done => self.current = None,
                     }
                 }
 
                 if let Some(next) = self.remaining.pop() {
                     self.current = Some(next);
 
-                    return Ok(source::StreamState::Yield);
+                    return Ok(source::Stream::Yield);
                 }
 
-                Ok(source::StreamState::Done)
+                Ok(source::Stream::Done)
             }
         }
     }

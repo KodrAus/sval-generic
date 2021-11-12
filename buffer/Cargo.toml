@@ -7,3 +7,6 @@ publish = false
 
 [dependencies.sval-generic-api]
 path = "../"
+
+[dependencies.sval-generic-api-fmt]
+path = "../fmt"

@@ -5,6 +5,7 @@ use crate::{
 };
 
 pub use crate::{
+    for_all::{for_all, ForAll},
     tag::{type_tag, variant_tag},
     Receiver, Result,
 };

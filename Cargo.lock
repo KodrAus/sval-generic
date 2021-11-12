@@ -106,6 +106,7 @@ name = "sval-generic-api-buffer"
 version = "0.0.0"
 dependencies = [
  "sval-generic-api",
+ "sval-generic-api-fmt",
 ]
 
 [[package]]

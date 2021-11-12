@@ -9,12 +9,11 @@ impl Value for () {
 }
 
 impl<'a> Source<'a> for () {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -41,12 +40,11 @@ impl Value for bool {
 }
 
 impl<'a> Source<'a> for bool {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -72,12 +70,11 @@ impl Value for u8 {
 }
 
 impl<'a> Source<'a> for u8 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -104,12 +101,11 @@ impl Value for i8 {
 }
 
 impl<'a> Source<'a> for i8 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -136,12 +132,11 @@ impl Value for u16 {
 }
 
 impl<'a> Source<'a> for u16 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -168,12 +163,11 @@ impl Value for i16 {
 }
 
 impl<'a> Source<'a> for i16 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -200,12 +194,11 @@ impl Value for u32 {
 }
 
 impl<'a> Source<'a> for u32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -232,12 +225,11 @@ impl Value for i32 {
 }
 
 impl<'a> Source<'a> for i32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -264,12 +256,11 @@ impl Value for u64 {
 }
 
 impl<'a> Source<'a> for u64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -296,12 +287,11 @@ impl Value for i64 {
 }
 
 impl<'a> Source<'a> for i64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -328,12 +318,11 @@ impl Value for u128 {
 }
 
 impl<'a> Source<'a> for u128 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -360,12 +349,11 @@ impl Value for i128 {
 }
 
 impl<'a> Source<'a> for i128 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -392,12 +380,11 @@ impl Value for f32 {
 }
 
 impl<'a> Source<'a> for f32 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -424,12 +411,11 @@ impl Value for f64 {
 }
 
 impl<'a> Source<'a> for f64 {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -456,12 +442,11 @@ impl Value for str {
 }
 
 impl<'a> Source<'a> for str {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -493,19 +478,18 @@ impl Value for String {
 }
 
 impl<'a> Source<'a> for String {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
-        receiver.str(crate::for_all(self))
+        receiver.str(source::for_all(self))
     }
 }
 
@@ -548,12 +532,11 @@ impl<'a> Value for Cow<'a, str> {
 }
 
 impl<'a> Source<'a> for Cow<'a, str> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::StreamState>
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver)
-            .map(|_| source::StreamState::Done)
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
@@ -562,7 +545,7 @@ impl<'a> Source<'a> for Cow<'a, str> {
     {
         match self {
             Cow::Borrowed(v) => receiver.str(v),
-            Cow::Owned(v) => receiver.str(crate::for_all(v)),
+            Cow::Owned(v) => receiver.str(source::for_all(v)),
         }
     }
 }

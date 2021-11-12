@@ -2,7 +2,7 @@ use std::{borrow::ToOwned, error, fmt};
 
 use sval_generic_api::{
     receiver,
-    source::{self, StreamState},
+    source::{self, Stream},
     tag, value, Error, Result,
 };
 
@@ -744,7 +744,7 @@ pub fn source<'a, 'b>(source: &'b mut impl source::Source<'a>) -> Source<'a, 'b>
 }
 
 trait ErasedSource<'a> {
-    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b;
 
@@ -754,7 +754,7 @@ trait ErasedSource<'a> {
 }
 
 impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
-    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b,
     {
@@ -770,7 +770,7 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
 }
 
 impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<StreamState>
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {
@@ -800,7 +800,7 @@ pub fn value_source<'a, 'b, T: value::Value + ?Sized>(
 }
 
 trait ErasedValueSource<'a, T: value::Value + ?Sized> {
-    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b;
     fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
@@ -816,7 +816,7 @@ trait ErasedValueSource<'a, T: value::Value + ?Sized> {
 }
 
 impl<'a, U: value::Value + ?Sized, T: source::ValueSource<'a, U>> ErasedValueSource<'a, U> for T {
-    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<StreamState>
+    fn erased_stream<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result<Stream>
     where
         'a: 'b,
     {
@@ -872,7 +872,7 @@ impl<'a, 'b, T: value::Value + ?Sized> source::ValueSource<'a, T> for ValueSourc
 }
 
 impl<'a, 'b, T: value::Value + ?Sized> source::Source<'a> for ValueSource<'a, 'b, T> {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<StreamState>
+    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {

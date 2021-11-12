@@ -1,6 +1,6 @@
 use std::{
     error,
-    fmt::{self, Debug, Display, Formatter, Write},
+    fmt::{self, Write},
 };
 
 use sval_generic_api::{
@@ -20,20 +20,30 @@ pub fn value<V: value::Value>(v: V) -> Value<V> {
     Value::new(v)
 }
 
-impl<V: value::Value> Debug for Value<V> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+pub fn display<V: fmt::Display>(v: V) -> Value<V> {
+    Value::new(v)
+}
+
+impl<V: value::Value> fmt::Debug for Value<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.stream(FmtReceiver::new(f)).map_err(|_| fmt::Error)
     }
 }
 
+impl<V: fmt::Display> value::Value for Value<V> {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> value::Result {
+        receiver.display(&self.0)
+    }
+}
+
 struct FmtReceiver<'a, 'b: 'a> {
-    fmt: &'a mut Formatter<'b>,
+    fmt: &'a mut fmt::Formatter<'b>,
     depth: usize,
     is_current_depth_empty: bool,
 }
 
 impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
-    fn new(fmt: &'a mut Formatter<'b>) -> Self {
+    fn new(fmt: &'a mut fmt::Formatter<'b>) -> Self {
         FmtReceiver {
             depth: 0,
             is_current_depth_empty: false,
@@ -53,11 +63,11 @@ impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
 }
 
 impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
-    fn display<D: Display>(&mut self, v: D) -> receiver::Result {
+    fn display<D: fmt::Display>(&mut self, v: D) -> receiver::Result {
         struct Adapter<T>(T);
 
-        impl<T: Display> Debug for Adapter<T> {
-            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        impl<T: fmt::Display> fmt::Debug for Adapter<T> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 self.0.fmt(f)
             }
         }

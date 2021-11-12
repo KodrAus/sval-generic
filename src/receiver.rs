@@ -3,6 +3,7 @@ use std::error;
 use crate::value::Value;
 
 pub use crate::{
+    for_all::{for_all, ForAll},
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
     Error, Result,
@@ -82,6 +83,14 @@ pub trait Receiver<'a> {
         self.display(error.take()?)
     }
 
+    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
+        source.stream_to_end(self)
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        value.stream(self)
+    }
+
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         self.str(tag.ty)
     }
@@ -116,17 +125,34 @@ pub trait Receiver<'a> {
         self.map_end()
     }
 
+    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        tag: TypeTag<T>,
+        value: V,
+    ) -> Result {
+        self.type_tagged_begin(tag)?;
+        self.source(value)?;
+        self.type_tagged_end()
+    }
+
+    fn variant_tagged<
+        'v: 'a,
+        T: ValueSource<'static, str>,
+        K: ValueSource<'static, str>,
+        V: Source<'v>,
+    >(
+        &mut self,
+        tag: VariantTag<T, K>,
+        value: V,
+    ) -> Result {
+        self.variant_tagged_begin(tag)?;
+        self.source(value)?;
+        self.variant_tagged_end()
+    }
+
     fn map_begin(&mut self, len: Option<usize>) -> Result;
 
     fn map_end(&mut self) -> Result;
-
-    fn map_key_begin(&mut self) -> Result;
-
-    fn map_key_end(&mut self) -> Result;
-
-    fn map_value_begin(&mut self) -> Result;
-
-    fn map_value_end(&mut self) -> Result;
 
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
@@ -154,6 +180,48 @@ pub trait Receiver<'a> {
     fn variant_tagged_map_end(&mut self) -> Result {
         self.map_end()?;
         self.variant_tagged_end()
+    }
+
+    fn map_key_begin(&mut self) -> Result;
+
+    fn map_key_end(&mut self) -> Result;
+
+    fn map_value_begin(&mut self) -> Result;
+
+    fn map_value_end(&mut self) -> Result;
+
+    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result {
+        self.map_key(key)?;
+        self.map_value(value)
+    }
+
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
+        self.map_field(field)?;
+        self.map_value(value)
+    }
+
+    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
+        self.map_key(field)
+    }
+
+    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+        self.map_key_begin()?;
+        self.source(key)?;
+        self.map_key_end()
+    }
+
+    fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.map_value_begin()?;
+        self.source(value)?;
+        self.map_value_end()
     }
 
     fn seq_begin(&mut self, len: Option<usize>) -> Result;
@@ -191,73 +259,6 @@ pub trait Receiver<'a> {
     fn seq_elem_begin(&mut self) -> Result;
 
     fn seq_elem_end(&mut self) -> Result;
-
-    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
-        source.stream_to_end(self)
-    }
-
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        value.stream(self)
-    }
-
-    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
-        &mut self,
-        tag: TypeTag<T>,
-        value: V,
-    ) -> Result {
-        self.type_tagged_begin(tag)?;
-        self.source(value)?;
-        self.type_tagged_end()
-    }
-
-    fn variant_tagged<
-        'v: 'a,
-        T: ValueSource<'static, str>,
-        K: ValueSource<'static, str>,
-        V: Source<'v>,
-    >(
-        &mut self,
-        tag: VariantTag<T, K>,
-        value: V,
-    ) -> Result {
-        self.variant_tagged_begin(tag)?;
-        self.source(value)?;
-        self.variant_tagged_end()
-    }
-
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-        &mut self,
-        key: K,
-        value: V,
-    ) -> Result {
-        self.map_key(key)?;
-        self.map_value(value)
-    }
-
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result {
-        self.map_field(field)?;
-        self.map_value(value)
-    }
-
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        self.map_key_begin()?;
-        self.source(key)?;
-        self.map_key_end()
-    }
-
-    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
-        self.map_key(field)
-    }
-
-    fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.map_value_begin()?;
-        self.source(value)?;
-        self.map_value_end()
-    }
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
         self.seq_elem_begin()?;
