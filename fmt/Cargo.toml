@@ -1,7 +1,7 @@
 [package]
 name = "sval-generic-api-fmt"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies.sval-generic-api]
 path = "../"

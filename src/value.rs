@@ -16,7 +16,7 @@ pub fn stream<'a>(s: impl Receiver<'a>, v: &'a impl Value) -> Result {
 
 pub trait Value
 where
-    for<'a> &'a Self: Source<'a>,
+    for<'a> &'a Self: ValueSource<'a, Self>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
 
@@ -45,31 +45,6 @@ where
             }
 
             #[inline]
-            fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn seq_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_key<'k: 'a, K: Source<'k>>(&mut self, _: K) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_value<'v: 'a, V: Source<'v>>(&mut self, _: V) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
-                Ok(())
-            }
-
-            #[inline]
             fn map_key_begin(&mut self) -> Result {
                 self.0 = false;
                 receiver::unsupported()
@@ -94,6 +69,26 @@ where
             }
 
             #[inline]
+            fn map_key<'k: 'a, K: Source<'k>>(&mut self, _: K) -> Result {
+                Ok(())
+            }
+
+            #[inline]
+            fn map_value<'v: 'a, V: Source<'v>>(&mut self, _: V) -> Result {
+                Ok(())
+            }
+
+            #[inline]
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                Ok(())
+            }
+
+            #[inline]
+            fn seq_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            #[inline]
             fn seq_elem_begin(&mut self) -> Result {
                 self.0 = false;
                 receiver::unsupported()
@@ -103,6 +98,11 @@ where
             fn seq_elem_end(&mut self) -> Result {
                 self.0 = false;
                 receiver::unsupported()
+            }
+
+            #[inline]
+            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
+                Ok(())
             }
         }
 

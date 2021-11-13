@@ -26,7 +26,7 @@ impl<T> TypeTag<T> {
         TypeTag { ty: &mut self.ty }
     }
 
-    pub fn tag<V: Value>(self, value: V) -> TypeTagged<T, V> {
+    pub fn tag<'a, V: Source<'a>>(self, value: V) -> TypeTagged<T, V> {
         TypeTagged::new(self, value)
     }
 }
@@ -94,8 +94,8 @@ impl<T, K> VariantTag<T, K> {
         }
     }
 
-    pub fn tag<V: Value>(self, value: V) -> VariantTagged<T, K, V> {
-        VariantTagged::new(self, value)
+    pub fn tag<'a, V: Source<'a>>(self, source: V) -> VariantTagged<T, K, V> {
+        VariantTagged::new(self, source)
     }
 }
 

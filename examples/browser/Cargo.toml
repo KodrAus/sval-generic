@@ -1,0 +1,17 @@
+[package]
+name = "sval-generic-api-example-browser"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies.sval-generic-api]
+path = "../../"
+features = ["derive"]
+
+[dependencies.sval-generic-api-js]
+path = "../../js"
+
+[dependencies.wasm-bindgen]
+version = "0.2"

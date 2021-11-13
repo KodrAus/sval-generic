@@ -1,13 +1,14 @@
 [package]
 name = "sval-generic-api"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [workspace]
 members = [
     "coroutine",
     "derive",
     "json",
+    "js",
     "fmt",
     "serde",
     "valuable",
@@ -15,7 +16,8 @@ members = [
     "buffer",
     "json/benches/twitter",
     "json/benches/profile",
-    "json/tests/twitter"
+    "json/tests/twitter",
+    "examples/browser"
 ]
 
 [dependencies.derive]

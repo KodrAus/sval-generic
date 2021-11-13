@@ -271,14 +271,6 @@ impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
 where
     R: Receiver<'a>,
 {
-    fn source<'v: 'a, S: Source<'v>>(&mut self, value: S) -> Result {
-        (**self).source(value)
-    }
-
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        (**self).value(value)
-    }
-
     fn display<D: Display>(&mut self, fmt: D) -> Result {
         (**self).display(fmt)
     }
@@ -354,6 +346,14 @@ where
         (**self).error(error)
     }
 
+    fn source<'v: 'a, S: Source<'v>>(&mut self, value: S) -> Result {
+        (**self).source(value)
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        (**self).value(value)
+    }
+
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
         (**self).type_tag(tag)
     }
@@ -413,22 +413,6 @@ where
         (**self).map_end()
     }
 
-    fn map_key_begin(&mut self) -> Result {
-        (**self).map_key_begin()
-    }
-
-    fn map_key_end(&mut self) -> Result {
-        (**self).map_key_end()
-    }
-
-    fn map_value_begin(&mut self) -> Result {
-        (**self).map_value_begin()
-    }
-
-    fn map_value_end(&mut self) -> Result {
-        (**self).map_value_end()
-    }
-
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
@@ -453,6 +437,22 @@ where
         (**self).variant_tagged_map_end()
     }
 
+    fn map_key_begin(&mut self) -> Result {
+        (**self).map_key_begin()
+    }
+
+    fn map_key_end(&mut self) -> Result {
+        (**self).map_key_end()
+    }
+
+    fn map_value_begin(&mut self) -> Result {
+        (**self).map_value_begin()
+    }
+
+    fn map_value_end(&mut self) -> Result {
+        (**self).map_value_end()
+    }
+
     fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
@@ -469,12 +469,12 @@ where
         (**self).map_field_entry(field, value)
     }
 
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        (**self).map_key(key)
-    }
-
     fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
         (**self).map_field(field)
+    }
+
+    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+        (**self).map_key(key)
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
