@@ -106,8 +106,78 @@ impl<'a> Receiver<'a> for JsReceiver {
     }
 
     #[inline]
+    fn u8(&mut self, v: u8) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn u16(&mut self, v: u16) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn u32(&mut self, v: u32) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn u64(&mut self, v: u64) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn u128(&mut self, v: u128) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn i8(&mut self, v: i8) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn i16(&mut self, v: i16) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn i32(&mut self, v: i32) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn i64(&mut self, v: i64) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn i128(&mut self, v: i128) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn f32(&mut self, v: f32) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn f64(&mut self, v: f64) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
+    fn bool(&mut self, v: bool) -> receiver::Result {
+        self.push(v)
+    }
+
+    #[inline]
     fn none(&mut self) -> receiver::Result {
         self.push(JsValue::null())
+    }
+
+    #[inline]
+    fn str<'v: 'a, V: receiver::ValueSource<'v, str>>(&mut self, mut v: V) -> receiver::Result {
+        self.push(v.take()?)
     }
 
     #[inline]
