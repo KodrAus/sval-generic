@@ -211,8 +211,8 @@ impl<'a> Buffer<'a> {
 
 impl<'a> Value for Buffer<'a> {
     fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
-        for token in &self.buf {
-            token.stream(&mut receiver)?;
+        for mut token in &self.buf {
+            token.stream_to_end(&mut receiver)?;
         }
 
         Ok(())
@@ -225,10 +225,10 @@ impl<'a> Source<'a> for Buffer<'a> {
         'a: 'b,
     {
         match self.buf.get(self.idx) {
-            Some(token) => {
+            Some(mut token) => {
                 self.idx += 1;
 
-                token.stream(&mut receiver)?;
+                token.stream_to_end(&mut receiver)?;
 
                 Ok(Stream::Yield)
             }
@@ -262,23 +262,28 @@ enum Token<'a> {
     SeqElemEnd,
 }
 
-impl<'a> Token<'a> {
-    fn stream(&self, mut receiver: impl Receiver<'a>) -> Result {
-        match self {
-            Token::Str(Cow::Borrowed(value)) => receiver.str(*value),
-            Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value)),
-            Token::Display(value) => receiver.display(value),
-            Token::None => receiver.none(),
-            Token::MapBegin(len) => receiver.map_begin(*len),
-            Token::MapEnd => receiver.map_end(),
-            Token::MapKeyBegin => receiver.map_key_begin(),
-            Token::MapKeyEnd => receiver.map_key_end(),
-            Token::MapValueBegin => receiver.map_value_begin(),
-            Token::MapValueEnd => receiver.map_value_end(),
-            Token::SeqBegin(len) => receiver.seq_begin(*len),
-            Token::SeqEnd => receiver.seq_end(),
-            Token::SeqElemBegin => receiver.seq_elem_begin(),
-            Token::SeqElemEnd => receiver.seq_elem_end(),
-        }
+impl<'a, 'b> Source<'a> for &'b Token<'a> {
+    fn stream<'c, R: Receiver<'c>>(&mut self, mut receiver: R) -> Result<Stream>
+    where
+        'a: 'c,
+    {
+        match *self {
+            Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
+            Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value))?,
+            Token::Display(value) => receiver.display(value)?,
+            Token::None => receiver.none()?,
+            Token::MapBegin(len) => receiver.map_begin(*len)?,
+            Token::MapEnd => receiver.map_end()?,
+            Token::MapKeyBegin => receiver.map_key_begin()?,
+            Token::MapKeyEnd => receiver.map_key_end()?,
+            Token::MapValueBegin => receiver.map_value_begin()?,
+            Token::MapValueEnd => receiver.map_value_end()?,
+            Token::SeqBegin(len) => receiver.seq_begin(*len)?,
+            Token::SeqEnd => receiver.seq_end()?,
+            Token::SeqElemBegin => receiver.seq_elem_begin()?,
+            Token::SeqElemEnd => receiver.seq_elem_end()?,
+        };
+
+        Ok(Stream::Done)
     }
 }
