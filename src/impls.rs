@@ -1,6 +1,4 @@
-use std::{borrow::Cow, error};
-
-use crate::{source, Receiver, Source, Value};
+use crate::{receiver, source, Receiver, Source, Value};
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -466,112 +464,6 @@ impl<'a> source::ValueSource<'a, str> for str {
     }
 }
 
-impl Value for String {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.str(&**self)
-    }
-
-    #[inline]
-    fn to_str(&self) -> Option<&str> {
-        Some(self)
-    }
-}
-
-impl<'a> Source<'a> for String {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        receiver.str(source::for_all(self))
-    }
-}
-
-impl<'a> source::ValueSource<'a, str> for String {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-        Ok(&**self)
-    }
-
-    #[inline]
-    fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-        Ok(std::mem::take(self))
-    }
-}
-
-impl<'a> source::ValueSource<'a, str> for &'a String {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-        Ok(&**self)
-    }
-}
-
-impl<'a> Value for Cow<'a, str> {
-    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> crate::Result {
-        receiver.str(&**self)
-    }
-
-    #[inline]
-    fn to_str(&self) -> Option<&str> {
-        if let Cow::Borrowed(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a> Source<'a> for Cow<'a, str> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        match self {
-            Cow::Borrowed(v) => receiver.str(v),
-            Cow::Owned(v) => receiver.str(source::for_all(v)),
-        }
-    }
-}
-
-impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-        Ok(&**self)
-    }
-
-    #[inline]
-    fn take_ref(&mut self) -> Result<&'a str, source::TakeRefError<&str, Self::Error>> {
-        match self {
-            Cow::Borrowed(v) => Ok(v),
-            Cow::Owned(v) => Err(source::TakeRefError::from_value(v)),
-        }
-    }
-
-    #[inline]
-    fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-        Ok(std::mem::take(self).into_owned())
-    }
-}
-
 impl<T> Value for Option<T>
 where
     T: Value,
@@ -614,15 +506,6 @@ where
     }
 }
 
-impl<T> Value for Vec<T>
-where
-    T: Value,
-{
-    fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
-        (&**self).stream(stream)
-    }
-}
-
 impl<T, U> Value for (T, U)
 where
     T: Value,
@@ -636,17 +519,142 @@ where
     }
 }
 
-impl<T: ?Sized> Value for Box<T>
-where
-    T: Value,
-{
-    fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
-        (**self).stream(stream)
+impl Value for dyn receiver::Error + 'static {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+        receiver.error(self)
     }
 }
 
-impl Value for dyn error::Error + 'static {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.error(self)
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::{
+        for_all,
+        std::{borrow::Cow, boxed::Box, string::String, vec::Vec},
+    };
+
+    impl<T> Value for Vec<T>
+    where
+        T: Value,
+    {
+        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
+            (&**self).stream(stream)
+        }
+    }
+
+    impl<T: ?Sized> Value for Box<T>
+    where
+        T: Value,
+    {
+        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
+            (**self).stream(stream)
+        }
+    }
+
+    impl Value for String {
+        fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+            receiver.str(&**self)
+        }
+
+        #[inline]
+        fn to_str(&self) -> Option<&str> {
+            Some(self)
+        }
+    }
+
+    impl<'a> Source<'a> for String {
+        fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        where
+            'a: 'b,
+        {
+            receiver.str(for_all(self))
+        }
+    }
+
+    impl<'a> source::ValueSource<'a, str> for String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(std::mem::take(self))
+        }
+    }
+
+    impl<'a> source::ValueSource<'a, str> for &'a String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+    }
+
+    impl<'a> Value for Cow<'a, str> {
+        fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> crate::Result {
+            receiver.str(&**self)
+        }
+
+        #[inline]
+        fn to_str(&self) -> Option<&str> {
+            if let Cow::Borrowed(v) = self {
+                Some(v)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl<'a> Source<'a> for Cow<'a, str> {
+        fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        where
+            'a: 'b,
+        {
+            match self {
+                Cow::Borrowed(v) => receiver.str(v),
+                Cow::Owned(v) => receiver.str(for_all(v)),
+            }
+        }
+    }
+
+    impl<'a> source::ValueSource<'a, str> for Cow<'a, str> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+
+        #[inline]
+        fn take_ref(&mut self) -> Result<&'a str, source::TakeRefError<&str, Self::Error>> {
+            match self {
+                Cow::Borrowed(v) => Ok(v),
+                Cow::Owned(v) => Err(source::TakeRefError::from_value(v)),
+            }
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(std::mem::take(self).into_owned())
+        }
     }
 }

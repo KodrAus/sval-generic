@@ -1,9 +1,9 @@
-use std::{error, fmt};
-
 use crate::{
+    receiver,
     source::{Stream, TakeError, ValueSource},
+    std::fmt,
     tag::{TypeTag, VariantTag},
-    Error, Receiver, Result, Source, Value,
+    Receiver, Result, Source, Value,
 };
 
 pub fn for_all<T>(value: T) -> ForAll<T> {
@@ -57,7 +57,7 @@ impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> Val
     for ForAll<T>
 {
     // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
-    type Error = Error;
+    type Error = crate::Error;
 
     fn take(&mut self) -> Result<&U, TakeError<Self::Error>> {
         self.0
@@ -135,7 +135,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.str(ForAll(value))
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
+    fn error<'e: 'a, E: ValueSource<'e, dyn receiver::Error + 'static>>(
         &mut self,
         error: E,
     ) -> Result {

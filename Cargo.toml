@@ -20,6 +20,10 @@ members = [
     "examples/browser"
 ]
 
+[features]
+std = ["alloc"]
+alloc = []
+
 [dependencies.derive]
 package = "sval-generic-api-derive"
 path = "derive"

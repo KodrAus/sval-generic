@@ -1,15 +1,8 @@
-use std::error;
-
-use crate::value::Value;
-
-pub use crate::{
-    for_all::{for_all, ForAll},
+use crate::{
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
-    Error, Result,
+    Result, Value,
 };
-
-pub use std::fmt::Display;
 
 pub trait Receiver<'a> {
     fn display<D: Display>(&mut self, fmt: D) -> Result;
@@ -76,10 +69,7 @@ pub trait Receiver<'a> {
         self.display(value.take()?)
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
-        &mut self,
-        mut error: E,
-    ) -> Result {
+    fn error<'e: 'a, E: ValueSource<'e, dyn Error + 'static>>(&mut self, mut error: E) -> Result {
         self.display(error.take()?)
     }
 
@@ -339,10 +329,7 @@ where
         (**self).str(value)
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn error::Error + 'static>>(
-        &mut self,
-        error: E,
-    ) -> Result {
+    fn error<'e: 'a, E: ValueSource<'e, dyn Error + 'static>>(&mut self, error: E) -> Result {
         (**self).error(error)
     }
 
@@ -526,6 +513,18 @@ where
     }
 }
 
+mod private {
+    pub trait Polyfill {}
+}
+
+pub use crate::std::fmt::Display;
+
+#[cfg(not(feature = "std"))]
+pub trait Error: Display + private::Polyfill {}
+
+#[cfg(feature = "std")]
+pub use crate::std::error::Error;
+
 pub fn unsupported() -> Result {
-    Err(Error)
+    Err(crate::Error)
 }

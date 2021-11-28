@@ -1,3 +1,17 @@
+#![cfg_attr(not(test), no_std)]
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+mod std {
+    pub use alloc::*;
+    pub use core::*;
+}
+
+#[cfg(all(not(feature = "alloc"), not(feature = "std")))]
+extern crate core as std;
+
 pub mod receiver;
 pub mod source;
 pub mod tag;
@@ -10,6 +24,7 @@ mod impls;
 pub use derive::*;
 
 pub use self::{
+    for_all::{for_all, ForAll},
     receiver::Receiver,
     source::{stream_to_end, Source},
     value::{stream, Value},

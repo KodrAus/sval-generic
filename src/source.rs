@@ -1,12 +1,4 @@
-use std::{borrow::ToOwned, fmt};
-
-use crate::Value;
-
-pub use crate::{
-    for_all::{for_all, ForAll},
-    tag::{type_tag, variant_tag},
-    Error, Receiver, Result,
-};
+use crate::{std::fmt, Error, Receiver, Result, Value};
 
 pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream_to_end(s)
@@ -65,7 +57,14 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
         T: ToOwned,
         T::Owned: Value,
     {
-        self.take().map(ToOwned::to_owned)
+        #[cfg(not(feature = "std"))]
+        {
+            unreachable!()
+        }
+        #[cfg(feature = "std")]
+        {
+            self.take().map(ToOwned::to_owned)
+        }
     }
 }
 
@@ -129,7 +128,14 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
         T: ToOwned,
         T::Owned: Value,
     {
-        Ok(self.to_owned())
+        #[cfg(not(feature = "std"))]
+        {
+            unreachable!()
+        }
+        #[cfg(feature = "std")]
+        {
+            Ok(self.to_owned())
+        }
     }
 }
 
@@ -219,3 +225,15 @@ impl<T, E> From<TakeError<E>> for TakeRefError<T, E> {
         TakeRefError::from_error(err.into_error())
     }
 }
+
+mod private {
+    pub trait Polyfill {}
+}
+
+#[cfg(not(feature = "std"))]
+pub trait ToOwned: private::Polyfill {
+    type Owned;
+}
+
+#[cfg(feature = "std")]
+pub use crate::std::borrow::ToOwned;

@@ -1,12 +1,7 @@
 use crate::{
     receiver::{self, Display},
-    source::{Source, ValueSource},
+    source::ValueSource,
     tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
-};
-
-pub use crate::{
-    for_all::{for_all, ForAll},
-    tag::{type_tag, variant_tag},
     Receiver, Result,
 };
 
@@ -19,97 +14,6 @@ where
     for<'a> &'a Self: ValueSource<'a, Self>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
-
-    fn is_unbuffered(&self) -> bool {
-        struct Check(bool);
-
-        impl<'a> Receiver<'a> for Check {
-            #[inline]
-            fn display<D: Display>(&mut self, _: D) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn none(&mut self) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_begin(&mut self, _: Option<usize>) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_key_begin(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn map_key_end(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn map_value_begin(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn map_value_end(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn map_key<'k: 'a, K: Source<'k>>(&mut self, _: K) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn map_value<'v: 'a, V: Source<'v>>(&mut self, _: V) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn seq_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            #[inline]
-            fn seq_elem_begin(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn seq_elem_end(&mut self) -> Result {
-                self.0 = false;
-                receiver::unsupported()
-            }
-
-            #[inline]
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
-                Ok(())
-            }
-        }
-
-        let mut receiver = Check(true);
-        let _ = self.stream(&mut receiver);
-        receiver.0
-    }
 
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a>(Option<&'a str>);
