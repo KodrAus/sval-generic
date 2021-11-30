@@ -709,6 +709,37 @@ impl<'a> source::ValueSource<'a, Digits> for f64 {
     }
 }
 
+impl Value for char {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+        receiver.char(*self)
+    }
+}
+
+impl<'a> Source<'a> for char {
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| source::Stream::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    where
+        'a: 'b,
+    {
+        receiver.char(*self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, char> for char {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&char, source::TakeError<Self::Error>> {
+        Ok(self)
+    }
+}
+
 impl Value for str {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.str(self)
@@ -766,7 +797,7 @@ where
     T: Value,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(Some(self.len()))?;
+        receiver.seq_begin(receiver::Size::Variable(self.len()))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
@@ -781,7 +812,7 @@ where
     T: Value,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(Some(self.len()))?;
+        receiver.seq_begin(receiver::Size::Fixed(self.len()))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
@@ -797,7 +828,7 @@ where
     U: Value,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(Some(2))?;
+        receiver.seq_begin(receiver::Size::Fixed(2))?;
         receiver.seq_elem(&self.0)?;
         receiver.seq_elem(&self.1)?;
         receiver.seq_end()

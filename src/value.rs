@@ -41,7 +41,7 @@ where
             }
 
             #[inline]
-            fn map_begin(&mut self, _: Option<usize>) -> Result {
+            fn map_begin(&mut self, _: receiver::Size) -> Result {
                 receiver::unsupported()
             }
 
@@ -71,7 +71,7 @@ where
             }
 
             #[inline]
-            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+            fn seq_begin(&mut self, _: receiver::Size) -> Result {
                 receiver::unsupported()
             }
 

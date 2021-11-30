@@ -197,8 +197,8 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.variant_tagged(tag, ForAll(value))
     }
 
-    fn map_begin(&mut self, len: Option<usize>) -> Result {
-        self.0.map_begin(len)
+    fn map_begin(&mut self, size: receiver::Size) -> Result {
+        self.0.map_begin(size)
     }
 
     fn map_end(&mut self) -> Result {
@@ -208,9 +208,9 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
-        len: Option<usize>,
+        size: receiver::Size,
     ) -> Result {
-        self.0.type_tagged_map_begin(tag, len)
+        self.0.type_tagged_map_begin(tag, size)
     }
 
     fn type_tagged_map_end(&mut self) -> Result {
@@ -220,9 +220,9 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
-        len: Option<usize>,
+        size: receiver::Size,
     ) -> Result {
-        self.0.variant_tagged_map_begin(tag, len)
+        self.0.variant_tagged_map_begin(tag, size)
     }
 
     fn variant_tagged_map_end(&mut self) -> Result {
@@ -273,8 +273,8 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.map_value(ForAll(value))
     }
 
-    fn seq_begin(&mut self, len: Option<usize>) -> Result {
-        self.0.seq_begin(len)
+    fn seq_begin(&mut self, size: receiver::Size) -> Result {
+        self.0.seq_begin(size)
     }
 
     fn seq_end(&mut self) -> Result {
@@ -284,9 +284,9 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: TypeTag<T>,
-        len: Option<usize>,
+        size: receiver::Size,
     ) -> Result {
-        self.0.type_tagged_seq_begin(tag, len)
+        self.0.type_tagged_seq_begin(tag, size)
     }
 
     fn type_tagged_seq_end(&mut self) -> Result {
@@ -296,9 +296,9 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: VariantTag<T, K>,
-        len: Option<usize>,
+        size: receiver::Size,
     ) -> Result {
-        self.0.variant_tagged_seq_begin(tag, len)
+        self.0.variant_tagged_seq_begin(tag, size)
     }
 
     fn variant_tagged_seq_end(&mut self) -> Result {

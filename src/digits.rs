@@ -79,6 +79,7 @@ pub struct Formatter<'a> {
 }
 
 impl<'a> Formatter<'a> {
+    #[inline]
     fn new(digits: &'a Digits) -> Self {
         Formatter {
             digits,
@@ -93,6 +94,7 @@ impl<'a> Formatter<'a> {
 }
 
 impl<'a> fmt::Display for Formatter<'a> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct Checked<'a, 'b> {
             inspect: Inspect,
@@ -100,6 +102,7 @@ impl<'a> fmt::Display for Formatter<'a> {
         }
 
         impl<'a, 'b> Write for Checked<'a, 'b> {
+            #[inline]
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 if let Some(s) = self.inspect.next(s) {
                     self.dst.write_str(s)
@@ -161,6 +164,7 @@ enum State {
 }
 
 impl Default for Inspect {
+    #[inline]
     fn default() -> Self {
         Inspect {
             state: State::Sign,
@@ -172,6 +176,7 @@ impl Default for Inspect {
 }
 
 impl Inspect {
+    #[inline]
     fn read(v: impl fmt::Display) -> Option<Self> {
         let mut inspect = Inspect::default();
         let _ = write!(&mut inspect, "{}", &v);
@@ -183,6 +188,7 @@ impl Inspect {
         }
     }
 
+    #[inline]
     fn next<'a>(&mut self, s: &'a str) -> Option<&'a str> {
         let mut slice_from = 0..s.len();
 
@@ -224,6 +230,7 @@ impl Inspect {
         s.get(slice_from)
     }
 
+    #[inline]
     fn finish(&mut self) -> bool {
         match self.state {
             State::Digits(c) | State::Fractional(c) if c > 0 => {
@@ -239,6 +246,7 @@ impl Inspect {
 }
 
 impl Write for Inspect {
+    #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let _ = self.next(s);
         Ok(())
