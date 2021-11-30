@@ -1,4 +1,4 @@
-use crate::{num::Number, receiver, source, Receiver, Source, Value};
+use crate::{digits::Digits, receiver, source, Error, Receiver, Source, Value};
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -92,26 +92,26 @@ impl<'a> source::ValueSource<'a, u8> for u8 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a u8 {
+impl<'a> source::ValueSource<'a, Digits> for &'a u8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for u8 {
+impl<'a> source::ValueSource<'a, Digits> for u8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -146,26 +146,26 @@ impl<'a> source::ValueSource<'a, i8> for i8 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a i8 {
+impl<'a> source::ValueSource<'a, Digits> for &'a i8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for i8 {
+impl<'a> source::ValueSource<'a, Digits> for i8 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -200,26 +200,26 @@ impl<'a> source::ValueSource<'a, u16> for u16 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a u16 {
+impl<'a> source::ValueSource<'a, Digits> for &'a u16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for u16 {
+impl<'a> source::ValueSource<'a, Digits> for u16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -254,26 +254,26 @@ impl<'a> source::ValueSource<'a, i16> for i16 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a i16 {
+impl<'a> source::ValueSource<'a, Digits> for &'a i16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for i16 {
+impl<'a> source::ValueSource<'a, Digits> for i16 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -308,26 +308,26 @@ impl<'a> source::ValueSource<'a, u32> for u32 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a u32 {
+impl<'a> source::ValueSource<'a, Digits> for &'a u32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for u32 {
+impl<'a> source::ValueSource<'a, Digits> for u32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -362,26 +362,26 @@ impl<'a> source::ValueSource<'a, i32> for i32 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a i32 {
+impl<'a> source::ValueSource<'a, Digits> for &'a i32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for i32 {
+impl<'a> source::ValueSource<'a, Digits> for i32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -416,26 +416,26 @@ impl<'a> source::ValueSource<'a, u64> for u64 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a u64 {
+impl<'a> source::ValueSource<'a, Digits> for &'a u64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for u64 {
+impl<'a> source::ValueSource<'a, Digits> for u64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -470,26 +470,26 @@ impl<'a> source::ValueSource<'a, i64> for i64 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a i64 {
+impl<'a> source::ValueSource<'a, Digits> for &'a i64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for i64 {
+impl<'a> source::ValueSource<'a, Digits> for i64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -524,26 +524,26 @@ impl<'a> source::ValueSource<'a, u128> for u128 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a u128 {
+impl<'a> source::ValueSource<'a, Digits> for &'a u128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for u128 {
+impl<'a> source::ValueSource<'a, Digits> for u128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -578,26 +578,26 @@ impl<'a> source::ValueSource<'a, i128> for i128 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a i128 {
+impl<'a> source::ValueSource<'a, Digits> for &'a i128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for i128 {
+impl<'a> source::ValueSource<'a, Digits> for i128 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -632,26 +632,26 @@ impl<'a> source::ValueSource<'a, f32> for f32 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a f32 {
+impl<'a> source::ValueSource<'a, Digits> for &'a f32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for f32 {
+impl<'a> source::ValueSource<'a, Digits> for f32 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -686,26 +686,26 @@ impl<'a> source::ValueSource<'a, f64> for f64 {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a f64 {
+impl<'a> source::ValueSource<'a, Digits> for &'a f64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
-        Ok(Number::new(*self))
+    fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+        Ok(Digits::new_unchecked(*self))
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for f64 {
+impl<'a> source::ValueSource<'a, Digits> for f64 {
     type Error = source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Ok(Digits::new_unchecked(self))
     }
 }
 
@@ -740,12 +740,12 @@ impl<'a> source::ValueSource<'a, str> for str {
     }
 }
 
-impl<'a> source::ValueSource<'a, Number> for &'a str {
-    type Error = source::Impossible;
+impl<'a> source::ValueSource<'a, Digits> for &'a str {
+    type Error = Error;
 
     #[inline]
-    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
-        Ok(Number::new(self))
+    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
+        Digits::new(self).map_err(source::TakeError::from_error)
     }
 }
 

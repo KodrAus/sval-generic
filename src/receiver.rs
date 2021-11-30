@@ -1,4 +1,5 @@
 use crate::{
+    digits::Digits,
     source::{Source, ValueSource},
     tag::{TypeTag, VariantTag},
     Result, Value,
@@ -40,11 +41,11 @@ pub trait Receiver<'a> {
     }
 
     fn u128(&mut self, value: u128) -> Result {
-        self.num(value)
+        self.digits(value)
     }
 
     fn i128(&mut self, value: i128) -> Result {
-        self.num(value)
+        self.digits(value)
     }
 
     fn f32(&mut self, value: f32) -> Result {
@@ -52,10 +53,10 @@ pub trait Receiver<'a> {
     }
 
     fn f64(&mut self, value: f64) -> Result {
-        self.num(value)
+        self.digits(value)
     }
 
-    fn num<'n: 'a, N: ValueSource<'n, Number>>(&mut self, mut value: N) -> Result {
+    fn digits<'n: 'a, N: ValueSource<'n, Digits>>(&mut self, mut value: N) -> Result {
         self.display(value.take()?)
     }
 
@@ -317,8 +318,8 @@ where
         (**self).f64(value)
     }
 
-    fn num<'n: 'a, N: ValueSource<'n, Number>>(&mut self, value: N) -> Result {
-        (**self).num(value)
+    fn digits<'n: 'a, N: ValueSource<'n, Digits>>(&mut self, value: N) -> Result {
+        (**self).digits(value)
     }
 
     fn bool(&mut self, value: bool) -> Result {
@@ -532,8 +533,6 @@ pub trait Error: Display + private::Polyfill {}
 
 #[cfg(feature = "std")]
 pub use crate::std::error::Error;
-
-pub use crate::num::Number;
 
 pub fn unsupported() -> Result {
     Err(crate::Error)
