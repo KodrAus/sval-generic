@@ -19,10 +19,12 @@ pub mod value;
 
 mod for_all;
 mod impls;
+mod num;
 
 #[cfg(feature = "derive")]
 pub use derive::*;
 
+#[doc(inline)]
 pub use self::{
     for_all::{for_all, ForAll},
     receiver::Receiver,

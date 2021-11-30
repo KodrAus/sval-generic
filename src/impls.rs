@@ -1,4 +1,4 @@
-use crate::{receiver, source, Receiver, Source, Value};
+use crate::{num::Number, receiver, source, Receiver, Source, Value};
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -92,6 +92,29 @@ impl<'a> source::ValueSource<'a, u8> for u8 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a u8 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for u8 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for i8 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.i8(*self)
@@ -120,6 +143,29 @@ impl<'a> source::ValueSource<'a, i8> for i8 {
     #[inline]
     fn take(&mut self) -> Result<&i8, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a i8 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for i8 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
@@ -154,6 +200,29 @@ impl<'a> source::ValueSource<'a, u16> for u16 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a u16 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for u16 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for i16 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.i16(*self)
@@ -182,6 +251,29 @@ impl<'a> source::ValueSource<'a, i16> for i16 {
     #[inline]
     fn take(&mut self) -> Result<&i16, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a i16 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for i16 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
@@ -216,6 +308,29 @@ impl<'a> source::ValueSource<'a, u32> for u32 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a u32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for u32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for i32 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.i32(*self)
@@ -244,6 +359,29 @@ impl<'a> source::ValueSource<'a, i32> for i32 {
     #[inline]
     fn take(&mut self) -> Result<&i32, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a i32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for i32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
@@ -278,6 +416,29 @@ impl<'a> source::ValueSource<'a, u64> for u64 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a u64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for u64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for i64 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.i64(*self)
@@ -306,6 +467,29 @@ impl<'a> source::ValueSource<'a, i64> for i64 {
     #[inline]
     fn take(&mut self) -> Result<&i64, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a i64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for i64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
@@ -340,6 +524,29 @@ impl<'a> source::ValueSource<'a, u128> for u128 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a u128 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for u128 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for i128 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.i128(*self)
@@ -368,6 +575,29 @@ impl<'a> source::ValueSource<'a, i128> for i128 {
     #[inline]
     fn take(&mut self) -> Result<&i128, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a i128 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for i128 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
@@ -402,6 +632,29 @@ impl<'a> source::ValueSource<'a, f32> for f32 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a f32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for f32 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for f64 {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.f64(*self)
@@ -433,6 +686,29 @@ impl<'a> source::ValueSource<'a, f64> for f64 {
     }
 }
 
+impl<'a> source::ValueSource<'a, Number> for &'a f64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Number, source::TakeRefError<&Number, Self::Error>> {
+        Ok(Number::new(*self))
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for f64 {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
+    }
+}
+
 impl Value for str {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.str(self)
@@ -461,6 +737,15 @@ impl<'a> source::ValueSource<'a, str> for str {
     #[inline]
     fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
         Ok(self)
+    }
+}
+
+impl<'a> source::ValueSource<'a, Number> for &'a str {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Number, source::TakeError<Self::Error>> {
+        Ok(Number::new(self))
     }
 }
 
