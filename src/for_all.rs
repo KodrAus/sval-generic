@@ -55,7 +55,6 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
 impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> ValueSource<'a, U, V>
     for ForAll<T>
 {
-    // NOTE: We can't use `T::Error` here or `'b` becomes unconstrained
     type Error = crate::Error;
 
     fn take(&mut self) -> Result<&U, TakeError<Self::Error>> {
@@ -68,6 +67,10 @@ impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> Val
 impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
     fn unstructured<D: fmt::Display>(&mut self, fmt: D) -> Result {
         self.0.unstructured(fmt)
+    }
+
+    fn none(&mut self) -> Result {
+        self.0.none()
     }
 
     fn u8(&mut self, value: u8) -> Result {
@@ -122,10 +125,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.bool(value)
     }
 
-    fn none(&mut self) -> Result {
-        self.0.none()
-    }
-
     fn char(&mut self, value: char) -> Result {
         self.0.char(value)
     }
@@ -138,10 +137,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.error(ForAll(error))
     }
 
-    fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.0.source(ForAll(value))
-    }
-
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
         self.0.type_tag(tag)
     }
@@ -151,6 +146,10 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         tag: data::VariantTag<T, K>,
     ) -> Result {
         self.0.variant_tag(tag)
+    }
+
+    fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.0.source(ForAll(value))
     }
 
     fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {

@@ -1,6 +1,9 @@
 use crate::{
-    data::tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
-    receiver::{self, Display},
+    data::{
+        tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
+        Display,
+    },
+    receiver,
     source::ValueSource,
     Receiver, Result,
 };

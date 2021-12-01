@@ -40,31 +40,6 @@ impl Value for str {
     }
 }
 
-impl<'a> Source<'a> for str {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        receiver.str(self)
-    }
-}
-
-impl<'a> ValueSource<'a, str> for str {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-        Ok(self)
-    }
-}
-
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;

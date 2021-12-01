@@ -24,30 +24,19 @@ pub mod receiver;
 pub mod source;
 pub mod value;
 
-mod fixed_size;
+mod error;
 mod for_all;
-mod impls;
 
 #[cfg(feature = "derive")]
 pub use derive::*;
 
 #[doc(inline)]
 pub use self::{
-    fixed_size::{fixed_size, FixedSize},
+    error::Error,
     for_all::{for_all, ForAll},
     receiver::Receiver,
     source::{stream_to_end, Source},
     value::{stream, Value},
 };
-
-#[derive(Debug)]
-pub struct Error;
-
-impl From<std::fmt::Error> for Error {
-    #[inline]
-    fn from(_: std::fmt::Error) -> Error {
-        Error
-    }
-}
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;

@@ -47,7 +47,7 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
 // - When a type has a direct conversion to another, particularly the `data` types
 //   like `Bytes` and `Digits`
 pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> {
-    type Error: Into<Error> + fmt::Debug;
+    type Error: Into<Error> + fmt::Debug + fmt::Display;
 
     fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
 
@@ -146,8 +146,20 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Impossible {}
+
+impl fmt::Debug for Impossible {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unreachable!()
+    }
+}
+
+impl fmt::Display for Impossible {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unreachable!()
+    }
+}
 
 impl From<Impossible> for Error {
     fn from(_: Impossible) -> Error {

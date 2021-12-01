@@ -5,7 +5,7 @@ use crate::{
 };
 
 pub trait Receiver<'a> {
-    fn unstructured<D: Display>(&mut self, fmt: D) -> Result;
+    fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result;
 
     fn none(&mut self) -> Result;
 
@@ -63,11 +63,15 @@ pub trait Receiver<'a> {
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
-        self.str(for_all(value.encode_utf8(&mut buf)))
+        self.str(for_all(&*value.encode_utf8(&mut buf)))
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
         self.unstructured(value.take()?)
+    }
+
+    fn str_size_fixed<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
+        self.str(value)
     }
 
     fn digits<'n: 'a, N: ValueSource<'n, data::Digits>>(&mut self, mut value: N) -> Result {
@@ -90,6 +94,13 @@ pub trait Receiver<'a> {
         self.seq_end()?;
 
         Ok(())
+    }
+
+    fn bytes_size_fixed<'b: 'a, B: ValueSource<'b, data::Bytes>>(
+        &mut self,
+        mut value: B,
+    ) -> Result {
+        self.bytes(value)
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
@@ -280,7 +291,7 @@ impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
 where
     R: Receiver<'a>,
 {
-    fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
+    fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result {
         (**self).unstructured(fmt)
     }
 
@@ -557,8 +568,6 @@ impl Size {
         }
     }
 }
-
-pub use crate::std::fmt::Display;
 
 pub fn unsupported() -> Result {
     Err(crate::Error)

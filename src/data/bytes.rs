@@ -1,4 +1,5 @@
 use crate::{
+    source::{self, ValueSource},
     std::ops::{Deref, DerefMut},
     Receiver, Result, Value,
 };
@@ -36,5 +37,47 @@ impl DerefMut for Bytes {
 impl Value for Bytes {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.bytes(self)
+    }
+}
+
+impl<'a> ValueSource<'a, Bytes> for &'a [u8] {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+        Ok(bytes(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+        Ok(bytes(*self))
+    }
+}
+
+impl<'a, const N: usize> ValueSource<'a, Bytes> for &'a [u8; N] {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+        Ok(bytes(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+        Ok(bytes(*self))
+    }
+}
+
+impl<'a> ValueSource<'a, Bytes> for &'a str {
+    type Error = crate::Error;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+        Ok(bytes(self))
+    }
+
+    #[inline]
+    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+        Ok(bytes(*self))
     }
 }
