@@ -36,7 +36,7 @@ impl<'a, W> Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
-    fn display<V: fmt::Display>(&mut self, v: V) -> receiver::Result {
+    fn unstructured<V: fmt::Display>(&mut self, v: V) -> receiver::Result {
         if self.is_key {
             fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
         } else {

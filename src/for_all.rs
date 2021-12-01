@@ -1,8 +1,7 @@
 use crate::{
-    receiver,
+    data, receiver,
     source::{Stream, TakeError, ValueSource},
     std::fmt,
-    tag::{TypeTag, VariantTag},
     Receiver, Result, Source, Value,
 };
 
@@ -67,8 +66,8 @@ impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> Val
 }
 
 impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
-    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
-        self.0.display(fmt)
+    fn unstructured<D: fmt::Display>(&mut self, fmt: D) -> Result {
+        self.0.unstructured(fmt)
     }
 
     fn u8(&mut self, value: u8) -> Result {
@@ -135,10 +134,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.str(ForAll(value))
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn receiver::Error + 'static>>(
-        &mut self,
-        error: E,
-    ) -> Result {
+    fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
         self.0.error(ForAll(error))
     }
 
@@ -146,18 +142,18 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.source(ForAll(value))
     }
 
-    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
         self.0.type_tag(tag)
     }
 
     fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
     ) -> Result {
         self.0.variant_tag(tag)
     }
 
-    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
         self.0.type_tagged_begin(tag)
     }
 
@@ -167,7 +163,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
     ) -> Result {
         self.0.variant_tagged_begin(tag)
     }
@@ -178,7 +174,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         value: V,
     ) -> Result {
         self.0.type_tagged(tag, ForAll(value))
@@ -191,7 +187,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         V: Source<'v>,
     >(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         value: V,
     ) -> Result {
         self.0.variant_tagged(tag, ForAll(value))
@@ -207,7 +203,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: receiver::Size,
     ) -> Result {
         self.0.type_tagged_map_begin(tag, size)
@@ -219,7 +215,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: receiver::Size,
     ) -> Result {
         self.0.variant_tagged_map_begin(tag, size)
@@ -283,7 +279,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: receiver::Size,
     ) -> Result {
         self.0.type_tagged_seq_begin(tag, size)
@@ -295,7 +291,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: receiver::Size,
     ) -> Result {
         self.0.variant_tagged_seq_begin(tag, size)

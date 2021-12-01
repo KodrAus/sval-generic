@@ -17,6 +17,108 @@ The API is made up of a few concepts:
 - `Source`: The source of structured data. It could be an instance of some concrete type, JSON in a byte buffer, data being read from a file, anything.
 - `Value`: A special kind of `Source` that can stream its structure in a side-effect-free way. It will probably be an instance of some concrete type.
 
+### Sources and values
+
+Imagine you want to read some bytes from a source. To do that, you can use the `Read` trait. It looks a little something like this:
+
+```rust
+pub trait Read {
+    fn read(&mut self, into: &mut [u8]) -> Result<usize>;
+}
+```
+
+You keep calling `Read::read` until you get `Ok(0)`, meaning the byte stream has been exhausted.
+
+The `Source` trait in `sval` is very similar to `Read`, but instead of reading bytes, it reads structure:
+
+```rust
+pub trait Source<'a> {
+    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+    where
+        'a: 'b;
+}
+```
+
+You keep calling `Source::stream` until you get `Ok(Stream::Done)`, meaning the data stream has been exhausted.
+
+What does the structure in a source look like? For a concrete example, let's consider this bit of JSON:
+
+```json
+{
+    "id": 42,
+    "title": "My Document",
+    "active": true
+}
+```
+
+It could make the following calls on its `receiver`:
+
+```rust
+receiver.map_begin(Size::Fixed(3))?; // {
+
+receiver.map_key_begin()?;           // "
+receiver.str("id")?;                 // id
+receiver.map_key_end()?;             // "
+
+receiver.map_value_begin()?;         // :
+receiver.i32(42)?;                   // 42
+receiver.map_value_end()?;           // ,
+
+receiver.map_key_begin()?;           // "
+receiver.str("title")?;              // title
+receiver.map_key_end()?;             // "
+
+receiver.map_value_begin()?;         // :
+receiver.str("My Document")?;        // "My Document"
+receiver.map_value_end()?;           // ,
+
+receiver.map_key_begin()?;           // "
+receiver.str("active")?;             // active
+receiver.map_key_end()?;             // "
+
+receiver.map_value_begin()?;         // :
+receiver.bool(true)?;                // true
+receiver.map_value_end()?;           // 
+
+receiver.map_end()?;                 // }
+```
+
+Each call roughly corresponds to a token in the JSON stream. At its core, `sval` is flat to support streaming from a flat source, like a UTF8 encoded text buffer containing a JSON document. Not all sources are flat though, so this same example could also be more compactly written as:
+
+```rust
+receiver.map_begin(Size::Fized(3))?;
+
+receiver.map_field_entry("id", 42)?;
+receiver.map_field_entry("title", "My Document")?;
+receiver.map_field_entry("active", true)?;
+
+receiver.map_end()?;
+```
+
+This is much closer to how `serde` represents structure in its model.
+
+### Data model
+
+`sval` is based around the following fundamental types:
+
+- **Values**: A complete and valid piece of structured data.
+  - **Primitives**: Simple types.
+    - **`unstructured`**: Values that don't have an otherwise understood structure. This corresponds to the standard `Display` trait.
+    - **`none`**: Empty values, like `Option::None`.
+    - **`bool`**: The values `true` or `false`.
+    - **`str`**: UTF8-encoded textual data.
+    - **`bytes`**: Binary-encoded data.
+    - **`digits`**: Arbitrary precision numbers. A stream of digits (`0`-`9`) with an optional sign (`+` or `-`) and decimal point (`.`).
+      - **Unsigned integers**: `u8`-`u128`.
+      - **Signed integers**: `i8`-`i128`.
+      - **Floating points**: `f32`-`f64`.
+    - `error`: A runtime error. This corresponds to the standard `Error` trait.
+    - **Tags**: Type annotations. Tags can be associated with a value or streamed independently.
+      - **`type_tag`**: A text type value.
+      - **`variant_tag`**: A text type value, variant value, and index.
+  - **Maps**: A set of key and value pairs, that may be any valid value. The size of a map may be dynamic, fixed, or unknown ahead of time.
+  - **Sequences**: A set of elements, that may be any valid value. The size of a sequence may be dynamic, fixed, or unknown ahead of time.
+
 ## How is it different?
 
 There are a few serialization frameworks out there already:

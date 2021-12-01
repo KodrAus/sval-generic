@@ -1,13 +1,13 @@
 use crate::{
-    digits::Digits,
-    for_all,
+    data, for_all,
     source::{Source, ValueSource},
-    tag::{TypeTag, VariantTag},
     Result, Value,
 };
 
 pub trait Receiver<'a> {
-    fn display<D: Display>(&mut self, fmt: D) -> Result;
+    fn unstructured<D: Display>(&mut self, fmt: D) -> Result;
+
+    fn none(&mut self) -> Result;
 
     fn u8(&mut self, value: u8) -> Result {
         self.u16(value as u16)
@@ -57,15 +57,9 @@ pub trait Receiver<'a> {
         self.digits(value)
     }
 
-    fn digits<'n: 'a, N: ValueSource<'n, Digits>>(&mut self, mut value: N) -> Result {
-        self.display(value.take()?)
-    }
-
     fn bool(&mut self, value: bool) -> Result {
-        self.display(value)
+        self.unstructured(value)
     }
-
-    fn none(&mut self) -> Result;
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
@@ -73,11 +67,40 @@ pub trait Receiver<'a> {
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
-        self.display(value.take()?)
+        self.unstructured(value.take()?)
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn Error + 'static>>(&mut self, mut error: E) -> Result {
-        self.display(error.take()?)
+    fn digits<'n: 'a, N: ValueSource<'n, data::Digits>>(&mut self, mut value: N) -> Result {
+        self.unstructured(value.take()?)
+    }
+
+    fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, mut error: E) -> Result {
+        self.unstructured(error.take()?)
+    }
+
+    fn bytes<'b: 'a, B: ValueSource<'b, data::Bytes>>(&mut self, mut value: B) -> Result {
+        let bytes = value.take()?;
+
+        self.seq_begin(Size::Variable(bytes.len()))?;
+
+        for b in &**bytes {
+            self.u8(*b)?;
+        }
+
+        self.seq_end()?;
+
+        Ok(())
+    }
+
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
+        self.str(tag.ty)
+    }
+
+    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+        &mut self,
+        tag: data::VariantTag<T, K>,
+    ) -> Result {
+        self.str(tag.variant_key)
     }
 
     fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
@@ -88,18 +111,7 @@ pub trait Receiver<'a> {
         value.stream(self)
     }
 
-    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
-        self.str(tag.ty)
-    }
-
-    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        tag: VariantTag<T, K>,
-    ) -> Result {
-        self.str(tag.variant_key)
-    }
-
-    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
@@ -110,7 +122,7 @@ pub trait Receiver<'a> {
 
     fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
     ) -> Result {
         self.map_begin(Size::Fixed(1))?;
         self.map_key(tag)?;
@@ -124,7 +136,7 @@ pub trait Receiver<'a> {
 
     fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         value: V,
     ) -> Result {
         self.type_tagged_begin(tag)?;
@@ -139,7 +151,7 @@ pub trait Receiver<'a> {
         V: Source<'v>,
     >(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         value: V,
     ) -> Result {
         self.variant_tagged_begin(tag)?;
@@ -153,7 +165,7 @@ pub trait Receiver<'a> {
 
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: Size,
     ) -> Result {
         self.type_tagged_begin(tag)?;
@@ -167,7 +179,7 @@ pub trait Receiver<'a> {
 
     fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: Size,
     ) -> Result {
         self.variant_tagged_begin(tag)?;
@@ -227,7 +239,7 @@ pub trait Receiver<'a> {
 
     fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: Size,
     ) -> Result {
         self.type_tagged_begin(tag)?;
@@ -241,7 +253,7 @@ pub trait Receiver<'a> {
 
     fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: Size,
     ) -> Result {
         self.variant_tagged_begin(tag)?;
@@ -262,42 +274,18 @@ pub trait Receiver<'a> {
         self.source(elem)?;
         self.seq_elem_end()
     }
-
-    fn bytes<'b: 'a, B: ValueSource<'b, [u8]>>(&mut self, mut value: B) -> Result {
-        let bytes = value.take()?;
-
-        self.seq_begin(Size::Variable(bytes.len()))?;
-
-        for b in bytes {
-            self.u8(*b)?;
-        }
-
-        self.seq_end()?;
-
-        Ok(())
-    }
-
-    fn fixed_size_bytes<'b: 'a, B: ValueSource<'b, [u8]>>(&mut self, mut value: B) -> Result {
-        let bytes = value.take()?;
-
-        self.seq_begin(Size::Fixed(bytes.len()))?;
-
-        for b in bytes {
-            self.u8(*b)?;
-        }
-
-        self.seq_end()?;
-
-        Ok(())
-    }
 }
 
 impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
 where
     R: Receiver<'a>,
 {
-    fn display<D: Display>(&mut self, fmt: D) -> Result {
-        (**self).display(fmt)
+    fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
+        (**self).unstructured(fmt)
+    }
+
+    fn none(&mut self) -> Result {
+        (**self).none()
     }
 
     fn u8(&mut self, value: u8) -> Result {
@@ -348,16 +336,8 @@ where
         (**self).f64(value)
     }
 
-    fn digits<'n: 'a, N: ValueSource<'n, Digits>>(&mut self, value: N) -> Result {
-        (**self).digits(value)
-    }
-
     fn bool(&mut self, value: bool) -> Result {
         (**self).bool(value)
-    }
-
-    fn none(&mut self) -> Result {
-        (**self).none()
     }
 
     fn char(&mut self, value: char) -> Result {
@@ -368,8 +348,23 @@ where
         (**self).str(value)
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, dyn Error + 'static>>(&mut self, error: E) -> Result {
+    fn digits<'n: 'a, N: ValueSource<'n, data::Digits>>(&mut self, value: N) -> Result {
+        (**self).digits(value)
+    }
+
+    fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
         (**self).error(error)
+    }
+
+    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
+        (**self).type_tag(tag)
+    }
+
+    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+        &mut self,
+        tag: data::VariantTag<T, K>,
+    ) -> Result {
+        (**self).variant_tag(tag)
     }
 
     fn source<'v: 'a, S: Source<'v>>(&mut self, value: S) -> Result {
@@ -380,18 +375,7 @@ where
         (**self).value(value)
     }
 
-    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
-        (**self).type_tag(tag)
-    }
-
-    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        tag: VariantTag<T, K>,
-    ) -> Result {
-        (**self).variant_tag(tag)
-    }
-
-    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: TypeTag<T>) -> Result {
+    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
         (**self).type_tagged_begin(tag)
     }
 
@@ -401,7 +385,7 @@ where
 
     fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
     ) -> Result {
         (**self).variant_tagged_begin(tag)
     }
@@ -412,7 +396,7 @@ where
 
     fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         value: V,
     ) -> Result {
         (**self).type_tagged(tag, value)
@@ -425,7 +409,7 @@ where
         V: Source<'v>,
     >(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         value: V,
     ) -> Result {
         (**self).variant_tagged(tag, value)
@@ -441,7 +425,7 @@ where
 
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: Size,
     ) -> Result {
         (**self).type_tagged_map_begin(tag, size)
@@ -453,7 +437,7 @@ where
 
     fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: Size,
     ) -> Result {
         (**self).variant_tagged_map_begin(tag, size)
@@ -517,7 +501,7 @@ where
 
     fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: TypeTag<T>,
+        tag: data::TypeTag<T>,
         size: Size,
     ) -> Result {
         (**self).type_tagged_seq_begin(tag, size)
@@ -529,7 +513,7 @@ where
 
     fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: VariantTag<T, K>,
+        tag: data::VariantTag<T, K>,
         size: Size,
     ) -> Result {
         (**self).variant_tagged_seq_begin(tag, size)
@@ -553,22 +537,28 @@ where
 }
 
 pub enum Size {
+    Unknown,
     Variable(usize),
     Fixed(usize),
-    Unknown,
 }
 
-mod private {
-    pub trait Polyfill {}
+impl Default for Size {
+    fn default() -> Self {
+        Size::Unknown
+    }
+}
+
+impl Size {
+    pub fn get(&self) -> Option<usize> {
+        match self {
+            Size::Unknown => None,
+            Size::Variable(size) => Some(*size),
+            Size::Fixed(size) => Some(*size),
+        }
+    }
 }
 
 pub use crate::std::fmt::Display;
-
-#[cfg(not(feature = "std"))]
-pub trait Error: Display + private::Polyfill {}
-
-#[cfg(feature = "std")]
-pub use crate::std::error::Error;
 
 pub fn unsupported() -> Result {
     Err(crate::Error)

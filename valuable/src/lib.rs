@@ -81,7 +81,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
         struct Detect<'a, V>(Detected<'a, V>, &'a V);
 
         impl<'a, V> Receiver<'a> for Detect<'a, V> {
-            fn display<D: receiver::Display>(&mut self, _: D) -> Result {
+            fn unstructured<D: receiver::Display>(&mut self, _: D) -> Result {
                 self.0 = Detected::Unknown;
 
                 receiver::unsupported()
@@ -256,7 +256,7 @@ impl<'a, V: value::Value> Valuable for Value<'a, V> {
 struct ValuableReceiver<'a>(&'a mut dyn Visit);
 
 impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
-    fn display<D: receiver::Display>(&mut self, _: D) -> Result {
+    fn unstructured<D: receiver::Display>(&mut self, _: D) -> Result {
         receiver::unsupported()
     }
 

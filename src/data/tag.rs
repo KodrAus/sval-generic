@@ -3,14 +3,22 @@ use crate::{
     Receiver, Result, Source, Value,
 };
 
+pub fn type_tag<T: ValueSource<'static, str>>(ty: T) -> TypeTag<T> {
+    TypeTag::new(ty)
+}
+
+pub fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+    ty: T,
+    variant_key: K,
+    variant_index: Option<u64>,
+) -> VariantTag<T, K> {
+    VariantTag::new(ty, variant_key, variant_index)
+}
+
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct TypeTag<T> {
     pub ty: T,
-}
-
-pub fn type_tag<T: ValueSource<'static, str>>(ty: T) -> TypeTag<T> {
-    TypeTag::new(ty)
 }
 
 impl<T> TypeTag<T> {
@@ -59,14 +67,6 @@ pub struct VariantTag<T, K> {
     pub ty: T,
     pub variant_key: K,
     pub variant_index: Option<u64>,
-}
-
-pub fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-    ty: T,
-    variant_key: K,
-    variant_index: Option<u64>,
-) -> VariantTag<T, K> {
-    VariantTag::new(ty, variant_key, variant_index)
 }
 
 impl<T, K> VariantTag<T, K> {

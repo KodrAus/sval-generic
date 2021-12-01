@@ -32,7 +32,7 @@ impl<V: value::Value> fmt::Debug for Value<V> {
 
 impl<V: fmt::Display> value::Value for Value<V> {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> value::Result {
-        receiver.display(&self.0)
+        receiver.unstructured(&self.0)
     }
 }
 
@@ -63,7 +63,7 @@ impl<'a, 'b: 'a> FmtReceiver<'a, 'b> {
 }
 
 impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
-    fn display<D: fmt::Display>(&mut self, v: D) -> receiver::Result {
+    fn unstructured<D: fmt::Display>(&mut self, v: D) -> receiver::Result {
         struct Adapter<T>(T);
 
         impl<T: fmt::Display> fmt::Debug for Adapter<T> {

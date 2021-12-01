@@ -41,6 +41,11 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     }
 }
 
+// Implementing `ValueSource` directly:
+// - When a type is useful to pass by value, such as numbers, or strings/vecs that can
+//   be converted into their owned variants without any copies
+// - When a type has a direct conversion to another, particularly the `data` types
+//   like `Bytes` and `Digits`
 pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> {
     type Error: Into<Error> + fmt::Debug;
 
@@ -59,6 +64,8 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
     {
         #[cfg(not(feature = "std"))]
         {
+            // The polyfilled `ToOwned` trait has no implementations
+            // So this path is intentionally unreachable
             unreachable!()
         }
         #[cfg(feature = "std")]
@@ -227,13 +234,17 @@ impl<T, E> From<TakeError<E>> for TakeRefError<T, E> {
 }
 
 mod private {
-    pub trait Polyfill {}
+    mod no_implementations {
+        pub trait NoImplementations {}
+    }
+
+    pub trait Polyfill: no_implementations::NoImplementations {}
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "alloc"))]
 pub trait ToOwned: private::Polyfill {
     type Owned;
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub use crate::std::borrow::ToOwned;

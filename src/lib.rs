@@ -4,20 +4,27 @@
 extern crate std;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
+extern crate alloc;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+extern crate core;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 mod std {
-    pub use alloc::*;
-    pub use core::*;
+    pub use crate::{
+        alloc::{borrow, string, vec},
+        core::{fmt, mem, ops, result},
+    };
 }
 
 #[cfg(all(not(feature = "alloc"), not(feature = "std")))]
 extern crate core as std;
 
-pub mod digits;
+pub mod data;
 pub mod receiver;
 pub mod source;
-pub mod tag;
 pub mod value;
 
+mod fixed_size;
 mod for_all;
 mod impls;
 
@@ -26,6 +33,7 @@ pub use derive::*;
 
 #[doc(inline)]
 pub use self::{
+    fixed_size::{fixed_size, FixedSize},
     for_all::{for_all, ForAll},
     receiver::Receiver,
     source::{stream_to_end, Source},

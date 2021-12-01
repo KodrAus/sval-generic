@@ -1,7 +1,7 @@
 use crate::{
+    data::tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
     receiver::{self, Display},
     source::ValueSource,
-    tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
     Receiver, Result,
 };
 
@@ -20,7 +20,7 @@ where
 
         impl<'a> Receiver<'a> for Extract<'a> {
             #[inline]
-            fn display<D: Display>(&mut self, _: D) -> Result {
+            fn unstructured<D: Display>(&mut self, _: D) -> Result {
                 receiver::unsupported()
             }
 

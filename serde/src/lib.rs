@@ -444,7 +444,7 @@ impl<S: Serializer> SerdeReceiver<S> {
 }
 
 impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
-    fn display<D: receiver::Display>(&mut self, v: D) -> receiver::Result {
+    fn unstructured<D: receiver::Display>(&mut self, v: D) -> receiver::Result {
         self.serialize_source(Display::new(v))
     }
 

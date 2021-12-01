@@ -224,7 +224,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         self.none()
     }
     fn erased_display(&mut self, v: &dyn fmt::Display) -> Result {
-        self.display(v)
+        self.unstructured(v)
     }
 
     fn erased_error<'b, 'v: 'a>(
@@ -441,7 +441,7 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
         self.erased_source(Source(&mut value))
     }
 
-    fn display<D: fmt::Display>(&mut self, fmt: D) -> Result {
+    fn unstructured<D: fmt::Display>(&mut self, fmt: D) -> Result {
         self.0.erased_display(&fmt)
     }
 

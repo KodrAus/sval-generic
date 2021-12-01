@@ -1,20 +1,27 @@
 use crate::{
-    source,
     std::fmt::{self, Write},
-    Receiver, Result, Source, Value,
+    Receiver, Result, Value,
 };
+
+pub fn digits(digits: &impl fmt::Display) -> Result<&Digits> {
+    Digits::new(digits)
+}
+
+pub fn digits_unchecked(digits: &impl fmt::Display) -> &Digits {
+    Digits::new_unchecked(digits)
+}
 
 #[repr(transparent)]
 pub struct Digits(dyn fmt::Display);
 
 impl Digits {
-    pub fn new<'a>(digits: &'a impl fmt::Display) -> Result<&'a Digits> {
+    pub fn new(digits: &impl fmt::Display) -> Result<&Digits> {
         Inspect::read(&digits)
             .ok_or(crate::Error)
             .map(|_| Self::new_unchecked(digits))
     }
 
-    pub fn new_unchecked<'a>(digits: &'a impl fmt::Display) -> &'a Digits {
+    pub fn new_unchecked(digits: &impl fmt::Display) -> &Digits {
         // SAFETY: `Digits` and `dyn fmt::Display` have the same ABI
         unsafe { &*(digits as *const dyn fmt::Display as *const Digits) }
     }
@@ -45,31 +52,6 @@ impl Digits {
 impl Value for Digits {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.digits(self)
-    }
-}
-
-impl<'a> Source<'a> for Digits {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        receiver.digits(self)
-    }
-}
-
-impl<'a> source::ValueSource<'a, Digits> for Digits {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&Digits, source::TakeError<Self::Error>> {
-        Ok(self)
     }
 }
 

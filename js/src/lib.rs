@@ -101,7 +101,7 @@ impl JsReceiver {
 
 impl<'a> Receiver<'a> for JsReceiver {
     #[inline]
-    fn display<D: receiver::Display>(&mut self, v: D) -> receiver::Result {
+    fn unstructured<D: receiver::Display>(&mut self, v: D) -> receiver::Result {
         self.push(v.to_string())
     }
 

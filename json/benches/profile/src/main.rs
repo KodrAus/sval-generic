@@ -27,7 +27,7 @@ fn input_struct() -> Twitter {
 struct Empty;
 
 impl<'a> Receiver<'a> for Empty {
-    fn display<D: receiver::Display>(&mut self, _: D) -> receiver::Result {
+    fn unstructured<D: receiver::Display>(&mut self, _: D) -> receiver::Result {
         Ok(())
     }
 

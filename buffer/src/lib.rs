@@ -27,7 +27,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
     }
 
     impl<'a, R: BufferReceiver<'a>> Receiver<'a> for Extract<'a, R> {
-        fn display<D: Display>(&mut self, value: D) -> Result {
+        fn unstructured<D: Display>(&mut self, value: D) -> Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 struct Adapter<D>(fmt::Value<D>);
 
@@ -36,7 +36,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
                     where
                         'a: 'b,
                     {
-                        receiver.display(self.0.get())?;
+                        receiver.unstructured(self.0.get())?;
 
                         Ok(Stream::Done)
                     }
@@ -270,7 +270,7 @@ impl<'a, 'b> Source<'a> for &'b Token<'a> {
         match *self {
             Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
             Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value))?,
-            Token::Display(value) => receiver.display(value)?,
+            Token::Display(value) => receiver.unstructured(value)?,
             Token::None => receiver.none()?,
             Token::MapBegin(len) => receiver.map_begin(*len)?,
             Token::MapEnd => receiver.map_end()?,
