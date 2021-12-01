@@ -229,7 +229,6 @@ tuple! {
         self.14: T14,
         self.15: T15,
     ),
-
 }
 
 #[cfg(feature = "alloc")]
@@ -253,7 +252,7 @@ mod alloc_support {
     }
 
     impl<'a, T: Value + Clone> Value for Cow<'a, [T]> {
-        fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> crate::Result {
+        fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> crate::Result {
             (&**self).stream(receiver)
         }
     }
@@ -266,7 +265,7 @@ mod alloc_support {
             self.stream_to_end(receiver).map(|_| source::Stream::Done)
         }
 
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
         where
             'a: 'b,
         {

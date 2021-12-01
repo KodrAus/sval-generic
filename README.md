@@ -101,23 +101,25 @@ This is much closer to how `serde` represents structure in its model.
 
 `sval` is based around the following fundamental types:
 
-- **Values**: A complete and valid piece of structured data.
-  - **Primitives**: Simple types.
-    - **`unstructured`**: Values that don't have an otherwise understood structure. This corresponds to the standard `Display` trait.
-    - **`none`**: Empty values, like `Option::None`.
-    - **`bool`**: The values `true` or `false`.
-    - **`str`**: UTF8-encoded textual data.
-    - **`bytes`**: Binary-encoded data.
-    - **`digits`**: Arbitrary precision numbers. A stream of digits (`0`-`9`) with an optional sign (`+` or `-`) and decimal point (`.`).
-      - **Unsigned integers**: `u8`-`u128`.
-      - **Signed integers**: `i8`-`i128`.
-      - **Floating points**: `f32`-`f64`.
-    - `error`: A runtime error. This corresponds to the standard `Error` trait.
-    - **Tags**: Type annotations. Tags can be associated with a value or streamed independently.
-      - **`type_tag`**: A text type value.
-      - **`variant_tag`**: A text type value, variant value, and index.
+- **Data** (`source`/`value`): A complete and valid stream of structured data.
+  - **Primitives**: Simple types that aren't decomposed into smaller ones.
+    - **Booleans** (`bool`): The values `true` or `false`.
+    - **Text** (`str`): UTF8-encoded textual data.
+    - **Binary** (`bytes`): Binary-encoded data.
+    - **Numbers** (`digits`): Arbitrary precision numbers. A stream of digits (`0`-`9`) with an optional sign (`+` or `-`) and decimal point (`.`).
+      - **Unsigned integers** (`u8`-`u128`).
+      - **Signed integers** (`i8`-`i128`).
+      - **Floating points** (`f32`-`f64`).
+    - **Errors** (`error`): A runtime error. This corresponds to the standard `Error` trait.
+  - **Optionals**: Values that may or may not be empty (or `null`).
+    - **`some`**: A potentially empty value, that isn't. Like `Option::Some`.
+    - **`none`**: A potentially empty value, that is. Like `Option::None`.
+  - **Tags**: Type annotations. Tags can be associated with a value or streamed independently.
+    - **`type_tag`**: A text type value. This corresponds to the name of a Rust type, like `MyData`.
+    - **`variant_tag`**: A text type value, variant value, and index. This corresponds to the name and variant of a Rust enum, like `MyEnum::MyVariant`.
   - **Maps**: A set of key and value pairs, that may be any valid value. The size of a map may be dynamic, fixed, or unknown ahead of time.
   - **Sequences**: A set of elements, that may be any valid value. The size of a sequence may be dynamic, fixed, or unknown ahead of time.
+  - **Unstructured** (`unstructured`): Values that don't have an otherwise understood structure. This corresponds to the standard `Display` trait. All primitives are forwarded to `unstructured` by default.
 
 ## How is it different?
 

@@ -1,6 +1,9 @@
 use crate::{
     source::{self, ValueSource},
-    std::ops::{Deref, DerefMut},
+    std::{
+        fmt,
+        ops::{Deref, DerefMut},
+    },
     Receiver, Result, Value,
 };
 
@@ -17,6 +20,16 @@ impl Bytes {
 
         // SAFETY: `Bytes` and `[u8]` have the same ABI
         unsafe { &*(bytes as *const [u8] as *const Bytes) }
+    }
+}
+
+impl fmt::Display for Bytes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for b in &self.0 {
+            write!(f, "{:X}", b)?;
+        }
+
+        Ok(())
     }
 }
 

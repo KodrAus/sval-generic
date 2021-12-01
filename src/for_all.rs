@@ -133,8 +133,24 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.str(ForAll(value))
     }
 
+    fn str_size_fixed<'s: 'a, T: ValueSource<'s, str>>(&mut self, value: T) -> Result {
+        self.0.str_size_fixed(ForAll(value))
+    }
+
+    fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, value: D) -> Result {
+        self.0.digits(ForAll(value))
+    }
+
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
         self.0.error(ForAll(error))
+    }
+
+    fn bytes<'s: 'a, T: ValueSource<'s, data::Bytes>>(&mut self, value: T) -> Result {
+        self.0.bytes(ForAll(value))
+    }
+
+    fn bytes_size_fixed<'s: 'a, T: ValueSource<'s, data::Bytes>>(&mut self, value: T) -> Result {
+        self.0.bytes_size_fixed(ForAll(value))
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {

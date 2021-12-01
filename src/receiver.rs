@@ -9,6 +9,10 @@ pub trait Receiver<'a> {
 
     fn none(&mut self) -> Result;
 
+    fn some<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        self.source(value)
+    }
+
     fn u8(&mut self, value: u8) -> Result {
         self.u16(value as u16)
     }
@@ -74,7 +78,7 @@ pub trait Receiver<'a> {
         self.str(value)
     }
 
-    fn digits<'n: 'a, N: ValueSource<'n, data::Digits>>(&mut self, mut value: N) -> Result {
+    fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, mut value: D) -> Result {
         self.unstructured(value.take()?)
     }
 
@@ -82,25 +86,12 @@ pub trait Receiver<'a> {
         self.unstructured(error.take()?)
     }
 
-    fn bytes<'b: 'a, B: ValueSource<'b, data::Bytes>>(&mut self, mut value: B) -> Result {
-        let bytes = value.take()?;
-
-        self.seq_begin(Size::Variable(bytes.len()))?;
-
-        for b in &**bytes {
-            self.u8(*b)?;
-        }
-
-        self.seq_end()?;
-
-        Ok(())
+    fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, mut bytes: B) -> Result {
+        self.unstructured(bytes.take()?)
     }
 
-    fn bytes_size_fixed<'b: 'a, B: ValueSource<'b, data::Bytes>>(
-        &mut self,
-        mut value: B,
-    ) -> Result {
-        self.bytes(value)
+    fn bytes_size_fixed<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
+        self.bytes(bytes)
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
@@ -299,6 +290,10 @@ where
         (**self).none()
     }
 
+    fn some<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+        (**self).some(value)
+    }
+
     fn u8(&mut self, value: u8) -> Result {
         (**self).u8(value)
     }
@@ -359,8 +354,20 @@ where
         (**self).str(value)
     }
 
-    fn digits<'n: 'a, N: ValueSource<'n, data::Digits>>(&mut self, value: N) -> Result {
+    fn str_size_fixed<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
+        (**self).str_size_fixed(value)
+    }
+
+    fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, value: D) -> Result {
         (**self).digits(value)
+    }
+
+    fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
+        (**self).bytes(bytes)
+    }
+
+    fn bytes_size_fixed<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
+        (**self).bytes_size_fixed(bytes)
     }
 
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {

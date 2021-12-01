@@ -150,13 +150,13 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
 pub enum Impossible {}
 
 impl fmt::Debug for Impossible {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
         unreachable!()
     }
 }
 
 impl fmt::Display for Impossible {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
         unreachable!()
     }
 }

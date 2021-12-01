@@ -1,7 +1,7 @@
 mod bytes;
 mod error;
 mod seq;
-mod str;
+mod text;
 
 pub mod digits;
 pub mod tag;
