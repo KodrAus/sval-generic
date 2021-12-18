@@ -1,6 +1,6 @@
 use crate::{
     data::{
-        tag::{TypeTag, TypeTagged, VariantTag, VariantTagged},
+        tag::{Tag, TypeTagged, VariantTag, VariantTagged},
         Display,
     },
     receiver,
@@ -99,7 +99,7 @@ where
         receiver.0
     }
 
-    fn type_tag<T: ValueSource<'static, str>>(&self, tag: TypeTag<T>) -> TypeTagged<T, &Self> {
+    fn type_tag<T: ValueSource<'static, str>>(&self, tag: Tag<T>) -> TypeTagged<T, &Self> {
         tag.tag(self)
     }
 

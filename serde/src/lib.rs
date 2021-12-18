@@ -484,7 +484,7 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
         buffer(self, v)
     }
 
-    fn type_tagged_begin<T: receiver::ValueSource<'static, str>>(
+    fn tagged_begin<T: receiver::ValueSource<'static, str>>(
         &mut self,
         mut tag: receiver::TypeTag<T>,
     ) -> receiver::Result {
@@ -493,11 +493,11 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
         Ok(())
     }
 
-    fn type_tagged_end(&mut self) -> receiver::Result {
+    fn tagged_end(&mut self) -> receiver::Result {
         Ok(())
     }
 
-    fn variant_tagged_begin<
+    fn tagged_variant_begin<
         T: receiver::ValueSource<'static, str>,
         K: receiver::ValueSource<'static, str>,
     >(
@@ -513,7 +513,7 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
         Ok(())
     }
 
-    fn variant_tagged_end(&mut self) -> receiver::Result {
+    fn tagged_variant_end(&mut self) -> receiver::Result {
         Ok(())
     }
 

@@ -114,7 +114,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         self.fmt(e.take()?)
     }
 
-    fn type_tagged_begin<T: receiver::ValueSource<'static, str>>(
+    fn tagged_begin<T: receiver::ValueSource<'static, str>>(
         &mut self,
         mut tag: receiver::TypeTag<T>,
     ) -> receiver::Result {
@@ -123,11 +123,11 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn type_tagged_end(&mut self) -> receiver::Result {
+    fn tagged_end(&mut self) -> receiver::Result {
         Ok(())
     }
 
-    fn variant_tagged_begin<
+    fn tagged_variant_begin<
         T: receiver::ValueSource<'static, str>,
         K: receiver::ValueSource<'static, str>,
     >(
@@ -141,7 +141,7 @@ impl<'fa, 'fb: 'fa, 'a> Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn variant_tagged_end(&mut self) -> receiver::Result {
+    fn tagged_variant_end(&mut self) -> receiver::Result {
         Ok(())
     }
 

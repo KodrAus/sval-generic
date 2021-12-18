@@ -243,7 +243,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
     }
 
     fn erased_type_tag<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result {
-        self.type_tag(tag::TypeTag::new(tag_ty))
+        self.tag(tag::TypeTag::new(tag_ty))
     }
 
     fn erased_variant_tag<'b>(
@@ -252,7 +252,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result {
-        self.variant_tag(tag::VariantTag::new(
+        self.tag_variant(tag::VariantTag::new(
             tag_ty,
             tag_variant_key,
             tag_variant_index,
@@ -260,11 +260,11 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
     }
 
     fn erased_type_tagged_begin<'b>(&mut self, tag_ty: ValueSource<'static, 'b, str>) -> Result {
-        self.type_tagged_begin(tag::TypeTag::new(tag_ty))
+        self.tagged_begin(tag::TypeTag::new(tag_ty))
     }
 
     fn erased_type_tagged_end(&mut self) -> Result {
-        self.type_tagged_end()
+        self.tagged_end()
     }
 
     fn erased_variant_tagged_begin<'b>(
@@ -273,7 +273,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         tag_variant_key: ValueSource<'static, 'b, str>,
         tag_variant_index: Option<u64>,
     ) -> Result {
-        self.variant_tagged_begin(tag::VariantTag::new(
+        self.tagged_variant_begin(tag::VariantTag::new(
             tag_ty,
             tag_variant_key,
             tag_variant_index,
@@ -281,7 +281,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
     }
 
     fn erased_variant_tagged_end(&mut self) -> Result {
-        self.variant_tagged_end()
+        self.tagged_variant_end()
     }
 
     fn erased_type_tagged<'b, 'v: 'a>(
@@ -289,7 +289,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         tag_ty: ValueSource<'static, 'b, str>,
         v: Source<'v, 'b>,
     ) -> Result {
-        self.type_tagged(tag::TypeTag::new(tag_ty), v)
+        self.tagged(tag::TypeTag::new(tag_ty), v)
     }
 
     fn erased_variant_tagged<'b, 'v: 'a>(
@@ -299,7 +299,7 @@ impl<'a, T: receiver::Receiver<'a> + ?Sized> ErasedReceiver<'a> for T {
         tag_variant_index: Option<u64>,
         v: Source<'v, 'b>,
     ) -> Result {
-        self.variant_tagged(
+        self.tagged_variant(
             tag::VariantTag::new(tag_ty, tag_variant_key, tag_variant_index),
             v,
         )
@@ -516,14 +516,11 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
         self.0.erased_error(ValueSource(&mut error))
     }
 
-    fn type_tag<T: source::ValueSource<'static, str>>(
-        &mut self,
-        mut tag: tag::TypeTag<T>,
-    ) -> Result {
+    fn tag<T: source::ValueSource<'static, str>>(&mut self, mut tag: tag::TypeTag<T>) -> Result {
         self.0.erased_type_tag(ValueSource(&mut tag.ty))
     }
 
-    fn variant_tag<T: source::ValueSource<'static, str>, K: source::ValueSource<'static, str>>(
+    fn tag_variant<T: source::ValueSource<'static, str>, K: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::VariantTag<T, K>,
     ) -> Result {
@@ -534,18 +531,18 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
         )
     }
 
-    fn type_tagged_begin<T: source::ValueSource<'static, str>>(
+    fn tagged_begin<T: source::ValueSource<'static, str>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
     ) -> Result {
         self.0.erased_type_tagged_begin(ValueSource(&mut tag.ty))
     }
 
-    fn type_tagged_end(&mut self) -> Result {
+    fn tagged_end(&mut self) -> Result {
         self.0.erased_type_tagged_end()
     }
 
-    fn variant_tagged_begin<
+    fn tagged_variant_begin<
         T: source::ValueSource<'static, str>,
         K: source::ValueSource<'static, str>,
     >(
@@ -559,11 +556,11 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
         )
     }
 
-    fn variant_tagged_end(&mut self) -> Result {
+    fn tagged_variant_end(&mut self) -> Result {
         self.0.erased_variant_tagged_end()
     }
 
-    fn type_tagged<'v: 'a, T: source::ValueSource<'static, str>, V: source::Source<'v>>(
+    fn tagged<'v: 'a, T: source::ValueSource<'static, str>, V: source::Source<'v>>(
         &mut self,
         mut tag: tag::TypeTag<T>,
         mut value: V,
@@ -572,7 +569,7 @@ impl<'a, 'b> receiver::Receiver<'a> for Receiver<'a, 'b> {
             .erased_type_tagged(ValueSource(&mut tag.ty), Source(&mut value))
     }
 
-    fn variant_tagged<
+    fn tagged_variant<
         'v: 'a,
         T: source::ValueSource<'static, str>,
         K: source::ValueSource<'static, str>,

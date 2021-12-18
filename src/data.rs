@@ -11,7 +11,7 @@ pub use self::{
     bytes::{bytes, Bytes},
     digits::{digits, digits_unchecked, Digits},
     error::Error,
-    tag::{type_tag, variant_tag, TypeTag, VariantTag},
+    tag::{tag, Tag, TypeTagged, VariantTagged},
 };
 
 #[doc(inline)]

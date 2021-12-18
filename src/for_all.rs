@@ -153,49 +153,49 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.bytes_size_fixed(ForAll(value))
     }
 
-    fn type_tag<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
-        self.0.type_tag(tag)
+    fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+        self.0.tag(tag)
     }
 
-    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+    fn tag_variant<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: data::VariantTag<T, K>,
     ) -> Result {
-        self.0.variant_tag(tag)
+        self.0.tag_variant(tag)
     }
 
     fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
         self.0.source(ForAll(value))
     }
 
-    fn type_tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::TypeTag<T>) -> Result {
-        self.0.type_tagged_begin(tag)
+    fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+        self.0.tagged_begin(tag)
     }
 
-    fn type_tagged_end(&mut self) -> Result {
-        self.0.type_tagged_end()
+    fn tagged_end(&mut self) -> Result {
+        self.0.tagged_end()
     }
 
-    fn variant_tagged_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+    fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
         tag: data::VariantTag<T, K>,
     ) -> Result {
-        self.0.variant_tagged_begin(tag)
+        self.0.tagged_variant_begin(tag)
     }
 
-    fn variant_tagged_end(&mut self) -> Result {
-        self.0.variant_tagged_end()
+    fn tagged_variant_end(&mut self) -> Result {
+        self.0.tagged_variant_end()
     }
 
-    fn type_tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: data::TypeTag<T>,
+        tag: data::Tag<T>,
         value: V,
     ) -> Result {
-        self.0.type_tagged(tag, ForAll(value))
+        self.0.tagged(tag, ForAll(value))
     }
 
-    fn variant_tagged<
+    fn tagged_variant<
         'v: 'a,
         T: ValueSource<'static, str>,
         K: ValueSource<'static, str>,
@@ -205,7 +205,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         tag: data::VariantTag<T, K>,
         value: V,
     ) -> Result {
-        self.0.variant_tagged(tag, ForAll(value))
+        self.0.tagged_variant(tag, ForAll(value))
     }
 
     fn map_begin(&mut self, size: receiver::Size) -> Result {
@@ -218,7 +218,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn type_tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: data::TypeTag<T>,
+        tag: data::Tag<T>,
         size: receiver::Size,
     ) -> Result {
         self.0.type_tagged_map_begin(tag, size)
@@ -294,7 +294,7 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
-        tag: data::TypeTag<T>,
+        tag: data::Tag<T>,
         size: receiver::Size,
     ) -> Result {
         self.0.type_tagged_seq_begin(tag, size)

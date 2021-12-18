@@ -35,8 +35,8 @@ pub use self::{
     error::Error,
     for_all::{for_all, ForAll},
     receiver::Receiver,
-    source::{stream_to_end, Source},
-    value::{stream, Value},
+    source::Source,
+    value::Value,
 };
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
