@@ -47,10 +47,6 @@ impl<T> Tag<T> {
             kind: self.kind,
         }
     }
-
-    pub fn tag<'a, V: Source<'a>>(self, value: V) -> TypeTagged<T, V> {
-        TypeTagged::new(self, value)
-    }
 }
 
 impl Value for Tag<&'static str> {

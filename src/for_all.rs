@@ -159,9 +159,11 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn tag_variant<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: data::VariantTag<T, K>,
+        type_tag: data::Tag<T>,
+        variant_tag: data::Tag<K>,
+        variant_index: Option<u64>,
     ) -> Result {
-        self.0.tag_variant(tag)
+        self.0.tag_variant(type_tag, variant_tag, variant_index)
     }
 
     fn source<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
@@ -178,9 +180,12 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: data::VariantTag<T, K>,
+        type_tag: data::Tag<T>,
+        variant_tag: data::Tag<K>,
+        variant_index: Option<u64>,
     ) -> Result {
-        self.0.tagged_variant_begin(tag)
+        self.0
+            .tagged_variant_begin(type_tag, variant_tag, variant_index)
     }
 
     fn tagged_variant_end(&mut self) -> Result {
@@ -202,10 +207,13 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         V: Source<'v>,
     >(
         &mut self,
-        tag: data::VariantTag<T, K>,
+        type_tag: data::Tag<T>,
+        variant_tag: data::Tag<K>,
+        variant_index: Option<u64>,
         value: V,
     ) -> Result {
-        self.0.tagged_variant(tag, ForAll(value))
+        self.0
+            .tagged_variant(type_tag, variant_tag, variant_index, ForAll(value))
     }
 
     fn map_begin(&mut self, size: receiver::Size) -> Result {
@@ -216,28 +224,31 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.map_end()
     }
 
-    fn type_tagged_map_begin<T: ValueSource<'static, str>>(
+    fn tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
         size: receiver::Size,
     ) -> Result {
-        self.0.type_tagged_map_begin(tag, size)
+        self.0.tagged_map_begin(tag, size)
     }
 
-    fn type_tagged_map_end(&mut self) -> Result {
-        self.0.type_tagged_map_end()
+    fn tagged_map_end(&mut self) -> Result {
+        self.0.tagged_map_end()
     }
 
-    fn variant_tagged_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+    fn tagged_variant_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: data::VariantTag<T, K>,
+        type_tag: data::Tag<T>,
+        variant_tag: data::Tag<K>,
+        variant_index: Option<u64>,
         size: receiver::Size,
     ) -> Result {
-        self.0.variant_tagged_map_begin(tag, size)
+        self.0
+            .tagged_variant_map_begin(type_tag, variant_tag, variant_index, size)
     }
 
-    fn variant_tagged_map_end(&mut self) -> Result {
-        self.0.variant_tagged_map_end()
+    fn tagged_variant_map_end(&mut self) -> Result {
+        self.0.tagged_variant_map_end()
     }
 
     fn map_key_begin(&mut self) -> Result {
@@ -292,28 +303,31 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.seq_end()
     }
 
-    fn type_tagged_seq_begin<T: ValueSource<'static, str>>(
+    fn tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
         size: receiver::Size,
     ) -> Result {
-        self.0.type_tagged_seq_begin(tag, size)
+        self.0.tagged_seq_begin(tag, size)
     }
 
-    fn type_tagged_seq_end(&mut self) -> Result {
-        self.0.type_tagged_seq_end()
+    fn tagged_seq_end(&mut self) -> Result {
+        self.0.tagged_seq_end()
     }
 
-    fn variant_tagged_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
+    fn tagged_variant_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        tag: data::VariantTag<T, K>,
+        type_tag: data::Tag<T>,
+        variant_tag: data::Tag<K>,
+        variant_index: Option<u64>,
         size: receiver::Size,
     ) -> Result {
-        self.0.variant_tagged_seq_begin(tag, size)
+        self.0
+            .tagged_variant_seq_begin(type_tag, variant_tag, variant_index, size)
     }
 
-    fn variant_tagged_seq_end(&mut self) -> Result {
-        self.0.variant_tagged_seq_end()
+    fn tagged_variant_seq_end(&mut self) -> Result {
+        self.0.tagged_variant_seq_end()
     }
 
     fn seq_elem_begin(&mut self) -> Result {

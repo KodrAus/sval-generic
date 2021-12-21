@@ -1,6 +1,6 @@
 use crate::{
     data::{
-        tag::{Tag, TypeTagged, VariantTag, VariantTagged},
+        tag::{Tag, TypeTagged, VariantTagged},
         Display,
     },
     receiver,
@@ -100,14 +100,16 @@ where
     }
 
     fn type_tag<T: ValueSource<'static, str>>(&self, tag: Tag<T>) -> TypeTagged<T, &Self> {
-        tag.tag(self)
+        TypeTagged::new(tag, self)
     }
 
     fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &self,
-        tag: VariantTag<T, K>,
+        type_tag: Tag<T>,
+        variant_tag: Tag<K>,
+        variant_index: Option<u64>,
     ) -> VariantTagged<T, K, &Self> {
-        tag.tag(self)
+        VariantTagged::new(type_tag, variant_tag, variant_index, self)
     }
 }
 

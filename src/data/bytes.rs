@@ -25,6 +25,7 @@ impl Bytes {
 
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: Change this to base64
         for b in &self.0 {
             write!(f, "{:X}", b)?;
         }
