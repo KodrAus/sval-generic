@@ -17,7 +17,8 @@ members = [
     "json/benches/twitter",
     "json/benches/profile",
     "json/tests/twitter",
-    "examples/browser"
+    "examples/browser",
+    "examples/simple"
 ]
 
 [features]

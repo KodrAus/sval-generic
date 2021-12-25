@@ -178,6 +178,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sval-generic-api-example-simple"
+version = "0.1.0"
+dependencies = [
+ "sval-generic-api",
+]
+
+[[package]]
 name = "sval-generic-api-fmt"
 version = "0.1.0"
 dependencies = [

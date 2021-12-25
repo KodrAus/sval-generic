@@ -8,7 +8,6 @@ crate-type = ["cdylib"]
 
 [dependencies.sval-generic-api]
 path = "../../"
-features = ["derive"]
 
 [dependencies.sval-generic-api-js]
 path = "../../js"
