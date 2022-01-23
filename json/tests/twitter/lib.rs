@@ -4,7 +4,7 @@
 extern crate serde;
 
 #[macro_use]
-extern crate sval_generic_api;
+extern crate sval_derive;
 
 #[macro_use]
 extern crate valuable;
@@ -28,25 +28,25 @@ fn sval_consistency() {
 
     assert_eq!(
         serde_json::to_string(&s).unwrap(),
-        sval_generic_api_json::to_string(&s).unwrap()
+        sval_json::to_string(&s).unwrap()
     );
 }
 
 #[test]
 fn sval_erased_consistency() {
-    use sval_generic_api_erased as erased;
+    use sval_erased as erased;
 
     let s = input_struct();
 
     assert_eq!(
-        sval_generic_api_json::to_string(&s).unwrap(),
-        sval_generic_api_json::to_string(&erased::value(&s)).unwrap()
+        sval_json::to_string(&s).unwrap(),
+        sval_json::to_string(&erased::value(&s)).unwrap()
     );
 }
 
 #[test]
 fn sval_serde_consistency() {
-    use sval_generic_api_serde as serde;
+    use sval_serde as serde;
     let s = input_struct();
 
     assert_eq!(
@@ -57,7 +57,7 @@ fn sval_serde_consistency() {
 
 #[test]
 fn sval_valuable_consistency() {
-    use sval_generic_api_valuable as valuable;
+    use sval_valuable as valuable;
     let s = input_struct();
 
     assert_eq!(
@@ -210,7 +210,7 @@ pub struct Media {
     display_url: String,
     expanded_url: String,
     #[serde(rename = "type")]
-    #[sval_generic_api(rename = "type")]
+    #[sval(rename = "type")]
     media_type: String,
     sizes: Sizes,
     source_status_id: Option<u64>,

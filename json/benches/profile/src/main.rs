@@ -2,9 +2,9 @@
 
 extern crate test;
 
-use sval_generic_api::receiver::{self, Receiver};
-use sval_generic_api_json_twitter_tests::Twitter;
-use sval_generic_api_serde as serde;
+use sval::receiver::{self, Receiver};
+use sval_json_twitter_tests::Twitter;
+use sval_serde as serde;
 
 fn main() {
     let s = input_struct();

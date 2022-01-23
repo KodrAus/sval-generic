@@ -1,6 +1,6 @@
 use std::{borrow::ToOwned, error, fmt};
 
-use sval_generic_api::{
+use sval::{
     receiver,
     source::{self, Stream},
     tag, value, Error, Result,
@@ -755,7 +755,7 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
     where
         'a: 'b,
     {
-        source::Source::stream(self, receiver)
+        source::Source::stream_resume(self, receiver)
     }
 
     fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
@@ -767,7 +767,7 @@ impl<'a, T: source::Source<'a>> ErasedSource<'a> for T {
 }
 
 impl<'a, 'b> source::Source<'a> for Source<'a, 'b> {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
+    fn stream_resume<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {
@@ -819,7 +819,7 @@ impl<'a, U: value::Value + ?Sized, V: value::Value + ?Sized, T: source::ValueSou
     where
         'a: 'b,
     {
-        source::Source::stream(self, receiver)
+        source::Source::stream_resume(self, receiver)
     }
 
     fn erased_stream_to_end<'b>(&mut self, receiver: Receiver<'b, '_>) -> Result
@@ -834,7 +834,7 @@ impl<'a, U: value::Value + ?Sized, V: value::Value + ?Sized, T: source::ValueSou
     }
 
     fn erased_take_ref(&mut self) -> Result<&'a V, Result<&U>> {
-        source::ValueSource::take_ref(self).map_err(|e| e.into_result().map_err(Into::into))
+        source::ValueSource::try_take_ref(self).map_err(|e| e.into_result().map_err(Into::into))
     }
 
     fn erased_take_owned(&mut self) -> Result<U::Owned>
@@ -855,10 +855,10 @@ impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> source::ValueSo
         self.0.erased_take().map_err(source::TakeError::from_error)
     }
 
-    fn take_ref<'c>(&'c mut self) -> Result<&'a U, source::TakeRefError<&'c T, Self::Error>> {
+    fn try_take_ref<'c>(&'c mut self) -> Result<&'a U, source::TryTakeError<&'c T, Self::Error>> {
         self.0
             .erased_take_ref()
-            .map_err(source::TakeRefError::from_result)
+            .map_err(source::TryTakeError::from_result)
     }
 
     fn take_owned(&mut self) -> Result<T::Owned, source::TakeError<Self::Error>>
@@ -875,7 +875,7 @@ impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> source::ValueSo
 impl<'a, 'b, T: value::Value + ?Sized, U: value::Value + ?Sized> source::Source<'a>
     for ValueSource<'a, 'b, T, U>
 {
-    fn stream<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
+    fn stream_resume<'c, S: receiver::Receiver<'c>>(&mut self, mut receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {

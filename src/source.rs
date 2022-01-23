@@ -5,7 +5,7 @@ pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result
 }
 
 pub trait Source<'a> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
     where
         'a: 'b;
 
@@ -13,7 +13,7 @@ pub trait Source<'a> {
     where
         'a: 'b,
     {
-        while let Stream::Yield = self.stream(&mut receiver)? {}
+        while let Stream::Yield = self.stream_resume(&mut receiver)? {}
 
         Ok(())
     }
@@ -26,11 +26,11 @@ pub enum Stream {
 }
 
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
-    fn stream<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
+    fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
     where
         'a: 'c,
     {
-        (**self).stream(receiver)
+        (**self).stream_resume(receiver)
     }
 
     fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
@@ -41,20 +41,36 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     }
 }
 
-// Implementing `ValueSource` directly:
-// - When a type is useful to pass by value, such as numbers, or strings/vecs that can
-//   be converted into their owned variants without any copies
-// - When a type has a direct conversion to another, particularly the `data` types
-//   like `Bytes` and `Digits`
+impl<'a, S: Source<'a>> Source<'a> for Option<S> {
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
+    where
+        'a: 'b,
+    {
+        match self {
+            Some(source) => source.stream_resume(receiver),
+            None => {
+                receiver.none()?;
+
+                Ok(Stream::Done)
+            }
+        }
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        match self {
+            Some(source) => source.stream_to_end(receiver),
+            None => receiver.none(),
+        }
+    }
+}
+
 pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> {
     type Error: Into<Error> + fmt::Debug + fmt::Display;
 
     fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
-
-    #[inline]
-    fn take_ref(&mut self) -> Result<&'a R, TakeRefError<&T, Self::Error>> {
-        Err(TakeRefError::from_value(self.take()?))
-    }
 
     #[inline]
     fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
@@ -73,6 +89,20 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
             self.take().map(ToOwned::to_owned)
         }
     }
+
+    #[inline]
+    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+        Err(TryTakeError::from_value(self.take()?))
+    }
+
+    #[inline]
+    fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
+    where
+        T: ToOwned,
+        T::Owned: Value,
+    {
+        Err(TryTakeError::from_value(self.take()?))
+    }
 }
 
 impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?Sized>
@@ -86,8 +116,8 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a R, TakeRefError<&T, Self::Error>> {
-        (**self).take_ref()
+    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+        (**self).try_take_ref()
     }
 
     #[inline]
@@ -101,7 +131,7 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
 }
 
 impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
     where
         'a: 'b,
     {
@@ -125,7 +155,7 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a T, TakeRefError<&T, Self::Error>> {
+    fn try_take_ref(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
         Ok(self)
     }
 
@@ -174,7 +204,7 @@ impl Value for Impossible {
 }
 
 impl<'a> Source<'a> for Impossible {
-    fn stream<'b, R: Receiver<'b>>(&mut self, _: R) -> Result<Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, _: R) -> Result<Stream>
     where
         'a: 'b,
     {
@@ -204,19 +234,19 @@ impl<E> TakeError<E> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TakeRefError<T, E>(Result<T, E>);
+pub struct TryTakeError<T, E>(Result<T, E>);
 
-impl<T, E> TakeRefError<T, E> {
+impl<T, E> TryTakeError<T, E> {
     pub fn from_value(value: T) -> Self {
-        TakeRefError(Ok(value))
+        TryTakeError(Ok(value))
     }
 
     pub fn from_error(err: E) -> Self {
-        TakeRefError(Err(err))
+        TryTakeError(Err(err))
     }
 
     pub fn from_result(r: Result<T, E>) -> Self {
-        TakeRefError(r)
+        TryTakeError(r)
     }
 
     pub fn into_result(self) -> Result<T, TakeError<E>> {
@@ -230,8 +260,8 @@ impl<E: Into<Error>> From<TakeError<E>> for Error {
     }
 }
 
-impl<T, E: Into<Error>> From<TakeRefError<T, E>> for Error {
-    fn from(err: TakeRefError<T, E>) -> Error {
+impl<T, E: Into<Error>> From<TryTakeError<T, E>> for Error {
+    fn from(err: TryTakeError<T, E>) -> Error {
         match err.into_result() {
             Ok(_) => Error,
             Err(err) => err.into(),
@@ -239,9 +269,9 @@ impl<T, E: Into<Error>> From<TakeRefError<T, E>> for Error {
     }
 }
 
-impl<T, E> From<TakeError<E>> for TakeRefError<T, E> {
-    fn from(err: TakeError<E>) -> TakeRefError<T, E> {
-        TakeRefError::from_error(err.into_error())
+impl<T, E> From<TakeError<E>> for TryTakeError<T, E> {
+    fn from(err: TakeError<E>) -> TryTakeError<T, E> {
+        TryTakeError::from_error(err.into_error())
     }
 }
 
@@ -260,3 +290,51 @@ pub trait ToOwned: private::Polyfill {
 
 #[cfg(feature = "alloc")]
 pub use crate::std::borrow::ToOwned;
+
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::std::boxed::Box;
+
+    impl<'a, T: Source<'a> + ?Sized> Source<'a> for Box<T> {
+        fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
+        where
+            'a: 'c,
+        {
+            (**self).stream_resume(receiver)
+        }
+
+        fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
+        where
+            'a: 'c,
+        {
+            (**self).stream_to_end(receiver)
+        }
+    }
+
+    impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?Sized>
+        ValueSource<'a, T, R> for Box<S>
+    {
+        type Error = S::Error;
+
+        #[inline]
+        fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
+            (**self).take()
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+            (**self).try_take_ref()
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+        where
+            T: ToOwned,
+            T::Owned: Value,
+        {
+            (**self).take_owned()
+        }
+    }
+}

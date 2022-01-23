@@ -1,11 +1,8 @@
-use sval_generic_api::receiver::{self, Receiver};
+use sval::receiver::{self, Receiver};
 
 use std::fmt::{self, Write};
 
-pub fn to_fmt<'a>(
-    fmt: impl Write,
-    mut v: impl receiver::Source<'a>,
-) -> Result<(), sval_generic_api::Error> {
+pub fn to_fmt<'a>(fmt: impl Write, mut v: impl receiver::Source<'a>) -> Result<(), sval::Error> {
     v.stream_to_end(Formatter::new(fmt))
 }
 
@@ -149,7 +146,7 @@ where
 
     fn map_begin(&mut self, _: Option<usize>) -> receiver::Result {
         if self.is_key {
-            return Err(sval_generic_api::Error);
+            return Err(sval::Error);
         }
 
         self.is_current_depth_empty = true;

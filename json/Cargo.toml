@@ -1,9 +1,9 @@
 [package]
-name = "sval-generic-api-json"
+name = "sval-json"
 version = "0.0.0"
 edition = "2021"
 
-[dependencies.sval-generic-api]
+[dependencies.sval]
 path = "../"
 
 [dependencies.ryu]

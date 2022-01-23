@@ -15,12 +15,12 @@ mod value;
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 
-#[proc_macro_derive(Value, attributes(sval_generic_api))]
+#[proc_macro_derive(Value, attributes(sval))]
 pub fn derive_source(input: TokenStream) -> TokenStream {
     value::derive(parse_macro_input!(input as DeriveInput))
 }
 
-#[proc_macro_derive(Coroutine, attributes(sval_generic_api))]
+#[proc_macro_derive(Coroutine, attributes(sval))]
 pub fn derive_coroutine(input: TokenStream) -> TokenStream {
     coroutine::derive(parse_macro_input!(input as DeriveInput))
 }

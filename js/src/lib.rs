@@ -1,7 +1,7 @@
 use js_sys::{Array, Map};
 use wasm_bindgen::prelude::*;
 
-use sval_generic_api::{
+use sval::{
     receiver::{self, Receiver},
     source, value,
 };

@@ -1,15 +1,15 @@
 [package]
-name = "sval-generic-api-example-browser"
+name = "sval-example-browser"
 version = "0.0.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
-[dependencies.sval-generic-api]
+[dependencies.sval]
 path = "../../"
 
-[dependencies.sval-generic-api-js]
+[dependencies.sval-js]
 path = "../../js"
 
 [dependencies.wasm-bindgen]

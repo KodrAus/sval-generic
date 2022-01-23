@@ -1,5 +1,5 @@
 [package]
-name = "sval-generic-api-derive"
+name = "sval-derive"
 version = "0.0.0"
 edition = "2021"
 

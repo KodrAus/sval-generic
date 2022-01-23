@@ -1,12 +1,12 @@
 [package]
-name = "sval-generic-api-js"
+name = "sval-js"
 version = "0.0.0"
 edition = "2021"
 
-[dependencies.sval-generic-api]
+[dependencies.sval]
 path = "../"
 
-[dependencies.sval-generic-api-buffer]
+[dependencies.sval-buffer]
 path = "../buffer"
 
 [dependencies.js-sys]

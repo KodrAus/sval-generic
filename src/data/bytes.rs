@@ -111,7 +111,7 @@ impl<'a> ValueSource<'a, Bytes> for &'a [u8] {
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }
@@ -125,7 +125,7 @@ impl<'a, const N: usize> ValueSource<'a, Bytes> for &'a [u8; N] {
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }
@@ -139,7 +139,7 @@ impl<'a> ValueSource<'a, Bytes> for &'a str {
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a Bytes, source::TakeRefError<&Bytes, Self::Error>> {
+    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }

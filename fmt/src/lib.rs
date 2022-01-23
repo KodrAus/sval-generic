@@ -3,7 +3,7 @@ use std::{
     fmt::{self, Write},
 };
 
-use sval_generic_api::{
+use sval::{
     receiver::{self, Receiver},
     value,
 };

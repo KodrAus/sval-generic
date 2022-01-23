@@ -11,7 +11,7 @@ pub use self::{
     bytes::{bytes, Bytes},
     digits::{digits, digits_unchecked, Digits},
     error::Error,
-    tag::{tag, Tag, TypeTagged, VariantTagged},
+    tag::{tag, tagged, Tag, Tagged, VariantTagged},
 };
 
 #[doc(inline)]
@@ -33,7 +33,7 @@ impl Value for () {
 }
 
 impl<'a> Source<'a> for () {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
@@ -64,7 +64,7 @@ impl Value for bool {
 }
 
 impl<'a> Source<'a> for bool {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
@@ -84,30 +84,5 @@ impl<'a> ValueSource<'a, bool> for bool {
 
     fn take(&mut self) -> Result<&bool, source::TakeError<Self::Error>> {
         Ok(self)
-    }
-}
-
-impl<T> Value for Option<T>
-where
-    T: Value,
-{
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        match self {
-            Some(v) => v.stream(receiver),
-            None => receiver.none(),
-        }
-    }
-}
-
-#[cfg(feature = "alloc")]
-mod alloc_support {
-    use super::*;
-
-    use crate::std::boxed::Box;
-
-    impl<T: Value + ?Sized> Value for Box<T> {
-        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
-            (**self).stream(stream)
-        }
     }
 }

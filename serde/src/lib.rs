@@ -1,11 +1,11 @@
 use std::convert::TryInto;
 
-use sval_generic_api::{
+use sval::{
     receiver::{self, Receiver},
     value,
 };
 
-use sval_generic_api_buffer::{buffer, BufferReceiver};
+use sval_buffer::{buffer, BufferReceiver};
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -545,7 +545,7 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
         &mut self,
         mut field: T,
     ) -> receiver::Result {
-        match field.take_ref() {
+        match field.try_take_ref() {
             Ok(field) => self.serialize_map_field(Ok(field)),
             Err(field) => self.serialize_map_field(Err(field.into_result()?)),
         }

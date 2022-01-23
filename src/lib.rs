@@ -35,8 +35,23 @@ pub use self::{
     error::Error,
     for_all::{for_all, ForAll},
     receiver::Receiver,
-    source::Source,
+    source::{Source, ValueSource},
     value::Value,
 };
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+
+fn lol<'a>(v: &'a impl Value, mut r: impl Receiver<'a>) {
+    r.tagged_map_begin(data::tag("A").with_content_hint(data::tag::ContentHint::Struct))
+        .unwrap();
+
+    r.map_field_entry("a", v).unwrap();
+    r.map_field_entry(
+        "b",
+        data::tagged("ts", "1985-04-12T23:20:50.52Z")
+            .with_content_hint(data::tag::ContentHint::RFC3339DateTime),
+    )
+    .unwrap();
+
+    r.tagged_map_end().unwrap();
+}

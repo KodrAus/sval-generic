@@ -1,5 +1,5 @@
 [package]
-name = "sval-generic-api"
+name = "sval"
 version = "0.0.0"
 edition = "2021"
 
@@ -24,11 +24,6 @@ members = [
 [features]
 std = ["alloc"]
 alloc = []
-
-[dependencies.derive]
-package = "sval-generic-api-derive"
-path = "derive"
-optional = true
 
 [profile.release]
 debug = true

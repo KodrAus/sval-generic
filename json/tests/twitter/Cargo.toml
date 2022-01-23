@@ -1,5 +1,5 @@
 [package]
-name = "sval-generic-api-json-twitter-tests"
+name = "sval-json-twitter-tests"
 version = "0.0.0"
 authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"
@@ -8,26 +8,28 @@ publish = false
 [lib]
 path = "lib.rs"
 
-[dependencies.sval-generic-api]
+[dependencies.sval]
 path = "../../../"
-features = ["derive"]
 
-[dependencies.sval-generic-api-json]
+[dependencies.sval-derive]
+path = "../../../derive"
+
+[dependencies.sval-json]
 path = "../../"
 
-[dependencies.sval-generic-api-serde]
+[dependencies.sval-serde]
 path = "../../../serde"
 
-[dependencies.sval-generic-api-valuable]
+[dependencies.sval-valuable]
 path = "../../../valuable"
 
-[dependencies.sval-generic-api-fmt]
+[dependencies.sval-fmt]
 path = "../../../fmt"
 
-[dependencies.sval-generic-api-erased]
+[dependencies.sval-erased]
 path = "../../../erased"
 
-[dependencies.sval-generic-api-coroutine]
+[dependencies.sval-coroutine]
 path = "../../../coroutine"
 
 [dependencies.serde]

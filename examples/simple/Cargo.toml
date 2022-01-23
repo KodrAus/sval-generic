@@ -1,7 +1,7 @@
 [package]
-name = "sval-generic-api-example-simple"
+name = "sval-example-simple"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies.sval-generic-api]
+[dependencies.sval]
 path = "../../"

@@ -1,8 +1,8 @@
 use valuable::{Listable, Mappable, Valuable, Visit};
 
-use sval_generic_api::{receiver, source, value, Receiver, Result};
+use sval::{receiver, source, value, Receiver, Result};
 
-use sval_generic_api_buffer::{buffer, BufferReceiver};
+use sval_buffer::{buffer, BufferReceiver};
 
 pub struct Value<'a, V>(Detected<'a, V>, &'a V);
 
@@ -159,7 +159,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
 
             fn str<'s: 'a, S: source::ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
                 if let Detected::Unknown = self.0 {
-                    self.0 = Detected::Primitive(Primitive::Str(value.take_ref()?));
+                    self.0 = Detected::Primitive(Primitive::Str(value.try_take_ref()?));
 
                     Ok(())
                 } else {

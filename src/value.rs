@@ -1,6 +1,6 @@
 use crate::{
     data::{
-        tag::{Tag, TypeTagged, VariantTagged},
+        tag::{Tag, Tagged, VariantTagged},
         Display,
     },
     receiver,
@@ -34,7 +34,7 @@ where
 
             #[inline]
             fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
-                match value.take_ref() {
+                match value.try_take_ref() {
                     Ok(v) => {
                         self.0 = Some(v);
                         Ok(())
@@ -98,19 +98,6 @@ where
         self.stream(&mut receiver).ok()?;
         receiver.0
     }
-
-    fn type_tag<T: ValueSource<'static, str>>(&self, tag: Tag<T>) -> TypeTagged<T, &Self> {
-        TypeTagged::new(tag, self)
-    }
-
-    fn variant_tag<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &self,
-        type_tag: Tag<T>,
-        variant_tag: Tag<K>,
-        variant_index: Option<u64>,
-    ) -> VariantTagged<T, K, &Self> {
-        VariantTagged::new(type_tag, variant_tag, variant_index, self)
-    }
 }
 
 impl<'a, T: Value + ?Sized> Value for &'a T {
@@ -121,5 +108,27 @@ impl<'a, T: Value + ?Sized> Value for &'a T {
     #[inline]
     fn to_str(&self) -> Option<&str> {
         (**self).to_str()
+    }
+}
+
+impl<T: Value> Value for Option<T> {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+        match self {
+            Some(v) => v.stream(receiver),
+            None => receiver.none(),
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::std::boxed::Box;
+
+    impl<T: Value + ?Sized> Value for Box<T> {
+        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
+            (**self).stream(stream)
+        }
     }
 }

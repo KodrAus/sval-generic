@@ -3,7 +3,7 @@
 
 extern crate test;
 
-use sval_generic_api_json_twitter_tests::Twitter;
+use sval_json_twitter_tests::Twitter;
 
 fn input_json() -> String {
     std::fs::read_to_string("../../tests/twitter/twitter.json").unwrap()
@@ -32,18 +32,18 @@ fn primitive_erased_serde(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn primitive_sval_generic_api(b: &mut test::Bencher) {
-    b.iter(|| sval_generic_api_json::to_string(&42).unwrap());
+fn primitive_sval(b: &mut test::Bencher) {
+    b.iter(|| sval_json::to_string(&42).unwrap());
 }
 
 #[bench]
-fn primitive_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api_erased as erased;
+fn primitive_erased_sval(b: &mut test::Bencher) {
+    use sval_erased as erased;
 
     let s = 42;
     let s = erased::value(&s);
 
-    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+    b.iter(|| sval_json::to_string(&s).unwrap());
 }
 
 #[bench]
@@ -73,43 +73,43 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
 
 /*
 #[bench]
-fn twitter_sval_generic_api_coroutine(b: &mut test::Bencher) {
-    use sval_generic_api_coroutine::value::CoroutineValue;
+fn twitter_sval_coroutine(b: &mut test::Bencher) {
+    use sval_coroutine::value::CoroutineValue;
 
     let s = input_struct();
     let s = s.as_value_iter();
 
-    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+    b.iter(|| sval_json::to_string(&s).unwrap());
 }
 */
 
 #[bench]
 fn twitter_sval_is_unbuffered(b: &mut test::Bencher) {
-    use sval_generic_api::Value;
+    use sval::Value;
 
     let s = input_struct();
     b.iter(|| s.is_unbuffered());
 }
 
 #[bench]
-fn twitter_sval_generic_api(b: &mut test::Bencher) {
+fn twitter_sval(b: &mut test::Bencher) {
     let s = input_struct();
-    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+    b.iter(|| sval_json::to_string(&s).unwrap());
 }
 
 #[bench]
-fn twitter_erased_sval_generic_api(b: &mut test::Bencher) {
-    use sval_generic_api_erased as erased;
+fn twitter_erased_sval(b: &mut test::Bencher) {
+    use sval_erased as erased;
 
     let s = input_struct();
     let s = erased::value(&s);
 
-    b.iter(|| sval_generic_api_json::to_string(&s).unwrap());
+    b.iter(|| sval_json::to_string(&s).unwrap());
 }
 
 #[bench]
-fn twitter_sval_generic_api_to_serde(b: &mut test::Bencher) {
-    use sval_generic_api_serde as serde;
+fn twitter_sval_to_serde(b: &mut test::Bencher) {
+    use sval_serde as serde;
 
     let s = input_struct();
     let s = serde::value(s);
@@ -118,8 +118,8 @@ fn twitter_sval_generic_api_to_serde(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn twitter_sval_generic_api_to_valuable(b: &mut test::Bencher) {
-    use sval_generic_api_valuable as valuable;
+fn twitter_sval_to_valuable(b: &mut test::Bencher) {
+    use sval_valuable as valuable;
 
     let s = input_struct();
     let s = valuable::value(&s);
@@ -150,8 +150,8 @@ fn twitter_std_fmt(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn twitter_sval_generic_api_fmt(b: &mut test::Bencher) {
-    use sval_generic_api_fmt as fmt;
+fn twitter_sval_fmt(b: &mut test::Bencher) {
+    use sval_fmt as fmt;
 
     let s = input_struct();
     let s = Fmt(fmt::value(s));

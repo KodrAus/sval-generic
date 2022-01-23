@@ -10,7 +10,7 @@ impl Value for char {
 }
 
 impl<'a> Source<'a> for char {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
     where
         'a: 'b,
     {
@@ -61,7 +61,10 @@ mod alloc_support {
     }
 
     impl<'a> Source<'a> for String {
-        fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
         where
             'a: 'b,
         {
@@ -115,7 +118,10 @@ mod alloc_support {
     }
 
     impl<'a> Source<'a> for Cow<'a, str> {
-        fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
         where
             'a: 'b,
         {
@@ -142,10 +148,10 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_ref(&mut self) -> Result<&'a str, source::TakeRefError<&str, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a str, source::TryTakeError<&str, Self::Error>> {
             match self {
                 Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TakeRefError::from_value(v)),
+                Cow::Owned(v) => Err(source::TryTakeError::from_value(v)),
             }
         }
 

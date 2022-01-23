@@ -1,12 +1,12 @@
 use crate::{
-    receiver,
+    data, receiver,
     source::{self, ValueSource},
     Receiver, Result, Value,
 };
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(receiver::Size::Variable(self.len()))?;
+        receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
@@ -18,13 +18,16 @@ impl<T: Value> Value for [T] {
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(receiver::Size::Fixed(self.len()))?;
+        receiver.tagged_seq_begin(
+            data::tag("").with_content_hint(data::tag::ContentHint::Array),
+            Some(self.len()),
+        )?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
         }
 
-        receiver.seq_end()
+        receiver.tagged_seq_end()
     }
 }
 
@@ -37,7 +40,7 @@ impl<'a, T: Value, const N: usize> ValueSource<'a, [T]> for &'a [T; N] {
     }
 
     #[inline]
-    fn take_ref(&mut self) -> Result<&'a [T], source::TakeRefError<&[T], Self::Error>> {
+    fn try_take_ref(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
         Ok(*self)
     }
 }
@@ -258,7 +261,10 @@ mod alloc_support {
     }
 
     impl<'a, T: Value + Clone> Source<'a> for Cow<'a, [T]> {
-        fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
         where
             'a: 'b,
         {
@@ -285,10 +291,10 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_ref(&mut self) -> Result<&'a [T], source::TakeRefError<&[T], Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
             match self {
                 Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TakeRefError::from_value(v)),
+                Cow::Owned(v) => Err(source::TryTakeError::from_value(v)),
             }
         }
 

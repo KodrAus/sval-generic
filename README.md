@@ -148,10 +148,10 @@ In general, I've been finding that the coroutine approach performs better than t
 Proportionally here's roughly how things look on my i9 9900K desktop:
 
 ```
-test twitter_erased_sval_generic_api      ... bench:     296,546 ns/iter (+/- 17,343)
-test twitter_sval_generic_api             ... bench:     260,779 ns/iter (+/- 13,690)
-test twitter_sval_generic_api_coroutine   ... bench:     338,383 ns/iter (+/- 18,995)
-test twitter_sval_generic_api_generator   ... bench:     469,486 ns/iter (+/- 25,373)
+test twitter_erased_sval      ... bench:     296,546 ns/iter (+/- 17,343)
+test twitter_sval             ... bench:     260,779 ns/iter (+/- 13,690)
+test twitter_sval_coroutine   ... bench:     338,383 ns/iter (+/- 18,995)
+test twitter_sval_generator   ... bench:     469,486 ns/iter (+/- 25,373)
 ```
 
 The tradeoff is that the coroutine approach needs to use `Pin` and unsafe code so that it can properly store interior pointers into its state to resume from (I'm pretty sure the current code will be unsound too).

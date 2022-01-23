@@ -1,10 +1,19 @@
 use crate::{
     data, for_all,
     source::{Source, ValueSource},
+    std::ops::Deref,
     Result, Value,
 };
 
 pub trait Receiver<'a> {
+    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
+        source.stream_to_end(self)
+    }
+
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        value.stream(self)
+    }
+
     fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result;
 
     fn none(&mut self) -> Result;
@@ -74,8 +83,12 @@ pub trait Receiver<'a> {
         self.unstructured(value.take()?)
     }
 
-    fn str_size_fixed<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-        self.str(value)
+    fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
+        &mut self,
+        tag: data::Tag<T>,
+        value: S,
+    ) -> Result {
+        self.tagged(tag, value)
     }
 
     fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, mut value: D) -> Result {
@@ -90,8 +103,12 @@ pub trait Receiver<'a> {
         self.unstructured(bytes.take()?)
     }
 
-    fn bytes_size_fixed<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
-        self.bytes(bytes)
+    fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, data::Bytes>>(
+        &mut self,
+        tag: data::Tag<T>,
+        value: B,
+    ) -> Result {
+        self.tagged(tag, value)
     }
 
     fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
@@ -110,14 +127,6 @@ pub trait Receiver<'a> {
         self.str(variant_tag.label)
     }
 
-    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
-        source.stream_to_end(self)
-    }
-
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        value.stream(self)
-    }
-
     fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         let _ = tag;
         Ok(())
@@ -129,21 +138,20 @@ pub trait Receiver<'a> {
 
     fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
         &mut self,
-        type_tag: data::Tag<T>,
+        mut type_tag: data::Tag<T>,
         variant_tag: data::Tag<K>,
         variant_index: Option<u64>,
     ) -> Result {
-        let _ = type_tag;
         let _ = variant_index;
 
-        self.map_begin(Size::Fixed(1))?;
+        self.tagged_map_begin(type_tag, Some(1))?;
         self.map_key(variant_tag)?;
         self.map_value_begin()
     }
 
     fn tagged_variant_end(&mut self) -> Result {
         self.map_value_end()?;
-        self.map_end()
+        self.tagged_map_end()
     }
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
@@ -173,14 +181,14 @@ pub trait Receiver<'a> {
         self.tagged_variant_end()
     }
 
-    fn map_begin(&mut self, size: Size) -> Result;
+    fn map_begin(&mut self, size: Option<usize>) -> Result;
 
     fn map_end(&mut self) -> Result;
 
     fn tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(size)
@@ -196,7 +204,7 @@ pub trait Receiver<'a> {
         type_tag: data::Tag<T>,
         variant_tag: data::Tag<K>,
         variant_index: Option<u64>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         self.tagged_variant_begin(type_tag, variant_tag, variant_index)?;
         self.map_begin(size)
@@ -249,14 +257,14 @@ pub trait Receiver<'a> {
         self.map_value_end()
     }
 
-    fn seq_begin(&mut self, size: Size) -> Result;
+    fn seq_begin(&mut self, size: Option<usize>) -> Result;
 
     fn seq_end(&mut self) -> Result;
 
     fn tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(size)
@@ -272,7 +280,7 @@ pub trait Receiver<'a> {
         type_tag: data::Tag<T>,
         variant_tag: data::Tag<K>,
         variant_index: Option<u64>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         self.tagged_variant_begin(type_tag, variant_tag, variant_index)?;
         self.seq_begin(size)
@@ -370,24 +378,16 @@ where
         (**self).str(value)
     }
 
-    fn str_size_fixed<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-        (**self).str_size_fixed(value)
-    }
-
     fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, value: D) -> Result {
         (**self).digits(value)
     }
 
-    fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
-        (**self).bytes(bytes)
-    }
-
-    fn bytes_size_fixed<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
-        (**self).bytes_size_fixed(bytes)
-    }
-
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
         (**self).error(error)
+    }
+
+    fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
+        (**self).bytes(bytes)
     }
 
     fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
@@ -455,7 +455,7 @@ where
         (**self).tagged_variant(type_tag, variant_tag, variant_index, value)
     }
 
-    fn map_begin(&mut self, size: Size) -> Result {
+    fn map_begin(&mut self, size: Option<usize>) -> Result {
         (**self).map_begin(size)
     }
 
@@ -466,7 +466,7 @@ where
     fn tagged_map_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         (**self).tagged_map_begin(tag, size)
     }
@@ -480,7 +480,7 @@ where
         type_tag: data::Tag<T>,
         variant_tag: data::Tag<K>,
         variant_index: Option<u64>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         (**self).tagged_variant_map_begin(type_tag, variant_tag, variant_index, size)
     }
@@ -533,7 +533,7 @@ where
         (**self).map_value(value)
     }
 
-    fn seq_begin(&mut self, size: Size) -> Result {
+    fn seq_begin(&mut self, size: Option<usize>) -> Result {
         (**self).seq_begin(size)
     }
 
@@ -544,7 +544,7 @@ where
     fn tagged_seq_begin<T: ValueSource<'static, str>>(
         &mut self,
         tag: data::Tag<T>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         (**self).tagged_seq_begin(tag, size)
     }
@@ -558,7 +558,7 @@ where
         type_tag: data::Tag<T>,
         variant_tag: data::Tag<K>,
         variant_index: Option<u64>,
-        size: Size,
+        size: Option<usize>,
     ) -> Result {
         (**self).tagged_variant_seq_begin(type_tag, variant_tag, variant_index, size)
     }
@@ -577,28 +577,6 @@ where
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
         (**self).seq_elem(elem)
-    }
-}
-
-pub enum Size {
-    Unknown,
-    Variable(usize),
-    Fixed(usize),
-}
-
-impl Default for Size {
-    fn default() -> Self {
-        Size::Unknown
-    }
-}
-
-impl Size {
-    pub fn get(&self) -> Option<usize> {
-        match self {
-            Size::Unknown => None,
-            Size::Variable(size) => Some(*size),
-            Size::Fixed(size) => Some(*size),
-        }
     }
 }
 

@@ -248,7 +248,7 @@ macro_rules! digits {
             }
 
             impl<'a> Source<'a> for $ty {
-                fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+                fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
                 where
                     'a: 'b,
                 {

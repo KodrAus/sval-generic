@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use sval_generic_api::{
+use sval::{
     receiver::{Display, Receiver},
     source::{self, Source, Stream, ValueSource},
     value::Value,
     Result,
 };
 
-use sval_generic_api_fmt as fmt;
+use sval_fmt as fmt;
 
 pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
     struct Extract<'a, R> {
@@ -32,7 +32,10 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
                 struct Adapter<D>(fmt::Value<D>);
 
                 impl<'a, D: Display> Source<'a> for Adapter<D> {
-                    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
+                    fn stream_resume<'b, R: Receiver<'b>>(
+                        &mut self,
+                        mut receiver: R,
+                    ) -> Result<Stream>
                     where
                         'a: 'b,
                     {
@@ -72,7 +75,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
-                match value.take_ref() {
+                match value.try_take_ref() {
                     Ok(v) => {
                         self.buffer.push(Token::Str(Cow::Borrowed(v)));
 
@@ -220,7 +223,7 @@ impl<'a> Value for Buffer<'a> {
 }
 
 impl<'a> Source<'a> for Buffer<'a> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
     where
         'a: 'b,
     {
@@ -263,7 +266,7 @@ enum Token<'a> {
 }
 
 impl<'a, 'b> Source<'a> for &'b Token<'a> {
-    fn stream<'c, R: Receiver<'c>>(&mut self, mut receiver: R) -> Result<Stream>
+    fn stream_resume<'c, R: Receiver<'c>>(&mut self, mut receiver: R) -> Result<Stream>
     where
         'a: 'c,
     {

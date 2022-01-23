@@ -1,6 +1,6 @@
 use crate::{co::Resume, Receiver};
 
-use sval_generic_api::Value;
+use sval::Value;
 
 pub trait CoroutineValue: Value {
     type State<'a>

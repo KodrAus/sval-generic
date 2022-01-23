@@ -1,8 +1,8 @@
 use crate::{
     data, receiver,
-    source::{Stream, TakeError, ValueSource},
+    source::{Stream, TakeError},
     std::fmt,
-    Receiver, Result, Source, Value,
+    Receiver, Result, Source, Value, ValueSource,
 };
 
 pub fn for_all<T>(value: T) -> ForAll<T> {
@@ -37,11 +37,11 @@ impl<T: Value> Value for ForAll<T> {
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<Stream>
+    fn stream_resume<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<Stream>
     where
         'a: 'c,
     {
-        self.0.stream(ForAll(stream))
+        self.0.stream_resume(ForAll(stream))
     }
 
     fn stream_to_end<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
@@ -133,10 +133,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
         self.0.str(ForAll(value))
     }
 
-    fn str_size_fixed<'s: 'a, T: ValueSource<'s, str>>(&mut self, value: T) -> Result {
-        self.0.str_size_fixed(ForAll(value))
-    }
-
     fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, value: D) -> Result {
         self.0.digits(ForAll(value))
     }
@@ -147,10 +143,6 @@ impl<'a, 'b, S: Receiver<'b>> Receiver<'a> for ForAll<S> {
 
     fn bytes<'s: 'a, T: ValueSource<'s, data::Bytes>>(&mut self, value: T) -> Result {
         self.0.bytes(ForAll(value))
-    }
-
-    fn bytes_size_fixed<'s: 'a, T: ValueSource<'s, data::Bytes>>(&mut self, value: T) -> Result {
-        self.0.bytes_size_fixed(ForAll(value))
     }
 
     fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {

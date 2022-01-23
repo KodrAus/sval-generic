@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 
-use sval_generic_api::digits::Digits;
+use sval::digits::Digits;
 
 #[bench]
 fn new_zero(b: &mut test::Bencher) {

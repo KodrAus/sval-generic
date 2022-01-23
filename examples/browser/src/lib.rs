@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate sval_generic_api;
+extern crate sval;
 
 use wasm_bindgen::prelude::*;
 
-use sval_generic_api_js as js;
+use sval_js as js;
 
 #[wasm_bindgen]
 extern "C" {

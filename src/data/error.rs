@@ -34,7 +34,6 @@ mod std_support {
     use super::*;
 
     use crate::{
-        data,
         source::{self, ValueSource},
         std::{error, fmt, io},
         Receiver, Result, Value,
@@ -62,7 +61,7 @@ mod std_support {
         }
 
         #[inline]
-        fn take_ref(&mut self) -> Result<&'a Error, source::TakeRefError<&Error, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -82,7 +81,7 @@ mod std_support {
         }
 
         #[inline]
-        fn take_ref(&mut self) -> Result<&'a Error, source::TakeRefError<&Error, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -102,7 +101,7 @@ mod std_support {
         }
 
         #[inline]
-        fn take_ref(&mut self) -> Result<&'a Error, source::TakeRefError<&Error, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
