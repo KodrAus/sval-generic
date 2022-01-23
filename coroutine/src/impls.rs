@@ -27,7 +27,7 @@ const _: () = {
         const MAY_YIELD: bool = false;
 
         fn resume(mut cx: Context<Self, R>) -> Result<Yield<Self>> {
-            cx.receiver().none()?;
+            cx.receiver().null()?;
 
             cx.yield_return()
         }
@@ -421,7 +421,7 @@ const _: () = {
                     }
                 }
                 None => {
-                    receiver.none()?;
+                    receiver.null()?;
 
                     cx.yield_return()
                 }

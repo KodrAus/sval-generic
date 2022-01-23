@@ -49,7 +49,7 @@ impl<'a, S: Source<'a>> Source<'a> for Option<S> {
         match self {
             Some(source) => source.stream_resume(receiver),
             None => {
-                receiver.none()?;
+                receiver.null()?;
 
                 Ok(Stream::Done)
             }
@@ -62,7 +62,7 @@ impl<'a, S: Source<'a>> Source<'a> for Option<S> {
     {
         match self {
             Some(source) => source.stream_to_end(receiver),
-            None => receiver.none(),
+            None => receiver.null(),
         }
     }
 }
@@ -116,17 +116,26 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
-        (**self).try_take_ref()
-    }
-
-    #[inline]
     fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
     where
         T: ToOwned,
         T::Owned: Value,
     {
         (**self).take_owned()
+    }
+
+    #[inline]
+    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+        (**self).try_take_ref()
+    }
+
+    #[inline]
+    fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
+        where
+            T: ToOwned,
+            T::Owned: Value,
+    {
+        (**self).try_take_owned()
     }
 }
 
@@ -155,11 +164,6 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
-        Ok(self)
-    }
-
-    #[inline]
     fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
     where
         T: ToOwned,
@@ -173,6 +177,11 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
         {
             Ok(self.to_owned())
         }
+    }
+
+    #[inline]
+    fn try_take_ref(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
+        Ok(self)
     }
 }
 

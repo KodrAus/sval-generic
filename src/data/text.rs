@@ -48,6 +48,7 @@ mod alloc_support {
         for_all,
         std::{borrow::Cow, mem, string::String},
     };
+    use crate::source::TryTakeError;
 
     impl Value for String {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -89,6 +90,11 @@ mod alloc_support {
 
         #[inline]
         fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(mem::take(self))
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&str, Self::Error>> {
             Ok(mem::take(self))
         }
     }
@@ -158,6 +164,14 @@ mod alloc_support {
         #[inline]
         fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
             Ok(mem::take(self).into_owned())
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&str, Self::Error>> {
+            match self {
+                Cow::Borrowed(v) => Err(source::TryTakeError::from_value(v)),
+                Cow::Owned(v) => Ok(mem::take(v)),
+            }
         }
     }
 }

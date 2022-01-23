@@ -290,7 +290,7 @@ macro_rules! digits {
                 }
 
                 #[inline]
-                fn take_ref(&mut self) -> Result<&'a Digits, source::TakeRefError<&Digits, Self::Error>> {
+                fn try_take_ref(&mut self) -> Result<&'a Digits, source::TryTakeError<&Digits, Self::Error>> {
                     Ok(digits_unchecked(*self))
                 }
             }

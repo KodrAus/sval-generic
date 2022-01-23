@@ -472,7 +472,7 @@ impl<'a, S: Serializer> Receiver<'a> for SerdeReceiver<S> {
         self.serialize_source(v)
     }
 
-    fn none(&mut self) -> receiver::Result {
+    fn null(&mut self) -> receiver::Result {
         self.serialize_source(None::<()>)
     }
 

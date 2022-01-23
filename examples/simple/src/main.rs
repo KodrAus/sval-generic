@@ -18,7 +18,7 @@ where
         Ok(())
     }
 
-    fn none(&mut self) -> sval::Result {
+    fn null(&mut self) -> sval::Result {
         write!(&mut self.0, "null")?;
 
         Ok(())

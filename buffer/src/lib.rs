@@ -61,7 +61,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             }
         }
 
-        fn none(&mut self) -> Result {
+        fn null(&mut self) -> Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(&Option::None::<()>)
             } else {
@@ -274,7 +274,7 @@ impl<'a, 'b> Source<'a> for &'b Token<'a> {
             Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
             Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value))?,
             Token::Display(value) => receiver.unstructured(value)?,
-            Token::None => receiver.none()?,
+            Token::None => receiver.null()?,
             Token::MapBegin(len) => receiver.map_begin(*len)?,
             Token::MapEnd => receiver.map_end()?,
             Token::MapKeyBegin => receiver.map_key_begin()?,

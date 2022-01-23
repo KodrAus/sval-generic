@@ -28,7 +28,7 @@ use crate::{
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.none()
+        receiver.null()
     }
 }
 
@@ -44,7 +44,7 @@ impl<'a> Source<'a> for () {
     where
         'a: 'b,
     {
-        receiver.none()
+        receiver.null()
     }
 }
 
@@ -56,6 +56,16 @@ impl<'a> ValueSource<'a, ()> for () {
         Ok(self)
     }
 }
+
+impl<T: Value> Value for Option<T> {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+        match self {
+            Some(v) => receiver.tagged(tag("Option").with_content_hint(tag::ContentHint::Optional), v),
+            None => receiver.null(),
+        }
+    }
+}
+
 
 impl Value for bool {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {

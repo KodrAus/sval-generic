@@ -28,7 +28,7 @@ where
             }
 
             #[inline]
-            fn none(&mut self) -> Result {
+            fn null(&mut self) -> Result {
                 receiver::unsupported()
             }
 
@@ -44,7 +44,7 @@ where
             }
 
             #[inline]
-            fn map_begin(&mut self, _: receiver::Size) -> Result {
+            fn map_begin(&mut self, _: Option<u64>) -> Result {
                 receiver::unsupported()
             }
 
@@ -74,7 +74,7 @@ where
             }
 
             #[inline]
-            fn seq_begin(&mut self, _: receiver::Size) -> Result {
+            fn seq_begin(&mut self, _: Option<u64>) -> Result {
                 receiver::unsupported()
             }
 
@@ -108,15 +108,6 @@ impl<'a, T: Value + ?Sized> Value for &'a T {
     #[inline]
     fn to_str(&self) -> Option<&str> {
         (**self).to_str()
-    }
-}
-
-impl<T: Value> Value for Option<T> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        match self {
-            Some(v) => v.stream(receiver),
-            None => receiver.none(),
-        }
     }
 }
 

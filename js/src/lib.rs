@@ -171,7 +171,7 @@ impl<'a> Receiver<'a> for JsReceiver {
     }
 
     #[inline]
-    fn none(&mut self) -> receiver::Result {
+    fn null(&mut self) -> receiver::Result {
         self.push(JsValue::null())
     }
 

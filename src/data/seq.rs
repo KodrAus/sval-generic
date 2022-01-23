@@ -1,12 +1,12 @@
 use crate::{
-    data, receiver,
+    data,
     source::{self, ValueSource},
     Receiver, Result, Value,
 };
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.seq_begin(Some(self.len()))?;
+        receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
@@ -20,7 +20,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.tagged_seq_begin(
             data::tag("").with_content_hint(data::tag::ContentHint::Array),
-            Some(self.len()),
+            Some(self.len() as u64),
         )?;
 
         for elem in self {
@@ -52,11 +52,14 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-                    receiver.seq_begin(receiver::Size::Fixed($len))?;
+                    receiver.tagged_seq_begin(
+                        data::tag("").with_content_hint(data::tag::ContentHint::Tuple),
+                        Some($len)
+                    )?;
                     $(
                         receiver.seq_elem(&self.$i)?;
                     )+
-                    receiver.seq_end()
+                    receiver.tagged_seq_end()
                 }
             }
         )+

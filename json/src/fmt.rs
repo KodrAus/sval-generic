@@ -123,7 +123,7 @@ where
         Ok(())
     }
 
-    fn none(&mut self) -> receiver::Result {
+    fn null(&mut self) -> receiver::Result {
         self.out.write_str("null")?;
 
         Ok(())

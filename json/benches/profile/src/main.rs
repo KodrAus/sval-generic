@@ -31,7 +31,7 @@ impl<'a> Receiver<'a> for Empty {
         Ok(())
     }
 
-    fn none(&mut self) -> receiver::Result {
+    fn null(&mut self) -> receiver::Result {
         Ok(())
     }
 

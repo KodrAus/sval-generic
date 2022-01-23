@@ -147,7 +147,7 @@ impl<'a, V: value::Value> Detected<'a, V> {
                 }
             }
 
-            fn none(&mut self) -> Result {
+            fn null(&mut self) -> Result {
                 if let Detected::Unknown = self.0 {
                     self.0 = Detected::Primitive(Primitive::Unit);
 
@@ -296,7 +296,7 @@ impl<'a, 'b> Receiver<'a> for ValuableReceiver<'b> {
         Ok(())
     }
 
-    fn none(&mut self) -> Result {
+    fn null(&mut self) -> Result {
         self.0.visit_value(valuable::Value::Unit);
 
         Ok(())
