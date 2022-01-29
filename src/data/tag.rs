@@ -1,28 +1,26 @@
-use core::fmt::Display;
+use crate::data::{Bytes, Error};
 use crate::{
     source::{Stream, ValueSource},
     Receiver, Result, Source, Value,
 };
-use crate::data::{Bytes, Digits, Error};
+use core::fmt::Display;
 
-pub fn tag<T: ValueSource<'static, str>>(label: T) -> Tag<T> {
-    Tag::new(label)
+pub fn tag() -> Tag<&'static str> {
+    Tag::new()
 }
 
-pub fn tagged<T: ValueSource<'static, str>, V>(label: T, value: V) -> Tagged<T, V> {
-    Tagged::new(Tag::new(label), value)
+pub fn tagged<V>(value: V) -> Tagged<&'static str, V> {
+    Tagged::new(Tag::new(), Tag::new(), value)
 }
 
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
-pub enum ContentHint {
+pub enum Kind {
     // No hint
     // Expect next: anything
-    Unknown,
+    Unspecified,
     // An optional value
-    Optional,
-    // A map that follows internally tagged enum rules: a single static string key
-    // TODO: Semantics need work for this one
+    Nullable,
     Enum,
     // A map that follows struct rules: static string keys
     // Expect next: a map
@@ -41,56 +39,87 @@ pub enum ContentHint {
     RFC3986Uri,
 }
 
-impl Default for ContentHint {
+impl Default for Kind {
     fn default() -> Self {
-        ContentHint::Unknown
+        Kind::Unspecified
     }
 }
 
-impl ContentHint {
+impl Kind {
     pub fn is_fixed_size(&self) -> bool {
         match self {
-            ContentHint::Struct | ContentHint::Tuple | ContentHint::Array => true,
+            Kind::Struct | Kind::Tuple | Kind::Array => true,
             _ => false,
         }
     }
 }
 
-// NOTE: Tags aren't zero-cost. They're a piece of data you have to inspect and interpret
-// and possibly branch on. They may accompany some other data, or they may be out-of-band
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct Tag<T> {
-    pub label: T,
-    pub content_hint: ContentHint,
+    label: Option<T>,
+    id: Option<u64>,
+    kind: Kind,
 }
 
 impl<T> Tag<T> {
-    pub fn new(label: T) -> Self {
+    pub fn new() -> Self {
+        Tag::default()
+    }
+
+    pub fn label(&self) -> Option<&T> {
+        self.label.as_ref()
+    }
+
+    pub fn label_mut(&mut self) -> Option<&mut T> {
+        self.label.as_mut()
+    }
+
+    pub fn id(&self) -> Option<u64> {
+        self.id
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.kind
+    }
+
+    pub fn with_kind(self, kind: Kind) -> Self {
         Tag {
-            label,
-            content_hint: Default::default(),
+            label: self.label,
+            id: self.id,
+            kind,
         }
     }
 
-    pub fn with_content_hint(self, content_hint: ContentHint) -> Self {
+    pub fn with_label<U>(self, label: U) -> Self {
+        Tag {
+            label: Some(label),
+            id: self.id,
+            kind: self.kind,
+        }
+    }
+
+    pub fn with_id(self, id: u64) -> Self {
         Tag {
             label: self.label,
-            content_hint,
+            id: Some(id),
+            kind: self.kind,
         }
     }
 
     pub fn by_ref(&self) -> Tag<&T> {
         Tag {
-            label: &self.label,
-            content_hint: self.content_hint,
+            label: self.label.as_ref(),
+            id: self.id,
+            kind: self.kind,
         }
     }
 
     pub fn by_mut(&mut self) -> Tag<&mut T> {
         Tag {
-            label: &mut self.label,
-            content_hint: self.content_hint,
+            label: self.label.as_mut(),
+            id: self.id,
+            kind: self.kind,
         }
     }
 }
@@ -120,18 +149,80 @@ impl<'a, T: ValueSource<'static, str>> Source<'a> for Tag<T> {
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct Tagged<T, V> {
-    pub tag: Tag<T>,
-    pub value: V,
+    begin_tag: Tag<T>,
+    end_tag: Tag<T>,
+    value: V,
 }
 
 impl<T, V> Tagged<T, V> {
-    pub fn new(tag: Tag<T>, value: V) -> Self {
-        Tagged { tag, value }
+    pub fn new(begin_tag: Tag<T>, end_tag: Tag<T>, value: V) -> Self {
+        Tagged {
+            begin_tag,
+            end_tag,
+            value,
+        }
     }
 
-    pub fn with_content_hint(self, content_hint: ContentHint) -> Self {
+    pub fn begin_tag(&self) -> &Tag<T> {
+        &self.begin_tag
+    }
+
+    pub fn end_tag(&self) -> &Tag<T> {
+        &self.end_tag
+    }
+
+    pub fn begin_tag_mut(&mut self) -> &mut Tag<T> {
+        &mut self.begin_tag
+    }
+
+    pub fn end_tag_mut(&mut self) -> &mut Tag<T> {
+        &mut self.end_tag
+    }
+
+    pub fn value(&self) -> &V {
+        &self.value
+    }
+
+    pub fn value_mut(&mut self) -> &mut V {
+        &mut self.value
+    }
+
+    pub fn with_label<U: Clone>(self, label: U) -> Tagged<U, V> {
         Tagged {
-            tag: self.tag.with_content_hint(content_hint),
+            begin_tag: self.begin_tag.with_label(label.clone()),
+            end_tag: self.end_tag.with_label(label),
+            value: self.value,
+        }
+    }
+
+    pub fn with_id(self, id: u64) -> Self {
+        Tagged {
+            begin_tag: self.begin_tag.with_id(id),
+            end_tag: self.end_tag.with_id(id),
+            value: self.value,
+        }
+    }
+
+    pub fn with_kind(self, kind: Kind) -> Self {
+        Tagged {
+            begin_tag: self.begin_tag.with_kind(kind),
+            end_tag: self.end_tag.with_kind(kind),
+            value: self.value,
+        }
+    }
+
+    pub fn with_begin_label(self, label: T) -> Self {
+        Tagged {
+            begin_tag: self.begin_tag.with_label(label),
+            end_tag: self.end_tag,
+            value: self.value,
+        }
+    }
+
+    pub fn with_end_label(self, label: T) -> Self {
+        Tagged {
+            begin_tag: self.begin_tag,
+            end_tag: self.end_tag.with_label(label),
             value: self.value,
         }
     }
@@ -178,10 +269,6 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
         impl<'a, 'b, U: ValueSource<'static, str>, R: Receiver<'a>> Receiver<'a>
             for TaggedReceiver<'b, U, R>
         {
-            fn source<'v: 'a, S: Source<'v>>(&mut self, source: S) -> Result {
-                todo!()
-            }
-
             fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
                 todo!()
             }
@@ -254,10 +341,6 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
-            fn digits<'d: 'a, D: ValueSource<'d, Digits>>(&mut self, value: D) -> Result {
-                todo!()
-            }
-
             fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
                 todo!()
             }
@@ -270,39 +353,35 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
-            fn tag_variant<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>) -> Result {
-                todo!()
-            }
-
             fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
                 todo!()
             }
 
-            fn tagged_end(&mut self) -> Result {
+            fn tagged_end(&mut self, tag: Tag<T>) -> Result {
                 todo!()
             }
 
-            fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>) -> Result {
+            fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+                &mut self,
+                tag: Tag<T>,
+                value: V,
+            ) -> Result {
                 todo!()
             }
 
-            fn tagged_variant_end(&mut self) -> Result {
+            fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
+                &mut self,
+                tag: Tag<T>,
+                value: S,
+            ) -> Result {
                 todo!()
             }
 
-            fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(&mut self, tag: Tag<T>, value: V) -> Result {
-                todo!()
-            }
-
-            fn tagged_variant<'v: 'a, T: ValueSource<'static, str>, K: ValueSource<'static, str>, V: Source<'v>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, value: V) -> Result {
-                todo!()
-            }
-
-            fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(&mut self, tag: Tag<T>, value: S) -> Result {
-                todo!()
-            }
-
-            fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(&mut self, tag: Tag<T>, value: B) -> Result {
+            fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
+                &mut self,
+                tag: Tag<T>,
+                value: B,
+            ) -> Result {
                 todo!()
             }
 
@@ -311,22 +390,6 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
             }
 
             fn map_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn tagged_map_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn tagged_map_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn tagged_variant_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn tagged_variant_map_end(&mut self) -> Result {
                 todo!()
             }
 
@@ -346,11 +409,19 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
-            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(&mut self, key: K, value: V) -> Result {
+            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+                &mut self,
+                key: K,
+                value: V,
+            ) -> Result {
                 todo!()
             }
 
-            fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(&mut self, field: F, value: V) -> Result {
+            fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+                &mut self,
+                field: F,
+                value: V,
+            ) -> Result {
                 todo!()
             }
 
@@ -371,22 +442,6 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
             }
 
             fn seq_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn tagged_seq_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn tagged_seq_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn tagged_variant_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn tagged_variant_seq_end(&mut self) -> Result {
                 todo!()
             }
 

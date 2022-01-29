@@ -1,16 +1,12 @@
-use core::fmt::Display;
+use crate::data::{Bytes, Error, Tag};
 use crate::{
     data,
     source::{Source, ValueSource},
     Result, Value,
 };
-use crate::data::{Bytes, Digits, Error, Tag};
+use core::fmt::Display;
 
 pub trait Receiver<'a> {
-    fn source<'v: 'a, S: Source<'v>>(&mut self, mut source: S) -> Result {
-        source.stream_to_end(self)
-    }
-
     fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
         value.stream(self)
     }
@@ -80,10 +76,6 @@ pub trait Receiver<'a> {
         self.unstructured(value.take()?)
     }
 
-    fn digits<'d: 'a, D: ValueSource<'d, data::Digits>>(&mut self, mut value: D) -> Result {
-        self.unstructured(value.take()?)
-    }
-
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, mut error: E) -> Result {
         self.unstructured(error.take()?)
     }
@@ -96,43 +88,14 @@ pub trait Receiver<'a> {
         self.str(tag.label)
     }
 
-    fn tag_variant<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        type_tag: data::Tag<T>,
-        variant_tag: data::Tag<K>,
-        variant_index: Option<u64>,
-    ) -> Result {
-        let _ = type_tag;
-        let _ = variant_index;
-
-        self.str(variant_tag.label)
-    }
-
     fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
 
-    fn tagged_end(&mut self) -> Result {
+    fn tagged_end(&mut self, tag: data::Tag<T>) -> Result {
+        let _ = tag;
         Ok(())
-    }
-
-    fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        type_tag: data::Tag<T>,
-        variant_tag: data::Tag<K>,
-        variant_index: Option<u64>,
-    ) -> Result {
-        let _ = variant_index;
-
-        self.tagged_map_begin(type_tag, Some(1))?;
-        self.map_key(variant_tag)?;
-        self.map_value_begin()
-    }
-
-    fn tagged_variant_end(&mut self) -> Result {
-        self.map_value_end()?;
-        self.tagged_map_end()
     }
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
@@ -143,23 +106,6 @@ pub trait Receiver<'a> {
         self.tagged_begin(tag)?;
         self.source(value)?;
         self.tagged_end()
-    }
-
-    fn tagged_variant<
-        'v: 'a,
-        T: ValueSource<'static, str>,
-        K: ValueSource<'static, str>,
-        V: Source<'v>,
-    >(
-        &mut self,
-        type_tag: data::Tag<T>,
-        variant_tag: data::Tag<K>,
-        variant_index: Option<u64>,
-        value: V,
-    ) -> Result {
-        self.tagged_variant_begin(type_tag, variant_tag, variant_index)?;
-        self.source(value)?;
-        self.tagged_variant_end()
     }
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
@@ -178,41 +124,9 @@ pub trait Receiver<'a> {
         self.tagged(tag, value)
     }
 
-    // TODO: tagged_variant_{str/bytes}
-
     fn map_begin(&mut self, size: Option<u64>) -> Result;
 
     fn map_end(&mut self) -> Result;
-
-    fn tagged_map_begin<T: ValueSource<'static, str>>(
-        &mut self,
-        tag: data::Tag<T>,
-        size: Option<u64>,
-    ) -> Result {
-        self.tagged_begin(tag)?;
-        self.map_begin(size)
-    }
-
-    fn tagged_map_end(&mut self) -> Result {
-        self.map_end()?;
-        self.tagged_end()
-    }
-
-    fn tagged_variant_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        type_tag: data::Tag<T>,
-        variant_tag: data::Tag<K>,
-        variant_index: Option<u64>,
-        size: Option<u64>,
-    ) -> Result {
-        self.tagged_variant_begin(type_tag, variant_tag, variant_index)?;
-        self.map_begin(size)
-    }
-
-    fn tagged_variant_map_end(&mut self) -> Result {
-        self.map_end()?;
-        self.tagged_variant_end()
-    }
 
     fn map_key_begin(&mut self) -> Result;
 
@@ -260,36 +174,6 @@ pub trait Receiver<'a> {
 
     fn seq_end(&mut self) -> Result;
 
-    fn tagged_seq_begin<T: ValueSource<'static, str>>(
-        &mut self,
-        tag: data::Tag<T>,
-        size: Option<u64>,
-    ) -> Result {
-        self.tagged_begin(tag)?;
-        self.seq_begin(size)
-    }
-
-    fn tagged_seq_end(&mut self) -> Result {
-        self.seq_end()?;
-        self.tagged_end()
-    }
-
-    fn tagged_variant_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(
-        &mut self,
-        type_tag: data::Tag<T>,
-        variant_tag: data::Tag<K>,
-        variant_index: Option<u64>,
-        size: Option<u64>,
-    ) -> Result {
-        self.tagged_variant_begin(type_tag, variant_tag, variant_index)?;
-        self.seq_begin(size)
-    }
-
-    fn tagged_variant_seq_end(&mut self) -> Result {
-        self.seq_end()?;
-        self.tagged_variant_end()
-    }
-
     fn seq_elem_begin(&mut self) -> Result;
 
     fn seq_elem_end(&mut self) -> Result;
@@ -305,10 +189,6 @@ impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
 where
     R: Receiver<'a>,
 {
-    fn source<'v: 'a, S: Source<'v>>(&mut self, source: S) -> Result {
-        todo!()
-    }
-
     fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
         todo!()
     }
@@ -381,10 +261,6 @@ where
         todo!()
     }
 
-    fn digits<'d: 'a, D: ValueSource<'d, Digits>>(&mut self, value: D) -> Result {
-        todo!()
-    }
-
     fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
         todo!()
     }
@@ -397,39 +273,35 @@ where
         todo!()
     }
 
-    fn tag_variant<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>) -> Result {
-        todo!()
-    }
-
     fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
         todo!()
     }
 
-    fn tagged_end(&mut self) -> Result {
+    fn tagged_end(&mut self, tag: Tag<T>) -> Result {
         todo!()
     }
 
-    fn tagged_variant_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>) -> Result {
+    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        tag: Tag<T>,
+        value: V,
+    ) -> Result {
         todo!()
     }
 
-    fn tagged_variant_end(&mut self) -> Result {
+    fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
+        &mut self,
+        tag: Tag<T>,
+        value: S,
+    ) -> Result {
         todo!()
     }
 
-    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(&mut self, tag: Tag<T>, value: V) -> Result {
-        todo!()
-    }
-
-    fn tagged_variant<'v: 'a, T: ValueSource<'static, str>, K: ValueSource<'static, str>, V: Source<'v>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, value: V) -> Result {
-        todo!()
-    }
-
-    fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(&mut self, tag: Tag<T>, value: S) -> Result {
-        todo!()
-    }
-
-    fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(&mut self, tag: Tag<T>, value: B) -> Result {
+    fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
+        &mut self,
+        tag: Tag<T>,
+        value: B,
+    ) -> Result {
         todo!()
     }
 
@@ -438,22 +310,6 @@ where
     }
 
     fn map_end(&mut self) -> Result {
-        todo!()
-    }
-
-    fn tagged_map_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>, size: Option<u64>) -> Result {
-        todo!()
-    }
-
-    fn tagged_map_end(&mut self) -> Result {
-        todo!()
-    }
-
-    fn tagged_variant_map_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, size: Option<u64>) -> Result {
-        todo!()
-    }
-
-    fn tagged_variant_map_end(&mut self) -> Result {
         todo!()
     }
 
@@ -473,11 +329,19 @@ where
         todo!()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(&mut self, key: K, value: V) -> Result {
+    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result {
         todo!()
     }
 
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(&mut self, field: F, value: V) -> Result {
+    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+        &mut self,
+        field: F,
+        value: V,
+    ) -> Result {
         todo!()
     }
 
@@ -498,22 +362,6 @@ where
     }
 
     fn seq_end(&mut self) -> Result {
-        todo!()
-    }
-
-    fn tagged_seq_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>, size: Option<u64>) -> Result {
-        todo!()
-    }
-
-    fn tagged_seq_end(&mut self) -> Result {
-        todo!()
-    }
-
-    fn tagged_variant_seq_begin<T: ValueSource<'static, str>, K: ValueSource<'static, str>>(&mut self, type_tag: Tag<T>, variant_tag: Tag<K>, variant_index: Option<u64>, size: Option<u64>) -> Result {
-        todo!()
-    }
-
-    fn tagged_variant_seq_end(&mut self) -> Result {
         todo!()
     }
 

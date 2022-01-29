@@ -1,7 +1,28 @@
 use crate::{
     source::{self, ValueSource},
+    std::fmt,
     Receiver, Result, Source, Value,
 };
+
+pub fn text(text: &dyn fmt::Display) -> &Text {
+    Text::new(text)
+}
+
+#[repr(transparent)]
+pub struct Text(dyn fmt::Display);
+
+impl Text {
+    pub fn new(text: &impl fmt::Display) -> &Text {
+        // SAFETY: `Text` and `dyn Display` have the same ABI
+        unsafe { &*(text as *const dyn fmt::Display as *const Text) }
+    }
+}
+
+impl fmt::Display for Text {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl Value for char {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -44,11 +65,11 @@ impl Value for str {
 mod alloc_support {
     use super::*;
 
+    use crate::source::TryTakeError;
     use crate::{
         for_all,
         std::{borrow::Cow, mem, string::String},
     };
-    use crate::source::TryTakeError;
 
     impl Value for String {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {

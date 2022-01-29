@@ -1,15 +1,14 @@
 mod bytes;
+mod digits;
 mod error;
 mod seq;
 mod text;
 
-pub mod digits;
 pub mod tag;
 
 #[doc(inline)]
 pub use self::{
     bytes::{bytes, Bytes},
-    digits::{digits, digits_unchecked, Digits},
     error::Error,
     tag::{tag, tagged, Tag, Tagged, VariantTagged},
 };
@@ -58,14 +57,21 @@ impl<'a> ValueSource<'a, ()> for () {
 }
 
 impl<T: Value> Value for Option<T> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
         match self {
-            Some(v) => receiver.tagged(tag("Option").with_content_hint(tag::ContentHint::Optional), v),
-            None => receiver.null(),
+            Some(v) => tagged(v)
+                .with_label("Some")
+                .with_id(1)
+                .with_kind(tag::Kind::Nullable)
+                .stream_to_end(receiver),
+            None => tagged(())
+                .with_label("None")
+                .with_id(0)
+                .with_kind(tag::Kind::Nullable)
+                .stream_to_end(receiver),
         }
     }
 }
-
 
 impl Value for bool {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {

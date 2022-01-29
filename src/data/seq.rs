@@ -18,16 +18,15 @@ impl<T: Value> Value for [T] {
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.tagged_seq_begin(
-            data::tag("").with_content_hint(data::tag::ContentHint::Array),
-            Some(self.len() as u64),
-        )?;
+        receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Array))?;
+        receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
         }
 
-        receiver.tagged_seq_end()
+        receiver.seq_end()?;
+        receiver.tagged_end(data::tag().with_kind(data::tag::Kind::Array))
     }
 }
 
@@ -52,14 +51,13 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-                    receiver.tagged_seq_begin(
-                        data::tag("").with_content_hint(data::tag::ContentHint::Tuple),
-                        Some($len)
-                    )?;
+                    receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Tuple))?;
+                    receiver.seq_begin(Some($len))?;
                     $(
                         receiver.seq_elem(&self.$i)?;
                     )+
-                    receiver.tagged_seq_end()
+                    receiver.seq_end()?;
+                    receiver.tagged_end(data::tag().with_kind(data::tag::Kind::Tuple))
                 }
             }
         )+
