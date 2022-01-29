@@ -92,7 +92,7 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
 
     #[inline]
     fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
-        Err(TryTakeError::from_value(self.take()?))
+        Err(TryTakeError::Fallback(self.take()?))
     }
 
     #[inline]
@@ -101,7 +101,7 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
         T: ToOwned,
         T::Owned: Value,
     {
-        Err(TryTakeError::from_value(self.take()?))
+        Err(TryTakeError::Fallback(self.take()?))
     }
 }
 
@@ -131,9 +131,9 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
 
     #[inline]
     fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
-        where
-            T: ToOwned,
-            T::Owned: Value,
+    where
+        T: ToOwned,
+        T::Owned: Value,
     {
         (**self).try_take_owned()
     }
@@ -243,24 +243,9 @@ impl<E> TakeError<E> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TryTakeError<T, E>(Result<T, E>);
-
-impl<T, E> TryTakeError<T, E> {
-    pub fn from_value(value: T) -> Self {
-        TryTakeError(Ok(value))
-    }
-
-    pub fn from_error(err: E) -> Self {
-        TryTakeError(Err(err))
-    }
-
-    pub fn from_result(r: Result<T, E>) -> Self {
-        TryTakeError(r)
-    }
-
-    pub fn into_result(self) -> Result<T, TakeError<E>> {
-        self.0.map_err(TakeError)
-    }
+pub enum TryTakeError<T, E> {
+    Fallback(T),
+    Err(TakeError<E>),
 }
 
 impl<E: Into<Error>> From<TakeError<E>> for Error {
@@ -271,16 +256,16 @@ impl<E: Into<Error>> From<TakeError<E>> for Error {
 
 impl<T, E: Into<Error>> From<TryTakeError<T, E>> for Error {
     fn from(err: TryTakeError<T, E>) -> Error {
-        match err.into_result() {
-            Ok(_) => Error,
-            Err(err) => err.into(),
+        match err {
+            TryTakeError::Fallback(_) => Error,
+            TryTakeError::Err(e) => e.into(),
         }
     }
 }
 
 impl<T, E> From<TakeError<E>> for TryTakeError<T, E> {
     fn from(err: TakeError<E>) -> TryTakeError<T, E> {
-        TryTakeError::from_error(err.into_error())
+        TryTakeError::Err(err)
     }
 }
 

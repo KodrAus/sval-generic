@@ -1,10 +1,11 @@
+use crate::source::TakeError;
 use crate::{
     source::{self, ValueSource},
     std::fmt,
     Receiver, Result, Source, Value,
 };
 
-pub fn text(text: &dyn fmt::Display) -> &Text {
+pub fn text(text: &impl fmt::Display) -> &Text {
     Text::new(text)
 }
 
@@ -21,6 +22,12 @@ impl Text {
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl Value for Text {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+        receiver.text(self)
     }
 }
 
@@ -61,6 +68,15 @@ impl Value for str {
     }
 }
 
+impl<'a> ValueSource<'a, Text> for &'a str {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Text, TakeError<Self::Error>> {
+        Ok(Text::new(self))
+    }
+}
+
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;
@@ -68,8 +84,26 @@ mod alloc_support {
     use crate::source::TryTakeError;
     use crate::{
         for_all,
-        std::{borrow::Cow, mem, string::String},
+        std::{
+            borrow::{Borrow, Cow, ToOwned},
+            mem,
+            string::{String, ToString},
+        },
     };
+
+    impl ToOwned for Text {
+        type Owned = String;
+
+        fn to_owned(&self) -> Self::Owned {
+            self.0.to_string()
+        }
+    }
+
+    impl Borrow<Text> for String {
+        fn borrow(&self) -> &Text {
+            Text::new(self)
+        }
+    }
 
     impl Value for String {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -127,6 +161,11 @@ mod alloc_support {
         fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
             Ok(&**self)
         }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a str, TryTakeError<&str, Self::Error>> {
+            Ok(&**self)
+        }
     }
 
     impl<'a> Value for Cow<'a, str> {
@@ -178,7 +217,7 @@ mod alloc_support {
         fn try_take_ref(&mut self) -> Result<&'a str, source::TryTakeError<&str, Self::Error>> {
             match self {
                 Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TryTakeError::from_value(v)),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback(v)),
             }
         }
 
@@ -190,7 +229,7 @@ mod alloc_support {
         #[inline]
         fn try_take_owned(&mut self) -> Result<String, TryTakeError<&str, Self::Error>> {
             match self {
-                Cow::Borrowed(v) => Err(source::TryTakeError::from_value(v)),
+                Cow::Borrowed(v) => Err(source::TryTakeError::Fallback(v)),
                 Cow::Owned(v) => Ok(mem::take(v)),
             }
         }

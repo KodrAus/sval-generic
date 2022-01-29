@@ -144,6 +144,50 @@ impl<'a> ValueSource<'a, Bytes> for &'a str {
     }
 }
 
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::{
+        for_all,
+        source::TryTakeError,
+        std::{
+            borrow::{Borrow, Cow, ToOwned},
+            mem,
+            vec::Vec,
+        },
+        Source,
+    };
+
+    impl ToOwned for Bytes {
+        type Owned = Vec<u8>;
+
+        fn to_owned(&self) -> Self::Owned {
+            self.0.to_vec()
+        }
+    }
+
+    impl Borrow<Bytes> for Vec<u8> {
+        fn borrow(&self) -> &Bytes {
+            Bytes::new(self)
+        }
+    }
+
+    impl<'a> ValueSource<'a, Bytes> for Vec<u8> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+            Ok(bytes(self))
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
+            Ok(bytes(&**self))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

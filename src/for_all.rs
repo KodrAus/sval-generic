@@ -1,4 +1,4 @@
-use crate::data::{Bytes, Error, Tag};
+use crate::data::{Bytes, Error, Tag, Text};
 use crate::{
     data,
     source::{Stream, TakeError},
@@ -139,6 +139,10 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         todo!()
     }
 
+    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, value: S) -> Result {
+        todo!()
+    }
+
     fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
         todo!()
     }
@@ -155,7 +159,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         todo!()
     }
 
-    fn tagged_end(&mut self, tag: Tag<T>) -> Result {
+    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
         todo!()
     }
 

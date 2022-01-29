@@ -31,6 +31,10 @@ pub trait Receiver<'a> {
         self.u128(value as u128)
     }
 
+    fn u128(&mut self, value: u128) -> Result {
+        self.unstructured(value)
+    }
+
     fn i8(&mut self, value: i8) -> Result {
         self.i16(value as i16)
     }
@@ -47,12 +51,8 @@ pub trait Receiver<'a> {
         self.i128(value as i128)
     }
 
-    fn u128(&mut self, value: u128) -> Result {
-        self.digits(value)
-    }
-
     fn i128(&mut self, value: i128) -> Result {
-        self.digits(value)
+        self.unstructured(value)
     }
 
     fn f32(&mut self, value: f32) -> Result {
@@ -60,7 +60,7 @@ pub trait Receiver<'a> {
     }
 
     fn f64(&mut self, value: f64) -> Result {
-        self.digits(value)
+        self.unstructured(value)
     }
 
     fn bool(&mut self, value: bool) -> Result {
@@ -76,6 +76,10 @@ pub trait Receiver<'a> {
         self.unstructured(value.take()?)
     }
 
+    fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, mut value: S) -> Result {
+        self.unstructured(value.take()?)
+    }
+
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, mut error: E) -> Result {
         self.unstructured(error.take()?)
     }
@@ -84,8 +88,18 @@ pub trait Receiver<'a> {
         self.unstructured(bytes.take()?)
     }
 
-    fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
-        self.str(tag.label)
+    fn tag<T: ValueSource<'static, str>>(&mut self, mut tag: data::Tag<T>) -> Result {
+        if let Some(label) = tag.label_mut() {
+            self.str(label)?;
+            return Ok(());
+        }
+
+        if let Some(id) = tag.id() {
+            self.u64(id)?;
+            return Ok(());
+        }
+
+        self.null()
     }
 
     fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
@@ -93,15 +107,14 @@ pub trait Receiver<'a> {
         Ok(())
     }
 
-    fn tagged_end(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: data::Tag<T>,
-        value: V,
+        mut tagged: data::Tagged<T, V>,
     ) -> Result {
         self.tagged_begin(tag)?;
         self.source(value)?;
@@ -110,16 +123,21 @@ pub trait Receiver<'a> {
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
         &mut self,
-        tag: data::Tag<T>,
-        value: S,
+        mut tagged: data::Tagged<T, S>,
+    ) -> Result {
+        self.tagged(tag, value)
+    }
+
+    fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, data::Text>>(
+        &mut self,
+        mut tagged: data::Tagged<T, S>,
     ) -> Result {
         self.tagged(tag, value)
     }
 
     fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, data::Bytes>>(
         &mut self,
-        tag: data::Tag<T>,
-        value: B,
+        mut tagged: data::Tagged<T, B>,
     ) -> Result {
         self.tagged(tag, value)
     }
@@ -277,7 +295,7 @@ where
         todo!()
     }
 
-    fn tagged_end(&mut self, tag: Tag<T>) -> Result {
+    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
         todo!()
     }
 

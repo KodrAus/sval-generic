@@ -10,7 +10,8 @@ pub mod tag;
 pub use self::{
     bytes::{bytes, Bytes},
     error::Error,
-    tag::{tag, tagged, Tag, Tagged, VariantTagged},
+    tag::{tag, tagged, Tag, Tagged},
+    text::{text, Text},
 };
 
 #[doc(inline)]

@@ -54,12 +54,22 @@ impl Kind {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct Tag<T> {
     label: Option<T>,
     id: Option<u64>,
     kind: Kind,
+}
+
+impl<T> Default for Tag<T> {
+    fn default() -> Self {
+        Tag {
+            label: Default::default(),
+            id: Default::default(),
+            kind: Default::default(),
+        }
+    }
 }
 
 impl<T> Tag<T> {
@@ -91,7 +101,7 @@ impl<T> Tag<T> {
         }
     }
 
-    pub fn with_label<U>(self, label: U) -> Self {
+    pub fn with_label<U>(self, label: U) -> Tag<U> {
         Tag {
             label: Some(label),
             id: self.id,
@@ -248,7 +258,8 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
     {
         struct TaggedReceiver<'a, T, R> {
             // NOTE: It's expected that we'll only access the tag once on this receiver
-            tag: &'a mut Tag<T>,
+            begin_tag: &'a mut Tag<T>,
+            end_tag: &'a mut Tag<T>,
             receiver: R,
         }
 
@@ -357,7 +368,7 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
-            fn tagged_end(&mut self, tag: Tag<T>) -> Result {
+            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
                 todo!()
             }
 
@@ -459,71 +470,13 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
         }
 
         let mut receiver = TaggedReceiver {
-            tag: &mut self.tag,
+            begin_tag: &mut self.begin_tag,
+            end_tag: &mut self.end_tag,
             receiver,
         };
 
         // Dispatch through our special Receiver so that we get a chance to map strings
         // to the more specialized tagged_str versions instead of through the general ones
         self.value.stream_to_end(receiver)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
-pub struct VariantTagged<T, K, V> {
-    pub type_tag: Tag<T>,
-    pub variant_tag: Tag<K>,
-    pub variant_index: Option<u64>,
-    pub value: V,
-}
-
-impl<T, K, V> VariantTagged<T, K, V> {
-    pub fn new(
-        type_tag: Tag<T>,
-        variant_tag: Tag<K>,
-        variant_index: Option<u64>,
-        value: V,
-    ) -> Self {
-        VariantTagged {
-            type_tag,
-            variant_tag,
-            variant_index,
-            value,
-        }
-    }
-}
-
-impl<V: Value> Value for VariantTagged<&'static str, &'static str, V> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-        receiver.tagged_variant(
-            self.type_tag,
-            self.variant_tag,
-            self.variant_index,
-            &self.value,
-        )
-    }
-}
-
-impl<'a, T: ValueSource<'static, str>, K: ValueSource<'static, str>, S: Source<'a>> Source<'a>
-    for VariantTagged<T, K, S>
-{
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| Stream::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-    where
-        'a: 'b,
-    {
-        receiver.tagged_variant(
-            self.type_tag.by_mut(),
-            self.variant_tag.by_mut(),
-            self.variant_index,
-            &mut self.value,
-        )
     }
 }
