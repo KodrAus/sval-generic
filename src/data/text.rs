@@ -1,12 +1,69 @@
-use crate::source::TakeError;
+use crate::source::{Stream, TakeError, TryTakeError};
 use crate::{
     source::{self, ValueSource},
-    std::fmt,
+    std::{fmt, marker::PhantomData},
     Receiver, Result, Source, Value,
 };
 
 pub fn text(text: &impl fmt::Display) -> &Text {
     Text::new(text)
+}
+
+// TODO: If this works, try generalize for any `T` and `U` (not sure about owned)
+pub(crate) fn text_value_source<
+    'a,
+    T: AsRef<Text> + Value + ?Sized,
+    U: AsRef<Text> + Value + ?Sized + 'a,
+>(
+    v: impl ValueSource<'a, T, U>,
+) -> impl ValueSource<'a, Text> {
+    struct AsText<'a, T: Value + ?Sized, U: Value + ?Sized, V: ValueSource<'a, T, U>>(
+        V,
+        PhantomData<fn(&V) -> &T>,
+        PhantomData<fn(&V) -> &'a U>,
+    );
+
+    impl<
+            'a,
+            T: AsRef<Text> + Value + ?Sized,
+            U: AsRef<Text> + Value + ?Sized,
+            V: ValueSource<'a, T, U>,
+        > ValueSource<'a, Text> for AsText<'a, T, U, V>
+    {
+        type Error = V::Error;
+
+        fn take(&mut self) -> Result<&Text, TakeError<Self::Error>> {
+            self.0.take().map(|v| v.as_ref())
+        }
+
+        fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
+            match self.0.try_take_ref() {
+                Ok(v) => Ok(v.as_ref()),
+                Err(TryTakeError::Fallback(v)) => Err(TryTakeError::Fallback(v.as_ref())),
+                Err(TryTakeError::Err(e)) => Err(TryTakeError::Err(e)),
+            }
+        }
+    }
+
+    impl<'a, T: Value + ?Sized, U: Value + ?Sized, V: ValueSource<'a, T, U>> Source<'a>
+        for AsText<'a, T, U, V>
+    {
+        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+        where
+            'a: 'b,
+        {
+            self.0.stream_resume(receiver)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+        where
+            'a: 'b,
+        {
+            self.0.stream_to_end(receiver)
+        }
+    }
+
+    AsText(v, PhantomData, PhantomData)
 }
 
 #[repr(transparent)]
@@ -28,6 +85,12 @@ impl fmt::Display for Text {
 impl Value for Text {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.text(self)
+    }
+}
+
+impl AsRef<Text> for str {
+    fn as_ref(&self) -> &Text {
+        Text::new(self)
     }
 }
 
@@ -232,6 +295,39 @@ mod alloc_support {
                 Cow::Borrowed(v) => Err(source::TryTakeError::Fallback(v)),
                 Cow::Owned(v) => Ok(mem::take(v)),
             }
+        }
+    }
+
+    impl<'a> ValueSource<'a, Text> for String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
+            Ok(Text::new(&**self))
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(mem::take(self))
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&Text, Self::Error>> {
+            Ok(mem::take(self))
+        }
+    }
+
+    impl<'a> ValueSource<'a, Text> for &'a String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
+            Ok(Text::new(&**self))
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&str, Self::Error>> {
+            Ok(Text::new(&**self))
         }
     }
 }

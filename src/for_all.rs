@@ -1,4 +1,4 @@
-use crate::data::{Bytes, Error, Tag, Text};
+use crate::data::{Bytes, Error, Tag, Tagged, Text};
 use crate::{
     data,
     source::{Stream, TakeError},
@@ -95,6 +95,10 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         todo!()
     }
 
+    fn u128(&mut self, value: u128) -> Result {
+        todo!()
+    }
+
     fn i8(&mut self, value: i8) -> Result {
         todo!()
     }
@@ -108,10 +112,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
     }
 
     fn i64(&mut self, value: i64) -> Result {
-        todo!()
-    }
-
-    fn u128(&mut self, value: u128) -> Result {
         todo!()
     }
 
@@ -165,24 +165,28 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: Tag<T>,
-        value: V,
+        tagged: Tagged<T, V>,
     ) -> Result {
         todo!()
     }
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
         &mut self,
-        tag: Tag<T>,
-        value: S,
+        tagged: Tagged<T, S>,
+    ) -> Result {
+        todo!()
+    }
+
+    fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, Text>>(
+        &mut self,
+        tagged: Tagged<T, S>,
     ) -> Result {
         todo!()
     }
 
     fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
         &mut self,
-        tag: Tag<T>,
-        value: B,
+        tagged: Tagged<T, B>,
     ) -> Result {
         todo!()
     }

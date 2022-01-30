@@ -1,8 +1,8 @@
-mod bytes;
-mod digits;
-mod error;
-mod seq;
-mod text;
+pub(crate) mod bytes;
+pub(crate) mod digits;
+pub(crate) mod error;
+pub(crate) mod seq;
+pub(crate) mod text;
 
 pub mod tag;
 

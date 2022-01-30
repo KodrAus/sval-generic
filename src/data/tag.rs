@@ -1,4 +1,4 @@
-use crate::data::{Bytes, Error};
+use crate::data::{Bytes, Error, Text};
 use crate::{
     source::{Stream, ValueSource},
     Receiver, Result, Source, Value,
@@ -173,20 +173,20 @@ impl<T, V> Tagged<T, V> {
         }
     }
 
-    pub fn begin_tag(&self) -> &Tag<T> {
-        &self.begin_tag
+    pub fn begin_tag(&self) -> Tag<&T> {
+        self.begin_tag.by_ref()
     }
 
-    pub fn end_tag(&self) -> &Tag<T> {
-        &self.end_tag
+    pub fn end_tag(&self) -> Tag<&T> {
+        self.end_tag.by_ref()
     }
 
-    pub fn begin_tag_mut(&mut self) -> &mut Tag<T> {
-        &mut self.begin_tag
+    pub fn begin_tag_mut(&mut self) -> Tag<&mut T> {
+        self.begin_tag.by_mut()
     }
 
-    pub fn end_tag_mut(&mut self) -> &mut Tag<T> {
-        &mut self.end_tag
+    pub fn end_tag_mut(&mut self) -> Tag<&mut T> {
+        self.end_tag.by_mut()
     }
 
     pub fn value(&self) -> &V {
@@ -195,6 +195,14 @@ impl<T, V> Tagged<T, V> {
 
     pub fn value_mut(&mut self) -> &mut V {
         &mut self.value
+    }
+
+    pub fn map_value<U>(self, f: impl FnOnce(V) -> U) -> Tagged<T, U> {
+        Tagged {
+            begin_tag: self.begin_tag,
+            end_tag: self.end_tag,
+            value: f(self.value),
+        }
     }
 
     pub fn with_label<U: Clone>(self, label: U) -> Tagged<U, V> {
@@ -308,6 +316,10 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
+            fn u128(&mut self, value: u128) -> Result {
+                todo!()
+            }
+
             fn i8(&mut self, value: i8) -> Result {
                 todo!()
             }
@@ -321,10 +333,6 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
             }
 
             fn i64(&mut self, value: i64) -> Result {
-                todo!()
-            }
-
-            fn u128(&mut self, value: u128) -> Result {
                 todo!()
             }
 
@@ -352,6 +360,10 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
                 todo!()
             }
 
+            fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, value: S) -> Result {
+                todo!()
+            }
+
             fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
                 todo!()
             }
@@ -374,24 +386,28 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
 
             fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
                 &mut self,
-                tag: Tag<T>,
-                value: V,
+                tagged: Tagged<T, V>,
             ) -> Result {
                 todo!()
             }
 
             fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
                 &mut self,
-                tag: Tag<T>,
-                value: S,
+                tagged: Tagged<T, S>,
+            ) -> Result {
+                todo!()
+            }
+
+            fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, Text>>(
+                &mut self,
+                tagged: Tagged<T, S>,
             ) -> Result {
                 todo!()
             }
 
             fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
                 &mut self,
-                tag: Tag<T>,
-                value: B,
+                tagged: Tagged<T, B>,
             ) -> Result {
                 todo!()
             }

@@ -1,7 +1,7 @@
-use crate::data::{Bytes, Error, Tag};
+use crate::data::{Bytes, Error, Tag, Tagged, Text};
 use crate::{
     data,
-    source::{Source, ValueSource},
+    source::{self, Source, ValueSource},
     Result, Value,
 };
 use core::fmt::Display;
@@ -116,30 +116,32 @@ pub trait Receiver<'a> {
         &mut self,
         mut tagged: data::Tagged<T, V>,
     ) -> Result {
-        self.tagged_begin(tag)?;
-        self.source(value)?;
-        self.tagged_end()
+        tagged.stream_to_end(self)
     }
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
         &mut self,
-        mut tagged: data::Tagged<T, S>,
+        tagged: data::Tagged<T, S>,
     ) -> Result {
-        self.tagged(tag, value)
+        self.tagged_text(tagged.map_value(|v| data::text::text_value_source(v)))
     }
 
     fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, data::Text>>(
         &mut self,
         mut tagged: data::Tagged<T, S>,
     ) -> Result {
-        self.tagged(tag, value)
+        self.tagged_begin(tagged.begin_tag_mut())?;
+        tagged.value_mut().stream_to_end(&mut *self)?;
+        self.tagged_end(tagged.end_tag_mut())
     }
 
     fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, data::Bytes>>(
         &mut self,
         mut tagged: data::Tagged<T, B>,
     ) -> Result {
-        self.tagged(tag, value)
+        self.tagged_begin(tagged.begin_tag_mut())?;
+        tagged.value_mut().stream_to_end(&mut *self)?;
+        self.tagged_end(tagged.end_tag_mut())
     }
 
     fn map_begin(&mut self, size: Option<u64>) -> Result;
@@ -176,15 +178,15 @@ pub trait Receiver<'a> {
         self.map_key(field)
     }
 
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+    fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
-        self.source(key)?;
+        key.stream_to_end(&mut *self)?;
         self.map_key_end()
     }
 
-    fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+    fn map_value<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
-        self.source(value)?;
+        value.stream_to_end(&mut *self)?;
         self.map_value_end()
     }
 
@@ -196,9 +198,9 @@ pub trait Receiver<'a> {
 
     fn seq_elem_end(&mut self) -> Result;
 
-    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
+    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
         self.seq_elem_begin()?;
-        self.source(elem)?;
+        elem.stream_to_end(&mut *self)?;
         self.seq_elem_end()
     }
 }
@@ -235,6 +237,10 @@ where
         todo!()
     }
 
+    fn u128(&mut self, value: u128) -> Result {
+        todo!()
+    }
+
     fn i8(&mut self, value: i8) -> Result {
         todo!()
     }
@@ -248,10 +254,6 @@ where
     }
 
     fn i64(&mut self, value: i64) -> Result {
-        todo!()
-    }
-
-    fn u128(&mut self, value: u128) -> Result {
         todo!()
     }
 
@@ -279,6 +281,10 @@ where
         todo!()
     }
 
+    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, value: S) -> Result {
+        todo!()
+    }
+
     fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
         todo!()
     }
@@ -301,24 +307,28 @@ where
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
-        tag: Tag<T>,
-        value: V,
+        tagged: Tagged<T, V>,
     ) -> Result {
         todo!()
     }
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
         &mut self,
-        tag: Tag<T>,
-        value: S,
+        tagged: Tagged<T, S>,
+    ) -> Result {
+        todo!()
+    }
+
+    fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, Text>>(
+        &mut self,
+        tagged: Tagged<T, S>,
     ) -> Result {
         todo!()
     }
 
     fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
         &mut self,
-        tag: Tag<T>,
-        value: B,
+        tagged: Tagged<T, B>,
     ) -> Result {
         todo!()
     }

@@ -149,11 +149,11 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        for_all,
         source::TryTakeError,
         std::{
             borrow::{Borrow, Cow, ToOwned},
             mem,
+            string::String,
             vec::Vec,
         },
         Source,
@@ -178,12 +178,64 @@ mod alloc_support {
 
         #[inline]
         fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
-            Ok(bytes(self))
+            Ok(Bytes::new(&**self))
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
-            Ok(bytes(&**self))
+        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
+            Ok(mem::take(self))
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<Vec<u8>, TryTakeError<&Bytes, Self::Error>> {
+            Ok(mem::take(self))
+        }
+    }
+
+    impl<'a> ValueSource<'a, Bytes> for &'a Vec<u8> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+            Ok(Bytes::new(&**self))
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a Bytes, TryTakeError<&Bytes, Self::Error>> {
+            Ok(Bytes::new(&**self))
+        }
+    }
+
+    impl<'a> ValueSource<'a, Bytes> for String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+            Ok(Bytes::new(&**self))
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
+            Ok(mem::take(self).into())
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<Vec<u8>, TryTakeError<&Bytes, Self::Error>> {
+            Ok(mem::take(self).into())
+        }
+    }
+
+    impl<'a> ValueSource<'a, Bytes> for &'a String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
+            Ok(Bytes::new(&**self))
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a Bytes, TryTakeError<&Bytes, Self::Error>> {
+            Ok(Bytes::new(&**self))
         }
     }
 }
