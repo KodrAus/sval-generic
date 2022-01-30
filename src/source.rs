@@ -1,7 +1,4 @@
-use crate::{
-    std::{fmt, marker::PhantomData},
-    Error, Receiver, Result, Value,
-};
+use crate::{std::fmt, Error, Receiver, Result, Value};
 
 pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream_to_end(s)
@@ -238,6 +235,10 @@ pub struct TakeError<E>(E);
 impl<E> TakeError<E> {
     pub fn from_error(err: E) -> Self {
         TakeError(err)
+    }
+
+    pub fn map_err<U>(self, f: impl FnOnce(E) -> U) -> TakeError<U> {
+        TakeError(f(self.0))
     }
 
     pub fn into_error(self) -> E {

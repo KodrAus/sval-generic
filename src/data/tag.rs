@@ -1,9 +1,7 @@
-use crate::data::{Bytes, Error, Text};
 use crate::{
     source::{Stream, ValueSource},
     Receiver, Result, Source, Value,
 };
-use core::fmt::Display;
 
 pub fn tag() -> Tag<&'static str> {
     Tag::new()
@@ -205,15 +203,12 @@ impl<T, V> Tagged<T, V> {
         }
     }
 
-    pub(crate) fn try_map_value<U, E>(
-        self,
-        f: impl FnOnce(V) -> Result<U, E>,
-    ) -> Result<Tagged<T, U>, E> {
-        Ok(Tagged {
+    pub fn map_value<U>(self, f: impl FnOnce(V) -> U) -> Tagged<T, U> {
+        Tagged {
             begin_tag: self.begin_tag,
             end_tag: self.end_tag,
-            value: f(self.value)?,
-        })
+            value: f(self.value),
+        }
     }
 
     pub fn with_label<U: Clone>(self, label: U) -> Tagged<U, V> {
@@ -258,7 +253,7 @@ impl<T, V> Tagged<T, V> {
 }
 
 impl<V: Value> Value for Tagged<&'static str, V> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
         (&*self).stream_to_end(receiver)
     }
 }
@@ -271,239 +266,10 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
         self.stream_to_end(receiver).map(|_| Stream::Done)
     }
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
     where
         'a: 'b,
     {
-        struct TaggedReceiver<'a, T, R> {
-            // NOTE: It's expected that we'll only access the tag once on this receiver
-            begin_tag: &'a mut Tag<T>,
-            end_tag: &'a mut Tag<T>,
-            receiver: R,
-        }
-
-        /*
-        fn source<'v: 'a, S: Source<'v>>(&mut self, source: S) -> Result {
-            self.receiver.tagged(self.tag.by_mut(), source)
-        }
-
-        fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-            self.receiver.tagged(self.tag.by_mut(), value)
-        }
-
-        fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-            self.receiver.tagged_str(self.tag.by_mut(), value)
-        }
-        */
-
-        impl<'a, 'b, U: ValueSource<'static, str>, R: Receiver<'a>> Receiver<'a>
-            for TaggedReceiver<'b, U, R>
-        {
-            fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-                todo!()
-            }
-
-            fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
-                todo!()
-            }
-
-            fn null(&mut self) -> Result {
-                todo!()
-            }
-
-            fn u8(&mut self, value: u8) -> Result {
-                todo!()
-            }
-
-            fn u16(&mut self, value: u16) -> Result {
-                todo!()
-            }
-
-            fn u32(&mut self, value: u32) -> Result {
-                todo!()
-            }
-
-            fn u64(&mut self, value: u64) -> Result {
-                todo!()
-            }
-
-            fn u128(&mut self, value: u128) -> Result {
-                todo!()
-            }
-
-            fn i8(&mut self, value: i8) -> Result {
-                todo!()
-            }
-
-            fn i16(&mut self, value: i16) -> Result {
-                todo!()
-            }
-
-            fn i32(&mut self, value: i32) -> Result {
-                todo!()
-            }
-
-            fn i64(&mut self, value: i64) -> Result {
-                todo!()
-            }
-
-            fn i128(&mut self, value: i128) -> Result {
-                todo!()
-            }
-
-            fn f32(&mut self, value: f32) -> Result {
-                todo!()
-            }
-
-            fn f64(&mut self, value: f64) -> Result {
-                todo!()
-            }
-
-            fn bool(&mut self, value: bool) -> Result {
-                todo!()
-            }
-
-            fn char(&mut self, value: char) -> Result {
-                todo!()
-            }
-
-            fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-                todo!()
-            }
-
-            fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, value: S) -> Result {
-                todo!()
-            }
-
-            fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
-                todo!()
-            }
-
-            fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
-                todo!()
-            }
-
-            fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-                todo!()
-            }
-
-            fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-                todo!()
-            }
-
-            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-                todo!()
-            }
-
-            fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
-                &mut self,
-                tagged: Tagged<T, V>,
-            ) -> Result {
-                todo!()
-            }
-
-            fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
-                &mut self,
-                tagged: Tagged<T, S>,
-            ) -> Result {
-                todo!()
-            }
-
-            fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, Text>>(
-                &mut self,
-                tagged: Tagged<T, S>,
-            ) -> Result {
-                todo!()
-            }
-
-            fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
-                &mut self,
-                tagged: Tagged<T, B>,
-            ) -> Result {
-                todo!()
-            }
-
-            fn map_begin(&mut self, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn map_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn map_key_begin(&mut self) -> Result {
-                todo!()
-            }
-
-            fn map_key_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn map_value_begin(&mut self) -> Result {
-                todo!()
-            }
-
-            fn map_value_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-                &mut self,
-                key: K,
-                value: V,
-            ) -> Result {
-                todo!()
-            }
-
-            fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
-                &mut self,
-                field: F,
-                value: V,
-            ) -> Result {
-                todo!()
-            }
-
-            fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
-                todo!()
-            }
-
-            fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-                todo!()
-            }
-
-            fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-                todo!()
-            }
-
-            fn seq_begin(&mut self, size: Option<u64>) -> Result {
-                todo!()
-            }
-
-            fn seq_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn seq_elem_begin(&mut self) -> Result {
-                todo!()
-            }
-
-            fn seq_elem_end(&mut self) -> Result {
-                todo!()
-            }
-
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-                todo!()
-            }
-        }
-
-        let mut receiver = TaggedReceiver {
-            begin_tag: &mut self.begin_tag,
-            end_tag: &mut self.end_tag,
-            receiver,
-        };
-
-        // Dispatch through our special Receiver so that we get a chance to map strings
-        // to the more specialized tagged_str versions instead of through the general ones
-        self.value.stream_to_end(receiver)
+        receiver.tagged(self.by_mut())
     }
 }

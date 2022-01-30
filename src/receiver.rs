@@ -1,7 +1,7 @@
 use crate::data::{Bytes, Error, Tag, Tagged, Text};
 use crate::{
     data, for_all,
-    source::{self, Source, ValueSource},
+    source::{Source, ValueSource},
     Result, Value,
 };
 use core::fmt::Display;
@@ -69,15 +69,15 @@ pub trait Receiver<'a> {
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
-        self.unstructured(&*value.encode_utf8(&mut buf))
+        self.str(for_all(&*value.encode_utf8(&mut buf)))
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
         self.text(for_all(value.take()?))
     }
 
-    fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, mut value: S) -> Result {
-        self.unstructured(value.take()?)
+    fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, mut text: S) -> Result {
+        self.unstructured(text.take()?)
     }
 
     fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, mut error: E) -> Result {
@@ -115,29 +115,6 @@ pub trait Receiver<'a> {
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
         mut tagged: data::Tagged<T, V>,
-    ) -> Result {
-        tagged.stream_to_end(self)
-    }
-
-    fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
-        &mut self,
-        mut tagged: data::Tagged<T, S>,
-    ) -> Result {
-        self.tagged_text(tagged.by_mut().try_map_value(|v| v.take().map(for_all))?)
-    }
-
-    fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, data::Text>>(
-        &mut self,
-        mut tagged: data::Tagged<T, S>,
-    ) -> Result {
-        self.tagged_begin(tagged.begin_tag_mut())?;
-        tagged.value_mut().stream_to_end(&mut *self)?;
-        self.tagged_end(tagged.end_tag_mut())
-    }
-
-    fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, data::Bytes>>(
-        &mut self,
-        mut tagged: data::Tagged<T, B>,
     ) -> Result {
         self.tagged_begin(tagged.begin_tag_mut())?;
         tagged.value_mut().stream_to_end(&mut *self)?;
@@ -210,151 +187,130 @@ where
     R: Receiver<'a>,
 {
     fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        todo!()
+        (**self).value(value)
     }
 
     fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
-        todo!()
+        (**self).unstructured(fmt)
     }
 
     fn null(&mut self) -> Result {
-        todo!()
+        (**self).null()
     }
 
     fn u8(&mut self, value: u8) -> Result {
-        todo!()
+        (**self).u8(value)
     }
 
     fn u16(&mut self, value: u16) -> Result {
-        todo!()
+        (**self).u16(value)
     }
 
     fn u32(&mut self, value: u32) -> Result {
-        todo!()
+        (**self).u32(value)
     }
 
     fn u64(&mut self, value: u64) -> Result {
-        todo!()
+        (**self).u64(value)
     }
 
     fn u128(&mut self, value: u128) -> Result {
-        todo!()
+        (**self).u128(value)
     }
 
     fn i8(&mut self, value: i8) -> Result {
-        todo!()
+        (**self).i8(value)
     }
 
     fn i16(&mut self, value: i16) -> Result {
-        todo!()
+        (**self).i16(value)
     }
 
     fn i32(&mut self, value: i32) -> Result {
-        todo!()
+        (**self).i32(value)
     }
 
     fn i64(&mut self, value: i64) -> Result {
-        todo!()
+        (**self).i64(value)
     }
 
     fn i128(&mut self, value: i128) -> Result {
-        todo!()
+        (**self).i128(value)
     }
 
     fn f32(&mut self, value: f32) -> Result {
-        todo!()
+        (**self).f32(value)
     }
 
     fn f64(&mut self, value: f64) -> Result {
-        todo!()
+        (**self).f64(value)
     }
 
     fn bool(&mut self, value: bool) -> Result {
-        todo!()
+        (**self).bool(value)
     }
 
     fn char(&mut self, value: char) -> Result {
-        todo!()
+        (**self).char(value)
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-        todo!()
+        (**self).str(value)
     }
 
-    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, value: S) -> Result {
-        todo!()
+    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, text: S) -> Result {
+        (**self).text(text)
     }
 
     fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
-        todo!()
+        (**self).error(error)
     }
 
     fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
-        todo!()
+        (**self).bytes(bytes)
     }
 
     fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        todo!()
+        (**self).tag(tag)
     }
 
     fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        todo!()
+        (**self).tagged_begin(tag)
     }
 
     fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        todo!()
+        (**self).tagged_end(tag)
     }
 
     fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
         &mut self,
         tagged: Tagged<T, V>,
     ) -> Result {
-        todo!()
-    }
-
-    fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
-        &mut self,
-        tagged: Tagged<T, S>,
-    ) -> Result {
-        todo!()
-    }
-
-    fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, Text>>(
-        &mut self,
-        tagged: Tagged<T, S>,
-    ) -> Result {
-        todo!()
-    }
-
-    fn tagged_bytes<'s: 'a, T: ValueSource<'static, str>, B: ValueSource<'s, Bytes>>(
-        &mut self,
-        tagged: Tagged<T, B>,
-    ) -> Result {
-        todo!()
+        (**self).tagged(tagged)
     }
 
     fn map_begin(&mut self, size: Option<u64>) -> Result {
-        todo!()
+        (**self).map_begin(size)
     }
 
     fn map_end(&mut self) -> Result {
-        todo!()
+        (**self).map_end()
     }
 
     fn map_key_begin(&mut self) -> Result {
-        todo!()
+        (**self).map_key_begin()
     }
 
     fn map_key_end(&mut self) -> Result {
-        todo!()
+        (**self).map_key_end()
     }
 
     fn map_value_begin(&mut self) -> Result {
-        todo!()
+        (**self).map_value_begin()
     }
 
     fn map_value_end(&mut self) -> Result {
-        todo!()
+        (**self).map_value_end()
     }
 
     fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
@@ -362,7 +318,7 @@ where
         key: K,
         value: V,
     ) -> Result {
-        todo!()
+        (**self).map_entry(key, value)
     }
 
     fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
@@ -370,39 +326,39 @@ where
         field: F,
         value: V,
     ) -> Result {
-        todo!()
+        (**self).map_field_entry(field, value)
     }
 
     fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
-        todo!()
+        (**self).map_field(field)
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        todo!()
+        (**self).map_key(key)
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        todo!()
+        (**self).map_value(value)
     }
 
     fn seq_begin(&mut self, size: Option<u64>) -> Result {
-        todo!()
+        (**self).seq_begin(size)
     }
 
     fn seq_end(&mut self) -> Result {
-        todo!()
+        (**self).seq_end()
     }
 
     fn seq_elem_begin(&mut self) -> Result {
-        todo!()
+        (**self).seq_elem_begin()
     }
 
     fn seq_elem_end(&mut self) -> Result {
-        todo!()
+        (**self).seq_elem_end()
     }
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-        todo!()
+        (**self).seq_elem(elem)
     }
 }
 
