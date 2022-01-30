@@ -197,12 +197,23 @@ impl<T, V> Tagged<T, V> {
         &mut self.value
     }
 
-    pub fn map_value<U>(self, f: impl FnOnce(V) -> U) -> Tagged<T, U> {
+    pub fn by_mut(&mut self) -> Tagged<&mut T, &mut V> {
         Tagged {
+            begin_tag: self.begin_tag.by_mut(),
+            end_tag: self.end_tag.by_mut(),
+            value: &mut self.value,
+        }
+    }
+
+    pub(crate) fn try_map_value<U, E>(
+        self,
+        f: impl FnOnce(V) -> Result<U, E>,
+    ) -> Result<Tagged<T, U>, E> {
+        Ok(Tagged {
             begin_tag: self.begin_tag,
             end_tag: self.end_tag,
-            value: f(self.value),
-        }
+            value: f(self.value)?,
+        })
     }
 
     pub fn with_label<U: Clone>(self, label: U) -> Tagged<U, V> {

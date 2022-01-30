@@ -1,6 +1,6 @@
 use crate::data::{Bytes, Error, Tag, Tagged, Text};
 use crate::{
-    data,
+    data, for_all,
     source::{self, Source, ValueSource},
     Result, Value,
 };
@@ -73,7 +73,7 @@ pub trait Receiver<'a> {
     }
 
     fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
-        self.unstructured(value.take()?)
+        self.text(for_all(value.take()?))
     }
 
     fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, mut value: S) -> Result {
@@ -121,9 +121,9 @@ pub trait Receiver<'a> {
 
     fn tagged_str<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, str>>(
         &mut self,
-        tagged: data::Tagged<T, S>,
+        mut tagged: data::Tagged<T, S>,
     ) -> Result {
-        self.tagged_text(tagged.map_value(|v| data::text::text_value_source(v)))
+        self.tagged_text(tagged.by_mut().try_map_value(|v| v.take().map(for_all))?)
     }
 
     fn tagged_text<'s: 'a, T: ValueSource<'static, str>, S: ValueSource<'s, data::Text>>(

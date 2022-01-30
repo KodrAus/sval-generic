@@ -1,4 +1,7 @@
-use crate::{std::fmt, Error, Receiver, Result, Value};
+use crate::{
+    std::{fmt, marker::PhantomData},
+    Error, Receiver, Result, Value,
+};
 
 pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream_to_end(s)
