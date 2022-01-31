@@ -4,7 +4,6 @@ use crate::{
     source::{Source, ValueSource},
     Result, Value,
 };
-use core::fmt::Display;
 
 pub trait Receiver<'a> {
     fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
@@ -182,184 +181,196 @@ pub trait Receiver<'a> {
     }
 }
 
-impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R
-where
-    R: Receiver<'a>,
-{
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        (**self).value(value)
-    }
+macro_rules! impl_receiver_forward {
+    ($($r:tt)*) => {
+        $($r)* {
+            fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+                (**self).value(value)
+            }
 
-    fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
-        (**self).unstructured(fmt)
-    }
+            fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result {
+                (**self).unstructured(fmt)
+            }
 
-    fn null(&mut self) -> Result {
-        (**self).null()
-    }
+            fn null(&mut self) -> Result {
+                (**self).null()
+            }
 
-    fn u8(&mut self, value: u8) -> Result {
-        (**self).u8(value)
-    }
+            fn u8(&mut self, value: u8) -> Result {
+                (**self).u8(value)
+            }
 
-    fn u16(&mut self, value: u16) -> Result {
-        (**self).u16(value)
-    }
+            fn u16(&mut self, value: u16) -> Result {
+                (**self).u16(value)
+            }
 
-    fn u32(&mut self, value: u32) -> Result {
-        (**self).u32(value)
-    }
+            fn u32(&mut self, value: u32) -> Result {
+                (**self).u32(value)
+            }
 
-    fn u64(&mut self, value: u64) -> Result {
-        (**self).u64(value)
-    }
+            fn u64(&mut self, value: u64) -> Result {
+                (**self).u64(value)
+            }
 
-    fn u128(&mut self, value: u128) -> Result {
-        (**self).u128(value)
-    }
+            fn u128(&mut self, value: u128) -> Result {
+                (**self).u128(value)
+            }
 
-    fn i8(&mut self, value: i8) -> Result {
-        (**self).i8(value)
-    }
+            fn i8(&mut self, value: i8) -> Result {
+                (**self).i8(value)
+            }
 
-    fn i16(&mut self, value: i16) -> Result {
-        (**self).i16(value)
-    }
+            fn i16(&mut self, value: i16) -> Result {
+                (**self).i16(value)
+            }
 
-    fn i32(&mut self, value: i32) -> Result {
-        (**self).i32(value)
-    }
+            fn i32(&mut self, value: i32) -> Result {
+                (**self).i32(value)
+            }
 
-    fn i64(&mut self, value: i64) -> Result {
-        (**self).i64(value)
-    }
+            fn i64(&mut self, value: i64) -> Result {
+                (**self).i64(value)
+            }
 
-    fn i128(&mut self, value: i128) -> Result {
-        (**self).i128(value)
-    }
+            fn i128(&mut self, value: i128) -> Result {
+                (**self).i128(value)
+            }
 
-    fn f32(&mut self, value: f32) -> Result {
-        (**self).f32(value)
-    }
+            fn f32(&mut self, value: f32) -> Result {
+                (**self).f32(value)
+            }
 
-    fn f64(&mut self, value: f64) -> Result {
-        (**self).f64(value)
-    }
+            fn f64(&mut self, value: f64) -> Result {
+                (**self).f64(value)
+            }
 
-    fn bool(&mut self, value: bool) -> Result {
-        (**self).bool(value)
-    }
+            fn bool(&mut self, value: bool) -> Result {
+                (**self).bool(value)
+            }
 
-    fn char(&mut self, value: char) -> Result {
-        (**self).char(value)
-    }
+            fn char(&mut self, value: char) -> Result {
+                (**self).char(value)
+            }
 
-    fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
-        (**self).str(value)
-    }
+            fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
+                (**self).str(value)
+            }
 
-    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, text: S) -> Result {
-        (**self).text(text)
-    }
+            fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, text: S) -> Result {
+                (**self).text(text)
+            }
 
-    fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
-        (**self).error(error)
-    }
+            fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
+                (**self).error(error)
+            }
 
-    fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
-        (**self).bytes(bytes)
-    }
+            fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
+                (**self).bytes(bytes)
+            }
 
-    fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        (**self).tag(tag)
-    }
+            fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+                (**self).tag(tag)
+            }
 
-    fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        (**self).tagged_begin(tag)
-    }
+            fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+                (**self).tagged_begin(tag)
+            }
 
-    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-        (**self).tagged_end(tag)
-    }
+            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+                (**self).tagged_end(tag)
+            }
 
-    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
-        &mut self,
-        tagged: Tagged<T, V>,
-    ) -> Result {
-        (**self).tagged(tagged)
-    }
+            fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+                &mut self,
+                tagged: Tagged<T, V>,
+            ) -> Result {
+                (**self).tagged(tagged)
+            }
 
-    fn map_begin(&mut self, size: Option<u64>) -> Result {
-        (**self).map_begin(size)
-    }
+            fn map_begin(&mut self, size: Option<u64>) -> Result {
+                (**self).map_begin(size)
+            }
 
-    fn map_end(&mut self) -> Result {
-        (**self).map_end()
-    }
+            fn map_end(&mut self) -> Result {
+                (**self).map_end()
+            }
 
-    fn map_key_begin(&mut self) -> Result {
-        (**self).map_key_begin()
-    }
+            fn map_key_begin(&mut self) -> Result {
+                (**self).map_key_begin()
+            }
 
-    fn map_key_end(&mut self) -> Result {
-        (**self).map_key_end()
-    }
+            fn map_key_end(&mut self) -> Result {
+                (**self).map_key_end()
+            }
 
-    fn map_value_begin(&mut self) -> Result {
-        (**self).map_value_begin()
-    }
+            fn map_value_begin(&mut self) -> Result {
+                (**self).map_value_begin()
+            }
 
-    fn map_value_end(&mut self) -> Result {
-        (**self).map_value_end()
-    }
+            fn map_value_end(&mut self) -> Result {
+                (**self).map_value_end()
+            }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-        &mut self,
-        key: K,
-        value: V,
-    ) -> Result {
-        (**self).map_entry(key, value)
-    }
+            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+                &mut self,
+                key: K,
+                value: V,
+            ) -> Result {
+                (**self).map_entry(key, value)
+            }
 
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result {
-        (**self).map_field_entry(field, value)
-    }
+            fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+                &mut self,
+                field: F,
+                value: V,
+            ) -> Result {
+                (**self).map_field_entry(field, value)
+            }
 
-    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
-        (**self).map_field(field)
-    }
+            fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
+                (**self).map_field(field)
+            }
 
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        (**self).map_key(key)
-    }
+            fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+                (**self).map_key(key)
+            }
 
-    fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        (**self).map_value(value)
-    }
+            fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+                (**self).map_value(value)
+            }
 
-    fn seq_begin(&mut self, size: Option<u64>) -> Result {
-        (**self).seq_begin(size)
-    }
+            fn seq_begin(&mut self, size: Option<u64>) -> Result {
+                (**self).seq_begin(size)
+            }
 
-    fn seq_end(&mut self) -> Result {
-        (**self).seq_end()
-    }
+            fn seq_end(&mut self) -> Result {
+                (**self).seq_end()
+            }
 
-    fn seq_elem_begin(&mut self) -> Result {
-        (**self).seq_elem_begin()
-    }
+            fn seq_elem_begin(&mut self) -> Result {
+                (**self).seq_elem_begin()
+            }
 
-    fn seq_elem_end(&mut self) -> Result {
-        (**self).seq_elem_end()
-    }
+            fn seq_elem_end(&mut self) -> Result {
+                (**self).seq_elem_end()
+            }
 
-    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-        (**self).seq_elem(elem)
-    }
+            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
+                (**self).seq_elem(elem)
+            }
+        }
+    };
+}
+
+impl_receiver_forward!(impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R where R: Receiver<'a>);
+
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::std::boxed::Box;
+
+    impl_receiver_forward!(impl<'a, 'b, R: ?Sized> Receiver<'a> for Box<R> where R: Receiver<'a>);
 }
 
 pub fn unsupported() -> Result {

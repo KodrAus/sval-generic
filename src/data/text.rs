@@ -239,7 +239,7 @@ mod alloc_support {
 
         #[inline]
         fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
-            Ok(Text::new(&**self))
+            Ok(Text::new(&*self))
         }
 
         #[inline]
@@ -262,7 +262,7 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&str, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
             Ok(Text::new(&**self))
         }
     }

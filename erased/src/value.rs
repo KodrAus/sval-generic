@@ -29,8 +29,16 @@ impl<T: sval::Value> private::DispatchValue for T {
     }
 }
 
-impl<'d> sval::Value for dyn Value + 'd {
-    fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
-        self.erase_value().0.dispatch_stream(&mut receiver)
+macro_rules! impl_value {
+    ($($impl:tt)*) => {
+        $($impl)* {
+            fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
+                self.erase_value().0.dispatch_stream(&mut receiver)
+            }
+        }
     }
 }
+
+impl_value!(impl<'d> sval::Value for dyn Value + 'd);
+impl_value!(impl<'d> sval::Value for dyn Value + Send + 'd);
+impl_value!(impl<'d> sval::Value for dyn Value + Send + Sync + 'd);

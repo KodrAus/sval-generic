@@ -151,12 +151,11 @@ mod alloc_support {
     use crate::{
         source::TryTakeError,
         std::{
-            borrow::{Borrow, Cow, ToOwned},
+            borrow::{Borrow, ToOwned},
             mem,
             string::String,
             vec::Vec,
         },
-        Source,
     };
 
     impl ToOwned for Bytes {

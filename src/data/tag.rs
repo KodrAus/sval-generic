@@ -19,6 +19,8 @@ pub enum Kind {
     Unspecified,
     // An optional value
     Nullable,
+    // An enum
+    // Followed by a second tagged item for the variant
     Enum,
     // A map that follows struct rules: static string keys
     // Expect next: a map
@@ -30,10 +32,13 @@ pub enum Kind {
     // Expect next: a sequence / string / bytes
     Array,
     // Text: A string formatted as a RFC8259 number
-    // Binary: Same as CBOR?
+    // Binary: A tuple of two integers: mantissa and base-2 scaling factor
     Number,
+    // Text: A string containing a sequence of digits from 0-9 with optional leading `-`
+    // Binary: A two's compliment integer in LE format
+    BigInteger,
     // Text: A string formatted as a RFC3339 timestamp
-    // Binary: An integer or float with seconds offset since Unix Epoch
+    // Binary: An integer or number with seconds offset since Unix Epoch
     DateTime,
     // All: A string formatted as a RFC3986 URI
     Uri,

@@ -84,22 +84,6 @@ impl<'a, S: sval::Source<'a>> private::DispatchSource<'a> for S {
     }
 }
 
-impl<'a, 'd> sval::Source<'a> for dyn Source<'a> + 'd {
-    fn stream_resume<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result<Stream>
-    where
-        'a: 'b,
-    {
-        self.erase_source().0.dispatch_stream_resume(&mut receiver)
-    }
-
-    fn stream_to_end<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result
-    where
-        'a: 'b,
-    {
-        self.erase_source().0.dispatch_stream_to_end(&mut receiver)
-    }
-}
-
 impl<'a, V: sval::Value + ?Sized, R: sval::Value + ?Sized, S: sval::ValueSource<'a, V, R>>
     ValueSource<'a, V, R> for S
 {
@@ -145,66 +129,97 @@ impl<'a, V: sval::Value + ?Sized, R: sval::Value + ?Sized, S: sval::ValueSource<
     }
 }
 
-impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::Source<'a>
-    for dyn ValueSource<'a, V, U> + 'd
-{
-    fn stream_resume<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result<Stream>
-    where
-        'a: 'b,
-    {
-        self.erase_value_source()
-            .0
-            .dispatch_stream_resume(&mut receiver)
-    }
+macro_rules! impl_source {
+    ($($impl:tt)*) => {
+        $($impl)* {
+            fn stream_resume<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result<Stream>
+            where
+                'a: 'b,
+            {
+                self.erase_source().0.dispatch_stream_resume(&mut receiver)
+            }
 
-    fn stream_to_end<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result
-    where
-        'a: 'b,
-    {
-        self.erase_value_source()
-            .0
-            .dispatch_stream_to_end(&mut receiver)
+            fn stream_to_end<'b, R: sval::Receiver<'b>>(&mut self, mut receiver: R) -> sval::Result
+            where
+                'a: 'b,
+            {
+                self.erase_source().0.dispatch_stream_to_end(&mut receiver)
+            }
+        }
     }
 }
 
-impl<'a, 'd, V: sval::Value + ?Sized, R: sval::Value + ?Sized> sval::ValueSource<'a, V, R>
-    for dyn ValueSource<'a, V, R> + 'd
-{
-    type Error = sval::Error;
+macro_rules! impl_value_source {
+    ({ $($s:tt)* } { $($vs:tt)* }) => {
+        impl_source!($($s)*);
 
-    fn take(&mut self) -> Result<&V, TakeError<Self::Error>> {
-        self.erase_value_source()
-            .0
-            .dispatch_take()
-            .map_err(TakeError::from_error)
-    }
+        $($vs)* {
+            type Error = sval::Error;
 
-    fn take_owned(&mut self) -> Result<V::Owned, TakeError<Self::Error>>
-    where
-        V: sval::source::ToOwned,
-        V::Owned: Value,
-    {
-        self.erase_value_source()
-            .0
-            .dispatch_take_owned()
-            .map_err(TakeError::from_error)
-    }
+            fn take(&mut self) -> Result<&V, TakeError<Self::Error>> {
+                self.erase_value_source()
+                    .0
+                    .dispatch_take()
+                    .map_err(TakeError::from_error)
+            }
 
-    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&V, Self::Error>> {
-        self.erase_value_source()
-            .0
-            .dispatch_try_take_ref()
-            .map_err(TryTakeError::from_result)
-    }
+            fn take_owned(&mut self) -> Result<V::Owned, TakeError<Self::Error>>
+            where
+                V: sval::source::ToOwned,
+                V::Owned: Value,
+            {
+                self.erase_value_source()
+                    .0
+                    .dispatch_take_owned()
+                    .map_err(TakeError::from_error)
+            }
 
-    fn try_take_owned(&mut self) -> Result<V::Owned, TryTakeError<&V, Self::Error>>
-    where
-        V: sval::source::ToOwned,
-        V::Owned: Value,
-    {
-        self.erase_value_source()
-            .0
-            .dispatch_try_take_owned()
-            .map_err(TryTakeError::from_result)
+            fn try_take_ref(&mut self) -> Result<&'a U, TryTakeError<&V, Self::Error>> {
+                self.erase_value_source()
+                    .0
+                    .dispatch_try_take_ref()
+                    .map_err(TryTakeError::from_result)
+            }
+
+            fn try_take_owned(&mut self) -> Result<V::Owned, TryTakeError<&V, Self::Error>>
+            where
+                V: sval::source::ToOwned,
+                V::Owned: Value,
+            {
+                self.erase_value_source()
+                    .0
+                    .dispatch_try_take_owned()
+                    .map_err(TryTakeError::from_result)
+            }
+        }
     }
 }
+
+impl_source!(impl<'a, 'd> sval::Source<'a> for dyn Source<'a> + 'd);
+impl_source!(impl<'a, 'd> sval::Source<'a> for dyn Source<'a> + Send + 'd);
+impl_source!(impl<'a, 'd> sval::Source<'a> for dyn Source<'a> + Send + Sync + 'd);
+
+impl_value_source!(
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::Source<'a> for dyn ValueSource<'a, V, U> + 'd
+    }
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::ValueSource<'a, V, U> for dyn ValueSource<'a, V, U> + 'd
+    }
+);
+impl_value_source!(
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::Source<'a> for dyn ValueSource<'a, V, U> + Send + 'd
+    }
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::ValueSource<'a, V, U> for dyn ValueSource<'a, V, U> + Send + 'd
+    }
+);
+impl_value_source!(
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::Source<'a> for dyn ValueSource<'a, V, U> + Send + Sync + 'd
+    }
+    {
+        impl<'a, 'd, V: sval::Value + ?Sized, U: sval::Value + ?Sized> sval::ValueSource<'a, V, U> for dyn ValueSource<'a, V, U> + Send + Sync + 'd
+    }
+);

@@ -240,7 +240,7 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        for_all,
+        for_all, source,
         std::{
             borrow::{Cow, ToOwned},
             mem,
@@ -252,6 +252,31 @@ mod alloc_support {
     impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
             (&**self).stream(stream)
+        }
+    }
+
+    impl<'a, T: Source<'a>> Source<'a> for Vec<T> {
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        where
+            'a: 'b,
+        {
+            receiver.seq_begin(Some(self.len() as u64))?;
+
+            for elem in self.drain(..) {
+                receiver.seq_elem(elem)?;
+            }
+
+            receiver.seq_end()
         }
     }
 
@@ -295,7 +320,7 @@ mod alloc_support {
         fn try_take_ref(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
             match self {
                 Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TryTakeError::from_value(v)),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback(v)),
             }
         }
 

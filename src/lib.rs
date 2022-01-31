@@ -11,8 +11,8 @@ extern crate core;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 mod std {
     pub use crate::{
-        alloc::{borrow, string, vec},
-        core::{fmt, mem, ops, result},
+        alloc::{borrow, boxed, string, vec},
+        core::{fmt, mem, ops, result, str},
     };
 }
 

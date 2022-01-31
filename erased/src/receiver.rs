@@ -321,211 +321,219 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
     }
 }
 
-impl<'a, 'd> sval::Receiver<'a> for dyn Receiver<'a> + 'd {
-    fn unstructured<D: sval::data::Display>(&mut self, fmt: D) -> sval::Result {
-        self.erase_receiver().0.dispatch_unstructured(&fmt)
-    }
+macro_rules! impl_receiver {
+    ($($impl:tt)*) => {
+        $($impl)* {
+            fn unstructured<D: sval::data::Display>(&mut self, fmt: D) -> sval::Result {
+                self.erase_receiver().0.dispatch_unstructured(&fmt)
+            }
 
-    fn null(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_null()
-    }
+            fn null(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_null()
+            }
 
-    fn u8(&mut self, value: u8) -> sval::Result {
-        self.erase_receiver().0.dispatch_u8(value)
-    }
+            fn u8(&mut self, value: u8) -> sval::Result {
+                self.erase_receiver().0.dispatch_u8(value)
+            }
 
-    fn u16(&mut self, value: u16) -> sval::Result {
-        self.erase_receiver().0.dispatch_u16(value)
-    }
+            fn u16(&mut self, value: u16) -> sval::Result {
+                self.erase_receiver().0.dispatch_u16(value)
+            }
 
-    fn u32(&mut self, value: u32) -> sval::Result {
-        self.erase_receiver().0.dispatch_u32(value)
-    }
+            fn u32(&mut self, value: u32) -> sval::Result {
+                self.erase_receiver().0.dispatch_u32(value)
+            }
 
-    fn u64(&mut self, value: u64) -> sval::Result {
-        self.erase_receiver().0.dispatch_u64(value)
-    }
+            fn u64(&mut self, value: u64) -> sval::Result {
+                self.erase_receiver().0.dispatch_u64(value)
+            }
 
-    fn u128(&mut self, value: u128) -> sval::Result {
-        self.erase_receiver().0.dispatch_u128(value)
-    }
+            fn u128(&mut self, value: u128) -> sval::Result {
+                self.erase_receiver().0.dispatch_u128(value)
+            }
 
-    fn i8(&mut self, value: i8) -> sval::Result {
-        self.erase_receiver().0.dispatch_i8(value)
-    }
+            fn i8(&mut self, value: i8) -> sval::Result {
+                self.erase_receiver().0.dispatch_i8(value)
+            }
 
-    fn i16(&mut self, value: i16) -> sval::Result {
-        self.erase_receiver().0.dispatch_i16(value)
-    }
+            fn i16(&mut self, value: i16) -> sval::Result {
+                self.erase_receiver().0.dispatch_i16(value)
+            }
 
-    fn i32(&mut self, value: i32) -> sval::Result {
-        self.erase_receiver().0.dispatch_i32(value)
-    }
+            fn i32(&mut self, value: i32) -> sval::Result {
+                self.erase_receiver().0.dispatch_i32(value)
+            }
 
-    fn i64(&mut self, value: i64) -> sval::Result {
-        self.erase_receiver().0.dispatch_i64(value)
-    }
+            fn i64(&mut self, value: i64) -> sval::Result {
+                self.erase_receiver().0.dispatch_i64(value)
+            }
 
-    fn i128(&mut self, value: i128) -> sval::Result {
-        self.erase_receiver().0.dispatch_i128(value)
-    }
+            fn i128(&mut self, value: i128) -> sval::Result {
+                self.erase_receiver().0.dispatch_i128(value)
+            }
 
-    fn f32(&mut self, value: f32) -> sval::Result {
-        self.erase_receiver().0.dispatch_f32(value)
-    }
+            fn f32(&mut self, value: f32) -> sval::Result {
+                self.erase_receiver().0.dispatch_f32(value)
+            }
 
-    fn f64(&mut self, value: f64) -> sval::Result {
-        self.erase_receiver().0.dispatch_f64(value)
-    }
+            fn f64(&mut self, value: f64) -> sval::Result {
+                self.erase_receiver().0.dispatch_f64(value)
+            }
 
-    fn bool(&mut self, value: bool) -> sval::Result {
-        self.erase_receiver().0.dispatch_bool(value)
-    }
+            fn bool(&mut self, value: bool) -> sval::Result {
+                self.erase_receiver().0.dispatch_bool(value)
+            }
 
-    fn char(&mut self, value: char) -> sval::Result {
-        self.erase_receiver().0.dispatch_char(value)
-    }
+            fn char(&mut self, value: char) -> sval::Result {
+                self.erase_receiver().0.dispatch_char(value)
+            }
 
-    fn str<'s: 'a, S: sval::ValueSource<'s, str>>(&mut self, mut value: S) -> sval::Result {
-        self.erase_receiver().0.dispatch_str(&mut value)
-    }
+            fn str<'s: 'a, S: sval::ValueSource<'s, str>>(&mut self, mut value: S) -> sval::Result {
+                self.erase_receiver().0.dispatch_str(&mut value)
+            }
 
-    fn text<'s: 'a, S: sval::ValueSource<'s, sval::data::Text>>(
-        &mut self,
-        mut text: S,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_text(&mut text)
-    }
+            fn text<'s: 'a, S: sval::ValueSource<'s, sval::data::Text>>(
+                &mut self,
+                mut text: S,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_text(&mut text)
+            }
 
-    fn error<'e: 'a, E: sval::ValueSource<'e, sval::data::Error>>(
-        &mut self,
-        mut error: E,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_error(&mut error)
-    }
+            fn error<'e: 'a, E: sval::ValueSource<'e, sval::data::Error>>(
+                &mut self,
+                mut error: E,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_error(&mut error)
+            }
 
-    fn bytes<'s: 'a, B: sval::ValueSource<'s, sval::data::Bytes>>(
-        &mut self,
-        mut bytes: B,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_bytes(&mut bytes)
-    }
+            fn bytes<'s: 'a, B: sval::ValueSource<'s, sval::data::Bytes>>(
+                &mut self,
+                mut bytes: B,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_bytes(&mut bytes)
+            }
 
-    fn tag<T: sval::ValueSource<'static, str>>(
-        &mut self,
-        mut tag: sval::data::Tag<T>,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_tag(
-            tag.by_mut()
-                .map_label(|l| l as &mut dyn ValueSource<'static, str>),
-        )
-    }
+            fn tag<T: sval::ValueSource<'static, str>>(
+                &mut self,
+                mut tag: sval::data::Tag<T>,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_tag(
+                    tag.by_mut()
+                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                )
+            }
 
-    fn tagged_begin<T: sval::ValueSource<'static, str>>(
-        &mut self,
-        mut tag: sval::data::Tag<T>,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_tagged_begin(
-            tag.by_mut()
-                .map_label(|l| l as &mut dyn ValueSource<'static, str>),
-        )
-    }
+            fn tagged_begin<T: sval::ValueSource<'static, str>>(
+                &mut self,
+                mut tag: sval::data::Tag<T>,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_tagged_begin(
+                    tag.by_mut()
+                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                )
+            }
 
-    fn tagged_end<T: sval::ValueSource<'static, str>>(
-        &mut self,
-        mut tag: sval::data::Tag<T>,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_tagged_end(
-            tag.by_mut()
-                .map_label(|l| l as &mut dyn ValueSource<'static, str>),
-        )
-    }
+            fn tagged_end<T: sval::ValueSource<'static, str>>(
+                &mut self,
+                mut tag: sval::data::Tag<T>,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_tagged_end(
+                    tag.by_mut()
+                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                )
+            }
 
-    fn tagged<'v: 'a, T: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
-        &mut self,
-        mut tagged: sval::data::Tagged<T, V>,
-    ) -> sval::Result {
-        self.erase_receiver().0.dispatch_tagged(
-            tagged
-                .by_mut()
-                .map_label(|l| l as &mut dyn ValueSource<'static, str>)
-                .map_value(|v| v as &mut dyn Source<'v>),
-        )
-    }
+            fn tagged<'v: 'a, T: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
+                &mut self,
+                mut tagged: sval::data::Tagged<T, V>,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_tagged(
+                    tagged
+                        .by_mut()
+                        .map_label(|l| l as &mut dyn ValueSource<'static, str>)
+                        .map_value(|v| v as &mut dyn Source<'v>),
+                )
+            }
 
-    fn map_begin(&mut self, size: Option<u64>) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_begin(size)
-    }
+            fn map_begin(&mut self, size: Option<u64>) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_begin(size)
+            }
 
-    fn map_end(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_end()
-    }
+            fn map_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_end()
+            }
 
-    fn map_key_begin(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_key_begin()
-    }
+            fn map_key_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_key_begin()
+            }
 
-    fn map_key_end(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_key_end()
-    }
+            fn map_key_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_key_end()
+            }
 
-    fn map_value_begin(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_value_begin()
-    }
+            fn map_value_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_value_begin()
+            }
 
-    fn map_value_end(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_value_end()
-    }
+            fn map_value_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_value_end()
+            }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
-        &mut self,
-        mut key: K,
-        mut value: V,
-    ) -> sval::Result {
-        self.erase_receiver()
-            .0
-            .dispatch_map_entry(&mut key, &mut value)
-    }
+            fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
+                &mut self,
+                mut key: K,
+                mut value: V,
+            ) -> sval::Result {
+                self.erase_receiver()
+                    .0
+                    .dispatch_map_entry(&mut key, &mut value)
+            }
 
-    fn map_field_entry<'v: 'a, F: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
-        &mut self,
-        mut field: F,
-        mut value: V,
-    ) -> sval::Result {
-        self.erase_receiver()
-            .0
-            .dispatch_map_field_entry(&mut field, &mut value)
-    }
+            fn map_field_entry<'v: 'a, F: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
+                &mut self,
+                mut field: F,
+                mut value: V,
+            ) -> sval::Result {
+                self.erase_receiver()
+                    .0
+                    .dispatch_map_field_entry(&mut field, &mut value)
+            }
 
-    fn map_field<F: sval::ValueSource<'static, str>>(&mut self, mut field: F) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_field(&mut field)
-    }
+            fn map_field<F: sval::ValueSource<'static, str>>(&mut self, mut field: F) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_field(&mut field)
+            }
 
-    fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, mut key: K) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_key(&mut key)
-    }
+            fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, mut key: K) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_key(&mut key)
+            }
 
-    fn map_value<'v: 'a, V: sval::Source<'v>>(&mut self, mut value: V) -> sval::Result {
-        self.erase_receiver().0.dispatch_map_value(&mut value)
-    }
+            fn map_value<'v: 'a, V: sval::Source<'v>>(&mut self, mut value: V) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_value(&mut value)
+            }
 
-    fn seq_begin(&mut self, size: Option<u64>) -> sval::Result {
-        self.erase_receiver().0.dispatch_seq_begin(size)
-    }
+            fn seq_begin(&mut self, size: Option<u64>) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_begin(size)
+            }
 
-    fn seq_end(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_seq_end()
-    }
+            fn seq_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_end()
+            }
 
-    fn seq_elem_begin(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_seq_elem_begin()
-    }
+            fn seq_elem_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_elem_begin()
+            }
 
-    fn seq_elem_end(&mut self) -> sval::Result {
-        self.erase_receiver().0.dispatch_seq_elem_end()
-    }
+            fn seq_elem_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_elem_end()
+            }
 
-    fn seq_elem<'e: 'a, E: sval::Source<'e>>(&mut self, mut elem: E) -> sval::Result {
-        self.erase_receiver().0.dispatch_seq_elem(&mut elem)
+            fn seq_elem<'e: 'a, E: sval::Source<'e>>(&mut self, mut elem: E) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_elem(&mut elem)
+            }
+        }
     }
 }
+
+impl_receiver!(impl<'a, 'd> sval::Receiver<'a> for dyn Receiver<'a> + 'd);
+impl_receiver!(impl<'a, 'd> sval::Receiver<'a> for dyn Receiver<'a> + Send + 'd);
+impl_receiver!(impl<'a, 'd> sval::Receiver<'a> for dyn Receiver<'a> + Send + Sync + 'd);
