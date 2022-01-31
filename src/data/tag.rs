@@ -29,12 +29,14 @@ pub enum Kind {
     // A sequence that follows array rules: fixed size, single-type
     // Expect next: a sequence / string / bytes
     Array,
-    // A string formatted as a RFC3339 timestamp
-    // Expect next: a string
-    RFC3339DateTime,
-    // A string formatted as a RFC3986 URI
-    // Expect next: a string
-    RFC3986Uri,
+    // Text: A string formatted as a RFC8259 number
+    // Binary: Same as CBOR?
+    Number,
+    // Text: A string formatted as a RFC3339 timestamp
+    // Binary: An integer or float with seconds offset since Unix Epoch
+    DateTime,
+    // All: A string formatted as a RFC3986 URI
+    Uri,
 }
 
 impl Default for Kind {
@@ -102,6 +104,14 @@ impl<T> Tag<T> {
     pub fn with_label<U>(self, label: U) -> Tag<U> {
         Tag {
             label: Some(label),
+            id: self.id,
+            kind: self.kind,
+        }
+    }
+
+    pub fn map_label<U>(self, f: impl FnOnce(T) -> U) -> Tag<U> {
+        Tag {
+            label: self.label.map(f),
             id: self.id,
             kind: self.kind,
         }
@@ -215,6 +225,14 @@ impl<T, V> Tagged<T, V> {
         Tagged {
             begin_tag: self.begin_tag.with_label(label.clone()),
             end_tag: self.end_tag.with_label(label),
+            value: self.value,
+        }
+    }
+
+    pub fn map_label<U>(self, f: impl Fn(T) -> U) -> Tagged<U, V> {
+        Tagged {
+            begin_tag: self.begin_tag.map_label(&f),
+            end_tag: self.end_tag.map_label(f),
             value: self.value,
         }
     }

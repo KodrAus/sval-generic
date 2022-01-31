@@ -252,6 +252,22 @@ pub enum TryTakeError<T, E> {
     Err(TakeError<E>),
 }
 
+impl<T, E> TryTakeError<T, E> {
+    pub fn from_result(r: Result<T, E>) -> Self {
+        match r {
+            Ok(fallback) => TryTakeError::Fallback(fallback),
+            Err(e) => TryTakeError::Err(TakeError::from_error(e)),
+        }
+    }
+
+    pub fn into_result(self) -> Result<T, E> {
+        match self {
+            TryTakeError::Fallback(fallback) => Ok(fallback),
+            TryTakeError::Err(err) => Err(err.into_error()),
+        }
+    }
+}
+
 impl<E: Into<Error>> From<TakeError<E>> for Error {
     fn from(err: TakeError<E>) -> Error {
         err.0.into()

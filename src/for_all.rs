@@ -11,7 +11,7 @@ pub fn for_all<T>(value: T) -> ForAll<T> {
 }
 
 #[derive(Clone, Copy)]
-pub struct ForAll<T>(pub(crate) T);
+pub struct ForAll<T>(T);
 
 impl<T> ForAll<T> {
     pub fn new(value: T) -> Self {
@@ -56,6 +56,8 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
 impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> ValueSource<'a, U, V>
     for ForAll<T>
 {
+    // NOTE: Using `T::Error` here causes `'b` to become unconstrained
+    // since it could flow into `T::Error`
     type Error = crate::Error;
 
     fn take(&mut self) -> Result<&U, TakeError<Self::Error>> {

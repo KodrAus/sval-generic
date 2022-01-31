@@ -1,6 +1,5 @@
-use crate::source::{TakeError, TryTakeError};
 use crate::{
-    source::{self, ValueSource},
+    source::{self, TakeError, ValueSource},
     std::fmt,
     Receiver, Result, Source, Value,
 };
@@ -74,18 +73,6 @@ impl<'a> ValueSource<'a, Text> for &'a str {
     #[inline]
     fn take(&mut self) -> Result<&Text, TakeError<Self::Error>> {
         Ok(Text::new(self))
-    }
-}
-
-impl<'a, 'b> ValueSource<'a, Text> for &'a &'b str {
-    type Error = source::Impossible;
-
-    fn take(&mut self) -> Result<&Text, TakeError<Self::Error>> {
-        todo!()
-    }
-
-    fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
-        todo!()
     }
 }
 
