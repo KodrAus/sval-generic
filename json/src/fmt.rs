@@ -1,6 +1,6 @@
 use core::fmt::{self, Write};
 
-pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> Result<(), sval::Error> {
+pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result {
     v.stream_to_end(Formatter::new(fmt))
 }
 

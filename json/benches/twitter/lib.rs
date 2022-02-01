@@ -41,9 +41,9 @@ fn primitive_erased_sval(b: &mut test::Bencher) {
     use sval_erased as erased;
 
     let s = 42;
-    let s = erased::value(&s);
+    let s = &s as &dyn erased::Value;
 
-    b.iter(|| sval_json::to_string(&s).unwrap());
+    b.iter(|| sval_json::to_string(s).unwrap());
 }
 
 #[bench]
@@ -71,26 +71,6 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
     b.iter(|| serde_json::to_string(&s).unwrap());
 }
 
-/*
-#[bench]
-fn twitter_sval_coroutine(b: &mut test::Bencher) {
-    use sval_coroutine::value::CoroutineValue;
-
-    let s = input_struct();
-    let s = s.as_value_iter();
-
-    b.iter(|| sval_json::to_string(&s).unwrap());
-}
-*/
-
-#[bench]
-fn twitter_sval_is_unbuffered(b: &mut test::Bencher) {
-    use sval::Value;
-
-    let s = input_struct();
-    b.iter(|| s.is_unbuffered());
-}
-
 #[bench]
 fn twitter_sval(b: &mut test::Bencher) {
     let s = input_struct();
@@ -102,7 +82,7 @@ fn twitter_erased_sval(b: &mut test::Bencher) {
     use sval_erased as erased;
 
     let s = input_struct();
-    let s = erased::value(&s);
+    let s = &s as &dyn erased::Value;
 
     b.iter(|| sval_json::to_string(&s).unwrap());
 }

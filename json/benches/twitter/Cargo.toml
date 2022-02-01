@@ -23,6 +23,9 @@ path = "../../../fmt"
 [dependencies.sval-erased]
 path = "../../../erased"
 
+[dependencies.sval-coroutine]
+path = "../../../coroutine"
+
 [dependencies.sval]
 path = "../../../"
 
