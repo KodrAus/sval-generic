@@ -239,15 +239,7 @@ tuple! {
 mod alloc_support {
     use super::*;
 
-    use crate::{
-        for_all, source,
-        std::{
-            borrow::{Cow, ToOwned},
-            mem,
-            vec::Vec,
-        },
-        Source,
-    };
+    use crate::{source, std::vec::Vec, Source};
 
     impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
@@ -277,58 +269,6 @@ mod alloc_support {
             }
 
             receiver.seq_end()
-        }
-    }
-
-    impl<'a, T: Value + Clone> Value for Cow<'a, [T]> {
-        fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> crate::Result {
-            (&**self).stream(receiver)
-        }
-    }
-
-    impl<'a, T: Value + Clone> Source<'a> for Cow<'a, [T]> {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Stream>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Stream::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
-        where
-            'a: 'b,
-        {
-            match self {
-                Cow::Borrowed(v) => (&**v).stream(receiver),
-                Cow::Owned(v) => (&**v).stream(for_all(receiver)),
-            }
-        }
-    }
-
-    impl<'a, T: Value + Clone> ValueSource<'a, [T]> for Cow<'a, [T]> {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&[T], source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TryTakeError::Fallback(v)),
-            }
-        }
-
-        #[inline]
-        fn take_owned(
-            &mut self,
-        ) -> Result<<[T] as ToOwned>::Owned, source::TakeError<Self::Error>> {
-            Ok(mem::take(self).into_owned())
         }
     }
 }

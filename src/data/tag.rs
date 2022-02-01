@@ -18,7 +18,13 @@ pub enum Kind {
     // Expect next: anything
     Unspecified,
     // An optional value
+    // 1 should be used for Some
+    // 0 should be used for None
     Nullable,
+    // A fallible value
+    // 1 should be used for Err
+    // 0 should be used for Ok
+    Fallible,
     // An enum
     // Followed by a second tagged item for the variant
     Enum,
@@ -126,6 +132,17 @@ impl<T> Tag<T> {
         }
     }
 
+    pub fn try_map_label<U, E>(self, f: impl FnOnce(T) -> Result<U, E>) -> Result<Tag<U>, E> {
+        Ok(Tag {
+            label: match self.label {
+                Some(label) => Some(f(label)?),
+                None => None,
+            },
+            id: self.id,
+            kind: self.kind,
+        })
+    }
+
     pub fn with_id(self, id: u64) -> Self {
         Tag {
             label: self.label,
@@ -151,12 +168,6 @@ impl<T> Tag<T> {
     }
 }
 
-impl Value for Tag<&'static str> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-        receiver.tag(*self)
-    }
-}
-
 impl<'a, T: ValueSource<'static, str>> Source<'a> for Tag<T> {
     fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Stream>
     where
@@ -170,6 +181,12 @@ impl<'a, T: ValueSource<'static, str>> Source<'a> for Tag<T> {
         'a: 'b,
     {
         receiver.tag(self.by_mut())
+    }
+}
+
+impl Value for Tag<&'static str> {
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.tag(*self)
     }
 }
 
@@ -298,5 +315,18 @@ impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S
         'a: 'b,
     {
         receiver.tagged(self.by_mut())
+    }
+}
+
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::std::borrow::Cow;
+
+    impl Value for Tag<Cow<'static, str>> {
+        fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+            receiver.tag(self.by_ref())
+        }
     }
 }

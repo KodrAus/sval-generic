@@ -338,17 +338,17 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
-            (**self).try_take_ref()
-        }
-
-        #[inline]
         fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
         where
             T: ToOwned,
             T::Owned: Value,
         {
             (**self).take_owned()
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+            (**self).try_take_ref()
         }
     }
 }

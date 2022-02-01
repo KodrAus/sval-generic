@@ -7,6 +7,9 @@ use serde::ser::{
     SerializeTupleStruct, SerializeTupleVariant, Serializer,
 };
 
+// TODO: Re-introduce buffering
+// TODO: Support `Some` and `None` using `Kind::Nullable`
+
 pub struct Value<V>(V);
 
 impl<V> Value<V> {

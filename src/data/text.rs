@@ -84,7 +84,7 @@ mod alloc_support {
     use crate::{
         for_all,
         std::{
-            borrow::{Borrow, Cow, ToOwned},
+            borrow::{Borrow, ToOwned},
             mem,
             string::{String, ToString},
         },
@@ -164,73 +164,6 @@ mod alloc_support {
         #[inline]
         fn try_take_ref(&mut self) -> Result<&'a str, TryTakeError<&str, Self::Error>> {
             Ok(&**self)
-        }
-    }
-
-    impl<'a> Value for Cow<'a, str> {
-        fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> crate::Result {
-            receiver.str(&**self)
-        }
-
-        #[inline]
-        fn to_str(&self) -> Option<&str> {
-            if let Cow::Borrowed(v) = self {
-                Some(v)
-            } else {
-                None
-            }
-        }
-    }
-
-    impl<'a> Source<'a> for Cow<'a, str> {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Stream>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Stream::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-        where
-            'a: 'b,
-        {
-            match self {
-                Cow::Borrowed(v) => receiver.str(v),
-                Cow::Owned(v) => receiver.str(for_all(v)),
-            }
-        }
-    }
-
-    impl<'a> ValueSource<'a, str> for Cow<'a, str> {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a str, source::TryTakeError<&str, Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(source::TryTakeError::Fallback(v)),
-            }
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-            Ok(mem::take(self).into_owned())
-        }
-
-        #[inline]
-        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&str, Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Err(source::TryTakeError::Fallback(v)),
-                Cow::Owned(v) => Ok(mem::take(v)),
-            }
         }
     }
 

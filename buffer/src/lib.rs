@@ -1,6 +1,15 @@
-use std::borrow::Cow;
+#![no_std]
 
-use sval::Source as _;
+extern crate alloc;
+
+use alloc::{
+    borrow::{Cow, ToOwned},
+    string::{String, ToString},
+    vec::Vec,
+};
+
+use sval::data::{Bytes, Tag, Text};
+use sval::{Result, Source, ValueSource};
 
 use sval_fmt as fmt;
 
@@ -25,6 +34,14 @@ pub fn buffer<'a>(
     }
 
     impl<'a, R: BufferReceiver<'a>> sval::Receiver<'a> for Extract<'a, R> {
+        fn value<'v: 'a, V: sval::Value + ?Sized + 'v>(&mut self, value: &'v V) -> sval::Result {
+            if let Some(mut receiver) = self.top_level_receiver() {
+                receiver.value_source(value)
+            } else {
+                value.stream(self)
+            }
+        }
+
         fn unstructured<D: sval::data::Display>(&mut self, value: D) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 struct Adapter<D>(fmt::Value<D>);
@@ -58,7 +75,7 @@ pub fn buffer<'a>(
 
                 receiver.value_source(Adapter(fmt::Value::new(value)))
             } else {
-                self.buffer.push(Token::Display(value.to_string()));
+                self.buffer.push(Token::Unstructured(value.to_string()));
 
                 Ok(())
             }
@@ -68,7 +85,7 @@ pub fn buffer<'a>(
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(&Option::None::<()>)
             } else {
-                self.buffer.push(Token::None);
+                self.buffer.push(Token::Null);
 
                 Ok(())
             }
@@ -94,11 +111,59 @@ pub fn buffer<'a>(
             }
         }
 
-        fn value<'v: 'a, V: sval::Value + ?Sized + 'v>(&mut self, value: &'v V) -> sval::Result {
+        fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, mut text: S) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
-                receiver.value_source(value)
+                receiver.value_source(text)
             } else {
-                value.stream(self)
+                match text.try_take_ref() {
+                    Ok(v) => {
+                        self.buffer.push(Token::Text(Cow::Borrowed(v)));
+
+                        Ok(())
+                    }
+                    Err(sval::source::TryTakeError::Fallback(v)) => {
+                        self.buffer.push(Token::Text(Cow::Owned(v.to_owned())));
+
+                        Ok(())
+                    }
+                    Err(sval::source::TryTakeError::Err(e)) => Err(e.into()),
+                }
+            }
+        }
+
+        fn bytes<'s: 'a, S: ValueSource<'s, Bytes>>(&mut self, mut bytes: S) -> sval::Result {
+            if let Some(mut receiver) = self.top_level_receiver() {
+                receiver.value_source(bytes)
+            } else {
+                match bytes.try_take_ref() {
+                    Ok(v) => {
+                        self.buffer.push(Token::Bytes(Cow::Borrowed(v)));
+
+                        Ok(())
+                    }
+                    Err(sval::source::TryTakeError::Fallback(v)) => {
+                        self.buffer.push(Token::Bytes(Cow::Owned(v.to_owned())));
+
+                        Ok(())
+                    }
+                    Err(sval::source::TryTakeError::Err(e)) => Err(e.into()),
+                }
+            }
+        }
+
+        fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+            let tag = tag.try_map_label(|mut label| match label.try_take_ref() {
+                Ok(v) => Ok(Cow::Borrowed(v)),
+                Err(sval::source::TryTakeError::Fallback(v)) => Ok(Cow::Owned(v.to_owned())),
+                Err(sval::source::TryTakeError::Err(e)) => Err(e),
+            })?;
+
+            if let Some(mut receiver) = self.top_level_receiver() {
+                receiver.value_source(sval::for_all(&tag))
+            } else {
+                self.buffer.push(Token::Tag(tag));
+
+                Ok(())
             }
         }
 
@@ -266,9 +331,12 @@ impl<'a> sval::ValueSource<'a, Buffer<'a>> for Buffer<'a> {
 }
 
 enum Token<'a> {
-    Display(String),
+    Unstructured(String),
     Str(Cow<'a, str>),
-    None,
+    Text(Cow<'a, Text>),
+    Bytes(Cow<'a, Bytes>),
+    Null,
+    Tag(Tag<Cow<'static, str>>),
     MapBegin(Option<u64>),
     MapEnd,
     MapKeyBegin,
@@ -292,8 +360,13 @@ impl<'a, 'b> sval::Source<'a> for &'b Token<'a> {
         match *self {
             Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
             Token::Str(Cow::Owned(value)) => receiver.str(sval::for_all(value))?,
-            Token::Display(value) => receiver.unstructured(value)?,
-            Token::None => receiver.null()?,
+            Token::Text(Cow::Borrowed(text)) => receiver.text(*text)?,
+            Token::Text(Cow::Owned(text)) => receiver.text(sval::for_all(text))?,
+            Token::Bytes(Cow::Borrowed(bytes)) => receiver.bytes(*bytes)?,
+            Token::Bytes(Cow::Owned(bytes)) => receiver.bytes(sval::for_all(bytes))?,
+            Token::Tag(tag) => receiver.tag(tag.by_ref())?,
+            Token::Unstructured(value) => receiver.unstructured(value)?,
+            Token::Null => receiver.null()?,
             Token::MapBegin(len) => receiver.map_begin(*len)?,
             Token::MapEnd => receiver.map_end()?,
             Token::MapKeyBegin => receiver.map_key_begin()?,
