@@ -7,6 +7,7 @@ publish = false
 
 [dependencies.sval]
 path = "../"
+features = ["alloc"]
 
 [dependencies.sval-fmt]
 path = "../fmt"

@@ -16,6 +16,7 @@ path = "../../../derive"
 
 [dependencies.sval-json]
 path = "../../"
+features = ["alloc"]
 
 [dependencies.sval-serde]
 path = "../../../serde"

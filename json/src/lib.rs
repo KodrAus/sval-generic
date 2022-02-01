@@ -1,9 +1,13 @@
+#![no_std]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 mod fmt;
 pub use self::fmt::{to_fmt, Formatter};
 
-mod std_support;
-pub use self::std_support::to_string;
+#[cfg(feature = "alloc")]
+mod alloc_support;
 
-// TODO: Write JSON parsers:
-// - `impl AsRef<[u8]>` as `impl Value`
-// - `impl Read` as `impl Source`
+#[cfg(feature = "alloc")]
+pub use self::alloc_support::to_string;

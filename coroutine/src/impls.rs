@@ -341,7 +341,7 @@ const _: () = {
             let (receiver, mut state) = cx.state();
 
             if !<<T as CoroutineValue>::Coroutine<'a, R> as Resume<'a, R>>::MAY_YIELD {
-                receiver.source(state.value)?;
+                state.value.stream(receiver)?;
 
                 cx.yield_return()
             } else {
@@ -411,7 +411,7 @@ const _: () = {
             match state.value {
                 Some(value) => {
                     if !<<T as CoroutineValue>::Coroutine<'a, R> as Resume<'a, R>>::MAY_YIELD {
-                        receiver.source(value)?;
+                        value.stream(receiver)?;
 
                         cx.yield_return()
                     } else {
@@ -509,7 +509,7 @@ const _: () = {
         fn resume(mut cx: Context<Self, R>) -> Result<Yield<Self>> {
             let (receiver, state) = cx.state();
 
-            receiver.seq_begin(Some(state.value.len()))?;
+            receiver.seq_begin(Some(state.value.len() as u64))?;
 
             if state.value.len() == 0 {
                 cx.yield_resume::<ArrayCoroutineEnd<T>>()

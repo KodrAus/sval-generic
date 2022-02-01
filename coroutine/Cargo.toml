@@ -7,3 +7,4 @@ publish = false
 
 [dependencies.sval]
 path = "../"
+features = ["std"]

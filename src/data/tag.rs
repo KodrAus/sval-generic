@@ -11,7 +11,7 @@ pub fn tagged<V>(value: V) -> Tagged<&'static str, V> {
     Tagged::new(Tag::new(), Tag::new(), value)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Kind {
     // No hint
@@ -51,6 +51,10 @@ impl Default for Kind {
 }
 
 impl Kind {
+    pub fn is_enum(&self) -> bool {
+        matches!(self, Kind::Enum)
+    }
+
     pub fn is_fixed_size(&self) -> bool {
         match self {
             Kind::Struct | Kind::Tuple | Kind::Array => true,

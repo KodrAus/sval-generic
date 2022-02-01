@@ -1,15 +1,13 @@
 use std::borrow::Cow;
 
-use sval::{
-    receiver::{Display, Receiver},
-    source::{self, Source, Stream, ValueSource},
-    value::Value,
-    Result,
-};
+use sval::Source as _;
 
 use sval_fmt as fmt;
 
-pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>) -> Result {
+pub fn buffer<'a>(
+    receiver: impl BufferReceiver<'a>,
+    mut source: impl sval::Source<'a>,
+) -> sval::Result {
     struct Extract<'a, R> {
         buffer: Buffer<'a>,
         receiver: Option<R>,
@@ -26,29 +24,34 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
         }
     }
 
-    impl<'a, R: BufferReceiver<'a>> Receiver<'a> for Extract<'a, R> {
-        fn unstructured<D: Display>(&mut self, value: D) -> Result {
+    impl<'a, R: BufferReceiver<'a>> sval::Receiver<'a> for Extract<'a, R> {
+        fn unstructured<D: sval::data::Display>(&mut self, value: D) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 struct Adapter<D>(fmt::Value<D>);
 
-                impl<'a, D: Display> Source<'a> for Adapter<D> {
-                    fn stream_resume<'b, R: Receiver<'b>>(
+                impl<'a, D: sval::data::Display> sval::Source<'a> for Adapter<D> {
+                    fn stream_resume<'b, R: sval::Receiver<'b>>(
                         &mut self,
                         mut receiver: R,
-                    ) -> Result<Stream>
+                    ) -> sval::Result<sval::source::Stream>
                     where
                         'a: 'b,
                     {
                         receiver.unstructured(self.0.get())?;
 
-                        Ok(Stream::Done)
+                        Ok(sval::source::Stream::Done)
                     }
                 }
 
-                impl<'a, D: Display> ValueSource<'a, fmt::Value<D>, source::Impossible> for Adapter<D> {
-                    type Error = source::Impossible;
+                impl<'a, D: sval::data::Display>
+                    sval::ValueSource<'a, fmt::Value<D>, sval::source::Impossible> for Adapter<D>
+                {
+                    type Error = sval::source::Impossible;
 
-                    fn take(&mut self) -> Result<&fmt::Value<D>, source::TakeError<Self::Error>> {
+                    fn take(
+                        &mut self,
+                    ) -> sval::Result<&fmt::Value<D>, sval::source::TakeError<Self::Error>>
+                    {
                         Ok(&self.0)
                     }
                 }
@@ -61,7 +64,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             }
         }
 
-        fn null(&mut self) -> Result {
+        fn null(&mut self) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(&Option::None::<()>)
             } else {
@@ -71,7 +74,7 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             }
         }
 
-        fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
+        fn str<'v: 'a, V: sval::ValueSource<'v, str>>(&mut self, mut value: V) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
@@ -81,17 +84,17 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
 
                         Ok(())
                     }
-                    Err(v) => {
-                        self.buffer
-                            .push(Token::Str(Cow::Owned(v.into_result()?.to_owned())));
+                    Err(sval::source::TryTakeError::Fallback(v)) => {
+                        self.buffer.push(Token::Str(Cow::Owned(v.to_owned())));
 
                         Ok(())
                     }
+                    Err(sval::source::TryTakeError::Err(e)) => Err(e.into()),
                 }
             }
         }
 
-        fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        fn value<'v: 'a, V: sval::Value + ?Sized + 'v>(&mut self, value: &'v V) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
@@ -99,61 +102,61 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
             }
         }
 
-        fn map_begin(&mut self, len: Option<usize>) -> Result {
+        fn map_begin(&mut self, len: Option<u64>) -> sval::Result {
             self.buffer.push(Token::MapBegin(len));
 
             Ok(())
         }
 
-        fn map_end(&mut self) -> Result {
+        fn map_end(&mut self) -> sval::Result {
             self.buffer.push(Token::MapEnd);
 
             Ok(())
         }
 
-        fn map_key_begin(&mut self) -> Result {
+        fn map_key_begin(&mut self) -> sval::Result {
             self.buffer.push(Token::MapKeyBegin);
 
             Ok(())
         }
 
-        fn map_key_end(&mut self) -> Result {
+        fn map_key_end(&mut self) -> sval::Result {
             self.buffer.push(Token::MapKeyEnd);
 
             Ok(())
         }
 
-        fn map_value_begin(&mut self) -> Result {
+        fn map_value_begin(&mut self) -> sval::Result {
             self.buffer.push(Token::MapValueBegin);
 
             Ok(())
         }
 
-        fn map_value_end(&mut self) -> Result {
+        fn map_value_end(&mut self) -> sval::Result {
             self.buffer.push(Token::MapValueEnd);
 
             Ok(())
         }
 
-        fn seq_begin(&mut self, len: Option<usize>) -> Result {
+        fn seq_begin(&mut self, len: Option<u64>) -> sval::Result {
             self.buffer.push(Token::SeqBegin(len));
 
             Ok(())
         }
 
-        fn seq_end(&mut self) -> Result {
+        fn seq_end(&mut self) -> sval::Result {
             self.buffer.push(Token::SeqEnd);
 
             Ok(())
         }
 
-        fn seq_elem_begin(&mut self) -> Result {
+        fn seq_elem_begin(&mut self) -> sval::Result {
             self.buffer.push(Token::SeqElemBegin);
 
             Ok(())
         }
 
-        fn seq_elem_end(&mut self) -> Result {
+        fn seq_elem_end(&mut self) -> sval::Result {
             self.buffer.push(Token::SeqElemEnd);
 
             Ok(())
@@ -175,17 +178,27 @@ pub fn buffer<'a>(receiver: impl BufferReceiver<'a>, mut source: impl Source<'a>
 }
 
 pub trait BufferReceiver<'a> {
-    fn value_source<'v: 'a, T: Value + ?Sized, R: Value + ?Sized + 'v, S: ValueSource<'v, T, R>>(
+    fn value_source<
+        'v: 'a,
+        T: sval::Value + ?Sized,
+        R: sval::Value + ?Sized + 'v,
+        S: sval::ValueSource<'v, T, R>,
+    >(
         &mut self,
         value: S,
-    ) -> Result;
+    ) -> sval::Result;
 }
 
 impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
-    fn value_source<'v: 'a, T: Value + ?Sized, U: Value + ?Sized + 'v, S: ValueSource<'v, T, U>>(
+    fn value_source<
+        'v: 'a,
+        T: sval::Value + ?Sized,
+        U: sval::Value + ?Sized + 'v,
+        S: sval::ValueSource<'v, T, U>,
+    >(
         &mut self,
         value: S,
-    ) -> Result {
+    ) -> sval::Result {
         (**self).value_source(value)
     }
 }
@@ -212,8 +225,8 @@ impl<'a> Buffer<'a> {
     }
 }
 
-impl<'a> Value for Buffer<'a> {
-    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
+impl<'a> sval::Value for Buffer<'a> {
+    fn stream<'b, R: sval::Receiver<'b>>(&'b self, mut receiver: R) -> sval::Result {
         for mut token in &self.buf {
             token.stream_to_end(&mut receiver)?;
         }
@@ -222,8 +235,11 @@ impl<'a> Value for Buffer<'a> {
     }
 }
 
-impl<'a> Source<'a> for Buffer<'a> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Stream>
+impl<'a> sval::Source<'a> for Buffer<'a> {
+    fn stream_resume<'b, R: sval::Receiver<'b>>(
+        &mut self,
+        mut receiver: R,
+    ) -> sval::Result<sval::source::Stream>
     where
         'a: 'b,
     {
@@ -233,18 +249,18 @@ impl<'a> Source<'a> for Buffer<'a> {
 
                 token.stream_to_end(&mut receiver)?;
 
-                Ok(Stream::Yield)
+                Ok(sval::source::Stream::Yield)
             }
-            None => Ok(Stream::Done),
+            None => Ok(sval::source::Stream::Done),
         }
     }
 }
 
-impl<'a> ValueSource<'a, Buffer<'a>> for Buffer<'a> {
-    type Error = source::Impossible;
+impl<'a> sval::ValueSource<'a, Buffer<'a>> for Buffer<'a> {
+    type Error = sval::source::Impossible;
 
     #[inline]
-    fn take(&mut self) -> Result<&Buffer<'a>, source::TakeError<Self::Error>> {
+    fn take(&mut self) -> sval::Result<&Buffer<'a>, sval::source::TakeError<Self::Error>> {
         Ok(self)
     }
 }
@@ -253,26 +269,29 @@ enum Token<'a> {
     Display(String),
     Str(Cow<'a, str>),
     None,
-    MapBegin(Option<usize>),
+    MapBegin(Option<u64>),
     MapEnd,
     MapKeyBegin,
     MapKeyEnd,
     MapValueBegin,
     MapValueEnd,
-    SeqBegin(Option<usize>),
+    SeqBegin(Option<u64>),
     SeqEnd,
     SeqElemBegin,
     SeqElemEnd,
 }
 
-impl<'a, 'b> Source<'a> for &'b Token<'a> {
-    fn stream_resume<'c, R: Receiver<'c>>(&mut self, mut receiver: R) -> Result<Stream>
+impl<'a, 'b> sval::Source<'a> for &'b Token<'a> {
+    fn stream_resume<'c, R: sval::Receiver<'c>>(
+        &mut self,
+        mut receiver: R,
+    ) -> sval::Result<sval::source::Stream>
     where
         'a: 'c,
     {
         match *self {
             Token::Str(Cow::Borrowed(value)) => receiver.str(*value)?,
-            Token::Str(Cow::Owned(value)) => receiver.str(source::for_all(value))?,
+            Token::Str(Cow::Owned(value)) => receiver.str(sval::for_all(value))?,
             Token::Display(value) => receiver.unstructured(value)?,
             Token::None => receiver.null()?,
             Token::MapBegin(len) => receiver.map_begin(*len)?,
@@ -287,6 +306,6 @@ impl<'a, 'b> Source<'a> for &'b Token<'a> {
             Token::SeqElemEnd => receiver.seq_elem_end()?,
         };
 
-        Ok(Stream::Done)
+        Ok(sval::source::Stream::Done)
     }
 }

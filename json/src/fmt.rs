@@ -1,8 +1,6 @@
-use sval::receiver::{self, Receiver};
+use core::fmt::{self, Write};
 
-use std::fmt::{self, Write};
-
-pub fn to_fmt<'a>(fmt: impl Write, mut v: impl receiver::Source<'a>) -> Result<(), sval::Error> {
+pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> Result<(), sval::Error> {
     v.stream_to_end(Formatter::new(fmt))
 }
 
@@ -29,11 +27,11 @@ where
     }
 }
 
-impl<'a, W> Receiver<'a> for Formatter<W>
+impl<'a, W> sval::Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
-    fn unstructured<V: fmt::Display>(&mut self, v: V) -> receiver::Result {
+    fn unstructured<V: fmt::Display>(&mut self, v: V) -> sval::Result {
         if self.is_key {
             fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
         } else {
@@ -45,91 +43,91 @@ where
         Ok(())
     }
 
-    fn u8(&mut self, v: u8) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn u16(&mut self, v: u16) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn u32(&mut self, v: u32) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn u64(&mut self, v: u64) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn u128(&mut self, v: u128) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn i8(&mut self, v: i8) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn i16(&mut self, v: i16) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn i32(&mut self, v: i32) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn i64(&mut self, v: i64) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn i128(&mut self, v: i128) -> receiver::Result {
-        self.out.write_str(itoa::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn f32(&mut self, v: f32) -> receiver::Result {
-        self.out.write_str(ryu::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn f64(&mut self, v: f64) -> receiver::Result {
-        self.out.write_str(ryu::Buffer::new().format(v))?;
-
-        Ok(())
-    }
-
-    fn bool(&mut self, v: bool) -> receiver::Result {
-        self.out.write_str(if v { "true" } else { "false" })?;
-
-        Ok(())
-    }
-
-    fn null(&mut self) -> receiver::Result {
+    fn null(&mut self) -> sval::Result {
         self.out.write_str("null")?;
 
         Ok(())
     }
 
-    fn str<'v, V: receiver::ValueSource<'v, str>>(&mut self, mut v: V) -> receiver::Result
+    fn u8(&mut self, v: u8) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u16(&mut self, v: u16) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u32(&mut self, v: u32) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u64(&mut self, v: u64) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn u128(&mut self, v: u128) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i8(&mut self, v: i8) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i16(&mut self, v: i16) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i32(&mut self, v: i32) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i64(&mut self, v: i64) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn i128(&mut self, v: i128) -> sval::Result {
+        self.out.write_str(itoa::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn f32(&mut self, v: f32) -> sval::Result {
+        self.out.write_str(ryu::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn f64(&mut self, v: f64) -> sval::Result {
+        self.out.write_str(ryu::Buffer::new().format(v))?;
+
+        Ok(())
+    }
+
+    fn bool(&mut self, v: bool) -> sval::Result {
+        self.out.write_str(if v { "true" } else { "false" })?;
+
+        Ok(())
+    }
+
+    fn str<'v, V: sval::ValueSource<'v, str>>(&mut self, mut v: V) -> sval::Result
     where
         'v: 'a,
     {
@@ -144,7 +142,7 @@ where
         Ok(())
     }
 
-    fn map_begin(&mut self, _: Option<usize>) -> receiver::Result {
+    fn map_begin(&mut self, _: Option<u64>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
         }
@@ -155,7 +153,7 @@ where
         Ok(())
     }
 
-    fn map_end(&mut self) -> receiver::Result {
+    fn map_end(&mut self) -> sval::Result {
         self.is_current_depth_empty = false;
 
         self.out.write_char('}')?;
@@ -163,7 +161,7 @@ where
         Ok(())
     }
 
-    fn map_key_begin(&mut self) -> receiver::Result {
+    fn map_key_begin(&mut self) -> sval::Result {
         self.is_key = true;
 
         if !self.is_current_depth_empty {
@@ -177,7 +175,7 @@ where
         Ok(())
     }
 
-    fn map_key_end(&mut self) -> receiver::Result {
+    fn map_key_end(&mut self) -> sval::Result {
         self.out.write_str("\":")?;
 
         self.is_key = false;
@@ -185,19 +183,19 @@ where
         Ok(())
     }
 
-    fn map_value_begin(&mut self) -> receiver::Result {
+    fn map_value_begin(&mut self) -> sval::Result {
         Ok(())
     }
 
-    fn map_value_end(&mut self) -> receiver::Result {
+    fn map_value_end(&mut self) -> sval::Result {
         Ok(())
     }
 
-    fn map_field_entry<'v: 'a, F: receiver::ValueSource<'static, str>, V: receiver::Source<'v>>(
+    fn map_field_entry<'v: 'a, F: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
         &mut self,
         mut f: F,
-        v: V,
-    ) -> receiver::Result {
+        mut v: V,
+    ) -> sval::Result {
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
         } else {
@@ -210,12 +208,12 @@ where
 
         self.is_current_depth_empty = false;
 
-        self.source(v)
+        v.stream_to_end(&mut *self)
     }
 
-    fn seq_begin(&mut self, _: Option<usize>) -> receiver::Result {
+    fn seq_begin(&mut self, _: Option<u64>) -> sval::Result {
         if self.is_key {
-            return Err(receiver::Error);
+            return Err(sval::Error);
         }
 
         self.is_current_depth_empty = true;
@@ -225,7 +223,7 @@ where
         Ok(())
     }
 
-    fn seq_end(&mut self) -> receiver::Result {
+    fn seq_end(&mut self) -> sval::Result {
         self.is_current_depth_empty = false;
 
         self.out.write_char(']')?;
@@ -233,7 +231,7 @@ where
         Ok(())
     }
 
-    fn seq_elem_begin(&mut self) -> receiver::Result {
+    fn seq_elem_begin(&mut self) -> sval::Result {
         if !self.is_current_depth_empty {
             self.out.write_char(',')?;
         }
@@ -243,7 +241,7 @@ where
         Ok(())
     }
 
-    fn seq_elem_end(&mut self) -> receiver::Result {
+    fn seq_elem_end(&mut self) -> sval::Result {
         Ok(())
     }
 }

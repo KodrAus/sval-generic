@@ -1,5 +1,5 @@
 use crate::{
-    std::fmt::{self, Display},
+    std::fmt::{self, Debug, Display},
     Receiver, Result, Value,
 };
 
@@ -20,6 +20,20 @@ pub struct Error(dyn Inner + 'static);
 impl Value for Error {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.error(self)
+    }
+}
+
+impl Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[cfg(not(feature = "std"))]
+        {
+            Display::fmt(&self.0, f)
+        }
+
+        #[cfg(feature = "std")]
+        {
+            Debug::fmt(&self.0, f)
+        }
     }
 }
 

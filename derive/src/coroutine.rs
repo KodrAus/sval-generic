@@ -74,7 +74,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         .chain(Some(&coroutine_end_ident))
         .collect::<Vec<_>>();
 
-    let num_fields = field_ident.len();
+    let num_fields = field_ident.len() as u64;
 
     TokenStream::from(quote! {
         #[allow(non_upper_case_globals, non_camel_case_types, dead_code, unused_mut)]
@@ -134,7 +134,10 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 const MAY_YIELD: bool = true;
 
                 fn resume(mut cx: sval_coroutine::co::Context<Self, R>) -> sval_coroutine::Result<sval_coroutine::co::Yield<Self>> {
-                    cx.receiver().type_tagged_map_begin(sval_coroutine::tag::type_tag(#tag), Some(#num_fields))?;
+                    let (receiver, _) = cx.state();
+
+                    receiver.tagged_begin(sval::data::tag().with_label(#tag).with_kind(sval_coroutine::data::tag::Kind::Struct))?;
+                    receiver.map_begin(Some(#num_fields))?;
 
                     cx.yield_resume::<#transition_begin>()
                 }
@@ -180,7 +183,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         receiver.map_value_end()?;
                     }
 
-                    receiver.type_tagged_map_end()?;
+                    receiver.map_end()?;
+                    receiver.tagged_end(sval_coroutine::data::tag().with_label(#tag).with_kind(sval_coroutine::data::tag::Kind::Struct))?;
 
                     cx.yield_return()
                 }

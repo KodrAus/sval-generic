@@ -4,4 +4,4 @@ pub mod co;
 mod impls;
 pub mod value;
 
-pub use sval::{tag, Error, Receiver, Result};
+pub use sval::{data, Error, Receiver, Result};

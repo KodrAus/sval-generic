@@ -40,7 +40,7 @@ fn sval_erased_consistency() {
 
     assert_eq!(
         sval_json::to_string(&s).unwrap(),
-        sval_json::to_string(&erased::value(&s)).unwrap()
+        sval_json::to_string(&s as &dyn erased::Value).unwrap()
     );
 }
 
