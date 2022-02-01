@@ -5,6 +5,7 @@ use std::{
 
 use crate::Result;
 
+// TODO: This doesn't support the same API as `Source` where the `Receiver` may change
 pub trait Resume<'a, R> {
     type State;
 

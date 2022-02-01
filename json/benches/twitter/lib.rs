@@ -72,6 +72,15 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn twitter_sval_coroutine(b: &mut test::Bencher) {
+    use sval_coroutine as co;
+
+    let s = input_struct();
+
+    b.iter(|| sval_json::to_string(co::value::source(&s)).unwrap());
+}
+
+#[bench]
 fn twitter_sval(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| sval_json::to_string(&s).unwrap());

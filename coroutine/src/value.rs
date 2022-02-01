@@ -1,6 +1,40 @@
 use crate::{co::Resume, Receiver};
 
-use sval::Value;
+use std::pin::Pin;
+
+use sval::{Result, Value};
+
+pub fn source<'a>(v: &'a impl CoroutineValue) -> impl sval::Source<'a> {
+    struct Source<S>(S);
+
+    impl<'a, V: CoroutineValue> sval::Source<'a> for Source<&'a V> {
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> Result<sval::source::Stream>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver)
+                .map(|_| sval::source::Stream::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+        where
+            'a: 'b,
+        {
+            let mut co = crate::co::Coroutine::new(self.0.state());
+
+            let source = crate::co::RefMutSource::<R, V::Coroutine<'b, R>>::new(receiver, unsafe {
+                Pin::new_unchecked(&mut co)
+            });
+
+            source.into_iter().collect()
+        }
+    }
+
+    Source(v)
+}
 
 pub trait CoroutineValue: Value {
     type State<'a>
