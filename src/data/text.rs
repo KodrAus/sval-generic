@@ -67,6 +67,20 @@ impl Value for str {
     }
 }
 
+impl<'a> ValueSource<'a, Text> for &'a char {
+    type Error = source::Impossible;
+
+    #[inline]
+    fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
+        Ok(Text::new(*self))
+    }
+
+    #[inline]
+    fn try_take_ref(&mut self) -> Result<&'a Text, source::TryTakeError<&Text, Self::Error>> {
+        Ok(Text::new(*self))
+    }
+}
+
 impl<'a> ValueSource<'a, Text> for &'a str {
     type Error = source::Impossible;
 
@@ -84,7 +98,7 @@ mod alloc_support {
     use crate::{
         for_all,
         std::{
-            borrow::{Borrow, ToOwned},
+            borrow::{Borrow, Cow, ToOwned},
             mem,
             string::{String, ToString},
         },
@@ -143,13 +157,13 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
+        fn take_owned(&mut self) -> Result<Cow<str>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self)))
         }
 
         #[inline]
-        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&str, Self::Error>> {
-            Ok(mem::take(self))
+        fn try_take_owned(&mut self) -> Result<&'a str, TryTakeError<Cow<str>, Self::Error>> {
+            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
         }
     }
 
@@ -176,13 +190,13 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
+        fn take_owned(&mut self) -> Result<Cow<Text>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self)))
         }
 
         #[inline]
-        fn try_take_owned(&mut self) -> Result<String, TryTakeError<&Text, Self::Error>> {
-            Ok(mem::take(self))
+        fn try_take_owned(&mut self) -> Result<&'a Text, TryTakeError<Cow<Text>, Self::Error>> {
+            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
         }
     }
 

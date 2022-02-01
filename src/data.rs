@@ -14,9 +14,6 @@ pub use self::{
     text::{text, Text},
 };
 
-#[doc(inline)]
-pub use crate::std::fmt::Display;
-
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::error::error;
@@ -118,107 +115,5 @@ impl<'a> ValueSource<'a, bool> for bool {
 
     fn take(&mut self) -> crate::Result<&bool, source::TakeError<Self::Error>> {
         Ok(self)
-    }
-}
-
-#[cfg(feature = "alloc")]
-mod alloc_support {
-    use crate::{
-        for_all,
-        source::{self, ToOwned, TryTakeError},
-        std::borrow::{Borrow, Cow},
-        Receiver, Result, Source, Value, ValueSource,
-    };
-
-    impl<'a, V: ToOwned + Value + ?Sized> Source<'a> for Cow<'a, V>
-    where
-        V::Owned: Value,
-    {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Stream>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Stream::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
-        where
-            'a: 'b,
-        {
-            match self {
-                Cow::Borrowed(v) => v.stream(receiver),
-                Cow::Owned(v) => v.stream(for_all(receiver)),
-            }
-        }
-    }
-
-    impl<'a, 'r, V: ToOwned + Value + ?Sized> Source<'a> for &'r Cow<'a, V>
-    where
-        V::Owned: Value,
-    {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Stream>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Stream::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
-        where
-            'a: 'b,
-        {
-            match self {
-                Cow::Borrowed(v) => (*v).stream(receiver),
-                Cow::Owned(v) => v.stream(for_all(receiver)),
-            }
-        }
-    }
-
-    impl<'a, V: ToOwned + Value + ?Sized> ValueSource<'a, V> for Cow<'a, V>
-    where
-        V::Owned: Value,
-    {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&V, source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a V, TryTakeError<&V, Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Ok(*v),
-                Cow::Owned(ref v) => Err(TryTakeError::Fallback(v.borrow())),
-            }
-        }
-
-        // NOTE: With specialization we could specialize for `V::Owned: Default` for `try_take_owned`
-    }
-
-    impl<'a, 'r, V: ToOwned + Value + ?Sized> ValueSource<'a, V> for &'r Cow<'a, V>
-    where
-        V::Owned: Value,
-    {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&V, source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a V, TryTakeError<&V, Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Ok(*v),
-                Cow::Owned(ref v) => Err(TryTakeError::Fallback(v.borrow())),
-            }
-        }
     }
 }

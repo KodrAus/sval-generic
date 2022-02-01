@@ -2,6 +2,8 @@
 
 extern crate alloc;
 
+use core::fmt::Display;
+
 use alloc::{
     borrow::{Cow, ToOwned},
     string::{String, ToString},
@@ -42,11 +44,11 @@ pub fn buffer<'a>(
             }
         }
 
-        fn unstructured<D: sval::data::Display>(&mut self, value: D) -> sval::Result {
+        fn unstructured<D: Display>(&mut self, value: D) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 struct Adapter<D>(fmt::Value<D>);
 
-                impl<'a, D: sval::data::Display> sval::Source<'a> for Adapter<D> {
+                impl<'a, D: Display> sval::Source<'a> for Adapter<D> {
                     fn stream_resume<'b, R: sval::Receiver<'b>>(
                         &mut self,
                         mut receiver: R,
@@ -60,9 +62,7 @@ pub fn buffer<'a>(
                     }
                 }
 
-                impl<'a, D: sval::data::Display>
-                    sval::ValueSource<'a, fmt::Value<D>, sval::source::Impossible> for Adapter<D>
-                {
+                impl<'a, D: Display> sval::ValueSource<'a, fmt::Value<D>, sval::source::Impossible> for Adapter<D> {
                     type Error = sval::source::Impossible;
 
                     fn take(
@@ -152,14 +152,14 @@ pub fn buffer<'a>(
         }
 
         fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
-            let tag = tag.try_map_label(|mut label| match label.try_take_ref() {
-                Ok(v) => Ok(Cow::Borrowed(v)),
-                Err(sval::source::TryTakeError::Fallback(v)) => Ok(Cow::Owned(v.to_owned())),
+            let tag = tag.try_map_label(|mut label| match label.try_take_owned_ref() {
+                Ok(label) => Ok(Cow::Borrowed(label)),
+                Err(sval::source::TryTakeError::Fallback(label)) => Ok(Cow::Owned(label)),
                 Err(sval::source::TryTakeError::Err(e)) => Err(e),
             })?;
 
             if let Some(mut receiver) = self.top_level_receiver() {
-                receiver.value_source(sval::for_all(&tag))
+                receiver.value_source(tag)
             } else {
                 self.buffer.push(Token::Tag(tag));
 

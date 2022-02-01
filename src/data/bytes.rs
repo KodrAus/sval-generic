@@ -148,14 +148,11 @@ impl<'a> ValueSource<'a, Bytes> for &'a str {
 mod alloc_support {
     use super::*;
 
-    use crate::{
-        source::TryTakeError,
-        std::{
-            borrow::{Borrow, ToOwned},
-            mem,
-            string::String,
-            vec::Vec,
-        },
+    use crate::std::{
+        borrow::{Borrow, Cow, ToOwned},
+        mem,
+        string::String,
+        vec::Vec,
     };
 
     impl ToOwned for Bytes {
@@ -181,13 +178,15 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
+        fn take_owned(&mut self) -> Result<Cow<Bytes>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self)))
         }
 
         #[inline]
-        fn try_take_owned(&mut self) -> Result<Vec<u8>, TryTakeError<&Bytes, Self::Error>> {
-            Ok(mem::take(self))
+        fn try_take_owned(
+            &mut self,
+        ) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Err(source::TryTakeError::Fallback(Cow::Owned(mem::take(self))))
         }
     }
 
@@ -200,7 +199,7 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Bytes, TryTakeError<&Bytes, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
             Ok(Bytes::new(&**self))
         }
     }
@@ -214,13 +213,17 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
-            Ok(mem::take(self).into())
+        fn take_owned(&mut self) -> Result<Cow<Bytes>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self).into()))
         }
 
         #[inline]
-        fn try_take_owned(&mut self) -> Result<Vec<u8>, TryTakeError<&Bytes, Self::Error>> {
-            Ok(mem::take(self).into())
+        fn try_take_owned(
+            &mut self,
+        ) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Err(source::TryTakeError::Fallback(Cow::Owned(
+                mem::take(self).into(),
+            )))
         }
     }
 
@@ -233,7 +236,7 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Bytes, TryTakeError<&Bytes, Self::Error>> {
+        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
             Ok(Bytes::new(&**self))
         }
     }

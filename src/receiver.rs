@@ -1,7 +1,7 @@
-use crate::data::{Bytes, Error, Tag, Tagged, Text};
 use crate::{
     data, for_all,
     source::{Source, ValueSource},
+    std::fmt::Display,
     Result, Value,
 };
 
@@ -10,7 +10,7 @@ pub trait Receiver<'a> {
         value.stream(self)
     }
 
-    fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result;
+    fn unstructured<D: Display>(&mut self, fmt: D) -> Result;
 
     fn null(&mut self) -> Result;
 
@@ -188,7 +188,7 @@ macro_rules! impl_receiver_forward {
                 (**self).value(value)
             }
 
-            fn unstructured<D: data::Display>(&mut self, fmt: D) -> Result {
+            fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
                 (**self).unstructured(fmt)
             }
 
@@ -256,33 +256,33 @@ macro_rules! impl_receiver_forward {
                 (**self).str(value)
             }
 
-            fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, text: S) -> Result {
+            fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, text: S) -> Result {
                 (**self).text(text)
             }
 
-            fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
+            fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
                 (**self).error(error)
             }
 
-            fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
+            fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
                 (**self).bytes(bytes)
             }
 
-            fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+            fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tag(tag)
             }
 
-            fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+            fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tagged_begin(tag)
             }
 
-            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tagged_end(tag)
             }
 
             fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
                 &mut self,
-                tagged: Tagged<T, V>,
+                tagged: data::Tagged<T, V>,
             ) -> Result {
                 (**self).tagged(tagged)
             }

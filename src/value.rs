@@ -1,4 +1,4 @@
-use crate::{data::Display, receiver, source::ValueSource, Receiver, Result};
+use crate::{receiver, source::ValueSource, std::fmt::Display, Receiver, Result};
 
 pub fn stream<'a>(s: impl Receiver<'a>, v: &'a impl Value) -> Result {
     v.stream(s)

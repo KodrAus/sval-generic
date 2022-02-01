@@ -1,5 +1,8 @@
 use crate::{std::fmt, Error, Receiver, Result, Value};
 
+#[cfg(feature = "alloc")]
+use crate::std::borrow::{Cow, ToOwned};
+
 pub fn stream_to_end<'a>(s: impl Receiver<'a>, mut v: impl Source<'a>) -> Result {
     v.stream_to_end(s)
 }
@@ -73,21 +76,12 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
     fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
 
     #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    #[cfg(feature = "alloc")]
+    fn try_take_owned(&mut self) -> Result<&T, TryTakeError<T::Owned, Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value,
     {
-        #[cfg(not(feature = "std"))]
-        {
-            // The polyfilled `ToOwned` trait has no implementations
-            // So this path is intentionally unreachable
-            unreachable!()
-        }
-        #[cfg(feature = "std")]
-        {
-            self.take().map(ToOwned::to_owned)
-        }
+        Ok(self.take()?)
     }
 
     #[inline]
@@ -96,12 +90,16 @@ pub trait ValueSource<'a, T: Value + ?Sized, R: Value + ?Sized = T>: Source<'a> 
     }
 
     #[inline]
-    fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
+    #[cfg(feature = "alloc")]
+    fn try_take_owned_ref(&mut self) -> Result<&'a R, TryTakeError<T::Owned, Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value,
     {
-        Err(TryTakeError::Fallback(self.take()?))
+        match self.try_take_ref() {
+            Ok(v) => Ok(v),
+            Err(TryTakeError::Fallback(v)) => Err(TryTakeError::Fallback(v.to_owned())),
+            Err(TryTakeError::Err(e)) => Err(TryTakeError::Err(e)),
+        }
     }
 }
 
@@ -116,10 +114,10 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
     }
 
     #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    #[cfg(feature = "alloc")]
+    fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value,
     {
         (**self).take_owned()
     }
@@ -130,10 +128,10 @@ impl<'a, 'b, T: Value + ?Sized, R: Value + ?Sized, S: ValueSource<'a, T, R> + ?S
     }
 
     #[inline]
-    fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
+    #[cfg(feature = "alloc")]
+    fn try_take_owned(&mut self) -> Result<&'a R, TryTakeError<Cow<T>, Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value,
     {
         (**self).try_take_owned()
     }
@@ -164,23 +162,25 @@ impl<'a, T: Value + ?Sized> ValueSource<'a, T> for &'a T {
     }
 
     #[inline]
-    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    #[cfg(feature = "alloc")]
+    fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
     where
         T: ToOwned,
-        T::Owned: Value,
     {
-        #[cfg(not(feature = "std"))]
-        {
-            unreachable!()
-        }
-        #[cfg(feature = "std")]
-        {
-            Ok(self.to_owned())
-        }
+        Ok(Cow::Borrowed(self))
     }
 
     #[inline]
     fn try_take_ref(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
+        Ok(self)
+    }
+
+    #[inline]
+    #[cfg(feature = "alloc")]
+    fn try_take_owned(&mut self) -> Result<&'a T, TryTakeError<Cow<T>, Self::Error>>
+    where
+        T: ToOwned,
+    {
         Ok(self)
     }
 }
@@ -289,27 +289,19 @@ impl<T, E> From<TakeError<E>> for TryTakeError<T, E> {
     }
 }
 
-mod private {
-    mod no_implementations {
-        pub trait NoImplementations {}
-    }
-
-    pub trait Polyfill: no_implementations::NoImplementations {}
-}
-
-#[cfg(not(feature = "alloc"))]
-pub trait ToOwned: private::Polyfill {
-    type Owned;
-}
-
-#[cfg(feature = "alloc")]
-pub use crate::std::borrow::ToOwned;
-
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;
 
-    use crate::std::boxed::Box;
+    use crate::{
+        for_all,
+        source::{self, TryTakeError},
+        std::{
+            borrow::{Borrow, Cow, ToOwned},
+            boxed::Box,
+        },
+        Receiver, Result, Source, Value, ValueSource,
+    };
 
     impl<'a, T: Source<'a> + ?Sized> Source<'a> for Box<T> {
         fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Stream>
@@ -338,10 +330,9 @@ mod alloc_support {
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+        fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
         where
             T: ToOwned,
-            T::Owned: Value,
         {
             (**self).take_owned()
         }
@@ -350,5 +341,98 @@ mod alloc_support {
         fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
             (**self).try_take_ref()
         }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<&'a R, TryTakeError<Cow<T>, Self::Error>>
+        where
+            T: ToOwned,
+        {
+            (**self).try_take_owned()
+        }
+    }
+
+    impl<'a, V: ToOwned + Value + ?Sized> Source<'a> for Cow<'a, V> {
+        fn stream_resume<'b, R: Receiver<'b>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
+        where
+            'a: 'b,
+        {
+            match self {
+                Cow::Borrowed(v) => v.stream(receiver),
+                Cow::Owned(v) => {
+                    let v: &V = (*v).borrow();
+                    v.stream(for_all(receiver))
+                }
+            }
+        }
+    }
+
+    impl<'a, 'b, V: ToOwned + Value + ?Sized> Source<'a> for &'b Cow<'a, V> {
+        fn stream_resume<'c, R: Receiver<'c>>(
+            &mut self,
+            receiver: R,
+        ) -> crate::Result<source::Stream>
+        where
+            'a: 'c,
+        {
+            self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        }
+
+        fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> crate::Result
+        where
+            'a: 'c,
+        {
+            match self {
+                Cow::Borrowed(v) => (*v).stream(receiver),
+                Cow::Owned(v) => v.borrow().stream(for_all(receiver)),
+            }
+        }
+    }
+
+    impl<'a, V: ToOwned + Value + ?Sized> ValueSource<'a, V> for Cow<'a, V> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&V, source::TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a V, TryTakeError<&V, Self::Error>> {
+            match self {
+                Cow::Borrowed(v) => Ok(*v),
+                Cow::Owned(ref v) => Err(TryTakeError::Fallback(v.borrow())),
+            }
+        }
+
+        // NOTE: With specialization we could specialize for `V::Owned: Default` for `take_owned` and `try_take_owned`
+    }
+
+    impl<'a, 'b, V: ToOwned + Value + ?Sized> ValueSource<'a, V> for &'b Cow<'a, V> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&V, source::TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+
+        #[inline]
+        fn try_take_ref(&mut self) -> Result<&'a V, TryTakeError<&V, Self::Error>> {
+            match self {
+                Cow::Borrowed(v) => Ok(*v),
+                Cow::Owned(ref v) => Err(TryTakeError::Fallback(v.borrow())),
+            }
+        }
+
+        // NOTE: With specialization we could specialize for `V::Owned: Default` for `take_owned` and `try_take_owned`
     }
 }
