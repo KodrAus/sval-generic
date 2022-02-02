@@ -12,14 +12,14 @@ macro_rules! digits {
             }
 
             impl<'a> Source<'a> for $ty {
-                fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
+                fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
                 where
                     'a: 'b,
                 {
-                    self.stream_all(receiver).map(|_| source::Next::Done)
+                    self.stream_to_end(receiver).map(|_| source::Resume::Done)
                 }
 
-                fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+                fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
                 where
                     'a: 'b,
                 {

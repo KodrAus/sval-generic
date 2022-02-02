@@ -1,8 +1,8 @@
 use crate::Receiver;
-use sval::source::{Next, TakeError, TryTakeError};
+use sval::source::{Resume, TakeError, TryTakeError};
 
 mod private {
-    use sval::source::Next;
+    use sval::source::Resume;
 
     use crate::receiver::Receiver;
 
@@ -10,7 +10,7 @@ mod private {
         fn dispatch_stream_resume<'b>(
             &mut self,
             receiver: &mut dyn Receiver<'b>,
-        ) -> sval::Result<Next>
+        ) -> sval::Result<Resume>
         where
             'a: 'b;
 
@@ -69,7 +69,10 @@ impl<'a, S: sval::Source<'a>> private::EraseSource<'a> for S {
 }
 
 impl<'a, S: sval::Source<'a>> private::DispatchSource<'a> for S {
-    fn dispatch_stream_resume<'b>(&mut self, receiver: &mut dyn Receiver<'b>) -> sval::Result<Next>
+    fn dispatch_stream_resume<'b>(
+        &mut self,
+        receiver: &mut dyn Receiver<'b>,
+    ) -> sval::Result<Resume>
     where
         'a: 'b,
     {

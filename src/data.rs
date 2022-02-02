@@ -18,7 +18,7 @@ pub use self::{
 #[doc(inline)]
 pub use self::error::error;
 
-use crate::{source, Receiver, Result, Source, SourceValue};
+use crate::{source, Receiver, Source, SourceValue};
 
 impl SourceValue for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
@@ -27,14 +27,14 @@ impl SourceValue for () {
 }
 
 impl<'a> Source<'a> for () {
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
     where
         'a: 'b,
     {
-        self.stream_all(receiver).map(|_| source::Next::Done)
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
-    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -44,71 +44,28 @@ impl<'a> Source<'a> for () {
 
 impl<T: SourceValue> SourceValue for Option<T> {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
-        self.as_ref().stream_all(receiver)
+        self.as_ref().stream_to_end(receiver)
     }
 }
 
 impl<'a, T: Source<'a>> Source<'a> for Option<T> {
-    fn stream_begin<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        match self {
-            None => receiver.tagged_begin(
-                tag()
-                    .with_label("None")
-                    .with_id(0)
-                    .with_kind(tag::Kind::Nullable),
-            ),
-            Some(v) => {
-                receiver.tagged_begin(
-                    tag()
-                        .with_label("Some")
-                        .with_id(1)
-                        .with_kind(tag::Kind::Nullable),
-                )?;
-                v.stream_begin(receiver)
-            }
-        }
-    }
-
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result<source::Next>
+    fn stream_resume<'b, R: Receiver<'b>>(
+        &mut self,
+        mut receiver: R,
+    ) -> crate::Result<source::Resume>
     where
         'a: 'b,
     {
         match self {
             None => {
                 receiver.null()?;
-                Ok(source::Next::Done)
+                Ok(source::Resume::Done)
             }
-            Some(v) => v.stream_next(receiver),
+            Some(v) => v.stream_resume(receiver),
         }
     }
 
-    fn stream_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        match self {
-            None => receiver.tagged_end(
-                tag()
-                    .with_label("None")
-                    .with_id(0)
-                    .with_kind(tag::Kind::Fallible),
-            ),
-            Some(v) => {
-                v.stream_end(&mut receiver)?;
-                receiver.tagged_end(
-                    tag()
-                        .with_label("Some")
-                        .with_id(1)
-                        .with_kind(tag::Kind::Fallible),
-                )
-            }
-        }
-    }
-
-    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -117,31 +74,31 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
                 .with_label("None")
                 .with_id(0)
                 .with_kind(tag::Kind::Nullable)
-                .stream_all(receiver),
+                .stream_to_end(receiver),
             Some(v) => tagged(v)
                 .with_label("Some")
                 .with_id(1)
                 .with_kind(tag::Kind::Nullable)
-                .stream_all(receiver),
+                .stream_to_end(receiver),
         }
     }
 }
 
 impl SourceValue for bool {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
-        (*self).stream_all(receiver)
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+        receiver.bool(*self)
     }
 }
 
 impl<'a> Source<'a> for bool {
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
     where
         'a: 'b,
     {
-        self.stream_all(receiver).map(|_| source::Next::Done)
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
-    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {

@@ -33,32 +33,18 @@ impl<T: SourceValue> SourceValue for ForAll<T> {
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream_begin<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
+    fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Resume>
     where
         'a: 'c,
     {
-        self.0.stream_begin(for_all(receiver))
+        self.0.stream_resume(for_all(receiver))
     }
 
-    fn stream_next<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
+    fn stream_to_end<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
     where
         'a: 'c,
     {
-        self.0.stream_next(for_all(receiver))
-    }
-
-    fn stream_end<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
-    where
-        'a: 'c,
-    {
-        self.0.stream_end(for_all(receiver))
-    }
-
-    fn stream_all<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
-    where
-        'a: 'c,
-    {
-        self.0.stream_all(for_all(stream))
+        self.0.stream_to_end(for_all(stream))
     }
 }
 

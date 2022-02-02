@@ -111,7 +111,7 @@ pub trait Receiver<'a> {
         mut tagged: data::Tagged<T, V>,
     ) -> Result {
         self.tagged_begin(tagged.begin_tag_mut())?;
-        tagged.value_mut().stream_all(&mut *self)?;
+        tagged.value_mut().stream_to_end(&mut *self)?;
         self.tagged_end(tagged.end_tag_mut())
     }
 
@@ -145,19 +145,20 @@ pub trait Receiver<'a> {
         self.map_value(value)
     }
 
-    fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
-        self.map_key(field)
+    fn map_field<F: SourceRef<'static, str>>(&mut self, mut field: F) -> Result {
+        // TODO: Do we lose static fields from this?
+        self.map_key(for_all(field.take()?))
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
-        key.stream_all(&mut *self)?;
+        key.stream_to_end(&mut *self)?;
         self.map_key_end()
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
-        value.stream_all(&mut *self)?;
+        value.stream_to_end(&mut *self)?;
         self.map_value_end()
     }
 
@@ -171,7 +172,7 @@ pub trait Receiver<'a> {
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
         self.seq_elem_begin()?;
-        elem.stream_all(&mut *self)?;
+        elem.stream_to_end(&mut *self)?;
         self.seq_elem_end()
     }
 }

@@ -22,13 +22,9 @@ where
 
             #[inline]
             fn str<'v: 'a, V: SourceRef<'v, str>>(&mut self, mut value: V) -> Result {
-                match value.try_take_ref() {
-                    Ok(v) => {
-                        self.0 = Some(v);
-                        Ok(())
-                    }
-                    _ => receiver::unsupported(),
-                }
+                self.0 = value.try_take().ok();
+
+                Ok(())
             }
 
             #[inline]
@@ -103,11 +99,26 @@ impl<'a, T: SourceValue + ?Sized> SourceValue for &'a T {
 mod alloc_support {
     use super::*;
 
-    use crate::std::boxed::Box;
+    use crate::{
+        for_all,
+        std::{
+            borrow::{Borrow, Cow, ToOwned},
+            boxed::Box,
+        },
+    };
 
     impl<T: SourceValue + ?Sized> SourceValue for Box<T> {
-        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
-            (**self).stream(stream)
+        fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> crate::Result {
+            (**self).stream(receiver)
+        }
+    }
+
+    impl<'a, V: ToOwned + SourceValue + ?Sized> SourceValue for Cow<'a, V> {
+        fn stream<'b, S: Receiver<'b>>(&'b self, receiver: S) -> crate::Result {
+            match self {
+                Cow::Borrowed(v) => v.stream(receiver),
+                Cow::Owned(ref v) => (*v).borrow().stream(for_all(receiver)),
+            }
         }
     }
 }

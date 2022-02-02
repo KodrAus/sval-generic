@@ -75,9 +75,7 @@ mod std_support {
         }
 
         #[inline]
-        fn try_take_ref(
-            &mut self,
-        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -97,9 +95,7 @@ mod std_support {
         }
 
         #[inline]
-        fn try_take_ref(
-            &mut self,
-        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -119,9 +115,7 @@ mod std_support {
         }
 
         #[inline]
-        fn try_take_ref(
-            &mut self,
-        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }

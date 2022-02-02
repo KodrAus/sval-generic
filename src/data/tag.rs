@@ -1,4 +1,4 @@
-use crate::{source::Next, Receiver, Result, Source, SourceRef, SourceValue};
+use crate::{source::Resume, Receiver, Result, Source, SourceRef, SourceValue};
 
 pub fn tag() -> Tag<&'static str> {
     Tag::new()
@@ -166,14 +166,14 @@ impl<T> Tag<T> {
 }
 
 impl<'a, T: SourceRef<'static, str>> Source<'a> for Tag<T> {
-    fn stream_next<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Next>
+    fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Resume>
     where
         'a: 'b,
     {
-        self.stream_all(receiver).map(|_| Next::Done)
+        self.stream_to_end(receiver).map(|_| Resume::Done)
     }
 
-    fn stream_all<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
+    fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
     where
         'a: 'b,
     {
@@ -226,6 +226,14 @@ impl<T, V> Tagged<T, V> {
 
     pub fn value_mut(&mut self) -> &mut V {
         &mut self.value
+    }
+
+    pub fn by_ref(&self) -> Tagged<&T, &V> {
+        Tagged {
+            begin_tag: self.begin_tag.by_ref(),
+            end_tag: self.end_tag.by_ref(),
+            value: &self.value,
+        }
     }
 
     pub fn by_mut(&mut self) -> Tagged<&mut T, &mut V> {
@@ -294,36 +302,20 @@ impl<T, V> Tagged<T, V> {
 }
 
 impl<V: SourceValue> SourceValue for Tagged<&'static str, V> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        (&*self).stream_all(receiver)
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+        receiver.tagged(self.by_ref().map_label(|l| *l))
     }
 }
 
 impl<'a, T: SourceRef<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> {
-    fn stream_begin<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Next>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where
         'a: 'b,
     {
-        receiver.tagged_begin(self.begin_tag.by_mut())?;
-        self.value_mut().stream_begin(receiver)
+        self.stream_to_end(receiver).map(|_| Resume::Done)
     }
 
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Next>
-    where
-        'a: 'b,
-    {
-        self.value_mut().stream_next(receiver)
-    }
-
-    fn stream_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Next>
-    where
-        'a: 'b,
-    {
-        self.value_mut().stream_end(&mut receiver)?;
-        receiver.tagged_end(self.end_tag.by_mut())
-    }
-
-    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
     where
         'a: 'b,
     {
@@ -335,17 +327,47 @@ impl<'a, T: SourceRef<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> 
 mod alloc_support {
     use super::*;
 
-    use crate::std::borrow::Cow;
+    use crate::{
+        source,
+        std::borrow::{Cow, ToOwned},
+    };
+
+    struct ByRef<'a, 'b, T: ToOwned + ?Sized>(&'b Cow<'a, T>);
+
+    impl<'a, 'b, T: ToOwned + SourceValue + ?Sized> Source<'a> for ByRef<'a, 'b, T> {
+        fn stream_resume<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result<Resume>
+        where
+            'a: 'c,
+        {
+            todo!()
+        }
+
+        fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
+        where
+            'a: 'c,
+        {
+            todo!()
+        }
+    }
+
+    impl<'a, 'b, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for ByRef<'a, 'b, T> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&T, source::TakeError<Self::Error>> {
+            Ok(&**self.0)
+        }
+    }
 
     impl SourceValue for Tag<Cow<'static, str>> {
         fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-            receiver.tag(self.by_ref())
+            receiver.tag(self.by_ref().map_label(|l| ByRef(l)))
         }
     }
 
     impl<T: SourceValue> SourceValue for Tagged<Cow<'static, str>, T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-            receiver.tag(self.by_ref())
+            receiver.tagged(self.by_ref().map_label(|l| ByRef(l)))
         }
     }
 }

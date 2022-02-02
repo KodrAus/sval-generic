@@ -235,15 +235,7 @@ tuple! {
 mod alloc_support {
     use super::*;
 
-    use crate::{
-        source,
-        std::{
-            borrow::{Cow, ToOwned},
-            mem,
-            vec::Vec,
-        },
-        Source,
-    };
+    use crate::{source, std::vec::Vec, Source};
 
     impl<T: SourceValue> SourceValue for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
@@ -251,130 +243,18 @@ mod alloc_support {
         }
     }
 
-    impl<'a, T: SourceValue> SourceRef<'a, [T]> for Vec<T> {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&[T], source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<Cow<[T]>, source::TakeError<Self::Error>>
-        where
-            [T]: ToOwned,
-        {
-            Ok(Cow::Owned(mem::take(self)))
-        }
-
-        #[inline]
-        fn take_ref(&mut self) -> Result<Cow<'a, [T]>, source::TakeError<Self::Error>>
-        where
-            [T]: ToOwned,
-        {
-            Ok(Cow::Owned(mem::take(self)))
-        }
-    }
-
-    impl<'a, T: SourceValue> SourceRef<'a, [T]> for &'a Vec<T> {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&[T], source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn try_take(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
-            Ok(&**self)
-        }
-    }
-
-    impl<'a, 'b, T: Source<'a>> Source<'a> for &'b mut [T] {
-        fn stream_begin<'c, R: Receiver<'c>>(
-            &mut self,
-            mut receiver: R,
-        ) -> crate::Result<source::Next>
-        where
-            'a: 'c,
-        {
-            receiver.seq_begin(Some(self.len() as u64))
-        }
-
-        fn stream_next<'c, R: Receiver<'c>>(&mut self, receiver: R) -> crate::Result<source::Next>
-        where
-            'a: 'c,
-        {
-            if let Some(next) = self.get(0) {
-                let r = next.stream_all(receiver);
-                *self = self[1..];
-                r?;
-
-                Ok(source::Next::Continue)
-            } else {
-                Ok(source::Next::Done)
-            }
-        }
-
-        fn stream_end<'c, R: Receiver<'c>>(
-            &mut self,
-            mut receiver: R,
-        ) -> crate::Result<source::Next>
-        where
-            'a: 'c,
-        {
-            receiver.seq_end()
-        }
-
-        fn stream_all<'c, R: Receiver<'c>>(&mut self, mut receiver: R) -> crate::Result
-        where
-            'a: 'c,
-        {
-            receiver.seq_begin(Some(self.len() as u64))?;
-
-            for elem in self {
-                receiver.seq_elem(elem)?;
-            }
-
-            receiver.seq_end()
-        }
-    }
-
     impl<'a, T: Source<'a>> Source<'a> for Vec<T> {
-        fn stream_begin<'b, R: Receiver<'b>>(
+        fn stream_resume<'b, R: Receiver<'b>>(
             &mut self,
-            mut receiver: R,
-        ) -> crate::Result<source::Next>
+            receiver: R,
+        ) -> crate::Result<source::Resume>
         where
             'a: 'b,
         {
-            receiver.seq_begin(Some(self.len() as u64))
+            self.stream_to_end(receiver).map(|_| source::Resume::Done)
         }
 
-        fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
-        where
-            'a: 'b,
-        {
-            if let Some(mut next) = self.remove(0) {
-                next.stream_all(receiver)?;
-
-                Ok(source::Next::Continue)
-            } else {
-                Ok(source::Next::Done)
-            }
-        }
-
-        fn stream_end<'b, R: Receiver<'b>>(
-            &mut self,
-            mut receiver: R,
-        ) -> crate::Result<source::Next>
-        where
-            'a: 'b,
-        {
-            receiver.seq_end()
-        }
-
-        fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
         where
             'a: 'b,
         {

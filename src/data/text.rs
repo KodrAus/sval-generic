@@ -37,14 +37,14 @@ impl SourceValue for char {
 }
 
 impl<'a> Source<'a> for char {
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
     where
         'a: 'b,
     {
-        self.stream_all(receiver).map(|_| source::Next::Done)
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
-    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -85,9 +85,8 @@ impl<'a> SourceRef<'a, Text> for &'a str {
 mod alloc_support {
     use super::*;
 
-    use crate::source::TryTakeError;
     use crate::{
-        for_all,
+        for_all, source,
         std::{
             borrow::{Borrow, Cow, ToOwned},
             mem,
@@ -120,6 +119,22 @@ mod alloc_support {
         }
     }
 
+    impl<'a> Source<'a> for String {
+        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
+        where
+            'a: 'b,
+        {
+            self.stream_to_end(receiver).map(|_| source::Resume::Done)
+        }
+
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+        where
+            'a: 'b,
+        {
+            receiver.str(mem::take(self))
+        }
+    }
+
     impl<'a> SourceRef<'a, str> for String {
         type Error = source::Impossible;
 
@@ -129,13 +144,13 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a str, TryTakeError<Cow<str>, Self::Error>> {
-            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(mem::take(self))
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<Cow<str>, source::TakeError<Self::Error>> {
-            Ok(Cow::Owned(mem::take(self)))
+        fn try_take_owned(&mut self) -> Result<&'a str, source::TryTakeError<String, Self::Error>> {
+            Err(source::TryTakeError::Fallback(mem::take(self)))
         }
     }
 
@@ -148,7 +163,7 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a str, TryTakeError<&str, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a str, source::TryTakeError<&str, Self::Error>> {
             Ok(&**self)
         }
     }
@@ -158,17 +173,19 @@ mod alloc_support {
 
         #[inline]
         fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
-            Ok(Text::new(&**self))
+            Ok(Text::new(&*self))
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a Text, TryTakeError<Cow<Text>, Self::Error>> {
-            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(mem::take(self))
         }
 
         #[inline]
-        fn take_owned(&mut self) -> Result<Cow<Text>, source::TakeError<Self::Error>> {
-            Ok(Cow::Owned(mem::take(self)))
+        fn try_take_owned(
+            &mut self,
+        ) -> Result<&'a Text, source::TryTakeError<String, Self::Error>> {
+            Err(source::TryTakeError::Fallback(mem::take(self)))
         }
     }
 
@@ -181,8 +198,34 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Text, source::TryTakeError<&Text, Self::Error>> {
             Ok(Text::new(&**self))
+        }
+    }
+
+    impl<'a> SourceRef<'a, Text> for Cow<'a, str> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
+            Ok(Text::new(&*self))
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
+            Ok(mem::take(self).into_owned())
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a Text, source::TryTakeError<&Text, Self::Error>> {
+            Err(source::TryTakeError::Fallback(Text::new(&*self)))
+        }
+
+        #[inline]
+        fn try_take_owned(
+            &mut self,
+        ) -> Result<&'a Text, source::TryTakeError<String, Self::Error>> {
+            Err(source::TryTakeError::Fallback(mem::take(self).into_owned()))
         }
     }
 }

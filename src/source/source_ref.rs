@@ -1,42 +1,38 @@
-use crate::{source::Next, std::fmt, Error, Receiver, Result, Source, SourceValue};
+use crate::{source::Resume, std::fmt, Error, Receiver, Result, Source, SourceValue};
 
 #[cfg(feature = "alloc")]
-use crate::std::borrow::{Borrow, Cow, ToOwned};
+use crate::std::borrow::ToOwned;
 
-pub trait SourceRef<'a, T: SourceValue + ?Sized, R: SourceValue + ?Sized = T> {
+pub trait SourceRef<'a, T: SourceValue + ?Sized, R: SourceValue + ?Sized = T>
+where
+    Self: Source<'a>,
+{
     type Error: Into<Error> + fmt::Debug + fmt::Display;
 
-    // Must be able to produce a `&T`
     fn take(&mut self) -> Result<&T, TakeError<Self::Error>>;
 
     #[inline]
     #[cfg(feature = "alloc")]
-    // Return `Ok` if no allocation took place
-    fn try_take_owned(&mut self) -> Result<T::Owned, TryTakeError<&T, Self::Error>>
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
     where
         T: ToOwned,
     {
-        Err(TryTakeError::Fallback(self.take()?))
+        self.take().map(ToOwned::to_owned)
     }
 
     #[inline]
-    // Return `Ok` if it's possible to get `&'a R`
-    fn try_take_ref(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+    fn try_take(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
         Err(TryTakeError::Fallback(self.take()?))
     }
 
     #[inline]
     #[cfg(feature = "alloc")]
-    // Return `Ok` if it's possible to get `&'a R`
-    fn try_take_ref_owned(&mut self) -> Result<&'a R, TryTakeError<T::Owned, Self::Error>>
+    fn try_take_owned(&mut self) -> Result<&'a R, TryTakeError<T::Owned, Self::Error>>
     where
         T: ToOwned,
     {
-        match self.try_take_ref() {
-            Ok(v) => Ok(v),
-            Err(TryTakeError::Fallback(v)) => Ok(v.to_owned()),
-            Err(TryTakeError::Err(e)) => Err(e),
-        }
+        self.try_take()
+            .map_err(|e| e.map_fallback(ToOwned::to_owned))
     }
 }
 
@@ -51,13 +47,8 @@ impl<'a, 'b, T: SourceValue + ?Sized, R: SourceValue + ?Sized, S: SourceRef<'a, 
     }
 
     #[inline]
-    fn try_take(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
-        (**self).try_take()
-    }
-
-    #[inline]
     #[cfg(feature = "alloc")]
-    fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
     where
         T: ToOwned,
     {
@@ -65,13 +56,17 @@ impl<'a, 'b, T: SourceValue + ?Sized, R: SourceValue + ?Sized, S: SourceRef<'a, 
     }
 
     #[inline]
+    fn try_take(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+        (**self).try_take()
+    }
+
+    #[inline]
     #[cfg(feature = "alloc")]
-    fn take_ref(&mut self) -> Result<Cow<'a, R>, TakeError<Self::Error>>
+    fn try_take_owned(&mut self) -> Result<&'a R, TryTakeError<T::Owned, Self::Error>>
     where
         T: ToOwned,
-        R: ToOwned<Owned = T::Owned>,
     {
-        (**self).take_ref()
+        (**self).try_take_owned()
     }
 }
 
@@ -84,26 +79,26 @@ impl<'a, T: SourceValue + ?Sized> SourceRef<'a, T> for &'a T {
     }
 
     #[inline]
+    #[cfg(feature = "alloc")]
+    fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
+    where
+        T: ToOwned,
+    {
+        Ok(self.to_owned())
+    }
+
+    #[inline]
     fn try_take(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
         Ok(self)
     }
 
     #[inline]
     #[cfg(feature = "alloc")]
-    fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
+    fn try_take_owned(&mut self) -> Result<&'a T, TryTakeError<T::Owned, Self::Error>>
     where
         T: ToOwned,
     {
-        Ok(Cow::Borrowed(self))
-    }
-
-    #[inline]
-    #[cfg(feature = "alloc")]
-    fn take_ref(&mut self) -> Result<Cow<'a, T>, TakeError<Self::Error>>
-    where
-        T: ToOwned,
-    {
-        Ok(Cow::Borrowed(self))
+        Ok(self)
     }
 }
 
@@ -135,7 +130,7 @@ impl SourceValue for Impossible {
 }
 
 impl<'a> Source<'a> for Impossible {
-    fn stream_next<'b, R: Receiver<'b>>(&mut self, _: R) -> Result<Next>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, _: R) -> Result<Resume>
     where
         'a: 'b,
     {
@@ -182,6 +177,20 @@ impl<T, E> TryTakeError<T, E> {
         }
     }
 
+    pub fn map_fallback<U>(self, f: impl FnOnce(T) -> U) -> TryTakeError<U, E> {
+        match self {
+            TryTakeError::Fallback(fallback) => TryTakeError::Fallback(f(fallback)),
+            TryTakeError::Err(e) => TryTakeError::Err(e),
+        }
+    }
+
+    pub fn map_err<U>(self, f: impl FnOnce(E) -> U) -> TryTakeError<T, U> {
+        match self {
+            TryTakeError::Fallback(fallback) => TryTakeError::Fallback(fallback),
+            TryTakeError::Err(e) => TryTakeError::Err(e.map_err(f)),
+        }
+    }
+
     pub fn into_result(self) -> Result<T, E> {
         match self {
             TryTakeError::Fallback(fallback) => Ok(fallback),
@@ -216,13 +225,13 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        for_all,
-        source::{self, TryTakeError},
+        source,
         std::{
             borrow::{Borrow, Cow, ToOwned},
             boxed::Box,
+            mem,
         },
-        Receiver, Result, Source, SourceRef, SourceValue,
+        Result, SourceRef, SourceValue,
     };
 
     impl<
@@ -241,13 +250,7 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
-            (**self).try_take()
-        }
-
-        #[inline]
-        #[cfg(feature = "alloc")]
-        fn take_owned(&mut self) -> Result<Cow<T>, TakeError<Self::Error>>
+        fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>>
         where
             T: ToOwned,
         {
@@ -255,12 +258,35 @@ mod alloc_support {
         }
 
         #[inline]
-        #[cfg(feature = "alloc")]
-        fn take_ref(&mut self) -> Result<Cow<'a, R>, TakeError<Self::Error>>
+        fn try_take(&mut self) -> Result<&'a R, TryTakeError<&T, Self::Error>> {
+            (**self).try_take()
+        }
+
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<&'a R, TryTakeError<T::Owned, Self::Error>>
         where
             T: ToOwned,
         {
-            (**self).take_ref()
+            (**self).try_take_owned()
         }
+    }
+
+    impl<'a, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for Cow<'a, T> {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
+            Ok(&**self)
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
+            match self {
+                Cow::Borrowed(v) => Ok(*v),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback((*v).borrow())),
+            }
+        }
+
+        // NOTE: With specialization we could optimize the `Owned` methods with `mem::take`
     }
 }
