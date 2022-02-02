@@ -225,12 +225,7 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        source,
-        std::{
-            borrow::{Borrow, Cow, ToOwned},
-            boxed::Box,
-            mem,
-        },
+        std::{borrow::ToOwned, boxed::Box},
         Result, SourceRef, SourceValue,
     };
 
@@ -268,39 +263,6 @@ mod alloc_support {
             T: ToOwned,
         {
             (**self).try_take_owned()
-        }
-    }
-
-    impl<'a, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for Cow<'a, T>
-    where
-        Cow<'a, T>: Default,
-    {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>> {
-            Ok(mem::take(self).into_owned())
-        }
-
-        #[inline]
-        fn try_take(&mut self) -> Result<&'a T, TryTakeError<&T, Self::Error>> {
-            match self {
-                Cow::Borrowed(v) => Ok(*v),
-                Cow::Owned(v) => Err(source::TryTakeError::Fallback((*v).borrow())),
-            }
-        }
-
-        #[inline]
-        fn try_take_owned(&mut self) -> Result<&'a T, TryTakeError<T::Owned, Self::Error>> {
-            match mem::take(self) {
-                Cow::Borrowed(v) => Ok(v),
-                Cow::Owned(v) => Err(TryTakeError::Fallback(v)),
-            }
         }
     }
 }

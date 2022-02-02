@@ -1,4 +1,5 @@
 #![cfg_attr(not(test), no_std)]
+#![feature(min_specialization)] // Used for internal private specialization
 
 #[cfg(feature = "std")]
 extern crate std;

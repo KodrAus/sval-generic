@@ -151,9 +151,8 @@ mod alloc_support {
     use crate::{
         source,
         std::{
-            borrow::{Borrow, ToOwned},
+            borrow::{Borrow, Cow, ToOwned},
             mem,
-            string::String,
             vec::Vec,
         },
     };
@@ -186,17 +185,35 @@ mod alloc_support {
         }
     }
 
-    impl<'a> SourceRef<'a, Bytes> for &'a String {
+    impl<'a> SourceRef<'a, Bytes> for Cow<'a, [u8]> {
         type Error = source::Impossible;
 
         #[inline]
         fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
-            Ok(Bytes::new(&**self))
+            Ok(Bytes::new(&*self))
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
+            Ok(mem::take(self).into_owned())
         }
 
         #[inline]
         fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
-            Ok(Bytes::new(*self))
+            match self {
+                Cow::Borrowed(v) => Ok(Bytes::new(*v)),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback(Bytes::new(&*v))),
+            }
+        }
+
+        #[inline]
+        fn try_take_owned(
+            &mut self,
+        ) -> Result<&'a Bytes, source::TryTakeError<Vec<u8>, Self::Error>> {
+            match mem::take(self) {
+                Cow::Borrowed(v) => Ok(Bytes::new(v)),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback(v)),
+            }
         }
     }
 }

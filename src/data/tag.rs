@@ -1,5 +1,6 @@
-use crate::{source::Resume, Receiver, Result, Source, SourceRef, SourceValue};
+use crate::{source, Receiver, Result, Source, SourceRef, SourceValue};
 
+// TODO: Better API for this that lets us define tags
 pub fn tag() -> Tag<&'static str> {
     Tag::new()
 }
@@ -172,11 +173,11 @@ impl SourceValue for Tag<&'static str> {
 }
 
 impl<'a, T: SourceRef<'static, str>> Source<'a> for Tag<T> {
-    fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Resume>
+    fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<source::Resume>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| Resume::Done)
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
     fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
@@ -308,11 +309,11 @@ impl<V: SourceValue> SourceValue for Tagged<&'static str, V> {
 }
 
 impl<'a, T: SourceRef<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| Resume::Done)
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
@@ -327,47 +328,49 @@ impl<'a, T: SourceRef<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> 
 mod alloc_support {
     use super::*;
 
-    use crate::{
-        source,
-        std::borrow::{Cow, ToOwned},
-    };
+    use crate::{for_all, source, std::borrow::Cow};
 
-    struct ByRef<'a, 'b, T: ToOwned + ?Sized>(&'b Cow<'a, T>);
+    struct Adapter<'a>(&'a Cow<'static, str>);
 
-    impl<'a, 'b, T: ToOwned + SourceValue + ?Sized> Source<'a> for ByRef<'a, 'b, T> {
-        fn stream_resume<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result<Resume>
-        where
-            'a: 'c,
-        {
-            todo!()
+    impl<'a> Source<'static> for Adapter<'a> {
+        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume> {
+            self.stream_to_end(receiver).map(|_| source::Resume::Done)
         }
 
-        fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
-        where
-            'a: 'c,
-        {
-            todo!()
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result {
+            match self.0 {
+                Cow::Borrowed(v) => (*v).stream(receiver),
+                Cow::Owned(v) => (*v).stream(for_all(receiver)),
+            }
         }
     }
 
-    impl<'a, 'b, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for ByRef<'a, 'b, T> {
+    impl<'a> SourceRef<'static, str> for Adapter<'a> {
         type Error = source::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&T, source::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
             Ok(&**self.0)
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'static str, source::TryTakeError<&str, Self::Error>> {
+            match self.0 {
+                Cow::Borrowed(v) => Ok(*v),
+                Cow::Owned(v) => Err(source::TryTakeError::Fallback(&*v)),
+            }
         }
     }
 
     impl SourceValue for Tag<Cow<'static, str>> {
         fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-            receiver.tag(self.by_ref().map_label(|l| ByRef(l)))
+            receiver.tag(self.by_ref().map_label(Adapter))
         }
     }
 
     impl<T: SourceValue> SourceValue for Tagged<Cow<'static, str>, T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-            receiver.tagged(self.by_ref().map_label(|l| ByRef(l)))
+            receiver.tagged(self.by_ref().map_label(Adapter))
         }
     }
 }

@@ -1,7 +1,7 @@
-use crate::{data, source, Receiver, Result, SourceRef, SourceValue};
+use crate::{data, Receiver, Result, SourceValue};
 
 impl<T: SourceValue> SourceValue for [T] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
@@ -13,7 +13,7 @@ impl<T: SourceValue> SourceValue for [T] {
 }
 
 impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Array))?;
         receiver.seq_begin(Some(self.len() as u64))?;
 
@@ -32,7 +32,7 @@ macro_rules! tuple {
     )+) => {
         $(
             impl<$($ty: SourceValue),+> SourceValue for ($($ty,)+) {
-                fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
+                fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
                     receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Tuple))?;
                     receiver.seq_begin(Some($len))?;
                     $(
@@ -224,23 +224,20 @@ mod alloc_support {
     use crate::{source, std::vec::Vec, Source};
 
     impl<T: SourceValue> SourceValue for Vec<T> {
-        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
+        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
             (&**self).stream(stream)
         }
     }
 
     impl<'a, T: Source<'a>> Source<'a> for Vec<T> {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Resume>
+        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
         where
             'a: 'b,
         {
             self.stream_to_end(receiver).map(|_| source::Resume::Done)
         }
 
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
         where
             'a: 'b,
         {

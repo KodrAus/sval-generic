@@ -86,7 +86,7 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        for_all, source,
+        source,
         std::{
             borrow::{Borrow, Cow, ToOwned},
             mem,

@@ -99,26 +99,11 @@ impl<'a, T: SourceValue + ?Sized> SourceValue for &'a T {
 mod alloc_support {
     use super::*;
 
-    use crate::{
-        for_all,
-        std::{
-            borrow::{Borrow, Cow, ToOwned},
-            boxed::Box,
-        },
-    };
+    use crate::std::boxed::Box;
 
     impl<T: SourceValue + ?Sized> SourceValue for Box<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> crate::Result {
             (**self).stream(receiver)
-        }
-    }
-
-    impl<'a, V: ToOwned + SourceValue + ?Sized> SourceValue for Cow<'a, V> {
-        fn stream<'b, S: Receiver<'b>>(&'b self, receiver: S) -> crate::Result {
-            match self {
-                Cow::Borrowed(v) => v.stream(receiver),
-                Cow::Owned(ref v) => (*v).borrow().stream(for_all(receiver)),
-            }
         }
     }
 }
