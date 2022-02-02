@@ -11,7 +11,7 @@ use alloc::{
 };
 
 use sval::data::{Bytes, Tag, Text};
-use sval::{Result, Source, ValueSource};
+use sval::{Result, Source, SourceRef};
 
 use sval_fmt as fmt;
 
@@ -36,7 +36,10 @@ pub fn buffer<'a>(
     }
 
     impl<'a, R: BufferReceiver<'a>> sval::Receiver<'a> for Extract<'a, R> {
-        fn value<'v: 'a, V: sval::Value + ?Sized + 'v>(&mut self, value: &'v V) -> sval::Result {
+        fn value<'v: 'a, V: sval::SourceValue + ?Sized + 'v>(
+            &mut self,
+            value: &'v V,
+        ) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
@@ -49,20 +52,20 @@ pub fn buffer<'a>(
                 struct Adapter<D>(fmt::Value<D>);
 
                 impl<'a, D: Display> sval::Source<'a> for Adapter<D> {
-                    fn stream_resume<'b, R: sval::Receiver<'b>>(
+                    fn stream_next<'b, R: sval::Receiver<'b>>(
                         &mut self,
                         mut receiver: R,
-                    ) -> sval::Result<sval::source::Stream>
+                    ) -> sval::Result<sval::source::Next>
                     where
                         'a: 'b,
                     {
                         receiver.unstructured(self.0.get())?;
 
-                        Ok(sval::source::Stream::Done)
+                        Ok(sval::source::Next::Done)
                     }
                 }
 
-                impl<'a, D: Display> sval::ValueSource<'a, fmt::Value<D>, sval::source::Impossible> for Adapter<D> {
+                impl<'a, D: Display> sval::SourceRef<'a, fmt::Value<D>, sval::source::Impossible> for Adapter<D> {
                     type Error = sval::source::Impossible;
 
                     fn take(
@@ -91,7 +94,7 @@ pub fn buffer<'a>(
             }
         }
 
-        fn str<'v: 'a, V: sval::ValueSource<'v, str>>(&mut self, mut value: V) -> sval::Result {
+        fn str<'v: 'a, V: sval::SourceRef<'v, str>>(&mut self, mut value: V) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
@@ -111,7 +114,7 @@ pub fn buffer<'a>(
             }
         }
 
-        fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, mut text: S) -> sval::Result {
+        fn text<'s: 'a, S: SourceRef<'s, Text>>(&mut self, mut text: S) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(text)
             } else {
@@ -131,7 +134,7 @@ pub fn buffer<'a>(
             }
         }
 
-        fn bytes<'s: 'a, S: ValueSource<'s, Bytes>>(&mut self, mut bytes: S) -> sval::Result {
+        fn bytes<'s: 'a, S: SourceRef<'s, Bytes>>(&mut self, mut bytes: S) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(bytes)
             } else {
@@ -151,7 +154,7 @@ pub fn buffer<'a>(
             }
         }
 
-        fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+        fn tag<T: SourceRef<'static, str>>(&mut self, tag: Tag<T>) -> Result {
             let tag = tag.try_map_label(|mut label| match label.try_take_owned_ref() {
                 Ok(label) => Ok(Cow::Borrowed(label)),
                 Err(sval::source::TryTakeError::Fallback(label)) => Ok(Cow::Owned(label)),
@@ -233,7 +236,7 @@ pub fn buffer<'a>(
         receiver: Some(receiver),
     };
 
-    source.stream_to_end(&mut extract)?;
+    source.stream_all(&mut extract)?;
 
     if let Some(mut receiver) = extract.receiver.take() {
         receiver.value_source(extract.buffer)?;
@@ -245,9 +248,9 @@ pub fn buffer<'a>(
 pub trait BufferReceiver<'a> {
     fn value_source<
         'v: 'a,
-        T: sval::Value + ?Sized,
-        R: sval::Value + ?Sized + 'v,
-        S: sval::ValueSource<'v, T, R>,
+        T: sval::SourceValue + ?Sized,
+        R: sval::SourceValue + ?Sized + 'v,
+        S: sval::SourceRef<'v, T, R>,
     >(
         &mut self,
         value: S,
@@ -257,9 +260,9 @@ pub trait BufferReceiver<'a> {
 impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
     fn value_source<
         'v: 'a,
-        T: sval::Value + ?Sized,
-        U: sval::Value + ?Sized + 'v,
-        S: sval::ValueSource<'v, T, U>,
+        T: sval::SourceValue + ?Sized,
+        U: sval::SourceValue + ?Sized + 'v,
+        S: sval::SourceRef<'v, T, U>,
     >(
         &mut self,
         value: S,
@@ -290,7 +293,7 @@ impl<'a> Buffer<'a> {
     }
 }
 
-impl<'a> sval::Value for Buffer<'a> {
+impl<'a> sval::SourceValue for Buffer<'a> {
     fn stream<'b, R: sval::Receiver<'b>>(&'b self, mut receiver: R) -> sval::Result {
         for mut token in &self.buf {
             token.stream_to_end(&mut receiver)?;
@@ -301,10 +304,10 @@ impl<'a> sval::Value for Buffer<'a> {
 }
 
 impl<'a> sval::Source<'a> for Buffer<'a> {
-    fn stream_resume<'b, R: sval::Receiver<'b>>(
+    fn stream_next<'b, R: sval::Receiver<'b>>(
         &mut self,
         mut receiver: R,
-    ) -> sval::Result<sval::source::Stream>
+    ) -> sval::Result<sval::source::Next>
     where
         'a: 'b,
     {
@@ -314,14 +317,14 @@ impl<'a> sval::Source<'a> for Buffer<'a> {
 
                 token.stream_to_end(&mut receiver)?;
 
-                Ok(sval::source::Stream::Yield)
+                Ok(sval::source::Next::Continue)
             }
-            None => Ok(sval::source::Stream::Done),
+            None => Ok(sval::source::Next::Done),
         }
     }
 }
 
-impl<'a> sval::ValueSource<'a, Buffer<'a>> for Buffer<'a> {
+impl<'a> sval::SourceRef<'a, Buffer<'a>> for Buffer<'a> {
     type Error = sval::source::Impossible;
 
     #[inline]
@@ -350,10 +353,10 @@ enum Token<'a> {
 }
 
 impl<'a, 'b> sval::Source<'a> for &'b Token<'a> {
-    fn stream_resume<'c, R: sval::Receiver<'c>>(
+    fn stream_next<'c, R: sval::Receiver<'c>>(
         &mut self,
         mut receiver: R,
-    ) -> sval::Result<sval::source::Stream>
+    ) -> sval::Result<sval::source::Next>
     where
         'a: 'c,
     {
@@ -379,6 +382,6 @@ impl<'a, 'b> sval::Source<'a> for &'b Token<'a> {
             Token::SeqElemEnd => receiver.seq_elem_end()?,
         };
 
-        Ok(sval::source::Stream::Done)
+        Ok(sval::source::Next::Done)
     }
 }

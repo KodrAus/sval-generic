@@ -12,17 +12,17 @@ impl<V> Value<V> {
     }
 }
 
-pub fn value<V: sval::Value>(v: V) -> Value<V> {
+pub fn value<V: sval::SourceValue>(v: V) -> Value<V> {
     Value::new(v)
 }
 
-impl<V: sval::Value> fmt::Debug for Value<V> {
+impl<V: sval::SourceValue> fmt::Debug for Value<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.stream(FmtReceiver::new(f)).map_err(|_| fmt::Error)
     }
 }
 
-impl<V: fmt::Display> sval::Value for Value<V> {
+impl<V: fmt::Display> sval::SourceValue for Value<V> {
     fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
         receiver.unstructured(&self.0)
     }
@@ -95,18 +95,18 @@ impl<'fa, 'fb: 'fa, 'a> sval::Receiver<'a> for FmtReceiver<'fa, 'fb> {
         self.fmt(format_args!("None"))
     }
 
-    fn str<'s: 'a, S: sval::ValueSource<'s, str>>(&mut self, mut v: S) -> sval::Result {
+    fn str<'s: 'a, S: sval::SourceRef<'s, str>>(&mut self, mut v: S) -> sval::Result {
         self.fmt(v.take()?)
     }
 
-    fn error<'e: 'a, E: sval::ValueSource<'e, sval::data::Error>>(
+    fn error<'e: 'a, E: sval::SourceRef<'e, sval::data::Error>>(
         &mut self,
         mut e: E,
     ) -> sval::Result {
         self.fmt(e.take()?)
     }
 
-    fn tagged_begin<T: sval::ValueSource<'static, str>>(
+    fn tagged_begin<T: sval::SourceRef<'static, str>>(
         &mut self,
         mut tag: sval::data::Tag<T>,
     ) -> sval::Result {
@@ -121,7 +121,7 @@ impl<'fa, 'fb: 'fa, 'a> sval::Receiver<'a> for FmtReceiver<'fa, 'fb> {
         Ok(())
     }
 
-    fn tagged_end<T: sval::ValueSource<'static, str>>(
+    fn tagged_end<T: sval::SourceRef<'static, str>>(
         &mut self,
         _: sval::data::Tag<T>,
     ) -> sval::Result {

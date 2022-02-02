@@ -1,11 +1,11 @@
 use crate::{
-    source::{self, ValueSource},
+    source,
     std::{
         fmt,
         ops::{Deref, DerefMut},
         str,
     },
-    Receiver, Result, Value,
+    Receiver, Result, SourceRef, SourceValue,
 };
 
 pub fn bytes(bytes: &(impl AsRef<[u8]> + ?Sized)) -> &Bytes {
@@ -96,13 +96,13 @@ impl DerefMut for Bytes {
     }
 }
 
-impl Value for Bytes {
+impl SourceValue for Bytes {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.bytes(self)
     }
 }
 
-impl<'a> ValueSource<'a, Bytes> for &'a [u8] {
+impl<'a> SourceRef<'a, Bytes> for &'a [u8] {
     type Error = source::Impossible;
 
     #[inline]
@@ -111,12 +111,12 @@ impl<'a> ValueSource<'a, Bytes> for &'a [u8] {
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
+    fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }
 
-impl<'a, const N: usize> ValueSource<'a, Bytes> for &'a [u8; N] {
+impl<'a, const N: usize> SourceRef<'a, Bytes> for &'a [u8; N] {
     type Error = source::Impossible;
 
     #[inline]
@@ -125,13 +125,13 @@ impl<'a, const N: usize> ValueSource<'a, Bytes> for &'a [u8; N] {
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
+    fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }
 
-impl<'a> ValueSource<'a, Bytes> for &'a str {
-    type Error = crate::Error;
+impl<'a> SourceRef<'a, Bytes> for &'a str {
+    type Error = source::Impossible;
 
     #[inline]
     fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
@@ -139,7 +139,7 @@ impl<'a> ValueSource<'a, Bytes> for &'a str {
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
+    fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
         Ok(bytes(*self))
     }
 }
@@ -169,12 +169,17 @@ mod alloc_support {
         }
     }
 
-    impl<'a> ValueSource<'a, Bytes> for Vec<u8> {
+    impl<'a> SourceRef<'a, Bytes> for Vec<u8> {
         type Error = source::Impossible;
 
         #[inline]
         fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
             Ok(Bytes::new(&**self))
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Err(source::TryTakeError::Fallback(Cow::Owned(mem::take(self))))
         }
 
         #[inline]
@@ -183,14 +188,12 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_owned(
-            &mut self,
-        ) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
-            Err(source::TryTakeError::Fallback(Cow::Owned(mem::take(self))))
+        fn take_ref(&mut self) -> Result<Cow<'a, Bytes>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self)))
         }
     }
 
-    impl<'a> ValueSource<'a, Bytes> for &'a Vec<u8> {
+    impl<'a> SourceRef<'a, Bytes> for &'a Vec<u8> {
         type Error = source::Impossible;
 
         #[inline]
@@ -199,17 +202,24 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
-            Ok(Bytes::new(&**self))
+        fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Ok(Bytes::new(*self))
         }
     }
 
-    impl<'a> ValueSource<'a, Bytes> for String {
+    impl<'a> SourceRef<'a, Bytes> for String {
         type Error = source::Impossible;
 
         #[inline]
         fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
             Ok(Bytes::new(&**self))
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Err(source::TryTakeError::Fallback(Cow::Owned(
+                mem::take(self).into(),
+            )))
         }
 
         #[inline]
@@ -218,16 +228,12 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_owned(
-            &mut self,
-        ) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
-            Err(source::TryTakeError::Fallback(Cow::Owned(
-                mem::take(self).into(),
-            )))
+        fn take_ref(&mut self) -> Result<Cow<'a, Bytes>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self).into()))
         }
     }
 
-    impl<'a> ValueSource<'a, Bytes> for &'a String {
+    impl<'a> SourceRef<'a, Bytes> for &'a String {
         type Error = source::Impossible;
 
         #[inline]
@@ -236,8 +242,8 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
-            Ok(Bytes::new(&**self))
+        fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<Cow<Bytes>, Self::Error>> {
+            Ok(Bytes::new(*self))
         }
     }
 }

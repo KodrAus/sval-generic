@@ -1,9 +1,4 @@
-use crate::{
-    data::{Bytes, Error, Tag, Tagged, Text},
-    source::{Stream, TakeError},
-    Receiver, Result, Source, Value, ValueSource,
-};
-use core::fmt::Display;
+use crate::{data, source, std::fmt::Display, Receiver, Result, Source, SourceRef, SourceValue};
 
 #[inline]
 pub fn for_all<T>(value: T) -> ForAll<T> {
@@ -31,36 +26,50 @@ impl<T> ForAll<T> {
     }
 }
 
-impl<T: Value> Value for ForAll<T> {
+impl<T: SourceValue> SourceValue for ForAll<T> {
     fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
-    fn stream_resume<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result<Stream>
+    fn stream_begin<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
     where
         'a: 'c,
     {
-        self.0.stream_resume(for_all(stream))
+        self.0.stream_begin(for_all(receiver))
     }
 
-    fn stream_to_end<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
+    fn stream_next<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
     where
         'a: 'c,
     {
-        self.0.stream_to_end(for_all(stream))
+        self.0.stream_next(for_all(receiver))
+    }
+
+    fn stream_end<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Next>
+    where
+        'a: 'c,
+    {
+        self.0.stream_end(for_all(receiver))
+    }
+
+    fn stream_all<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
+    where
+        'a: 'c,
+    {
+        self.0.stream_all(for_all(stream))
     }
 }
 
-impl<'a, 'b, U: Value + ?Sized, V: Value + ?Sized, T: ValueSource<'b, U, V>> ValueSource<'a, U, V>
-    for ForAll<T>
+impl<'a, 'b, U: SourceValue + ?Sized, V: SourceValue + ?Sized, T: SourceRef<'b, U, V>>
+    SourceRef<'a, U, V> for ForAll<T>
 {
     // NOTE: Using `T::Error` here causes `'b` to become unconstrained
     // since it could flow into `T::Error`
     type Error = crate::Error;
 
-    fn take(&mut self) -> Result<&U, TakeError<Self::Error>> {
+    fn take(&mut self) -> Result<&U, source::TakeError<Self::Error>> {
         self.0.take().map_err(|e| e.map_err(|e| e.into()))
     }
 }
@@ -130,37 +139,37 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.char(value)
     }
 
-    fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
+    fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, value: S) -> Result {
         self.0.str(for_all(value))
     }
 
-    fn text<'s: 'a, S: ValueSource<'s, Text>>(&mut self, text: S) -> Result {
+    fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, text: S) -> Result {
         self.0.text(for_all(text))
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, Error>>(&mut self, error: E) -> Result {
+    fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, error: E) -> Result {
         self.0.error(for_all(error))
     }
 
-    fn bytes<'s: 'a, B: ValueSource<'s, Bytes>>(&mut self, bytes: B) -> Result {
+    fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
         self.0.bytes(for_all(bytes))
     }
 
-    fn tag<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+    fn tag<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         self.0.tag(tag)
     }
 
-    fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+    fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         self.0.tagged_begin(tag)
     }
 
-    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: Tag<T>) -> Result {
+    fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         self.0.tagged_end(tag)
     }
 
-    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+    fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
         &mut self,
-        tagged: Tagged<T, V>,
+        tagged: data::Tagged<T, V>,
     ) -> Result {
         self.0.tagged(tagged.map_value(for_all))
     }
@@ -197,7 +206,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.map_entry(for_all(key), for_all(value))
     }
 
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+    fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
         &mut self,
         field: F,
         value: V,
@@ -205,7 +214,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.map_field_entry(field, for_all(value))
     }
 
-    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
+    fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
         self.0.map_field(field)
     }
 

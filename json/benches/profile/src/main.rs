@@ -35,7 +35,7 @@ impl<'a> Receiver<'a> for Empty {
         Ok(())
     }
 
-    fn str<'v: 'a, V: receiver::ValueSource<'v, str>>(&mut self, _: V) -> receiver::Result {
+    fn str<'v: 'a, V: receiver::SourceRef<'v, str>>(&mut self, _: V) -> receiver::Result {
         Ok(())
     }
 

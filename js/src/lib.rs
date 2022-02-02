@@ -3,12 +3,12 @@ use wasm_bindgen::prelude::*;
 
 use sval::{
     receiver::{self, Receiver},
-    source, value,
+    source, source_value,
 };
 
-pub fn value<'a>(mut v: impl source::Source<'a>) -> value::Result<JsValue> {
+pub fn value<'a>(mut v: impl source::Source<'a>) -> source_value::Result<JsValue> {
     let mut receiver = JsReceiver::new();
-    v.stream_to_end(&mut receiver)?;
+    v.stream_all(&mut receiver)?;
 
     Ok(receiver.into_value())
 }
@@ -176,7 +176,7 @@ impl<'a> Receiver<'a> for JsReceiver {
     }
 
     #[inline]
-    fn str<'v: 'a, V: receiver::ValueSource<'v, str>>(&mut self, mut v: V) -> receiver::Result {
+    fn str<'v: 'a, V: receiver::SourceRef<'v, str>>(&mut self, mut v: V) -> receiver::Result {
         self.push(v.take()?)
     }
 

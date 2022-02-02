@@ -1,7 +1,4 @@
-use crate::{
-    source::{Stream, ValueSource},
-    Receiver, Result, Source, Value,
-};
+use crate::{source::Next, Receiver, Result, Source, SourceRef, SourceValue};
 
 pub fn tag() -> Tag<&'static str> {
     Tag::new()
@@ -168,15 +165,15 @@ impl<T> Tag<T> {
     }
 }
 
-impl<'a, T: ValueSource<'static, str>> Source<'a> for Tag<T> {
-    fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Stream>
+impl<'a, T: SourceRef<'static, str>> Source<'a> for Tag<T> {
+    fn stream_next<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Next>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| Stream::Done)
+        self.stream_all(receiver).map(|_| Next::Done)
     }
 
-    fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
+    fn stream_all<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
     where
         'a: 'b,
     {
@@ -184,7 +181,7 @@ impl<'a, T: ValueSource<'static, str>> Source<'a> for Tag<T> {
     }
 }
 
-impl Value for Tag<&'static str> {
+impl SourceValue for Tag<&'static str> {
     fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
         receiver.tag(*self)
     }
@@ -296,21 +293,37 @@ impl<T, V> Tagged<T, V> {
     }
 }
 
-impl<V: Value> Value for Tagged<&'static str, V> {
+impl<V: SourceValue> SourceValue for Tagged<&'static str, V> {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        (&*self).stream_to_end(receiver)
+        (&*self).stream_all(receiver)
     }
 }
 
-impl<'a, T: ValueSource<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+impl<'a, T: SourceRef<'static, str>, S: Source<'a>> Source<'a> for Tagged<T, S> {
+    fn stream_begin<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Next>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| Stream::Done)
+        receiver.tagged_begin(self.begin_tag.by_mut())?;
+        self.value_mut().stream_begin(receiver)
     }
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Next>
+    where
+        'a: 'b,
+    {
+        self.value_mut().stream_next(receiver)
+    }
+
+    fn stream_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result<Next>
+    where
+        'a: 'b,
+    {
+        self.value_mut().stream_end(&mut receiver)?;
+        receiver.tagged_end(self.end_tag.by_mut())
+    }
+
+    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
     where
         'a: 'b,
     {
@@ -324,7 +337,13 @@ mod alloc_support {
 
     use crate::std::borrow::Cow;
 
-    impl Value for Tag<Cow<'static, str>> {
+    impl SourceValue for Tag<Cow<'static, str>> {
+        fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+            receiver.tag(self.by_ref())
+        }
+    }
+
+    impl<T: SourceValue> SourceValue for Tagged<Cow<'static, str>, T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
             receiver.tag(self.by_ref())
         }

@@ -3,7 +3,7 @@ use std::fmt;
 use sval::{
     data::Display,
     receiver::{Receiver, Size},
-    Value,
+    SourceValue,
 };
 
 struct MyFormat<W>(W);
@@ -81,7 +81,7 @@ where
 
 struct MyStruct;
 
-impl Value for MyStruct {
+impl SourceValue for MyStruct {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
         receiver.map_begin(Size::Unknown)?;
 
@@ -95,7 +95,7 @@ impl Value for MyStruct {
 
 struct MySeq;
 
-impl Value for MySeq {
+impl SourceValue for MySeq {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
         receiver.seq_begin(Size::Unknown)?;
 
@@ -107,7 +107,7 @@ impl Value for MySeq {
     }
 }
 
-fn stream(v: impl Value) {
+fn stream(v: impl SourceValue) {
     let mut fmt = MyFormat(String::new());
 
     v.stream(&mut fmt).expect("failed to stream");

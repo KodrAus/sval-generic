@@ -18,11 +18,11 @@ impl<V> Value<V> {
     }
 }
 
-pub fn value<V: sval::Value>(value: V) -> Value<V> {
+pub fn value<V: sval::SourceValue>(value: V) -> Value<V> {
     Value::new(value)
 }
 
-impl<V: sval::Value> Serialize for Value<V> {
+impl<V: sval::SourceValue> Serialize for Value<V> {
     fn serialize<S>(&self, serializer: S) -> sval::Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -473,11 +473,11 @@ impl<'a, S: Serializer> sval::Receiver<'a> for SerdeReceiver<S> {
         self.serialize_source(None::<()>)
     }
 
-    fn str<'s: 'a, T: sval::ValueSource<'s, str>>(&mut self, mut v: T) -> sval::Result {
+    fn str<'s: 'a, T: sval::SourceRef<'s, str>>(&mut self, mut v: T) -> sval::Result {
         self.serialize_source(v.take()?)
     }
 
-    fn tagged_begin<T: sval::ValueSource<'static, str>>(
+    fn tagged_begin<T: sval::SourceRef<'static, str>>(
         &mut self,
         mut tag: sval::data::Tag<T>,
     ) -> sval::Result {
@@ -502,7 +502,7 @@ impl<'a, S: Serializer> sval::Receiver<'a> for SerdeReceiver<S> {
         Ok(())
     }
 
-    fn tagged_end<T: sval::ValueSource<'static, str>>(
+    fn tagged_end<T: sval::SourceRef<'static, str>>(
         &mut self,
         _: sval::data::Tag<T>,
     ) -> sval::Result {
@@ -533,7 +533,7 @@ impl<'a, S: Serializer> sval::Receiver<'a> for SerdeReceiver<S> {
         Ok(())
     }
 
-    fn map_field<T: sval::ValueSource<'static, str>>(&mut self, mut field: T) -> sval::Result {
+    fn map_field<T: sval::SourceRef<'static, str>>(&mut self, mut field: T) -> sval::Result {
         match field.try_take_ref() {
             Ok(field) => self.serialize_map_field(Ok(field)),
             Err(sval::source::TryTakeError::Fallback(field)) => {
@@ -563,9 +563,9 @@ impl<'a, S: Serializer> sval::Receiver<'a> for SerdeReceiver<S> {
 impl<'a, S: Serializer> sval_buffer::BufferReceiver<'a> for SerdeReceiver<S> {
     fn value_source<
         'v: 'a,
-        T: sval::Value + ?Sized,
-        U: sval::Value + ?Sized + 'v,
-        VS: sval::ValueSource<'v, T, U>,
+        T: sval::SourceValue + ?Sized,
+        U: sval::SourceValue + ?Sized + 'v,
+        VS: sval::SourceRef<'v, T, U>,
     >(
         &mut self,
         mut v: VS,

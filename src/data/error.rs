@@ -1,6 +1,6 @@
 use crate::{
     std::fmt::{self, Debug, Display},
-    Receiver, Result, Value,
+    Receiver, Result, SourceValue,
 };
 
 #[cfg(feature = "std")]
@@ -17,7 +17,7 @@ use crate::std::error::Error as Inner;
 #[repr(transparent)]
 pub struct Error(dyn Inner + 'static);
 
-impl Value for Error {
+impl SourceValue for Error {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.error(self)
     }
@@ -48,9 +48,9 @@ mod std_support {
     use super::*;
 
     use crate::{
-        source::{self, ValueSource},
+        source, source_ref,
         std::{error, fmt, io},
-        Receiver, Result, Value,
+        Receiver, Result, SourceRef, SourceValue,
     };
 
     impl Error {
@@ -60,62 +60,68 @@ mod std_support {
         }
     }
 
-    impl Value for dyn error::Error + 'static {
+    impl SourceValue for dyn error::Error + 'static {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
             receiver.error(self)
         }
     }
 
-    impl<'a> ValueSource<'a, Error> for &'a (dyn error::Error + 'static) {
-        type Error = source::Impossible;
+    impl<'a> SourceRef<'a, Error> for &'a (dyn error::Error + 'static) {
+        type Error = source_ref::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
+        fn try_take_ref(
+            &mut self,
+        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
 
-    impl Value for io::Error {
+    impl SourceValue for io::Error {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
             receiver.error(self)
         }
     }
 
-    impl<'a> ValueSource<'a, Error> for &'a io::Error {
-        type Error = source::Impossible;
+    impl<'a> SourceRef<'a, Error> for &'a io::Error {
+        type Error = source_ref::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
+        fn try_take_ref(
+            &mut self,
+        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
 
-    impl Value for fmt::Error {
+    impl SourceValue for fmt::Error {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
             receiver.error(self)
         }
     }
 
-    impl<'a> ValueSource<'a, Error> for &'a fmt::Error {
-        type Error = source::Impossible;
+    impl<'a> SourceRef<'a, Error> for &'a fmt::Error {
+        type Error = source_ref::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
+        fn try_take_ref(
+            &mut self,
+        ) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }

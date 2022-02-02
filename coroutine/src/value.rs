@@ -2,24 +2,20 @@ use crate::{co::Resume, Receiver};
 
 use std::pin::Pin;
 
-use sval::{Result, Value};
+use sval::{Result, SourceValue};
 
 pub fn source<'a>(v: &'a impl CoroutineValue) -> impl sval::Source<'a> {
     struct Source<S>(S);
 
     impl<'a, V: CoroutineValue> sval::Source<'a> for Source<&'a V> {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> Result<sval::source::Stream>
+        fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<sval::source::Next>
         where
             'a: 'b,
         {
-            self.stream_to_end(receiver)
-                .map(|_| sval::source::Stream::Done)
+            self.stream_all(receiver).map(|_| sval::source::Next::Done)
         }
 
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+        fn stream_all<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
         where
             'a: 'b,
         {
@@ -36,7 +32,7 @@ pub fn source<'a>(v: &'a impl CoroutineValue) -> impl sval::Source<'a> {
     Source(v)
 }
 
-pub trait CoroutineValue: Value {
+pub trait CoroutineValue: SourceValue {
     type State<'a>
     where
         Self: 'a;

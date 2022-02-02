@@ -1,12 +1,7 @@
-use crate::{
-    data, for_all,
-    source::{Source, ValueSource},
-    std::fmt::Display,
-    Result, Value,
-};
+use crate::{data, for_all, std::fmt::Display, Result, Source, SourceRef, SourceValue};
 
 pub trait Receiver<'a> {
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+    fn value<'v: 'a, V: SourceValue + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
         value.stream(self)
     }
 
@@ -71,23 +66,23 @@ pub trait Receiver<'a> {
         self.str(for_all(&*value.encode_utf8(&mut buf)))
     }
 
-    fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, mut value: S) -> Result {
+    fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, mut value: S) -> Result {
         self.text(for_all(value.take()?))
     }
 
-    fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, mut text: S) -> Result {
+    fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, mut text: S) -> Result {
         self.unstructured(text.take()?)
     }
 
-    fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, mut error: E) -> Result {
+    fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, mut error: E) -> Result {
         self.unstructured(error.take()?)
     }
 
-    fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, mut bytes: B) -> Result {
+    fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, mut bytes: B) -> Result {
         self.unstructured(bytes.take()?)
     }
 
-    fn tag<T: ValueSource<'static, str>>(&mut self, mut tag: data::Tag<T>) -> Result {
+    fn tag<T: SourceRef<'static, str>>(&mut self, mut tag: data::Tag<T>) -> Result {
         if let Some(label) = tag.label_mut() {
             self.str(label)?;
             return Ok(());
@@ -101,22 +96,22 @@ pub trait Receiver<'a> {
         self.null()
     }
 
-    fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
 
-    fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
         let _ = tag;
         Ok(())
     }
 
-    fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+    fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
         &mut self,
         mut tagged: data::Tagged<T, V>,
     ) -> Result {
         self.tagged_begin(tagged.begin_tag_mut())?;
-        tagged.value_mut().stream_to_end(&mut *self)?;
+        tagged.value_mut().stream_all(&mut *self)?;
         self.tagged_end(tagged.end_tag_mut())
     }
 
@@ -141,7 +136,7 @@ pub trait Receiver<'a> {
         self.map_value(value)
     }
 
-    fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+    fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
         &mut self,
         field: F,
         value: V,
@@ -150,19 +145,19 @@ pub trait Receiver<'a> {
         self.map_value(value)
     }
 
-    fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
+    fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
         self.map_key(field)
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
-        key.stream_to_end(&mut *self)?;
+        key.stream_all(&mut *self)?;
         self.map_key_end()
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
-        value.stream_to_end(&mut *self)?;
+        value.stream_all(&mut *self)?;
         self.map_value_end()
     }
 
@@ -176,7 +171,7 @@ pub trait Receiver<'a> {
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
         self.seq_elem_begin()?;
-        elem.stream_to_end(&mut *self)?;
+        elem.stream_all(&mut *self)?;
         self.seq_elem_end()
     }
 }
@@ -184,7 +179,7 @@ pub trait Receiver<'a> {
 macro_rules! impl_receiver_forward {
     ($($r:tt)*) => {
         $($r)* {
-            fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+            fn value<'v: 'a, V: SourceValue + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
                 (**self).value(value)
             }
 
@@ -252,35 +247,35 @@ macro_rules! impl_receiver_forward {
                 (**self).char(value)
             }
 
-            fn str<'s: 'a, S: ValueSource<'s, str>>(&mut self, value: S) -> Result {
+            fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, value: S) -> Result {
                 (**self).str(value)
             }
 
-            fn text<'s: 'a, S: ValueSource<'s, data::Text>>(&mut self, text: S) -> Result {
+            fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, text: S) -> Result {
                 (**self).text(text)
             }
 
-            fn error<'e: 'a, E: ValueSource<'e, data::Error>>(&mut self, error: E) -> Result {
+            fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, error: E) -> Result {
                 (**self).error(error)
             }
 
-            fn bytes<'s: 'a, B: ValueSource<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
+            fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
                 (**self).bytes(bytes)
             }
 
-            fn tag<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn tag<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tag(tag)
             }
 
-            fn tagged_begin<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tagged_begin(tag)
             }
 
-            fn tagged_end<T: ValueSource<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
                 (**self).tagged_end(tag)
             }
 
-            fn tagged<'v: 'a, T: ValueSource<'static, str>, V: Source<'v>>(
+            fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
                 &mut self,
                 tagged: data::Tagged<T, V>,
             ) -> Result {
@@ -319,7 +314,7 @@ macro_rules! impl_receiver_forward {
                 (**self).map_entry(key, value)
             }
 
-            fn map_field_entry<'v: 'a, F: ValueSource<'static, str>, V: Source<'v>>(
+            fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
                 &mut self,
                 field: F,
                 value: V,
@@ -327,7 +322,7 @@ macro_rules! impl_receiver_forward {
                 (**self).map_field_entry(field, value)
             }
 
-            fn map_field<F: ValueSource<'static, str>>(&mut self, field: F) -> Result {
+            fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
                 (**self).map_field(field)
             }
 

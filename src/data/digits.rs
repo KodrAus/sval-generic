@@ -1,41 +1,29 @@
-use crate::{
-    source::{self, ValueSource},
-    Receiver, Result, Source, Value,
-};
+use crate::{source, Receiver, Source, SourceValue};
 
 macro_rules! digits {
     ($(
         $ty:ident,
     )+) => {
         $(
-            impl Value for $ty {
+            impl SourceValue for $ty {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
                     receiver.$ty(*self)
                 }
             }
 
             impl<'a> Source<'a> for $ty {
-                fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+                fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
                 where
                     'a: 'b,
                 {
-                    self.stream_to_end(receiver).map(|_| source::Stream::Done)
+                    self.stream_all(receiver).map(|_| source::Next::Done)
                 }
 
-                fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+                fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
                 where
                     'a: 'b,
                 {
                     receiver.$ty(*self)
-                }
-            }
-
-            impl<'a> ValueSource<'a, $ty> for $ty {
-                type Error = source::Impossible;
-
-                #[inline]
-                fn take(&mut self) -> Result<&$ty, source::TakeError<Self::Error>> {
-                    Ok(self)
                 }
             }
         )+

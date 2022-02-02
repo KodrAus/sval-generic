@@ -1,12 +1,8 @@
-use crate::{receiver, source::ValueSource, std::fmt::Display, Receiver, Result};
+use crate::{receiver, source::SourceRef, std::fmt::Display, Receiver, Result};
 
-pub fn stream<'a>(s: impl Receiver<'a>, v: &'a impl Value) -> Result {
-    v.stream(s)
-}
-
-pub trait Value
+pub trait SourceValue
 where
-    for<'a> &'a Self: ValueSource<'a, Self>,
+    for<'a> &'a Self: SourceRef<'a, Self>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
 
@@ -25,7 +21,7 @@ where
             }
 
             #[inline]
-            fn str<'v: 'a, V: ValueSource<'v, str>>(&mut self, mut value: V) -> Result {
+            fn str<'v: 'a, V: SourceRef<'v, str>>(&mut self, mut value: V) -> Result {
                 match value.try_take_ref() {
                     Ok(v) => {
                         self.0 = Some(v);
@@ -92,7 +88,7 @@ where
     }
 }
 
-impl<'a, T: Value + ?Sized> Value for &'a T {
+impl<'a, T: SourceValue + ?Sized> SourceValue for &'a T {
     fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
         (**self).stream(receiver)
     }
@@ -109,7 +105,7 @@ mod alloc_support {
 
     use crate::std::boxed::Box;
 
-    impl<T: Value + ?Sized> Value for Box<T> {
+    impl<T: SourceValue + ?Sized> SourceValue for Box<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> crate::Result {
             (**self).stream(stream)
         }

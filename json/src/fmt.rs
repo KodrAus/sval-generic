@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
 pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result {
-    v.stream_to_end(Formatter::new(fmt))
+    v.stream_all(Formatter::new(fmt))
 }
 
 pub struct Formatter<W> {
@@ -127,7 +127,7 @@ where
         Ok(())
     }
 
-    fn str<'v, V: sval::ValueSource<'v, str>>(&mut self, mut v: V) -> sval::Result
+    fn str<'v, V: sval::SourceRef<'v, str>>(&mut self, mut v: V) -> sval::Result
     where
         'v: 'a,
     {
@@ -191,7 +191,7 @@ where
         Ok(())
     }
 
-    fn map_field_entry<'v: 'a, F: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
+    fn map_field_entry<'v: 'a, F: sval::SourceRef<'static, str>, V: sval::Source<'v>>(
         &mut self,
         mut f: F,
         mut v: V,
@@ -208,7 +208,7 @@ where
 
         self.is_current_depth_empty = false;
 
-        v.stream_to_end(&mut *self)
+        v.stream_all(&mut *self)
     }
 
     fn seq_begin(&mut self, _: Option<u64>) -> sval::Result {

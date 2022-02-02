@@ -1,7 +1,7 @@
 use crate::{
-    source::{self, TakeError, ValueSource},
+    source::{self, SourceRef, TakeError},
     std::fmt,
-    Receiver, Result, Source, Value,
+    Receiver, Result, Source, SourceValue,
 };
 
 pub fn text(text: &impl fmt::Display) -> &Text {
@@ -24,27 +24,27 @@ impl fmt::Display for Text {
     }
 }
 
-impl Value for Text {
+impl SourceValue for Text {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
         receiver.text(self)
     }
 }
 
-impl Value for char {
+impl SourceValue for char {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.char(*self)
     }
 }
 
 impl<'a> Source<'a> for char {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Stream>
+    fn stream_next<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Next>
     where
         'a: 'b,
     {
-        self.stream_to_end(receiver).map(|_| source::Stream::Done)
+        self.stream_all(receiver).map(|_| source::Next::Done)
     }
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+    fn stream_all<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -52,22 +52,13 @@ impl<'a> Source<'a> for char {
     }
 }
 
-impl<'a> ValueSource<'a, char> for char {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&char, source::TakeError<Self::Error>> {
-        Ok(self)
-    }
-}
-
-impl Value for str {
+impl SourceValue for str {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.str(self)
     }
 }
 
-impl<'a> ValueSource<'a, Text> for &'a char {
+impl<'a> SourceRef<'a, Text> for &'a char {
     type Error = source::Impossible;
 
     #[inline]
@@ -76,12 +67,12 @@ impl<'a> ValueSource<'a, Text> for &'a char {
     }
 
     #[inline]
-    fn try_take_ref(&mut self) -> Result<&'a Text, source::TryTakeError<&Text, Self::Error>> {
+    fn try_take(&mut self) -> Result<&'a Text, source::TryTakeError<&Text, Self::Error>> {
         Ok(Text::new(*self))
     }
 }
 
-impl<'a> ValueSource<'a, Text> for &'a str {
+impl<'a> SourceRef<'a, Text> for &'a str {
     type Error = source::Impossible;
 
     #[inline]
@@ -118,7 +109,7 @@ mod alloc_support {
         }
     }
 
-    impl Value for String {
+    impl SourceValue for String {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
             receiver.str(&**self)
         }
@@ -129,45 +120,26 @@ mod alloc_support {
         }
     }
 
-    impl<'a> Source<'a> for String {
-        fn stream_resume<'b, R: Receiver<'b>>(
-            &mut self,
-            receiver: R,
-        ) -> crate::Result<source::Stream>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Stream::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-        where
-            'a: 'b,
-        {
-            receiver.str(for_all(self))
-        }
-    }
-
-    impl<'a> ValueSource<'a, str> for String {
+    impl<'a> SourceRef<'a, str> for String {
         type Error = source::Impossible;
 
         #[inline]
         fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
             Ok(&**self)
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a str, TryTakeError<Cow<str>, Self::Error>> {
+            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
         }
 
         #[inline]
         fn take_owned(&mut self) -> Result<Cow<str>, source::TakeError<Self::Error>> {
             Ok(Cow::Owned(mem::take(self)))
         }
-
-        #[inline]
-        fn try_take_owned(&mut self) -> Result<&'a str, TryTakeError<Cow<str>, Self::Error>> {
-            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
-        }
     }
 
-    impl<'a> ValueSource<'a, str> for &'a String {
+    impl<'a> SourceRef<'a, str> for &'a String {
         type Error = source::Impossible;
 
         #[inline]
@@ -176,31 +148,12 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a str, TryTakeError<&str, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a str, TryTakeError<&str, Self::Error>> {
             Ok(&**self)
         }
     }
 
-    impl<'a> ValueSource<'a, Text> for String {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
-            Ok(Text::new(&*self))
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<Cow<Text>, source::TakeError<Self::Error>> {
-            Ok(Cow::Owned(mem::take(self)))
-        }
-
-        #[inline]
-        fn try_take_owned(&mut self) -> Result<&'a Text, TryTakeError<Cow<Text>, Self::Error>> {
-            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
-        }
-    }
-
-    impl<'a> ValueSource<'a, Text> for &'a String {
+    impl<'a> SourceRef<'a, Text> for String {
         type Error = source::Impossible;
 
         #[inline]
@@ -209,7 +162,26 @@ mod alloc_support {
         }
 
         #[inline]
-        fn try_take_ref(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Text, TryTakeError<Cow<Text>, Self::Error>> {
+            Err(TryTakeError::Fallback(Cow::Owned(mem::take(self))))
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<Cow<Text>, source::TakeError<Self::Error>> {
+            Ok(Cow::Owned(mem::take(self)))
+        }
+    }
+
+    impl<'a> SourceRef<'a, Text> for &'a String {
+        type Error = source::Impossible;
+
+        #[inline]
+        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
+            Ok(Text::new(&**self))
+        }
+
+        #[inline]
+        fn try_take(&mut self) -> Result<&'a Text, TryTakeError<&Text, Self::Error>> {
             Ok(Text::new(&**self))
         }
     }
