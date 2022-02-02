@@ -26,20 +26,6 @@ impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
     }
 }
 
-impl<'a, T: SourceValue, const N: usize> SourceRef<'a, [T]> for &'a [T; N] {
-    type Error = source::Impossible;
-
-    #[inline]
-    fn take(&mut self) -> Result<&[T], source::TakeError<Self::Error>> {
-        Ok(*self)
-    }
-
-    #[inline]
-    fn try_take(&mut self) -> Result<&'a [T], source::TryTakeError<&[T], Self::Error>> {
-        Ok(*self)
-    }
-}
-
 macro_rules! tuple {
     ($(
         $len:expr => ( $(self.$i:tt: $ty:ident,)+ ),

@@ -48,7 +48,7 @@ mod std_support {
     use super::*;
 
     use crate::{
-        source, source_ref,
+        source,
         std::{error, fmt, io},
         Receiver, Result, SourceRef, SourceValue,
     };
@@ -67,15 +67,15 @@ mod std_support {
     }
 
     impl<'a> SourceRef<'a, Error> for &'a (dyn error::Error + 'static) {
-        type Error = source_ref::Impossible;
+        type Error = source::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -87,15 +87,15 @@ mod std_support {
     }
 
     impl<'a> SourceRef<'a, Error> for &'a io::Error {
-        type Error = source_ref::Impossible;
+        type Error = source::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }
@@ -107,15 +107,15 @@ mod std_support {
     }
 
     impl<'a> SourceRef<'a, Error> for &'a fmt::Error {
-        type Error = source_ref::Impossible;
+        type Error = source::Impossible;
 
         #[inline]
-        fn take(&mut self) -> Result<&Error, source_ref::TakeError<Self::Error>> {
+        fn take(&mut self) -> Result<&Error, source::TakeError<Self::Error>> {
             Ok(Error::new(*self))
         }
 
         #[inline]
-        fn try_take(&mut self) -> Result<&'a Error, source_ref::TryTakeError<&Error, Self::Error>> {
+        fn try_take(&mut self) -> Result<&'a Error, source::TryTakeError<&Error, Self::Error>> {
             Ok(Error::new(*self))
         }
     }

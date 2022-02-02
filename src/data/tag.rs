@@ -165,6 +165,12 @@ impl<T> Tag<T> {
     }
 }
 
+impl SourceValue for Tag<&'static str> {
+    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+        receiver.tag(*self)
+    }
+}
+
 impl<'a, T: SourceRef<'static, str>> Source<'a> for Tag<T> {
     fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<Resume>
     where
@@ -178,12 +184,6 @@ impl<'a, T: SourceRef<'static, str>> Source<'a> for Tag<T> {
         'a: 'b,
     {
         receiver.tag(self.by_mut())
-    }
-}
-
-impl SourceValue for Tag<&'static str> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
-        receiver.tag(*self)
     }
 }
 

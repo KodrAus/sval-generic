@@ -271,12 +271,20 @@ mod alloc_support {
         }
     }
 
-    impl<'a, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for Cow<'a, T> {
+    impl<'a, T: ToOwned + SourceValue + ?Sized> SourceRef<'a, T> for Cow<'a, T>
+    where
+        Cow<'a, T>: Default,
+    {
         type Error = source::Impossible;
 
         #[inline]
         fn take(&mut self) -> Result<&T, TakeError<Self::Error>> {
             Ok(&**self)
+        }
+
+        #[inline]
+        fn take_owned(&mut self) -> Result<T::Owned, TakeError<Self::Error>> {
+            Ok(mem::take(self).into_owned())
         }
 
         #[inline]
@@ -287,6 +295,12 @@ mod alloc_support {
             }
         }
 
-        // NOTE: With specialization we could optimize the `Owned` methods with `mem::take`
+        #[inline]
+        fn try_take_owned(&mut self) -> Result<&'a T, TryTakeError<T::Owned, Self::Error>> {
+            match mem::take(self) {
+                Cow::Borrowed(v) => Ok(v),
+                Cow::Owned(v) => Err(TryTakeError::Fallback(v)),
+            }
+        }
     }
 }

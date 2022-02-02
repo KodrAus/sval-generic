@@ -172,27 +172,6 @@ mod alloc_support {
         }
     }
 
-    impl<'a> SourceRef<'a, Bytes> for Vec<u8> {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
-            Ok(Bytes::new(&**self))
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
-        }
-
-        #[inline]
-        fn try_take_owned(
-            &mut self,
-        ) -> Result<&'a Bytes, source::TryTakeError<Vec<u8>, Self::Error>> {
-            Err(source::TryTakeError::Fallback(mem::take(self)))
-        }
-    }
-
     impl<'a> SourceRef<'a, Bytes> for &'a Vec<u8> {
         type Error = source::Impossible;
 
@@ -204,27 +183,6 @@ mod alloc_support {
         #[inline]
         fn try_take(&mut self) -> Result<&'a Bytes, source::TryTakeError<&Bytes, Self::Error>> {
             Ok(Bytes::new(*self))
-        }
-    }
-
-    impl<'a> SourceRef<'a, Bytes> for String {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&Bytes, source::TakeError<Self::Error>> {
-            Ok(Bytes::new(&**self))
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<Vec<u8>, source::TakeError<Self::Error>> {
-            Ok(mem::take(self).into())
-        }
-
-        #[inline]
-        fn try_take_owned(
-            &mut self,
-        ) -> Result<&'a Bytes, source::TryTakeError<Vec<u8>, Self::Error>> {
-            Err(source::TryTakeError::Fallback(mem::take(self).into()))
         }
     }
 

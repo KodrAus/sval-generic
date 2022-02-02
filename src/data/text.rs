@@ -119,41 +119,6 @@ mod alloc_support {
         }
     }
 
-    impl<'a> Source<'a> for String {
-        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Resume::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-        where
-            'a: 'b,
-        {
-            receiver.str(mem::take(self))
-        }
-    }
-
-    impl<'a> SourceRef<'a, str> for String {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&str, source::TakeError<Self::Error>> {
-            Ok(&**self)
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
-        }
-
-        #[inline]
-        fn try_take_owned(&mut self) -> Result<&'a str, source::TryTakeError<String, Self::Error>> {
-            Err(source::TryTakeError::Fallback(mem::take(self)))
-        }
-    }
-
     impl<'a> SourceRef<'a, str> for &'a String {
         type Error = source::Impossible;
 
@@ -165,27 +130,6 @@ mod alloc_support {
         #[inline]
         fn try_take(&mut self) -> Result<&'a str, source::TryTakeError<&str, Self::Error>> {
             Ok(&**self)
-        }
-    }
-
-    impl<'a> SourceRef<'a, Text> for String {
-        type Error = source::Impossible;
-
-        #[inline]
-        fn take(&mut self) -> Result<&Text, source::TakeError<Self::Error>> {
-            Ok(Text::new(&*self))
-        }
-
-        #[inline]
-        fn take_owned(&mut self) -> Result<String, source::TakeError<Self::Error>> {
-            Ok(mem::take(self))
-        }
-
-        #[inline]
-        fn try_take_owned(
-            &mut self,
-        ) -> Result<&'a Text, source::TryTakeError<String, Self::Error>> {
-            Err(source::TryTakeError::Fallback(mem::take(self)))
         }
     }
 

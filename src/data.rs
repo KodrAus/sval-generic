@@ -49,20 +49,11 @@ impl<T: SourceValue> SourceValue for Option<T> {
 }
 
 impl<'a, T: Source<'a>> Source<'a> for Option<T> {
-    fn stream_resume<'b, R: Receiver<'b>>(
-        &mut self,
-        mut receiver: R,
-    ) -> crate::Result<source::Resume>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
     where
         'a: 'b,
     {
-        match self {
-            None => {
-                receiver.null()?;
-                Ok(source::Resume::Done)
-            }
-            Some(v) => v.stream_resume(receiver),
-        }
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
     fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
