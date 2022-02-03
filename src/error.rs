@@ -15,3 +15,7 @@ impl From<fmt::Error> for Error {
         Error
     }
 }
+
+pub fn unsupported() -> crate::Result {
+    Err(crate::Error)
+}

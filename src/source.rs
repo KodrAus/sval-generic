@@ -5,6 +5,9 @@ pub use self::{source_ref::*, source_value::*};
 
 use crate::{Receiver, Result};
 
+// Implementation: The `'a` lifetime needs to be bounded by the target type
+// This can be wrapped, as in `Box<impl SourceRef<'a>>` or external as in
+// `&'a impl SourceValue` and `Cow<'a, impl SourceValue>`
 pub trait Source<'a> {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where
@@ -14,7 +17,7 @@ pub trait Source<'a> {
     where
         'a: 'b,
     {
-        while let Resume::Yield = self.stream_resume(&mut receiver)? {}
+        while let Resume::Continue = self.stream_resume(&mut receiver)? {}
 
         Ok(())
     }
@@ -22,7 +25,7 @@ pub trait Source<'a> {
 
 #[must_use]
 pub enum Resume {
-    Yield,
+    Continue,
     Done,
 }
 

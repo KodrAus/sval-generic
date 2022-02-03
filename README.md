@@ -33,13 +33,13 @@ The `Source` trait in `sval` is very similar to `Read`, but instead of reading b
 
 ```rust
 pub trait Source<'a> {
-    fn stream<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Stream>
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where
         'a: 'b;
 }
 ```
 
-You keep calling `Source::stream` until you get `Ok(Stream::Done)`, meaning the data stream has been exhausted.
+You keep calling `Source::stream_resume` until you get `Ok(Resume::Done)`, meaning the data stream has been exhausted.
 
 What does the structure in a source look like? For a concrete example, let's consider this bit of JSON:
 
@@ -51,10 +51,10 @@ What does the structure in a source look like? For a concrete example, let's con
 }
 ```
 
-It could make the following calls on its `receiver`:
+A source reading this document could make the following calls to a receiver:
 
 ```rust
-receiver.map_begin(Size::Fixed(3))?; // {
+receiver.map_begin(Some(3))?;        // {
 
 receiver.map_key_begin()?;           // "
 receiver.str("id")?;                 // id
@@ -86,7 +86,7 @@ receiver.map_end()?;                 // }
 Each call roughly corresponds to a token in the JSON stream. At its core, `sval` is flat to support streaming from a flat source, like a UTF8 encoded text buffer containing a JSON document. Not all sources are flat though, so this same example could also be more compactly written as:
 
 ```rust
-receiver.map_begin(Size::Fized(3))?;
+receiver.map_begin(Some(3))?;
 
 receiver.map_field_entry("id", 42)?;
 receiver.map_field_entry("title", "My Document")?;
@@ -96,6 +96,8 @@ receiver.map_end()?;
 ```
 
 This is much closer to how `serde` represents structure in its model.
+
+In `sval`, buffering and borrowing are optional. You can use them to optimize streaming, but receivers work on flat structure too.
 
 ### Data model
 
@@ -120,6 +122,34 @@ This is much closer to how `serde` represents structure in its model.
   - **Maps**: A set of key and value pairs, that may be any valid value. The size of a map may be dynamic, fixed, or unknown ahead of time.
   - **Sequences**: A set of elements, that may be any valid value. The size of a sequence may be dynamic, fixed, or unknown ahead of time.
   - **Unstructured** (`unstructured`): Values that don't have an otherwise understood structure. This corresponds to the standard `Display` trait. All primitives are forwarded to `unstructured` by default.
+
+### Types
+
+`sval` supports tags, so along with its data model is a type system. Since `sval` is a serialization framework, it makes sense for typing to be structural. Types are equivalent if a format may handle them equivalently. Consider a binary format like:
+
+```text
+header + data
+```
+
+where the `header` may be one of:
+
+```text
+byte + string (len) + sequence (len)
+```
+
+A `sequence` is usually a list of `header + data`:
+
+```text
+sequence (3) + byte + 1 + byte + 1 + byte + 0
+```
+
+If the elements of the sequence are all the same type, we could instead only include its header once:
+
+```text
+sequence (3) + byte + 1 + 1 + 0
+```
+
+This is the goal of typing, to give enough information about the shape of the data for a format to make better choices.
 
 ## How is it different?
 

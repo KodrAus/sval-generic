@@ -1,18 +1,12 @@
-pub(crate) mod bytes;
-pub(crate) mod digits;
-pub(crate) mod error;
-pub(crate) mod seq;
-pub(crate) mod text;
-
-pub mod tag;
+mod bytes;
+mod error;
+mod number;
+mod seq;
+mod tag;
+mod text;
 
 #[doc(inline)]
-pub use self::{
-    bytes::{bytes, Bytes},
-    error::Error,
-    tag::{tag, tagged, Tag, Tagged},
-    text::{text, Text},
-};
+pub use self::{bytes::*, error::*, tag::*, text::*};
 
 #[cfg(feature = "std")]
 #[doc(inline)]
@@ -61,15 +55,13 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
         'a: 'b,
     {
         match self {
-            None => tagged(())
-                .with_label("None")
+            None => tagged_nullable(())
                 .with_id(0)
-                .with_kind(tag::Kind::Nullable)
+                .with_label("None")
                 .stream_to_end(receiver),
-            Some(v) => tagged(v)
-                .with_label("Some")
+            Some(v) => tagged_nullable(v)
                 .with_id(1)
-                .with_kind(tag::Kind::Nullable)
+                .with_label("Some")
                 .stream_to_end(receiver),
         }
     }

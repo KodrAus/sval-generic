@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use sval::data::tag::Kind;
+use sval::data::tag::TagKind;
 
 use serde::ser::{
     Error as _, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant,
@@ -65,7 +65,7 @@ enum SerdeReceiver<S: Serializer> {
 
 struct StreamSerializer<S: Serializer> {
     serializer: S,
-    kind: Kind,
+    kind: TagKind,
     type_tag: Option<&'static str>,
     variant_tag: Option<&'static str>,
     variant_index: Option<u32>,
@@ -102,7 +102,7 @@ impl<S: Serializer> SerdeReceiver<S> {
     fn begin(serializer: S) -> Self {
         SerdeReceiver::Serializer(Some(StreamSerializer {
             serializer,
-            kind: Kind::Unspecified,
+            kind: TagKind::Unspecified,
             type_tag: None,
             variant_tag: None,
             variant_index: None,
@@ -201,7 +201,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a struct
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Struct,
+                    kind: TagKind::Struct,
                     type_tag: Some(ty),
                     variant_tag: None,
                     variant_index: None,
@@ -218,7 +218,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a plain anonymous map
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Unspecified,
+                    kind: TagKind::Unspecified,
                     type_tag: None,
                     variant_tag: None,
                     variant_index: None,
@@ -233,7 +233,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a struct-like enum variant
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Enum,
+                    kind: TagKind::Enum,
                     type_tag: Some(ty),
                     variant_tag: Some(variant),
                     variant_index: Some(index),
@@ -353,7 +353,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a tuple struct
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Tuple,
+                    kind: TagKind::Tuple,
                     type_tag: Some(ty),
                     variant_tag: None,
                     variant_index: None,
@@ -369,7 +369,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a plain anonymous seq
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Unspecified,
+                    kind: TagKind::Unspecified,
                     type_tag: None,
                     variant_tag: None,
                     variant_index: None,
@@ -383,7 +383,7 @@ impl<S: Serializer> SerdeReceiver<S> {
                 // Begin a serializer for a tuple-like enum variant
                 Some(StreamSerializer {
                     serializer,
-                    kind: Kind::Enum,
+                    kind: TagKind::Enum,
                     type_tag: Some(ty),
                     variant_tag: Some(variant),
                     variant_index: Some(index),

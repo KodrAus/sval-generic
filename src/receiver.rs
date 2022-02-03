@@ -368,7 +368,3 @@ mod alloc_support {
 
     impl_receiver_forward!(impl<'a, 'b, R: ?Sized> Receiver<'a> for Box<R> where R: Receiver<'a>);
 }
-
-pub fn unsupported() -> Result {
-    Err(crate::Error)
-}

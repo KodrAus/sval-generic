@@ -3,6 +3,9 @@ use crate::{source::Resume, std::fmt, Error, Receiver, Result, Source, SourceVal
 #[cfg(feature = "alloc")]
 use crate::std::borrow::ToOwned;
 
+// Implementation: The `'a` lifetime needs to be bounded by the target type
+// This can be wrapped, as in `Box<impl SourceRef<'a>>` or external as in
+// `&'a impl SourceValue` and `Cow<'a, impl SourceValue>`
 pub trait SourceRef<'a, T: SourceValue + ?Sized, R: SourceValue + ?Sized = T>
 where
     Self: Source<'a>,

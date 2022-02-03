@@ -367,7 +367,7 @@ impl<'a, 'b> sval::Source<'a> for &'b Token<'a> {
             Token::Text(Cow::Owned(text)) => receiver.text(sval::for_all(text))?,
             Token::Bytes(Cow::Borrowed(bytes)) => receiver.bytes(*bytes)?,
             Token::Bytes(Cow::Owned(bytes)) => receiver.bytes(sval::for_all(bytes))?,
-            Token::Tag(tag) => receiver.tag(tag.by_ref())?,
+            Token::Tag(tag) => receiver.tag(tag.as_ref())?,
             Token::Unstructured(value) => receiver.unstructured(value)?,
             Token::Null => receiver.null()?,
             Token::MapBegin(len) => receiver.map_begin(*len)?,

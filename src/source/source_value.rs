@@ -1,4 +1,4 @@
-use crate::{receiver, source::SourceRef, std::fmt::Display, Receiver, Result};
+use crate::{error, source::SourceRef, std::fmt::Display, Receiver, Result};
 
 pub trait SourceValue
 where
@@ -12,12 +12,12 @@ where
         impl<'a> Receiver<'a> for Extract<'a> {
             #[inline]
             fn unstructured<D: Display>(&mut self, _: D) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn null(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
@@ -29,52 +29,52 @@ where
 
             #[inline]
             fn map_begin(&mut self, _: Option<u64>) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn map_end(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn map_key_begin(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn map_key_end(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn map_value_begin(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn map_value_end(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn seq_begin(&mut self, _: Option<u64>) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn seq_end(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn seq_elem_begin(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
 
             #[inline]
             fn seq_elem_end(&mut self) -> Result {
-                receiver::unsupported()
+                error::unsupported()
             }
         }
 

@@ -2,19 +2,7 @@ use crate::{data, Receiver, Result, SourceValue};
 
 impl<T: SourceValue> SourceValue for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.seq_begin(Some(self.len() as u64))?;
-
-        for elem in self {
-            receiver.seq_elem(elem)?;
-        }
-
-        receiver.seq_end()
-    }
-}
-
-impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Array))?;
+        receiver.tagged_begin(data::tag_slice())?;
         receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
@@ -22,7 +10,21 @@ impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
         }
 
         receiver.seq_end()?;
-        receiver.tagged_end(data::tag().with_kind(data::tag::Kind::Array))
+        receiver.tagged_end(data::tag_slice())
+    }
+}
+
+impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+        receiver.tagged_begin(data::tag_array())?;
+        receiver.seq_begin(Some(self.len() as u64))?;
+
+        for elem in self {
+            receiver.seq_elem(elem)?;
+        }
+
+        receiver.seq_end()?;
+        receiver.tagged_end(data::tag_array())
     }
 }
 
@@ -33,13 +35,15 @@ macro_rules! tuple {
         $(
             impl<$($ty: SourceValue),+> SourceValue for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-                    receiver.tagged_begin(data::tag().with_kind(data::tag::Kind::Tuple))?;
+                    receiver.tagged_begin(data::tag_tuple())?;
                     receiver.seq_begin(Some($len))?;
+
                     $(
                         receiver.seq_elem(&self.$i)?;
                     )+
+
                     receiver.seq_end()?;
-                    receiver.tagged_end(data::tag().with_kind(data::tag::Kind::Tuple))
+                    receiver.tagged_end(data::tag_tuple())
                 }
             }
         )+

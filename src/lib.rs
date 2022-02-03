@@ -1,5 +1,5 @@
 #![cfg_attr(not(test), no_std)]
-#![feature(min_specialization)] // Used for internal private specialization
+#![feature(min_specialization)] // Used for optional internal private specialization
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -21,14 +21,11 @@ mod std {
 extern crate core as std;
 
 pub mod data;
-pub mod receiver;
+mod receiver;
 pub mod source;
 
-mod error;
+pub mod error;
 mod for_all;
-
-#[cfg(feature = "derive")]
-pub use derive::*;
 
 #[doc(inline)]
 pub use self::{

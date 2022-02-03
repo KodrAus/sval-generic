@@ -113,7 +113,7 @@ impl<'fa, 'fb: 'fa, 'a> sval::Receiver<'a> for FmtReceiver<'fa, 'fb> {
         if let Some(label) = tag.label_mut() {
             self.fmt.write_str(label.take()?)?;
 
-            if tag.kind() == sval::data::tag::Kind::Enum {
+            if tag.kind() == sval::data::tag::TagKind::Enum {
                 self.fmt.write_str("::")?;
             }
         }
