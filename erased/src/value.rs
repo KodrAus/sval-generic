@@ -15,15 +15,15 @@ mod private {
 
 pub trait Value: private::EraseValue {}
 
-impl<T: sval::SourceValue> Value for T {}
+impl<T: sval::Value> Value for T {}
 
-impl<T: sval::SourceValue> private::EraseValue for T {
+impl<T: sval::Value> private::EraseValue for T {
     fn erase_value(&self) -> crate::private::Erased<&dyn DispatchValue> {
         crate::private::Erased(self)
     }
 }
 
-impl<T: sval::SourceValue> private::DispatchValue for T {
+impl<T: sval::Value> private::DispatchValue for T {
     fn dispatch_stream<'a>(&'a self, receiver: &mut dyn Receiver<'a>) -> sval::Result {
         self.stream(receiver)
     }
@@ -39,6 +39,6 @@ macro_rules! impl_value {
     }
 }
 
-impl_value!(impl<'d> sval::SourceValue for dyn Value + 'd);
-impl_value!(impl<'d> sval::SourceValue for dyn Value + Send + 'd);
-impl_value!(impl<'d> sval::SourceValue for dyn Value + Send + Sync + 'd);
+impl_value!(impl<'d> sval::Value for dyn Value + 'd);
+impl_value!(impl<'d> sval::Value for dyn Value + Send + 'd);
+impl_value!(impl<'d> sval::Value for dyn Value + Send + Sync + 'd);

@@ -12,17 +12,17 @@ impl<V> Value<V> {
     }
 }
 
-pub fn value<V: sval::SourceValue>(v: V) -> Value<V> {
+pub fn value<V: sval::Value>(v: V) -> Value<V> {
     Value::new(v)
 }
 
-impl<V: sval::SourceValue> fmt::Debug for Value<V> {
+impl<V: sval::Value> fmt::Debug for Value<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.stream(FmtReceiver::new(f)).map_err(|_| fmt::Error)
     }
 }
 
-impl<V: fmt::Display> sval::SourceValue for Value<V> {
+impl<V: fmt::Display> sval::Value for Value<V> {
     fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
         receiver.unstructured(&self.0)
     }
@@ -110,12 +110,14 @@ impl<'fa, 'fb: 'fa, 'a> sval::Receiver<'a> for FmtReceiver<'fa, 'fb> {
         &mut self,
         mut tag: sval::data::Tag<T>,
     ) -> sval::Result {
-        if let Some(label) = tag.label_mut() {
-            self.fmt.write_str(label.take()?)?;
+        let shape = tag.shape();
 
-            if tag.kind() == sval::data::tag::TagKind::Enum {
+        if let Some(label) = tag.label_mut() {
+            if shape == sval::data::Shape::Variant {
                 self.fmt.write_str("::")?;
             }
+
+            self.fmt.write_str(label.take()?)?;
         }
 
         Ok(())

@@ -18,11 +18,11 @@ impl<V> Value<V> {
     }
 }
 
-pub fn value<V: sval::SourceValue>(value: V) -> Value<V> {
+pub fn value<V: sval::Value>(value: V) -> Value<V> {
     Value::new(value)
 }
 
-impl<V: sval::SourceValue> Serialize for Value<V> {
+impl<V: sval::Value> Serialize for Value<V> {
     fn serialize<S>(&self, serializer: S) -> sval::Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -563,8 +563,8 @@ impl<'a, S: Serializer> sval::Receiver<'a> for SerdeReceiver<S> {
 impl<'a, S: Serializer> sval_buffer::BufferReceiver<'a> for SerdeReceiver<S> {
     fn value_source<
         'v: 'a,
-        T: sval::SourceValue + ?Sized,
-        U: sval::SourceValue + ?Sized + 'v,
+        T: sval::Value + ?Sized,
+        U: sval::Value + ?Sized + 'v,
         VS: sval::SourceRef<'v, T, U>,
     >(
         &mut self,

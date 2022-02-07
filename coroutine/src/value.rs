@@ -2,7 +2,7 @@ use crate::{co::Resume, Receiver};
 
 use std::pin::Pin;
 
-use sval::{Result, SourceValue};
+use sval::{Result, Value};
 
 pub fn source<'a>(v: &'a impl CoroutineValue) -> impl sval::Source<'a> {
     struct Source<S>(S);
@@ -32,7 +32,7 @@ pub fn source<'a>(v: &'a impl CoroutineValue) -> impl sval::Source<'a> {
     Source(v)
 }
 
-pub trait CoroutineValue: SourceValue {
+pub trait CoroutineValue: Value {
     type State<'a>
     where
         Self: 'a;

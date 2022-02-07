@@ -1,11 +1,11 @@
-use crate::{source, Receiver, Source, SourceValue};
+use crate::{source, Receiver, Source, Value};
 
 macro_rules! digits {
     ($(
         $ty:ident,
     )+) => {
         $(
-            impl SourceValue for $ty {
+            impl Value for $ty {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
                     receiver.$ty(*self)
                 }

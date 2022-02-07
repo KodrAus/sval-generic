@@ -4,13 +4,13 @@ use sval_buffer::buffer;
 
 pub struct Value<'a, V>(Detected<'a, V>, &'a V);
 
-impl<'a, V: sval::SourceValue> Value<'a, V> {
+impl<'a, V: sval::Value> Value<'a, V> {
     pub fn new(value: &'a V) -> Self {
         Value(Detected::detect(value), value)
     }
 }
 
-pub fn value<V: sval::SourceValue>(value: &V) -> Value<V> {
+pub fn value<V: sval::Value>(value: &V) -> Value<V> {
     Value::new(value)
 }
 
@@ -42,7 +42,7 @@ struct Sequence<'a, V> {
     seq: &'a V,
 }
 
-impl<'a, V: sval::SourceValue> Valuable for Map<'a, V> {
+impl<'a, V: sval::Value> Valuable for Map<'a, V> {
     fn as_value(&self) -> valuable::Value<'_> {
         valuable::Value::Mappable(self)
     }
@@ -52,13 +52,13 @@ impl<'a, V: sval::SourceValue> Valuable for Map<'a, V> {
     }
 }
 
-impl<'a, V: sval::SourceValue> Mappable for Map<'a, V> {
+impl<'a, V: sval::Value> Mappable for Map<'a, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, self.len.map(|l| l as usize))
     }
 }
 
-impl<'a, V: sval::SourceValue> Valuable for Sequence<'a, V> {
+impl<'a, V: sval::Value> Valuable for Sequence<'a, V> {
     fn as_value(&self) -> valuable::Value<'_> {
         valuable::Value::Listable(self)
     }
@@ -68,13 +68,13 @@ impl<'a, V: sval::SourceValue> Valuable for Sequence<'a, V> {
     }
 }
 
-impl<'a, V: sval::SourceValue> Listable for Sequence<'a, V> {
+impl<'a, V: sval::Value> Listable for Sequence<'a, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, self.len.map(|l| l as usize))
     }
 }
 
-impl<'a, V: sval::SourceValue> Detected<'a, V> {
+impl<'a, V: sval::Value> Detected<'a, V> {
     fn detect(value: &'a V) -> Self {
         struct Detect<'a, V>(Detected<'a, V>, &'a V);
 
@@ -241,7 +241,7 @@ impl<'a, V: sval::SourceValue> Detected<'a, V> {
     }
 }
 
-impl<'a, V: sval::SourceValue> Valuable for Value<'a, V> {
+impl<'a, V: sval::Value> Valuable for Value<'a, V> {
     fn as_value(&self) -> valuable::Value<'_> {
         self.0.as_value()
     }
@@ -317,8 +317,8 @@ impl<'a, 'b> sval::Receiver<'a> for ValuableReceiver<'b> {
         impl<'a, 'k, 'v, V: sval::Source<'v>> sval_buffer::BufferReceiver<'k> for BufferKey<'a, V> {
             fn value_source<
                 'b: 'k,
-                K: sval::SourceValue + ?Sized,
-                R: sval::SourceValue + ?Sized + 'b,
+                K: sval::Value + ?Sized,
+                R: sval::Value + ?Sized + 'b,
                 S: sval::SourceRef<'b, K, R>,
             >(
                 &mut self,
@@ -326,13 +326,13 @@ impl<'a, 'b> sval::Receiver<'a> for ValuableReceiver<'b> {
             ) -> sval::Result {
                 struct BufferValue<'a, 'k, K: ?Sized + 'k>(&'a mut dyn Visit, &'k K);
 
-                impl<'a, 'k, 'v, K: sval::SourceValue + ?Sized + 'k> sval_buffer::BufferReceiver<'v>
+                impl<'a, 'k, 'v, K: sval::Value + ?Sized + 'k> sval_buffer::BufferReceiver<'v>
                     for BufferValue<'a, 'k, K>
                 {
                     fn value_source<
                         'b: 'v,
-                        V: sval::SourceValue + ?Sized,
-                        R: sval::SourceValue + ?Sized + 'b,
+                        V: sval::Value + ?Sized,
+                        R: sval::Value + ?Sized + 'b,
                         S: sval::SourceRef<'b, V, R>,
                     >(
                         &mut self,
@@ -373,8 +373,8 @@ impl<'a, 'b> sval::Receiver<'a> for ValuableReceiver<'b> {
         impl<'a, 'e> sval_buffer::BufferReceiver<'e> for BufferElem<'a> {
             fn value_source<
                 'b: 'e,
-                E: sval::SourceValue + ?Sized,
-                R: sval::SourceValue + ?Sized + 'b,
+                E: sval::Value + ?Sized,
+                R: sval::Value + ?Sized + 'b,
                 S: sval::SourceRef<'b, E, R>,
             >(
                 &mut self,

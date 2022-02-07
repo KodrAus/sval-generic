@@ -1,5 +1,4 @@
 #![cfg_attr(not(test), no_std)]
-#![feature(min_specialization)] // Used for optional internal private specialization
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -22,17 +21,12 @@ extern crate core as std;
 
 pub mod data;
 mod receiver;
-pub mod source;
+mod source;
+mod value;
 
 pub mod error;
-mod for_all;
 
 #[doc(inline)]
-pub use self::{
-    error::Error,
-    for_all::{for_all, ForAll},
-    receiver::Receiver,
-    source::{Source, SourceRef, SourceValue},
-};
+pub use self::{error::Error, receiver::*, source::*, value::*};
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;

@@ -36,10 +36,7 @@ pub fn buffer<'a>(
     }
 
     impl<'a, R: BufferReceiver<'a>> sval::Receiver<'a> for Extract<'a, R> {
-        fn value<'v: 'a, V: sval::SourceValue + ?Sized + 'v>(
-            &mut self,
-            value: &'v V,
-        ) -> sval::Result {
+        fn value<'v: 'a, V: sval::Value + ?Sized + 'v>(&mut self, value: &'v V) -> sval::Result {
             if let Some(mut receiver) = self.top_level_receiver() {
                 receiver.value_source(value)
             } else {
@@ -248,8 +245,8 @@ pub fn buffer<'a>(
 pub trait BufferReceiver<'a> {
     fn value_source<
         'v: 'a,
-        T: sval::SourceValue + ?Sized,
-        R: sval::SourceValue + ?Sized + 'v,
+        T: sval::Value + ?Sized,
+        R: sval::Value + ?Sized + 'v,
         S: sval::SourceRef<'v, T, R>,
     >(
         &mut self,
@@ -260,8 +257,8 @@ pub trait BufferReceiver<'a> {
 impl<'a, 'b, R: BufferReceiver<'a> + ?Sized> BufferReceiver<'a> for &'b mut R {
     fn value_source<
         'v: 'a,
-        T: sval::SourceValue + ?Sized,
-        U: sval::SourceValue + ?Sized + 'v,
+        T: sval::Value + ?Sized,
+        U: sval::Value + ?Sized + 'v,
         S: sval::SourceRef<'v, T, U>,
     >(
         &mut self,
@@ -293,7 +290,7 @@ impl<'a> Buffer<'a> {
     }
 }
 
-impl<'a> sval::SourceValue for Buffer<'a> {
+impl<'a> sval::Value for Buffer<'a> {
     fn stream<'b, R: sval::Receiver<'b>>(&'b self, mut receiver: R) -> sval::Result {
         for mut token in &self.buf {
             token.stream_to_end(&mut receiver)?;

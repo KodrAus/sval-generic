@@ -1,8 +1,10 @@
 mod private {
-    use crate::{Source, ValueSource};
+    use core::fmt::Display;
+
+    use crate::{Source, SourceRef};
 
     pub trait DispatchReceiver<'a> {
-        fn dispatch_unstructured(&mut self, fmt: &dyn sval::data::Display) -> sval::Result;
+        fn dispatch_unstructured(&mut self, fmt: &dyn Display) -> sval::Result;
 
         fn dispatch_null(&mut self) -> sval::Result;
 
@@ -34,41 +36,38 @@ mod private {
 
         fn dispatch_char(&mut self, value: char) -> sval::Result;
 
-        fn dispatch_str<'s: 'a>(&mut self, value: &mut dyn ValueSource<'s, str>) -> sval::Result;
+        fn dispatch_str<'s: 'a>(&mut self, value: &mut dyn SourceRef<'s, str>) -> sval::Result;
 
         fn dispatch_text<'s: 'a>(
             &mut self,
-            text: &mut dyn ValueSource<'s, sval::data::Text>,
+            text: &mut dyn SourceRef<'s, dyn Display>,
         ) -> sval::Result;
 
         fn dispatch_error<'e: 'a>(
             &mut self,
-            error: &mut dyn ValueSource<'e, sval::data::Error>,
+            error: &mut dyn SourceRef<'e, sval::data::Error>,
         ) -> sval::Result;
 
-        fn dispatch_bytes<'s: 'a>(
-            &mut self,
-            bytes: &mut dyn ValueSource<'s, sval::data::Bytes>,
-        ) -> sval::Result;
+        fn dispatch_bytes<'s: 'a>(&mut self, bytes: &mut dyn SourceRef<'s, [u8]>) -> sval::Result;
 
         fn dispatch_tag(
             &mut self,
-            tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+            tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
         ) -> sval::Result;
 
         fn dispatch_tagged_begin(
             &mut self,
-            tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+            tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
         ) -> sval::Result;
 
         fn dispatch_tagged_end(
             &mut self,
-            tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+            tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
         ) -> sval::Result;
 
         fn dispatch_tagged<'v: 'a>(
             &mut self,
-            tagged: sval::data::Tagged<&mut dyn ValueSource<'static, str>, &mut dyn Source<'v>>,
+            tagged: sval::data::Tagged<&mut dyn SourceRef<'static, str>, &mut dyn Source<'v>>,
         ) -> sval::Result;
 
         fn dispatch_map_begin(&mut self, size: Option<u64>) -> sval::Result;
@@ -91,12 +90,11 @@ mod private {
 
         fn dispatch_map_field_entry<'v: 'a>(
             &mut self,
-            field: &mut dyn ValueSource<'static, str>,
+            field: &mut dyn SourceRef<'static, str>,
             value: &mut dyn Source<'v>,
         ) -> sval::Result;
 
-        fn dispatch_map_field(&mut self, field: &mut dyn ValueSource<'static, str>)
-            -> sval::Result;
+        fn dispatch_map_field(&mut self, field: &mut dyn SourceRef<'static, str>) -> sval::Result;
 
         fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result;
 
@@ -118,7 +116,9 @@ mod private {
     }
 }
 
-use crate::{Source, ValueSource};
+use core::fmt::Display;
+
+use crate::{Source, SourceRef};
 
 pub trait Receiver<'a>: private::EraseReceiver<'a> {}
 
@@ -131,7 +131,7 @@ impl<'a, R: sval::Receiver<'a>> private::EraseReceiver<'a> for R {
 }
 
 impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
-    fn dispatch_unstructured(&mut self, fmt: &dyn sval::data::Display) -> sval::Result {
+    fn dispatch_unstructured(&mut self, fmt: &dyn Display) -> sval::Result {
         self.unstructured(fmt)
     }
 
@@ -195,55 +195,49 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.char(value)
     }
 
-    fn dispatch_str<'s: 'a>(&mut self, value: &mut dyn ValueSource<'s, str>) -> sval::Result {
+    fn dispatch_str<'s: 'a>(&mut self, value: &mut dyn SourceRef<'s, str>) -> sval::Result {
         self.str(value)
     }
 
-    fn dispatch_text<'s: 'a>(
-        &mut self,
-        text: &mut dyn ValueSource<'s, sval::data::Text>,
-    ) -> sval::Result {
+    fn dispatch_text<'s: 'a>(&mut self, text: &mut dyn SourceRef<'s, dyn Display>) -> sval::Result {
         self.text(text)
     }
 
     fn dispatch_error<'e: 'a>(
         &mut self,
-        error: &mut dyn ValueSource<'e, sval::data::Error>,
+        error: &mut dyn SourceRef<'e, sval::data::Error>,
     ) -> sval::Result {
         self.error(error)
     }
 
-    fn dispatch_bytes<'s: 'a>(
-        &mut self,
-        bytes: &mut dyn ValueSource<'s, sval::data::Bytes>,
-    ) -> sval::Result {
+    fn dispatch_bytes<'s: 'a>(&mut self, bytes: &mut dyn SourceRef<'s, [u8]>) -> sval::Result {
         self.bytes(bytes)
     }
 
     fn dispatch_tag(
         &mut self,
-        tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+        tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
     ) -> sval::Result {
         self.tag(tag)
     }
 
     fn dispatch_tagged_begin(
         &mut self,
-        tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+        tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
     ) -> sval::Result {
         self.tagged_begin(tag)
     }
 
     fn dispatch_tagged_end(
         &mut self,
-        tag: sval::data::Tag<&mut dyn ValueSource<'static, str>>,
+        tag: sval::data::Tag<&mut dyn SourceRef<'static, str>>,
     ) -> sval::Result {
         self.tagged_end(tag)
     }
 
     fn dispatch_tagged<'v: 'a>(
         &mut self,
-        tagged: sval::data::Tagged<&mut dyn ValueSource<'static, str>, &mut dyn Source<'v>>,
+        tagged: sval::data::Tagged<&mut dyn SourceRef<'static, str>, &mut dyn Source<'v>>,
     ) -> sval::Result {
         self.tagged(tagged)
     }
@@ -282,13 +276,13 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
 
     fn dispatch_map_field_entry<'v: 'a>(
         &mut self,
-        field: &mut dyn ValueSource<'static, str>,
+        field: &mut dyn SourceRef<'static, str>,
         value: &mut dyn Source<'v>,
     ) -> sval::Result {
         self.map_field_entry(field, value)
     }
 
-    fn dispatch_map_field(&mut self, field: &mut dyn ValueSource<'static, str>) -> sval::Result {
+    fn dispatch_map_field(&mut self, field: &mut dyn SourceRef<'static, str>) -> sval::Result {
         self.map_field(field)
     }
 
@@ -324,7 +318,7 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
 macro_rules! impl_receiver {
     ($($impl:tt)*) => {
         $($impl)* {
-            fn unstructured<D: sval::data::Display>(&mut self, fmt: D) -> sval::Result {
+            fn unstructured<D: Display>(&mut self, fmt: D) -> sval::Result {
                 self.erase_receiver().0.dispatch_unstructured(&fmt)
             }
 
@@ -388,69 +382,69 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_char(value)
             }
 
-            fn str<'s: 'a, S: sval::ValueSource<'s, str>>(&mut self, mut value: S) -> sval::Result {
+            fn str<'s: 'a, S: sval::SourceRef<'s, str>>(&mut self, mut value: S) -> sval::Result {
                 self.erase_receiver().0.dispatch_str(&mut value)
             }
 
-            fn text<'s: 'a, S: sval::ValueSource<'s, sval::data::Text>>(
+            fn text<'s: 'a, S: sval::SourceRef<'s, dyn Display>>(
                 &mut self,
                 mut text: S,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_text(&mut text)
             }
 
-            fn error<'e: 'a, E: sval::ValueSource<'e, sval::data::Error>>(
+            fn error<'e: 'a, E: sval::SourceRef<'e, sval::data::Error>>(
                 &mut self,
                 mut error: E,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_error(&mut error)
             }
 
-            fn bytes<'s: 'a, B: sval::ValueSource<'s, sval::data::Bytes>>(
+            fn bytes<'s: 'a, B: sval::SourceRef<'s, [u8]>>(
                 &mut self,
                 mut bytes: B,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_bytes(&mut bytes)
             }
 
-            fn tag<T: sval::ValueSource<'static, str>>(
+            fn tag<T: sval::SourceRef<'static, str>>(
                 &mut self,
                 mut tag: sval::data::Tag<T>,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_tag(
                     tag.by_mut()
-                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                        .map_label(|l| l as &mut dyn SourceRef<'static, str>),
                 )
             }
 
-            fn tagged_begin<T: sval::ValueSource<'static, str>>(
+            fn tagged_begin<T: sval::SourceRef<'static, str>>(
                 &mut self,
                 mut tag: sval::data::Tag<T>,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_tagged_begin(
                     tag.by_mut()
-                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                        .map_label(|l| l as &mut dyn SourceRef<'static, str>),
                 )
             }
 
-            fn tagged_end<T: sval::ValueSource<'static, str>>(
+            fn tagged_end<T: sval::SourceRef<'static, str>>(
                 &mut self,
                 mut tag: sval::data::Tag<T>,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_tagged_end(
                     tag.by_mut()
-                        .map_label(|l| l as &mut dyn ValueSource<'static, str>),
+                        .map_label(|l| l as &mut dyn SourceRef<'static, str>),
                 )
             }
 
-            fn tagged<'v: 'a, T: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
+            fn tagged<'v: 'a, T: sval::SourceRef<'static, str>, V: sval::Source<'v>>(
                 &mut self,
                 mut tagged: sval::data::Tagged<T, V>,
             ) -> sval::Result {
                 self.erase_receiver().0.dispatch_tagged(
                     tagged
                         .by_mut()
-                        .map_label(|l| l as &mut dyn ValueSource<'static, str>)
+                        .map_label(|l| l as &mut dyn SourceRef<'static, str>)
                         .map_value(|v| v as &mut dyn Source<'v>),
                 )
             }
@@ -489,7 +483,7 @@ macro_rules! impl_receiver {
                     .dispatch_map_entry(&mut key, &mut value)
             }
 
-            fn map_field_entry<'v: 'a, F: sval::ValueSource<'static, str>, V: sval::Source<'v>>(
+            fn map_field_entry<'v: 'a, F: sval::SourceRef<'static, str>, V: sval::Source<'v>>(
                 &mut self,
                 mut field: F,
                 mut value: V,
@@ -499,7 +493,7 @@ macro_rules! impl_receiver {
                     .dispatch_map_field_entry(&mut field, &mut value)
             }
 
-            fn map_field<F: sval::ValueSource<'static, str>>(&mut self, mut field: F) -> sval::Result {
+            fn map_field<F: sval::SourceRef<'static, str>>(&mut self, mut field: F) -> sval::Result {
                 self.erase_receiver().0.dispatch_map_field(&mut field)
             }
 

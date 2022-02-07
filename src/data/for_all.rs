@@ -1,4 +1,5 @@
-use crate::{data, source, std::fmt::Display, Receiver, Result, Source, SourceRef, SourceValue};
+use crate::{data, source, Receiver, Result, Source, Value};
+use core::fmt::Display;
 
 #[inline]
 pub fn for_all<T>(value: T) -> ForAll<T> {
@@ -26,7 +27,7 @@ impl<T> ForAll<T> {
     }
 }
 
-impl<T: SourceValue> SourceValue for ForAll<T> {
+impl<T: Value> Value for ForAll<T> {
     fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
@@ -48,21 +49,9 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
     }
 }
 
-impl<'a, 'b, U: SourceValue + ?Sized, V: SourceValue + ?Sized, T: SourceRef<'b, U, V>>
-    SourceRef<'a, U, V> for ForAll<T>
-{
-    // NOTE: Using `T::Error` here causes `'b` to become unconstrained
-    // since it could flow into `T::Error`
-    type Error = crate::Error;
-
-    fn take(&mut self) -> Result<&U, source::TakeError<Self::Error>> {
-        self.0.take().map_err(|e| e.map_err(|e| e.into()))
-    }
-}
-
 impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
-    fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
-        self.0.unstructured(fmt)
+    fn is_human_readable(&self) -> bool {
+        self.0.is_human_readable()
     }
 
     fn null(&mut self) -> Result {
@@ -125,47 +114,60 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.char(value)
     }
 
-    fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, value: S) -> Result {
-        self.0.str(for_all(value))
+    fn str(&mut self, value: &'a str) -> Result {
+        self.0.text_begin(Some(value.len() as u64))?;
+        self.0.text_fragment(value)?;
+        self.0.text_end()
     }
 
-    fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, text: S) -> Result {
-        self.0.text(for_all(text))
+    fn text_begin(&mut self, num_bytes: Option<u64>) -> Result {
+        self.0.text_begin(num_bytes)
     }
 
-    fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, error: E) -> Result {
-        self.0.error(for_all(error))
+    fn text_fragment<D: Display>(&mut self, fragment: D) -> Result {
+        self.0.text_fragment(fragment)
     }
 
-    fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
-        self.0.bytes(for_all(bytes))
+    fn text_end(&mut self) -> Result {
+        self.0.text_end()
     }
 
-    fn tag<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn bytes(&mut self, value: &'a [u8]) -> Result {
+        self.0.binary_begin(Some(value.len() as u64))?;
+        self.0.binary_fragment(value)?;
+        self.0.binary_end()
+    }
+
+    fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result {
+        self.0.binary_begin(num_bytes)
+    }
+
+    fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result {
+        self.0.binary_fragment(fragment)
+    }
+
+    fn binary_end(&mut self) -> Result {
+        self.0.binary_end()
+    }
+
+    fn tag(&mut self, tag: data::Tag) -> Result {
         self.0.tag(tag)
     }
 
-    fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         self.0.tagged_begin(tag)
     }
 
-    fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_end(&mut self, tag: data::Tag) -> Result {
         self.0.tagged_end(tag)
     }
 
-    fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
-        &mut self,
-        tagged: data::Tagged<T, V>,
-    ) -> Result {
+    fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
         self.0.tagged(tagged.map_value(for_all))
     }
 
-    fn map_begin(&mut self, size: Option<u64>) -> Result {
-        self.0.map_begin(size)
-    }
-
-    fn map_end(&mut self) -> Result {
-        self.0.map_end()
+    fn map_begin(&mut self, num_entries: Option<u64>) -> Result {
+        self.0.map_begin(num_entries)
     }
 
     fn map_key_begin(&mut self) -> Result {
@@ -184,24 +186,16 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.map_value_end()
     }
 
+    fn map_end(&mut self) -> Result {
+        self.0.map_end()
+    }
+
     fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
         value: V,
     ) -> Result {
         self.0.map_entry(for_all(key), for_all(value))
-    }
-
-    fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result {
-        self.0.map_field_entry(field, for_all(value))
-    }
-
-    fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
-        self.0.map_field(field)
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
@@ -212,12 +206,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.map_value(for_all(value))
     }
 
-    fn seq_begin(&mut self, size: Option<u64>) -> Result {
-        self.0.seq_begin(size)
-    }
-
-    fn seq_end(&mut self) -> Result {
-        self.0.seq_end()
+    fn seq_begin(&mut self, num_elems: Option<u64>) -> Result {
+        self.0.seq_begin(num_elems)
     }
 
     fn seq_elem_begin(&mut self) -> Result {
@@ -226,6 +216,10 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
 
     fn seq_elem_end(&mut self) -> Result {
         self.0.seq_elem_end()
+    }
+
+    fn seq_end(&mut self) -> Result {
+        self.0.seq_end()
     }
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {

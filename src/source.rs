@@ -1,9 +1,4 @@
-mod source_ref;
-mod source_value;
-
-pub use self::{source_ref::*, source_value::*};
-
-use crate::{Receiver, Result};
+use crate::{Receiver, Result, Value};
 
 // Implementation: The `'a` lifetime needs to be bounded by the target type
 // This can be wrapped, as in `Box<impl SourceRef<'a>>` or external as in
@@ -45,7 +40,7 @@ impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     }
 }
 
-impl<'a, T: SourceValue + ?Sized> Source<'a> for &'a T {
+impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where
         'a: 'b,

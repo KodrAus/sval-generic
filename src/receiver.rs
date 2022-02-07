@@ -1,11 +1,13 @@
-use crate::{data, for_all, std::fmt::Display, Result, Source, SourceRef, SourceValue};
+use crate::{data, std::fmt::Display, Result, Source, Value};
 
 pub trait Receiver<'a> {
-    fn value<'v: 'a, V: SourceValue + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-        value.stream(self)
+    fn is_human_readable(&self) -> bool {
+        true
     }
 
-    fn unstructured<D: Display>(&mut self, fmt: D) -> Result;
+    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+        value.stream(self)
+    }
 
     fn null(&mut self) -> Result;
 
@@ -25,9 +27,7 @@ pub trait Receiver<'a> {
         self.u128(value as u128)
     }
 
-    fn u128(&mut self, value: u128) -> Result {
-        self.unstructured(value)
-    }
+    fn u128(&mut self, value: u128) -> Result;
 
     fn i8(&mut self, value: i8) -> Result {
         self.i16(value as i16)
@@ -45,79 +45,91 @@ pub trait Receiver<'a> {
         self.i128(value as i128)
     }
 
-    fn i128(&mut self, value: i128) -> Result {
-        self.unstructured(value)
-    }
+    fn i128(&mut self, value: i128) -> Result;
 
     fn f32(&mut self, value: f32) -> Result {
         self.f64(value as f64)
     }
 
-    fn f64(&mut self, value: f64) -> Result {
-        self.unstructured(value)
-    }
+    fn f64(&mut self, value: f64) -> Result;
 
-    fn bool(&mut self, value: bool) -> Result {
-        self.unstructured(value)
-    }
+    fn bool(&mut self, value: bool) -> Result;
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
-        self.str(for_all(&*value.encode_utf8(&mut buf)))
+        data::for_all(self).str(&*value.encode_utf8(&mut buf))
     }
 
-    fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, mut value: S) -> Result {
-        self.text(for_all(value.take()?))
+    fn str(&mut self, value: &'a str) -> Result {
+        self.text_begin(Some(value.len() as u64))?;
+        self.text_fragment(value)?;
+        self.text_end()
     }
 
-    fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, mut text: S) -> Result {
-        self.unstructured(text.take()?)
+    fn text_begin(&mut self, num_bytes: Option<u64>) -> Result;
+
+    fn text_fragment<D: Display>(&mut self, fragment: D) -> Result;
+
+    fn text_end(&mut self) -> Result;
+
+    fn bytes(&mut self, value: &'a [u8]) -> Result {
+        self.binary_begin(Some(value.len() as u64))?;
+        self.binary_fragment(value)?;
+        self.binary_end()
     }
 
-    fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, mut error: E) -> Result {
-        self.unstructured(error.take()?)
-    }
+    fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result;
 
-    fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, mut bytes: B) -> Result {
-        self.unstructured(bytes.take()?)
-    }
+    fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result;
 
-    fn tag<T: SourceRef<'static, str>>(&mut self, mut tag: data::Tag<T>) -> Result {
-        if let Some(label) = tag.label_mut() {
-            self.str(label)?;
-            return Ok(());
+    fn binary_end(&mut self) -> Result;
+
+    fn tag(&mut self, mut tag: data::Tag) -> Result {
+        // For human-readable formats, prefer the text label
+        if self.is_human_readable() {
+            if let Some(label) = tag.label() {
+                self.str(label)?;
+                return Ok(());
+            }
+
+            if let Some(id) = tag.id() {
+                self.u64(id)?;
+                return Ok(());
+            }
         }
+        // For non-human-readable formats, prefer the integer id
+        else {
+            if let Some(id) = tag.id() {
+                self.u64(id)?;
+                return Ok(());
+            }
 
-        if let Some(id) = tag.id() {
-            self.u64(id)?;
-            return Ok(());
+            if let Some(label) = tag.label() {
+                self.str(label)?;
+                return Ok(());
+            }
         }
 
         self.null()
     }
 
-    fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
         Ok(())
     }
 
-    fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+    fn tagged_end(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
         Ok(())
     }
 
-    fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
-        &mut self,
-        mut tagged: data::Tagged<T, V>,
-    ) -> Result {
-        self.tagged_begin(tagged.begin_tag_mut())?;
+    fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: data::Tagged<V>) -> Result {
+        self.tagged_begin(tagged.tag())?;
         tagged.value_mut().stream_to_end(&mut *self)?;
-        self.tagged_end(tagged.end_tag_mut())
+        self.tagged_end(tagged.tag())
     }
 
-    fn map_begin(&mut self, size: Option<u64>) -> Result;
-
-    fn map_end(&mut self) -> Result;
+    fn map_begin(&mut self, num_entries: Option<u64>) -> Result;
 
     fn map_key_begin(&mut self) -> Result;
 
@@ -127,6 +139,8 @@ pub trait Receiver<'a> {
 
     fn map_value_end(&mut self) -> Result;
 
+    fn map_end(&mut self) -> Result;
+
     fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
@@ -134,20 +148,6 @@ pub trait Receiver<'a> {
     ) -> Result {
         self.map_key(key)?;
         self.map_value(value)
-    }
-
-    fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
-        &mut self,
-        field: F,
-        value: V,
-    ) -> Result {
-        self.map_field(field)?;
-        self.map_value(value)
-    }
-
-    fn map_field<F: SourceRef<'static, str>>(&mut self, mut field: F) -> Result {
-        // TODO: Do we lose static fields from this?
-        self.map_key(for_all(field.take()?))
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
@@ -162,13 +162,13 @@ pub trait Receiver<'a> {
         self.map_value_end()
     }
 
-    fn seq_begin(&mut self, size: Option<u64>) -> Result;
-
-    fn seq_end(&mut self) -> Result;
+    fn seq_begin(&mut self, num_elems: Option<u64>) -> Result;
 
     fn seq_elem_begin(&mut self) -> Result;
 
     fn seq_elem_end(&mut self) -> Result;
+
+    fn seq_end(&mut self) -> Result;
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
         self.seq_elem_begin()?;
@@ -180,12 +180,12 @@ pub trait Receiver<'a> {
 macro_rules! impl_receiver_forward {
     ($($r:tt)*) => {
         $($r)* {
-            fn value<'v: 'a, V: SourceValue + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
-                (**self).value(value)
+            fn is_human_readable(&self) -> bool {
+                (**self).is_human_readable()
             }
 
-            fn unstructured<D: Display>(&mut self, fmt: D) -> Result {
-                (**self).unstructured(fmt)
+            fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+                (**self).value(value)
             }
 
             fn null(&mut self) -> Result {
@@ -248,43 +248,56 @@ macro_rules! impl_receiver_forward {
                 (**self).char(value)
             }
 
-            fn str<'s: 'a, S: SourceRef<'s, str>>(&mut self, value: S) -> Result {
+            fn str(&mut self, value: &'a str) -> Result {
                 (**self).str(value)
             }
 
-            fn text<'s: 'a, S: SourceRef<'s, data::Text>>(&mut self, text: S) -> Result {
-                (**self).text(text)
+            fn text_begin(&mut self, num_bytes: Option<u64>) -> Result {
+                (**self).text_begin(num_bytes)
             }
 
-            fn error<'e: 'a, E: SourceRef<'e, data::Error>>(&mut self, error: E) -> Result {
-                (**self).error(error)
+            fn text_end(&mut self) -> Result {
+                (**self).text_end()
             }
 
-            fn bytes<'s: 'a, B: SourceRef<'s, data::Bytes>>(&mut self, bytes: B) -> Result {
-                (**self).bytes(bytes)
+            fn text_fragment<D: Display>(&mut self, fragment: D) -> Result {
+                (**self).text_fragment(fragment)
             }
 
-            fn tag<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn bytes(&mut self, value: &'a [u8]) -> Result {
+                (**self).bytes(value)
+            }
+
+            fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result {
+                (**self).binary_begin(num_bytes)
+            }
+
+            fn binary_end(&mut self) -> Result {
+                (**self).binary_end()
+            }
+
+            fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result {
+                (**self).binary_fragment(fragment)
+            }
+
+            fn tag(&mut self, mut tag: data::Tag) -> Result {
                 (**self).tag(tag)
             }
 
-            fn tagged_begin<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
                 (**self).tagged_begin(tag)
             }
 
-            fn tagged_end<T: SourceRef<'static, str>>(&mut self, tag: data::Tag<T>) -> Result {
+            fn tagged_end(&mut self, tag: data::Tag) -> Result {
                 (**self).tagged_end(tag)
             }
 
-            fn tagged<'v: 'a, T: SourceRef<'static, str>, V: Source<'v>>(
-                &mut self,
-                tagged: data::Tagged<T, V>,
-            ) -> Result {
+            fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: data::Tagged<V>) -> Result {
                 (**self).tagged(tagged)
             }
 
-            fn map_begin(&mut self, size: Option<u64>) -> Result {
-                (**self).map_begin(size)
+            fn map_begin(&mut self, num_entries: Option<u64>) -> Result {
+                (**self).map_begin(num_entries)
             }
 
             fn map_end(&mut self) -> Result {
@@ -315,28 +328,16 @@ macro_rules! impl_receiver_forward {
                 (**self).map_entry(key, value)
             }
 
-            fn map_field_entry<'v: 'a, F: SourceRef<'static, str>, V: Source<'v>>(
-                &mut self,
-                field: F,
-                value: V,
-            ) -> Result {
-                (**self).map_field_entry(field, value)
-            }
-
-            fn map_field<F: SourceRef<'static, str>>(&mut self, field: F) -> Result {
-                (**self).map_field(field)
-            }
-
-            fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
+            fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
                 (**self).map_key(key)
             }
 
-            fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
+            fn map_value<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
                 (**self).map_value(value)
             }
 
-            fn seq_begin(&mut self, size: Option<u64>) -> Result {
-                (**self).seq_begin(size)
+            fn seq_begin(&mut self, num_elems: Option<u64>) -> Result {
+                (**self).seq_begin(num_elems)
             }
 
             fn seq_end(&mut self) -> Result {
@@ -351,7 +352,7 @@ macro_rules! impl_receiver_forward {
                 (**self).seq_elem_end()
             }
 
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
+            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
                 (**self).seq_elem(elem)
             }
         }

@@ -1,22 +1,24 @@
-use crate::{data, Receiver, Result, SourceValue};
+use crate::{data, Receiver, Result, Value};
 
-impl<T: SourceValue> SourceValue for [T] {
+impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.tagged_begin(data::tag_slice())?;
         receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
         }
 
-        receiver.seq_end()?;
-        receiver.tagged_end(data::tag_slice())
+        receiver.seq_end()
     }
 }
 
-impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
+impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.tagged_begin(data::tag_array())?;
+        // NOTE: We use `tuple` here instead of `array`.
+        // Even though we're streaming a homogenous Rust array
+        // it's not guaranteed to produce a sequence where all elements
+        // have the same shape.
+        receiver.tagged_begin(data::tag().for_tuple())?;
         receiver.seq_begin(Some(self.len() as u64))?;
 
         for elem in self {
@@ -24,7 +26,7 @@ impl<T: SourceValue, const N: usize> SourceValue for [T; N] {
         }
 
         receiver.seq_end()?;
-        receiver.tagged_end(data::tag_array())
+        receiver.tagged_end(data::tag().for_tuple())
     }
 }
 
@@ -33,9 +35,9 @@ macro_rules! tuple {
         $len:expr => ( $(self.$i:tt: $ty:ident,)+ ),
     )+) => {
         $(
-            impl<$($ty: SourceValue),+> SourceValue for ($($ty,)+) {
+            impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-                    receiver.tagged_begin(data::tag_tuple())?;
+                    receiver.tagged_begin(data::tag().for_tuple())?;
                     receiver.seq_begin(Some($len))?;
 
                     $(
@@ -43,7 +45,7 @@ macro_rules! tuple {
                     )+
 
                     receiver.seq_end()?;
-                    receiver.tagged_end(data::tag_tuple())
+                    receiver.tagged_end(data::tag().for_tuple())
                 }
             }
         )+
@@ -227,7 +229,7 @@ mod alloc_support {
 
     use crate::{source, std::vec::Vec, Source};
 
-    impl<T: SourceValue> SourceValue for Vec<T> {
+    impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
             (&**self).stream(stream)
         }
