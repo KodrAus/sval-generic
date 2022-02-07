@@ -51,13 +51,9 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
         'a: 'b,
     {
         match self {
-            None => tagged_nullable(())
-                .with_id(0)
-                .with_label("None")
+            None => tagged((), tag().for_nullable().with_id(0).with_label("None"))
                 .stream_to_end(receiver),
-            Some(v) => tagged_nullable(v)
-                .with_id(1)
-                .with_label("Some")
+            Some(v) => tagged(v, tag().for_nullable().with_id(1).with_label("Some"))
                 .stream_to_end(receiver),
         }
     }

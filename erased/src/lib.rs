@@ -11,8 +11,4 @@ mod private {
     pub struct Erased<T>(pub(crate) T);
 }
 
-pub use self::{
-    receiver::Receiver,
-    source::{Source, ValueSource},
-    value::Value,
-};
+pub use self::{receiver::Receiver, source::Source, value::Value};

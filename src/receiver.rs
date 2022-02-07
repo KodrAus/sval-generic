@@ -84,7 +84,7 @@ pub trait Receiver<'a> {
 
     fn binary_end(&mut self) -> Result;
 
-    fn tag(&mut self, mut tag: data::Tag) -> Result {
+    fn tag(&mut self, tag: data::Tag) -> Result {
         // For human-readable formats, prefer the text label
         if self.is_human_readable() {
             if let Some(label) = tag.label() {
@@ -280,7 +280,7 @@ macro_rules! impl_receiver_forward {
                 (**self).binary_fragment(fragment)
             }
 
-            fn tag(&mut self, mut tag: data::Tag) -> Result {
+            fn tag(&mut self, tag: data::Tag) -> Result {
                 (**self).tag(tag)
             }
 
@@ -292,7 +292,7 @@ macro_rules! impl_receiver_forward {
                 (**self).tagged_end(tag)
             }
 
-            fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: data::Tagged<V>) -> Result {
+            fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
                 (**self).tagged(tagged)
             }
 
@@ -328,11 +328,11 @@ macro_rules! impl_receiver_forward {
                 (**self).map_entry(key, value)
             }
 
-            fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
+            fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
                 (**self).map_key(key)
             }
 
-            fn map_value<'v: 'a, V: Source<'v>>(&mut self, mut value: V) -> Result {
+            fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
                 (**self).map_value(value)
             }
 
@@ -352,7 +352,7 @@ macro_rules! impl_receiver_forward {
                 (**self).seq_elem_end()
             }
 
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
+            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
                 (**self).seq_elem(elem)
             }
         }
