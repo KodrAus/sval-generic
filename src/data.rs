@@ -1,4 +1,3 @@
-mod binary;
 mod for_all;
 mod number;
 mod seq;
@@ -8,7 +7,7 @@ mod text;
 use crate::{source, Receiver, Source, Value};
 
 #[doc(inline)]
-pub use self::{binary::*, for_all::*, tag::*, text::*};
+pub use self::{for_all::*, tag::*, text::*};
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {

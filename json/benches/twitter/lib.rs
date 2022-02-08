@@ -72,15 +72,6 @@ fn twitter_erased_serde(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn twitter_sval_coroutine(b: &mut test::Bencher) {
-    use sval_coroutine as co;
-
-    let s = input_struct();
-
-    b.iter(|| sval_json::to_string(co::value::source(&s)).unwrap());
-}
-
-#[bench]
 fn twitter_sval(b: &mut test::Bencher) {
     let s = input_struct();
     b.iter(|| sval_json::to_string(&s).unwrap());
@@ -94,26 +85,6 @@ fn twitter_erased_sval(b: &mut test::Bencher) {
     let s = &s as &dyn erased::Value;
 
     b.iter(|| sval_json::to_string(&s).unwrap());
-}
-
-#[bench]
-fn twitter_sval_to_serde(b: &mut test::Bencher) {
-    use sval_serde as serde;
-
-    let s = input_struct();
-    let s = serde::value(s);
-
-    b.iter(|| serde_json::to_string(&s).unwrap());
-}
-
-#[bench]
-fn twitter_sval_to_valuable(b: &mut test::Bencher) {
-    use sval_valuable as valuable;
-
-    let s = input_struct();
-    let s = valuable::value(&s);
-
-    b.iter(|| valuable_json::to_string(&s).unwrap());
 }
 
 #[bench]
@@ -134,16 +105,6 @@ impl<T: std::fmt::Debug> std::fmt::Display for Fmt<T> {
 fn twitter_std_fmt(b: &mut test::Bencher) {
     let s = input_struct();
     let s = Fmt(&s);
-
-    b.iter(|| s.to_string());
-}
-
-#[bench]
-fn twitter_sval_fmt(b: &mut test::Bencher) {
-    use sval_fmt as fmt;
-
-    let s = input_struct();
-    let s = Fmt(fmt::value(s));
 
     b.iter(|| s.to_string());
 }

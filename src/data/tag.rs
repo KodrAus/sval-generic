@@ -21,9 +21,9 @@ pub enum Shape {
     // An enum
     // Followed by a second tagged item with a shape of EnumVariant
     Enum,
-    // An enum variant
-    // This prevents variants from holding other shapes
-    EnumVariant,
+    // An enum with a simple tag variant
+    // Followed by a single tag
+    EnumSimple,
     // A map that follows struct rules: static string keys
     // Expect next: a map
     Struct,
@@ -47,6 +47,8 @@ pub enum Shape {
     DateTime,
     // All: A string formatted as a RFC3986 URI
     Uri,
+    // A custom shape that's only understood by a specific combination of source and receiver
+    Custom(u64),
 }
 
 impl Default for Shape {
@@ -62,6 +64,10 @@ impl Shape {
 
     pub fn is_enum(&self) -> bool {
         matches!(self, Shape::Enum)
+    }
+
+    pub fn is_enum_simple(&self) -> bool {
+        matches!(self, Shape::EnumSimple)
     }
 
     pub fn is_struct(&self) -> bool {
@@ -166,8 +172,8 @@ impl Tag {
         self.with_shape(Shape::Enum)
     }
 
-    pub fn for_enum_variant(self) -> Self {
-        self.with_shape(Shape::EnumVariant)
+    pub fn for_enum_simple(self) -> Self {
+        self.with_shape(Shape::EnumSimple)
     }
 
     pub fn for_struct(self) -> Self {

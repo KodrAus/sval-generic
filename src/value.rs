@@ -1,4 +1,4 @@
-use crate::{error, std::fmt::Display, Receiver, Result, Source};
+use crate::{error, Receiver, Result, Source};
 
 pub trait Value
 where
@@ -39,7 +39,7 @@ where
                 error::unsupported()
             }
 
-            fn text_fragment<D: Display>(&mut self, _: D) -> Result {
+            fn text_fragment(&mut self, _: &str) -> Result {
                 error::unsupported()
             }
 
@@ -51,7 +51,7 @@ where
                 error::unsupported()
             }
 
-            fn binary_fragment<B: AsRef<[u8]>>(&mut self, _: B) -> Result {
+            fn binary_fragment(&mut self, _: &[u8]) -> Result {
                 error::unsupported()
             }
 

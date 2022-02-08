@@ -5,20 +5,11 @@ edition = "2021"
 
 [workspace]
 members = [
-    "coroutine",
     "derive",
     "json",
-    "js",
-    "fmt",
-    "serde",
-    "valuable",
     "erased",
-    "buffer",
     "json/benches/twitter",
-    "json/benches/profile",
     "json/tests/twitter",
-    "examples/browser",
-    "examples/simple"
 ]
 
 [features]

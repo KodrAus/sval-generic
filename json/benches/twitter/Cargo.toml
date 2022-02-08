@@ -11,20 +11,8 @@ path = "lib.rs"
 [dependencies.sval-json-twitter-tests]
 path = "../../tests/twitter"
 
-[dependencies.sval-serde]
-path = "../../../serde"
-
-[dependencies.sval-valuable]
-path = "../../../valuable"
-
-[dependencies.sval-fmt]
-path = "../../../fmt"
-
 [dependencies.sval-erased]
 path = "../../../erased"
-
-[dependencies.sval-coroutine]
-path = "../../../coroutine"
 
 [dependencies.sval]
 path = "../../../"

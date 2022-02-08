@@ -1,5 +1,4 @@
 use crate::{data, source, Receiver, Result, Source, Value};
-use core::fmt::Display;
 
 #[inline]
 pub fn for_all<T>(value: T) -> ForAll<T> {
@@ -124,7 +123,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.text_begin(num_bytes)
     }
 
-    fn text_fragment<D: Display>(&mut self, fragment: D) -> Result {
+    fn text_fragment(&mut self, fragment: &str) -> Result {
         self.0.text_fragment(fragment)
     }
 
@@ -142,7 +141,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.binary_begin(num_bytes)
     }
 
-    fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result {
+    fn binary_fragment(&mut self, fragment: &[u8]) -> Result {
         self.0.binary_fragment(fragment)
     }
 

@@ -1,12 +1,14 @@
 use core::fmt::{self, Write};
 
 pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result {
-    v.stream_all(Formatter::new(fmt))
+    v.stream_to_end(Formatter::new(fmt))
 }
 
 pub struct Formatter<W> {
     is_key: bool,
     is_current_depth_empty: bool,
+    is_externally_tagging: bool,
+    write_str_quotes: bool,
     out: W,
 }
 
@@ -17,6 +19,8 @@ where
     pub fn new(out: W) -> Self {
         Formatter {
             is_key: false,
+            write_str_quotes: true,
+            is_externally_tagging: false,
             is_current_depth_empty: true,
             out,
         }
@@ -31,18 +35,6 @@ impl<'a, W> sval::Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
-    fn unstructured<V: fmt::Display>(&mut self, v: V) -> sval::Result {
-        if self.is_key {
-            fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
-        } else {
-            self.out.write_char('"')?;
-            fmt::write(&mut Escape(&mut self.out), format_args!("{}", v))?;
-            self.out.write_char('"')?;
-        }
-
-        Ok(())
-    }
-
     fn null(&mut self) -> sval::Result {
         self.out.write_str("null")?;
 
@@ -127,19 +119,101 @@ where
         Ok(())
     }
 
-    fn str<'v, V: sval::SourceRef<'v, str>>(&mut self, mut v: V) -> sval::Result
-    where
-        'v: 'a,
-    {
-        if self.is_key {
-            escape_str(v.take()?, &mut self.out)?;
-        } else {
+    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        match tag.shape() {
+            // Big integers: We can write these directly into the output without
+            // quoting so we'll omit any quotes on the subsequent number
+            sval::data::Shape::BigInteger | sval::data::Shape::Number => {
+                self.write_str_quotes = false;
+
+                Ok(())
+            }
+            // Enums part 1: Signal that we're going to be externally
+            // tagging a variant. The following tagged item will represent
+            // the variant
+            sval::data::Shape::Enum => {
+                self.is_externally_tagging = true;
+                self.map_begin(None)
+            }
+            // Enums part 2: Write the enum variant as a key which will be
+            // followed by a single value
+            _ if self.is_externally_tagging => {
+                self.map_key(tag.label())?;
+                self.map_value_begin()?;
+
+                self.is_externally_tagging = false;
+
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
+        match tag.shape() {
+            // Big integers: restore string quoting
+            sval::data::Shape::BigInteger | sval::data::Shape::Number => {
+                self.write_str_quotes = true;
+
+                Ok(())
+            }
+            // Enums: finish the map value for the externally tagged value
+            sval::data::Shape::Enum => {
+                self.map_value_end()?;
+                self.map_end()
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn str(&mut self, v: &'a str) -> sval::Result {
+        if self.write_str_quotes {
             self.out.write_char('"')?;
-            escape_str(v.take()?, &mut self.out)?;
+            escape_str(v, &mut self.out)?;
+            self.out.write_char('"')?;
+        } else {
+            escape_str(v, &mut self.out)?;
+        }
+
+        Ok(())
+    }
+
+    fn text_begin(&mut self, _: Option<u64>) -> sval::Result {
+        if self.write_str_quotes {
             self.out.write_char('"')?;
         }
 
         Ok(())
+    }
+
+    fn text_fragment(&mut self, v: &str) -> sval::Result {
+        escape_str(v, &mut self.out)?;
+
+        Ok(())
+    }
+
+    fn text_end(&mut self) -> sval::Result {
+        if self.write_str_quotes {
+            self.out.write_char('"')?;
+        }
+
+        Ok(())
+    }
+
+    fn binary_begin(&mut self, size: Option<u64>) -> sval::Result {
+        self.seq_begin(size)
+    }
+
+    fn binary_fragment(&mut self, v: &[u8]) -> sval::Result {
+        for b in v {
+            self.seq_elem(b)?;
+        }
+
+        Ok(())
+    }
+
+    fn binary_end(&mut self) -> sval::Result {
+        self.seq_end()
     }
 
     fn map_begin(&mut self, _: Option<u64>) -> sval::Result {
@@ -163,6 +237,7 @@ where
 
     fn map_key_begin(&mut self) -> sval::Result {
         self.is_key = true;
+        self.write_str_quotes = false;
 
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
@@ -179,6 +254,7 @@ where
         self.out.write_str("\":")?;
 
         self.is_key = false;
+        self.write_str_quotes = true;
 
         Ok(())
     }
@@ -189,26 +265,6 @@ where
 
     fn map_value_end(&mut self) -> sval::Result {
         Ok(())
-    }
-
-    fn map_field_entry<'v: 'a, F: sval::SourceRef<'static, str>, V: sval::Source<'v>>(
-        &mut self,
-        mut f: F,
-        mut v: V,
-    ) -> sval::Result {
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
-        }
-
-        escape_str(f.take()?, &mut self.out)?;
-
-        self.out.write_str("\":")?;
-
-        self.is_current_depth_empty = false;
-
-        v.stream_all(&mut *self)
     }
 
     fn seq_begin(&mut self, _: Option<u64>) -> sval::Result {

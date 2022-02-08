@@ -1,6 +1,4 @@
 mod private {
-    use core::fmt::Display;
-
     use crate::Source;
 
     pub trait DispatchReceiver<'a> {
@@ -42,7 +40,7 @@ mod private {
 
         fn dispatch_text_end(&mut self) -> sval::Result;
 
-        fn dispatch_text_fragment(&mut self, fragment: &dyn Display) -> sval::Result;
+        fn dispatch_text_fragment(&mut self, fragment: &str) -> sval::Result;
 
         fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result;
 
@@ -197,7 +195,7 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.text_end()
     }
 
-    fn dispatch_text_fragment(&mut self, fragment: &dyn Display) -> sval::Result {
+    fn dispatch_text_fragment(&mut self, fragment: &str) -> sval::Result {
         self.text_fragment(fragment)
     }
 
@@ -376,7 +374,7 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_text_end()
             }
 
-            fn text_fragment<D: Display>(&mut self, fragment: D) -> sval::Result {
+            fn text_fragment(&mut self, fragment: &str) -> sval::Result {
                 self.erase_receiver().0.dispatch_text_fragment(&fragment)
             }
 
@@ -392,7 +390,7 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_binary_end()
             }
 
-            fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> sval::Result {
+            fn binary_fragment(&mut self, fragment: &[u8]) -> sval::Result {
                 self.erase_receiver().0.dispatch_binary_fragment(fragment.as_ref())
             }
 

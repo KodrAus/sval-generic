@@ -1,4 +1,4 @@
-use crate::{data, std::fmt::Display, Result, Source, Value};
+use crate::{data, Result, Source, Value};
 
 pub trait Receiver<'a> {
     fn is_human_readable(&self) -> bool {
@@ -68,7 +68,7 @@ pub trait Receiver<'a> {
 
     fn text_begin(&mut self, num_bytes: Option<u64>) -> Result;
 
-    fn text_fragment<D: Display>(&mut self, fragment: D) -> Result;
+    fn text_fragment(&mut self, fragment: &str) -> Result;
 
     fn text_end(&mut self) -> Result;
 
@@ -80,7 +80,7 @@ pub trait Receiver<'a> {
 
     fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result;
 
-    fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result;
+    fn binary_fragment(&mut self, fragment: &[u8]) -> Result;
 
     fn binary_end(&mut self) -> Result;
 
@@ -260,7 +260,7 @@ macro_rules! impl_receiver_forward {
                 (**self).text_end()
             }
 
-            fn text_fragment<D: Display>(&mut self, fragment: D) -> Result {
+            fn text_fragment(&mut self, fragment: &str) -> Result {
                 (**self).text_fragment(fragment)
             }
 
@@ -276,7 +276,7 @@ macro_rules! impl_receiver_forward {
                 (**self).binary_end()
             }
 
-            fn binary_fragment<B: AsRef<[u8]>>(&mut self, fragment: B) -> Result {
+            fn binary_fragment(&mut self, fragment: &[u8]) -> Result {
                 (**self).binary_fragment(fragment)
             }
 
