@@ -36,7 +36,7 @@ mod private {
 
         fn dispatch_str(&mut self, value: &'a str) -> sval::Result;
 
-        fn dispatch_text_begin(&mut self, num_bytes: Option<u64>) -> sval::Result;
+        fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_text_end(&mut self) -> sval::Result;
 
@@ -44,7 +44,7 @@ mod private {
 
         fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result;
 
-        fn dispatch_binary_begin(&mut self, num_bytes: Option<u64>) -> sval::Result;
+        fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_binary_end(&mut self) -> sval::Result;
 
@@ -61,7 +61,7 @@ mod private {
             tagged: sval::data::Tagged<&mut dyn Source<'v>>,
         ) -> sval::Result;
 
-        fn dispatch_map_begin(&mut self, num_entries: Option<u64>) -> sval::Result;
+        fn dispatch_map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_map_end(&mut self) -> sval::Result;
 
@@ -83,7 +83,7 @@ mod private {
 
         fn dispatch_map_value<'v: 'a>(&mut self, value: &mut dyn Source<'v>) -> sval::Result;
 
-        fn dispatch_seq_begin(&mut self, num_elems: Option<u64>) -> sval::Result;
+        fn dispatch_seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_seq_end(&mut self) -> sval::Result;
 
@@ -187,8 +187,8 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.str(value)
     }
 
-    fn dispatch_text_begin(&mut self, num_bytes: Option<u64>) -> sval::Result {
-        self.text_begin(num_bytes)
+    fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+        self.text_begin(num_bytes_hint)
     }
 
     fn dispatch_text_end(&mut self) -> sval::Result {
@@ -203,8 +203,8 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.bytes(value)
     }
 
-    fn dispatch_binary_begin(&mut self, num_bytes: Option<u64>) -> sval::Result {
-        self.binary_begin(num_bytes)
+    fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+        self.binary_begin(num_bytes_hint)
     }
 
     fn dispatch_binary_end(&mut self) -> sval::Result {
@@ -234,8 +234,8 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.tagged(tagged)
     }
 
-    fn dispatch_map_begin(&mut self, num_entries: Option<u64>) -> sval::Result {
-        self.map_begin(num_entries)
+    fn dispatch_map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
+        self.map_begin(num_entries_hint)
     }
 
     fn dispatch_map_end(&mut self) -> sval::Result {
@@ -274,8 +274,8 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.map_value(value)
     }
 
-    fn dispatch_seq_begin(&mut self, num_elems: Option<u64>) -> sval::Result {
-        self.seq_begin(num_elems)
+    fn dispatch_seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
+        self.seq_begin(num_elems_hint)
     }
 
     fn dispatch_seq_end(&mut self) -> sval::Result {
@@ -366,8 +366,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_str(value)
             }
 
-            fn text_begin(&mut self, num_bytes: Option<u64>) -> sval::Result {
-                self.erase_receiver().0.dispatch_text_begin(num_bytes)
+            fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+                self.erase_receiver().0.dispatch_text_begin(num_bytes_hint)
             }
 
             fn text_end(&mut self) -> sval::Result {
@@ -382,8 +382,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_bytes(value)
             }
 
-            fn binary_begin(&mut self, num_bytes: Option<u64>) -> sval::Result {
-                self.erase_receiver().0.dispatch_binary_begin(num_bytes)
+            fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+                self.erase_receiver().0.dispatch_binary_begin(num_bytes_hint)
             }
 
             fn binary_end(&mut self) -> sval::Result {
@@ -410,8 +410,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_tagged(tagged.as_mut().map_value(|v| v as &mut dyn Source<'v>))
             }
 
-            fn map_begin(&mut self, num_entries: Option<u64>) -> sval::Result {
-                self.erase_receiver().0.dispatch_map_begin(num_entries)
+            fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
+                self.erase_receiver().0.dispatch_map_begin(num_entries_hint)
             }
 
             fn map_end(&mut self) -> sval::Result {
@@ -450,8 +450,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_map_value(&mut value)
             }
 
-            fn seq_begin(&mut self, num_elems: Option<u64>) -> sval::Result {
-                self.erase_receiver().0.dispatch_seq_begin(num_elems)
+            fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_begin(num_elems_hint)
             }
 
             fn seq_end(&mut self) -> sval::Result {

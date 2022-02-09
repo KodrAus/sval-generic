@@ -2,7 +2,7 @@ use crate::{data, Receiver, Result, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.seq_begin(Some(self.len() as u64))?;
+        receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;
@@ -19,7 +19,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         // it's not guaranteed to produce a sequence where all elements
         // have the same shape.
         receiver.tagged_begin(data::tag().for_tuple())?;
-        receiver.seq_begin(Some(self.len() as u64))?;
+        receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
             receiver.seq_elem(elem)?;

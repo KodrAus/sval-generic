@@ -57,57 +57,46 @@ pub trait Receiver<'a> {
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
-        data::for_all(self).str(&*value.encode_utf8(&mut buf))
-    }
+        let value = &*value.encode_utf8(&mut buf);
 
-    fn str(&mut self, value: &'a str) -> Result {
-        self.text_begin(Some(value.len() as u64))?;
+        self.text_begin(Some(value.len()))?;
         self.text_fragment(value)?;
         self.text_end()
     }
 
-    fn text_begin(&mut self, num_bytes: Option<u64>) -> Result;
+    fn str(&mut self, value: &'a str) -> Result {
+        self.text_begin(Some(value.len()))?;
+        self.text_fragment(value)?;
+        self.text_end()
+    }
+
+    fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
     fn text_fragment(&mut self, fragment: &str) -> Result;
 
     fn text_end(&mut self) -> Result;
 
     fn bytes(&mut self, value: &'a [u8]) -> Result {
-        self.binary_begin(Some(value.len() as u64))?;
+        self.binary_begin(Some(value.len()))?;
         self.binary_fragment(value)?;
         self.binary_end()
     }
 
-    fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result;
+    fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
     fn binary_fragment(&mut self, fragment: &[u8]) -> Result;
 
     fn binary_end(&mut self) -> Result;
 
     fn tag(&mut self, tag: data::Tag) -> Result {
-        // For human-readable formats, prefer the text label
-        if self.is_human_readable() {
-            if let Some(label) = tag.label() {
-                self.str(label)?;
-                return Ok(());
-            }
-
-            if let Some(id) = tag.id() {
-                self.u64(id)?;
-                return Ok(());
-            }
+        if let Some(label) = tag.label() {
+            self.str(label)?;
+            return Ok(());
         }
-        // For non-human-readable formats, prefer the integer id
-        else {
-            if let Some(id) = tag.id() {
-                self.u64(id)?;
-                return Ok(());
-            }
 
-            if let Some(label) = tag.label() {
-                self.str(label)?;
-                return Ok(());
-            }
+        if let Some(id) = tag.id() {
+            self.u64(id)?;
+            return Ok(());
         }
 
         self.null()
@@ -129,7 +118,7 @@ pub trait Receiver<'a> {
         self.tagged_end(tagged.tag())
     }
 
-    fn map_begin(&mut self, num_entries: Option<u64>) -> Result;
+    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     fn map_key_begin(&mut self) -> Result;
 
@@ -162,7 +151,7 @@ pub trait Receiver<'a> {
         self.map_value_end()
     }
 
-    fn seq_begin(&mut self, num_elems: Option<u64>) -> Result;
+    fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result;
 
     fn seq_elem_begin(&mut self) -> Result;
 
@@ -252,8 +241,8 @@ macro_rules! impl_receiver_forward {
                 (**self).str(value)
             }
 
-            fn text_begin(&mut self, num_bytes: Option<u64>) -> Result {
-                (**self).text_begin(num_bytes)
+            fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+                (**self).text_begin(num_bytes_hint)
             }
 
             fn text_end(&mut self) -> Result {
@@ -268,8 +257,8 @@ macro_rules! impl_receiver_forward {
                 (**self).bytes(value)
             }
 
-            fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result {
-                (**self).binary_begin(num_bytes)
+            fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+                (**self).binary_begin(num_bytes_hint)
             }
 
             fn binary_end(&mut self) -> Result {
@@ -296,8 +285,8 @@ macro_rules! impl_receiver_forward {
                 (**self).tagged(tagged)
             }
 
-            fn map_begin(&mut self, num_entries: Option<u64>) -> Result {
-                (**self).map_begin(num_entries)
+            fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
+                (**self).map_begin(num_entries_hint)
             }
 
             fn map_end(&mut self) -> Result {
@@ -336,8 +325,8 @@ macro_rules! impl_receiver_forward {
                 (**self).map_value(value)
             }
 
-            fn seq_begin(&mut self, num_elems: Option<u64>) -> Result {
-                (**self).seq_begin(num_elems)
+            fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
+                (**self).seq_begin(num_elems_hint)
             }
 
             fn seq_end(&mut self) -> Result {

@@ -35,7 +35,7 @@ where
                 Ok(())
             }
 
-            fn text_begin(&mut self, _: Option<u64>) -> Result {
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
                 error::unsupported()
             }
 
@@ -47,7 +47,7 @@ where
                 error::unsupported()
             }
 
-            fn binary_begin(&mut self, _: Option<u64>) -> Result {
+            fn binary_begin(&mut self, _: Option<usize>) -> Result {
                 error::unsupported()
             }
 
@@ -59,7 +59,7 @@ where
                 error::unsupported()
             }
 
-            fn map_begin(&mut self, _: Option<u64>) -> Result {
+            fn map_begin(&mut self, _: Option<usize>) -> Result {
                 error::unsupported()
             }
 
@@ -83,7 +83,7 @@ where
                 error::unsupported()
             }
 
-            fn seq_begin(&mut self, _: Option<u64>) -> Result {
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
                 error::unsupported()
             }
 

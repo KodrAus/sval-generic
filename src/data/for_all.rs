@@ -114,13 +114,13 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
     }
 
     fn str(&mut self, value: &'a str) -> Result {
-        self.0.text_begin(Some(value.len() as u64))?;
+        self.0.text_begin(Some(value.len()))?;
         self.0.text_fragment(value)?;
         self.0.text_end()
     }
 
-    fn text_begin(&mut self, num_bytes: Option<u64>) -> Result {
-        self.0.text_begin(num_bytes)
+    fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+        self.0.text_begin(num_bytes_hint)
     }
 
     fn text_fragment(&mut self, fragment: &str) -> Result {
@@ -132,13 +132,13 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
     }
 
     fn bytes(&mut self, value: &'a [u8]) -> Result {
-        self.0.binary_begin(Some(value.len() as u64))?;
+        self.0.binary_begin(Some(value.len()))?;
         self.0.binary_fragment(value)?;
         self.0.binary_end()
     }
 
-    fn binary_begin(&mut self, num_bytes: Option<u64>) -> Result {
-        self.0.binary_begin(num_bytes)
+    fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+        self.0.binary_begin(num_bytes_hint)
     }
 
     fn binary_fragment(&mut self, fragment: &[u8]) -> Result {
@@ -165,8 +165,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.tagged(tagged.map_value(for_all))
     }
 
-    fn map_begin(&mut self, num_entries: Option<u64>) -> Result {
-        self.0.map_begin(num_entries)
+    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
+        self.0.map_begin(num_entries_hint)
     }
 
     fn map_key_begin(&mut self) -> Result {
@@ -205,8 +205,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.map_value(for_all(value))
     }
 
-    fn seq_begin(&mut self, num_elems: Option<u64>) -> Result {
-        self.0.seq_begin(num_elems)
+    fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
+        self.0.seq_begin(num_elems_hint)
     }
 
     fn seq_elem_begin(&mut self) -> Result {
