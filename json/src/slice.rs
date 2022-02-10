@@ -1,40 +1,188 @@
-pub struct JsonSlice<'a> {
+use core::cmp::Ordering;
+
+pub struct JsonBufReader<'a> {
     src: &'a [u8],
-    in_string: bool,
+    head: usize,
     stack: Stack,
-    context: Position,
+    position: Position,
 }
 
-impl<'a> JsonSlice<'a> {
-    pub fn new(src: &'a str) -> JsonSlice<'a> {
-        JsonSlice {
+impl<'a> sval::Source<'a> for JsonBufReader<'a> {
+    fn stream_resume<'b, R: sval::Receiver<'b>>(
+        &mut self,
+        mut receiver: R,
+    ) -> sval::Result<sval::Resume>
+    where
+        'a: 'b,
+    {
+        while self.head < self.src.len() {
+            match self.src[self.head] {
+                // Begin a string
+                b'"' => {
+                    self.head += 1;
+
+                    self.str_begin(&mut receiver)?;
+
+                    let (fragment, partial, head) = str_fragment(self.src, self.head)?;
+
+                    self.head = head;
+
+                    // If the string is complete (with no escapes)
+                    // then we can yield it directly
+                    return if !partial {
+                        receiver.str(fragment)?;
+
+                        self.maybe_done()
+                    }
+                    // If the string has escapes then yield this fragment
+                    // The next time we loop through we'll grab the next one
+                    else {
+                        todo!()
+                    };
+                }
+                // Start a map
+                b'{' => {
+                    self.head += 1;
+
+                    self.map_begin(receiver)?;
+
+                    return Ok(sval::Resume::Continue);
+                }
+                // End a map
+                b'}' => {
+                    self.head += 1;
+
+                    self.map_end(receiver)?;
+
+                    return self.maybe_done();
+                }
+                // Begin a seq
+                b'[' => {
+                    self.head += 1;
+
+                    self.seq_begin(receiver)?;
+
+                    return Ok(sval::Resume::Continue);
+                }
+                // End a seq
+                b']' => {
+                    self.head += 1;
+
+                    self.seq_end(receiver)?;
+
+                    return self.maybe_done();
+                }
+                // End a map key
+                b':' => {
+                    self.head += 1;
+
+                    self.map_key_end(receiver)?;
+
+                    return Ok(sval::Resume::Continue);
+                }
+                // End either a map value or seq elem
+                b',' => {
+                    self.head += 1;
+
+                    self.map_value_seq_elem_end(receiver)?;
+
+                    return Ok(sval::Resume::Continue);
+                }
+                // The boolean value `true`
+                b't' => {
+                    if let Some(b"true") = self.src.get(self.head..self.head + 4) {
+                        self.head += 4;
+
+                        self.value_begin(&mut receiver)?;
+
+                        receiver.bool(true)?;
+
+                        return self.maybe_done();
+                    } else {
+                        todo!()
+                    }
+                }
+                // The boolean value `false`
+                b'f' => {
+                    if let Some(b"false") = self.src.get(self.head..self.head + 5) {
+                        self.head += 5;
+
+                        self.value_begin(&mut receiver)?;
+
+                        receiver.bool(false)?;
+
+                        return self.maybe_done();
+                    } else {
+                        todo!()
+                    }
+                }
+                // The value `null`
+                b'n' => {
+                    if let Some(b"null") = self.src.get(self.head..self.head + 4) {
+                        self.head += 4;
+
+                        self.value_begin(&mut receiver)?;
+
+                        receiver.null()?;
+
+                        return self.maybe_done();
+                    } else {
+                        todo!()
+                    }
+                }
+                // Whitespace
+                b' ' | b'\t' | b'\r' | b'\n' => {
+                    self.head += 1;
+                }
+                // TODO: Numbers
+                _ => todo!(),
+            }
+        }
+
+        self.maybe_done()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Position {
+    Root,
+    MapEmpty,
+    MapKey,
+    MapValue,
+    SeqEmpty,
+    SeqElem,
+}
+
+impl<'a> JsonBufReader<'a> {
+    pub fn new(src: &'a str) -> JsonBufReader<'a> {
+        JsonBufReader {
             src: src.as_bytes(),
-            in_string: false,
+            head: 0,
             stack: Stack::new(),
-            context: Position::Root,
+            position: Position::Root,
         }
     }
 
     fn map_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
-        match self.context {
-            Position::Seq => receiver.seq_elem_begin()?,
+        match self.position {
+            Position::SeqEmpty | Position::SeqElem => receiver.seq_elem_begin()?,
             Position::MapValue => receiver.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
         }
 
         self.stack.push_map()?;
-        self.context = Position::MapEmpty;
+        self.position = Position::MapEmpty;
 
         receiver.map_begin(None)
     }
 
     fn map_key_end<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
-        if !matches!(self.context, Position::MapKey) {
+        if !matches!(self.position, Position::MapKey) {
             todo!();
         }
 
-        self.context = Position::MapValue;
+        self.position = Position::MapValue;
 
         receiver.map_key_end()
     }
@@ -43,7 +191,7 @@ impl<'a> JsonSlice<'a> {
     where
         'a: 'b,
     {
-        match self.context {
+        match self.position {
             Position::MapEmpty => (),
             Position::MapValue => {
                 receiver.map_value_end()?;
@@ -52,7 +200,7 @@ impl<'a> JsonSlice<'a> {
         }
 
         self.stack.pop_map()?;
-        self.context = detect_context(self.src);
+        self.position = self.stack.position();
 
         receiver.map_end()
     }
@@ -61,15 +209,15 @@ impl<'a> JsonSlice<'a> {
     where
         'a: 'b,
     {
-        match self.context {
-            Position::Seq => receiver.seq_elem_begin()?,
+        match self.position {
+            Position::SeqEmpty | Position::SeqElem => receiver.seq_elem_begin()?,
             Position::MapValue => receiver.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
         }
 
         self.stack.push_seq()?;
-        self.context = Position::Seq;
+        self.position = Position::SeqEmpty;
 
         receiver.seq_begin(None)
     }
@@ -78,12 +226,16 @@ impl<'a> JsonSlice<'a> {
     where
         'a: 'b,
     {
-        if !matches!(self.context, Position::Seq) {
-            todo!()
+        match self.position {
+            Position::SeqEmpty => (),
+            Position::SeqElem => {
+                receiver.seq_elem_end()?;
+            }
+            _ => todo!(),
         }
 
         self.stack.pop_seq()?;
-        self.context = detect_context(self.src);
+        self.position = self.stack.position();
 
         receiver.seq_end()
     }
@@ -92,10 +244,10 @@ impl<'a> JsonSlice<'a> {
         &mut self,
         mut receiver: impl sval::Receiver<'b>,
     ) -> sval::Result {
-        match self.context {
-            Position::Seq => receiver.seq_elem_end(),
+        match self.position {
+            Position::SeqElem => receiver.seq_elem_end(),
             Position::MapValue => {
-                self.context = Position::MapKey;
+                self.position = Position::MapKey;
 
                 receiver.map_value_end()
             }
@@ -104,10 +256,14 @@ impl<'a> JsonSlice<'a> {
     }
 
     fn str_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
-        match self.context {
-            Position::Seq => receiver.seq_elem_begin(),
+        match self.position {
+            Position::SeqEmpty | Position::SeqElem => {
+                self.position = Position::SeqElem;
+
+                receiver.seq_elem_begin()
+            }
             Position::MapEmpty => {
-                self.context = Position::MapKey;
+                self.position = Position::MapKey;
 
                 receiver.map_key_begin()
             }
@@ -118,8 +274,12 @@ impl<'a> JsonSlice<'a> {
     }
 
     fn value_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
-        match self.context {
-            Position::Seq => receiver.seq_elem_begin(),
+        match self.position {
+            Position::SeqEmpty | Position::SeqElem => {
+                self.position = Position::SeqElem;
+
+                receiver.seq_elem_begin()
+            }
             Position::MapValue => receiver.map_value_begin(),
             Position::Root => Ok(()),
             _ => todo!(),
@@ -127,7 +287,7 @@ impl<'a> JsonSlice<'a> {
     }
 
     fn maybe_done(&mut self) -> sval::Result<sval::Resume> {
-        if self.src.len() > 0 {
+        if self.head < self.src.len() {
             Ok(sval::Resume::Continue)
         } else {
             self.stack.finish()?;
@@ -137,7 +297,17 @@ impl<'a> JsonSlice<'a> {
     }
 }
 
-#[derive(Debug)]
+// We use two strategies to try support deeply nested JSON without needing to
+// allocate or use a lot of space:
+//
+// 1. Instead of keeping a traditional stack or bitmap that identifies the kind
+//    of value we're inside (either a map or seq), we keep a pair of integers.
+//    Each integer is dependent on the other. When we add to one, we always
+//    increment it so it's higher than the other. That means if we start a map
+//    but then try to end a seq we'll overflow and pick up the mismatch. We can
+//    guarantee {} [] are balanced this way up to quite a deep level of nesting
+//    using 128 bits. What this doesn't tell us is whether we're looking at a
+#[derive(Debug, Clone, Copy)]
 struct Stack {
     map: u64,
     seq: u64,
@@ -168,6 +338,14 @@ impl Stack {
         Ok(())
     }
 
+    fn position(&self) -> Position {
+        match self.map.cmp(&self.seq) {
+            Ordering::Greater => Position::MapValue,
+            Ordering::Less => Position::SeqElem,
+            Ordering::Equal => Position::Root,
+        }
+    }
+
     fn finish(&mut self) -> sval::Result {
         if self.map == 0 && self.seq == 0 {
             Ok(())
@@ -177,278 +355,30 @@ impl Stack {
     }
 }
 
-enum Position {
-    Root,
-    MapEmpty,
-    MapKey,
-    MapValue,
-    Seq,
-}
+fn str_fragment(src: &[u8], mut head: usize) -> sval::Result<(&str, bool, usize)> {
+    let start = head;
 
-impl<'a> sval::Source<'a> for JsonSlice<'a> {
-    fn stream_resume<'b, R: sval::Receiver<'b>>(
-        &mut self,
-        mut receiver: R,
-    ) -> sval::Result<sval::Resume>
-    where
-        'a: 'b,
-    {
-        if self.in_string {
-            let (fragment, partial) = str_fragment(self.src)?;
-
-            todo!()
-        } else {
-            'strip_whitespace: loop {
-                match self.src.get(0) {
-                    // Start a map
-                    Some(b'{') => {
-                        self.src = &self.src[1..];
-
-                        self.map_begin(receiver)?;
-
-                        return Ok(sval::Resume::Continue);
-                    }
-                    // Begin a seq
-                    Some(b'[') => {
-                        self.src = &self.src[1..];
-
-                        self.seq_begin(receiver)?;
-
-                        return Ok(sval::Resume::Continue);
-                    }
-                    // End a map
-                    Some(b'}') => {
-                        self.src = &self.src[1..];
-
-                        self.map_end(receiver)?;
-
-                        return self.maybe_done();
-                    }
-                    // End a seq
-                    Some(b']') => {
-                        self.src = &self.src[1..];
-
-                        self.seq_end(receiver)?;
-
-                        return self.maybe_done();
-                    }
-                    // End a map key
-                    Some(b':') => {
-                        self.src = &self.src[1..];
-
-                        self.map_key_end(receiver)?;
-
-                        return Ok(sval::Resume::Continue);
-                    }
-                    // End either a map value or seq elem
-                    Some(b',') => {
-                        self.src = &self.src[1..];
-
-                        self.map_value_seq_elem_end(receiver)?;
-
-                        return Ok(sval::Resume::Continue);
-                    }
-                    // Begin a string
-                    Some(b'"') => {
-                        self.src = &self.src[1..];
-
-                        self.str_begin(&mut receiver)?;
-
-                        let (fragment, partial) = str_fragment(self.src)?;
-
-                        // If the string is complete (with no escapes)
-                        // then we can yield it directly
-                        return if !partial {
-                            self.src = &self.src[fragment.len() + 1..];
-
-                            receiver.str(fragment)?;
-
-                            return self.maybe_done();
-                        }
-                        // If the string has escapes then yield this fragment
-                        // The next time we loop through we'll grab the next one
-                        else {
-                            self.src = &self.src[fragment.len()..];
-
-                            self.in_string = true;
-
-                            receiver.text_begin(None)?;
-                            receiver.text_fragment(fragment)?;
-
-                            Ok(sval::Resume::Continue)
-                        };
-                    }
-                    // The boolean value `true`
-                    Some(b't') => {
-                        if let Some(b"true") = self.src.get(0..4) {
-                            self.src = &self.src[4..];
-
-                            self.value_begin(&mut receiver)?;
-
-                            receiver.bool(true)?;
-                        } else {
-                            todo!()
-                        }
-
-                        return self.maybe_done();
-                    }
-                    // The boolean value `false`
-                    Some(b'f') => {
-                        if let Some(b"false") = self.src.get(0..5) {
-                            self.src = &self.src[5..];
-
-                            self.value_begin(&mut receiver)?;
-
-                            receiver.bool(false)?;
-                        } else {
-                            todo!()
-                        }
-
-                        return self.maybe_done();
-                    }
-                    // The value `null`
-                    Some(b'n') => {
-                        if let Some(b"null") = self.src.get(0..4) {
-                            self.src = &self.src[4..];
-
-                            self.value_begin(&mut receiver)?;
-
-                            receiver.null()?;
-                        } else {
-                            todo!()
-                        }
-
-                        return self.maybe_done();
-                    }
-                    Some(b' ') => {
-                        self.src = &self.src[1..];
-                        continue 'strip_whitespace;
-                    }
-                    // Numbers
-                    Some(_) => todo!(),
-                    None => return self.maybe_done(),
-                }
-            }
-        }
-    }
-}
-
-// The stack-free approach we use is to combine a strategy for
-// quickly detecting whether we're in a map or seq with a strategy
-// for detecting whether {} and [] are balanced
-
-fn str_fragment(mut src: &[u8]) -> sval::Result<(&str, bool)> {
-    let original = src;
-
-    if src.len() == 0 {
-        // EOF
-        todo!()
-    }
-
-    if src[0] == b'\\' {
+    if src[head] == b'\\' {
         // Handle unescaping this next character
         todo!()
     }
 
     // Scan through the input until we reach the end or an escaped character
     let mut partial = false;
-    'str: while src.len() > 0 {
-        match src[0] {
+    while head < src.len() {
+        match src[head] {
             b'\\' => {
                 partial = true;
-                break 'str;
+                break;
             }
-            b'"' => break 'str,
-            _ => (),
-        }
-
-        // Skip over this character and continue
-        src = &src[1..];
-        continue 'str;
-    }
-
-    let len = original.len() - src.len();
-    let str = core::str::from_utf8(&src[0..len])?;
-
-    Ok((str, partial))
-}
-
-fn detect_context(mut src: &[u8]) -> Position {
-    // Scan through the input to check whether we're in a map or sequence
-    // This will need to scan ahead through at most a single string key
-
-    while src.len() > 0 {
-        // First, check if we're at the edge of a map or seq or in the middle of one
-        match src[0] {
-            // Ending a map means we must have been in a map
-            b'}' => return Position::MapValue,
-            // Ending a seq means we must have been in a seq
-            b']' => return Position::Seq,
-            // A comma could be either a map or a seq
-            // The next item will tell us what we're looking at
-            b',' => {
-                src = &src[1..];
-                return detect_context_from_key_or_elem(src);
+            b'"' => break,
+            _ => {
+                head += 1;
             }
-            b' ' => {
-                src = &src[1..];
-            }
-            _ => todo!(),
         }
     }
 
-    Position::Root
-}
+    let str = core::str::from_utf8(&src[start..head])?;
 
-fn detect_context_from_key_or_elem(mut src: &[u8]) -> Position {
-    while src.len() > 0 {
-        match src[0] {
-            // If we see any value except a string we must be in a seq
-            b't' | b'f' | b'n' | b'{' | b'[' => return Position::Seq,
-            // If we see a string then we could be in either a map or a seq
-            // The next item will tell us what we're looking at
-            b'"' => {
-                src = &src[1..];
-                let mut escaped = false;
-
-                // Find the end of the string so we can check the character after it
-                while src.len() > 0 {
-                    match src[0] {
-                        b'\\' => {
-                            escaped = !escaped;
-                            src = &src[1..];
-                        }
-                        b'"' if !escaped => break,
-                        _ => {
-                            src = &src[1..];
-                        }
-                    }
-                }
-
-                src = &src[1..];
-
-                // TODO: If we had to parse a string here then cache its results
-
-                while src.len() > 0 {
-                    match src[0] {
-                        // If we encounter a colon then we're in a map
-                        b':' => return Position::MapValue,
-                        // If we encounter a comma or seq end then we're in a seq
-                        b']' | b',' => return Position::Seq,
-                        b' ' => (),
-                        _ => todo!(),
-                    }
-
-                    src = &src[1..];
-                }
-            }
-            b' ' => {
-                src = &src[1..];
-            }
-            _ => todo!(),
-        }
-    }
-
-    // EOF
-    todo!()
+    Ok((str, partial, if partial { head } else { head + 1 }))
 }

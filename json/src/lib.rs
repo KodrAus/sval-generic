@@ -1,4 +1,4 @@
-#![no_std]
+//#![no_std]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -7,7 +7,7 @@ mod fmt;
 mod slice;
 pub use self::{
     fmt::{to_fmt, Formatter},
-    slice::JsonSlice,
+    slice::JsonBufReader,
 };
 
 #[cfg(feature = "alloc")]

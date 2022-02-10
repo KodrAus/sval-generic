@@ -48,107 +48,107 @@ struct TestReceiver;
 
 impl<'a> sval::Receiver<'a> for TestReceiver {
     fn null(&mut self) -> sval::Result {
-        println!("null");
+        println!(" null");
         Ok(())
     }
 
     fn u128(&mut self, value: u128) -> sval::Result {
-        println!("uint: {}", value);
+        println!(" uint: {}", value);
         Ok(())
     }
 
     fn i128(&mut self, value: i128) -> sval::Result {
-        println!("int: {}", value);
+        println!(" int: {}", value);
         Ok(())
     }
 
     fn f64(&mut self, value: f64) -> sval::Result {
-        println!("num: {}", value);
+        println!(" num: {}", value);
         Ok(())
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        println!("bool: {}", value);
+        println!(" bool: {}", value);
         Ok(())
     }
 
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
-        println!("text begin");
+        println!(" text begin");
         Ok(())
     }
 
     fn text_fragment(&mut self, fragment: &str) -> sval::Result {
-        println!("text: {:?}", fragment);
+        println!(" text: {:?}", fragment);
         Ok(())
     }
 
     fn text_end(&mut self) -> sval::Result {
-        println!("text end");
+        println!(" text end");
         Ok(())
     }
 
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
-        println!("binary begin");
+        println!(" binary begin");
         Ok(())
     }
 
     fn binary_fragment(&mut self, fragment: &[u8]) -> sval::Result {
-        println!("binary: {:?}", fragment);
+        println!(" binary: {:?}", fragment);
         Ok(())
     }
 
     fn binary_end(&mut self) -> sval::Result {
-        println!("binary end");
+        println!(" binary end");
         Ok(())
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        println!("map begin");
+        println!(" map begin");
         Ok(())
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        println!("map key begin");
+        println!(" map key begin");
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        println!("map key end");
+        println!(" map key end");
         Ok(())
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        println!("map value begin");
+        println!(" map value begin");
         Ok(())
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        println!("map value end");
+        println!(" map value end");
         Ok(())
     }
 
     fn map_end(&mut self) -> sval::Result {
-        println!("map end");
+        println!(" map end");
         Ok(())
     }
 
     fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
-        println!("seq begin");
+        println!(" seq begin");
         Ok(())
     }
 
     fn seq_elem_begin(&mut self) -> sval::Result {
-        println!("seq elem begin");
+        println!(" seq elem begin");
         Ok(())
     }
 
     fn seq_elem_end(&mut self) -> sval::Result {
-        println!("seq elem end");
+        println!(" seq elem end");
         Ok(())
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        println!("seq end");
+        println!(" seq end");
         Ok(())
     }
 }
@@ -157,8 +157,8 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
 fn sval_parse_simple() {
     use sval::Source;
 
-    let mut json = sval_json::JsonSlice::new(
-        "{\"a\": true, \"b\": [true, false, null], \"c\": {}, \"d\": []}",
+    let mut json = sval_json::JsonBufReader::new(
+        "{\"a\": true, \"b\": [true, false, null, {}], \"c\": {}, \"d\": []}",
     );
 
     while json
