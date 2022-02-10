@@ -19,7 +19,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let field_ident = &fields.named.iter().map(|f| &f.ident).collect::<Vec<_>>();
     let field_lit = fields.named.iter().map(attr::name_of_field);
     let field_id = fields.named.iter().enumerate().map(|(i, _)| i as u64);
-    let num_fields = field_ident.len() as u64;
+    let num_fields = field_ident.len();
 
     let bound = parse_quote!(sval::Value);
     let bounded_where_clause = bound::where_clause_with_bound(&input.generics, bound);

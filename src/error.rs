@@ -1,4 +1,4 @@
-use crate::std::fmt;
+use crate::std::{fmt, str};
 
 #[derive(Debug)]
 pub struct Error;
@@ -12,6 +12,13 @@ impl fmt::Display for Error {
 impl From<fmt::Error> for Error {
     #[inline]
     fn from(_: fmt::Error) -> Error {
+        Error
+    }
+}
+
+impl From<str::Utf8Error> for Error {
+    #[inline]
+    fn from(_: str::Utf8Error) -> Error {
         Error
     }
 }

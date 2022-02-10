@@ -178,7 +178,7 @@ where
         Ok(())
     }
 
-    fn text_begin(&mut self, _: Option<u64>) -> sval::Result {
+    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.write_str_quotes {
             self.out.write_char('"')?;
         }
@@ -200,7 +200,7 @@ where
         Ok(())
     }
 
-    fn binary_begin(&mut self, size: Option<u64>) -> sval::Result {
+    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
         self.seq_begin(size)
     }
 
@@ -216,7 +216,7 @@ where
         self.seq_end()
     }
 
-    fn map_begin(&mut self, _: Option<u64>) -> sval::Result {
+    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
         }
@@ -267,7 +267,7 @@ where
         Ok(())
     }
 
-    fn seq_begin(&mut self, _: Option<u64>) -> sval::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
         }

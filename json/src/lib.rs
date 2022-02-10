@@ -4,7 +4,11 @@
 extern crate alloc;
 
 mod fmt;
-pub use self::fmt::{to_fmt, Formatter};
+mod slice;
+pub use self::{
+    fmt::{to_fmt, Formatter},
+    slice::JsonSlice,
+};
 
 #[cfg(feature = "alloc")]
 mod alloc_support;

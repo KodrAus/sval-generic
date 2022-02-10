@@ -247,7 +247,7 @@ mod alloc_support {
         where
             'a: 'b,
         {
-            receiver.seq_begin(Some(self.len() as u64))?;
+            receiver.seq_begin(Some(self.len()))?;
 
             for elem in self.drain(..) {
                 receiver.seq_elem(elem)?;

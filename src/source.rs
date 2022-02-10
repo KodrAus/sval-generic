@@ -24,6 +24,16 @@ pub enum Resume {
     Done,
 }
 
+impl Resume {
+    pub fn is_continue(&self) -> bool {
+        matches!(self, Resume::Continue)
+    }
+
+    pub fn is_done(&self) -> bool {
+        matches!(self, Resume::Done)
+    }
+}
+
 impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
     fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Resume>
     where
