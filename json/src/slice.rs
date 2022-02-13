@@ -297,16 +297,14 @@ impl<'a> JsonBufReader<'a> {
     }
 }
 
-// We use two strategies to try support deeply nested JSON without needing to
-// allocate or use a lot of space:
-//
-// 1. Instead of keeping a traditional stack or bitmap that identifies the kind
-//    of value we're inside (either a map or seq), we keep a pair of integers.
-//    Each integer is dependent on the other. When we add to one, we always
-//    increment it so it's higher than the other. That means if we start a map
-//    but then try to end a seq we'll overflow and pick up the mismatch. We can
-//    guarantee {} [] are balanced this way up to quite a deep level of nesting
-//    using 128 bits. What this doesn't tell us is whether we're looking at a
+// Instead of keeping a traditional stack or bitmap that identifies the kind
+// of value we're inside (either a map or seq), we keep a pair of integers.
+// Each integer is dependent on the other. When we add to one, we always
+// increment it so it's higher than the other. That means if we start a map
+// but then try to end a seq we'll overflow and pick up the mismatch. We can
+// guarantee {} [] are balanced this way up to quite a deep level of nesting
+// on realistic documents using 128 bits. We can tell whether we're in a map
+// or a sequence by looking at the higher number.
 #[derive(Debug, Clone, Copy)]
 struct Stack {
     map: u64,
