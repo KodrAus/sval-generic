@@ -77,7 +77,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn text_fragment(&mut self, fragment: &str) -> sval::Result {
+    fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
         println!(" text: {:?}", fragment);
         Ok(())
     }
@@ -92,7 +92,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn binary_fragment(&mut self, fragment: &[u8]) -> sval::Result {
+    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
         println!(" binary: {:?}", fragment);
         Ok(())
     }

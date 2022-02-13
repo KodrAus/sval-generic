@@ -186,7 +186,7 @@ where
         Ok(())
     }
 
-    fn text_fragment(&mut self, v: &str) -> sval::Result {
+    fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
         escape_str(v, &mut self.out)?;
 
         Ok(())
@@ -204,7 +204,7 @@ where
         self.seq_begin(size)
     }
 
-    fn binary_fragment(&mut self, v: &[u8]) -> sval::Result {
+    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
         for b in v {
             self.seq_elem(b)?;
         }

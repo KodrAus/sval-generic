@@ -5,7 +5,7 @@ pub trait Receiver<'a> {
         true
     }
 
-    fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+    fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
         value.stream(self)
     }
 
@@ -60,31 +60,39 @@ pub trait Receiver<'a> {
         let value = &*value.encode_utf8(&mut buf);
 
         self.text_begin(Some(value.len()))?;
-        self.text_fragment(value)?;
+        self.text_fragment_computed(value)?;
         self.text_end()
     }
 
     fn str(&mut self, value: &'a str) -> Result {
         self.text_begin(Some(value.len()))?;
-        self.text_fragment(value)?;
+        self.text_fragment_computed(value)?;
         self.text_end()
     }
 
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
-    fn text_fragment(&mut self, fragment: &str) -> Result;
+    fn text_fragment(&mut self, fragment: &'a str) -> Result {
+        self.text_fragment_computed(fragment)
+    }
+
+    fn text_fragment_computed(&mut self, fragment: &str) -> Result;
 
     fn text_end(&mut self) -> Result;
 
     fn bytes(&mut self, value: &'a [u8]) -> Result {
         self.binary_begin(Some(value.len()))?;
-        self.binary_fragment(value)?;
+        self.binary_fragment_computed(value)?;
         self.binary_end()
     }
 
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
-    fn binary_fragment(&mut self, fragment: &[u8]) -> Result;
+    fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
+        self.binary_fragment_computed(fragment)
+    }
+
+    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result;
 
     fn binary_end(&mut self) -> Result;
 
@@ -173,7 +181,7 @@ macro_rules! impl_receiver_forward {
                 (**self).is_human_readable()
             }
 
-            fn value<'v: 'a, V: Value + ?Sized + 'v>(&mut self, value: &'v V) -> Result {
+            fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
                 (**self).value(value)
             }
 
@@ -249,8 +257,12 @@ macro_rules! impl_receiver_forward {
                 (**self).text_end()
             }
 
-            fn text_fragment(&mut self, fragment: &str) -> Result {
+            fn text_fragment(&mut self, fragment: &'a str) -> Result {
                 (**self).text_fragment(fragment)
+            }
+
+            fn text_fragment_computed(&mut self, fragment: &str) -> Result {
+                (**self).text_fragment_computed(fragment)
             }
 
             fn bytes(&mut self, value: &'a [u8]) -> Result {
@@ -265,8 +277,12 @@ macro_rules! impl_receiver_forward {
                 (**self).binary_end()
             }
 
-            fn binary_fragment(&mut self, fragment: &[u8]) -> Result {
+            fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
                 (**self).binary_fragment(fragment)
+            }
+
+            fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
+                (**self).binary_fragment_computed(fragment)
             }
 
             fn tag(&mut self, tag: data::Tag) -> Result {

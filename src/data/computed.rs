@@ -1,24 +1,24 @@
 use crate::{data, source, Receiver, Result, Source, Value};
 
 #[inline]
-pub fn for_all<T>(value: T) -> ForAll<T> {
-    ForAll::new(value)
+pub fn computed<T>(value: T) -> Computed<T> {
+    Computed::new(value)
 }
 
 #[derive(Clone, Copy)]
-pub struct ForAll<T>(T);
+pub struct Computed<T>(T);
 
-impl<T> ForAll<T> {
+impl<T> Computed<T> {
     pub fn new(value: T) -> Self {
-        ForAll(value)
+        Computed(value)
     }
 
-    pub fn by_ref(&self) -> ForAll<&T> {
-        ForAll(&self.0)
+    pub fn by_ref(&self) -> Computed<&T> {
+        Computed(&self.0)
     }
 
-    pub fn by_mut(&mut self) -> ForAll<&mut T> {
-        ForAll(&mut self.0)
+    pub fn by_mut(&mut self) -> Computed<&mut T> {
+        Computed(&mut self.0)
     }
 
     pub fn into_inner(self) -> T {
@@ -26,29 +26,29 @@ impl<T> ForAll<T> {
     }
 }
 
-impl<T: Value> Value for ForAll<T> {
+impl<T: Value> Value for Computed<T> {
     fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
         self.0.stream(stream)
     }
 }
 
-impl<'a, 'b, T: Source<'b>> Source<'a> for ForAll<T> {
+impl<'a, 'b, T: Source<'b>> Source<'a> for Computed<T> {
     fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<source::Resume>
     where
         'a: 'c,
     {
-        self.0.stream_resume(for_all(receiver))
+        self.0.stream_resume(computed(receiver))
     }
 
     fn stream_to_end<'c, S: Receiver<'c>>(&mut self, stream: S) -> Result
     where
         'a: 'c,
     {
-        self.0.stream_to_end(for_all(stream))
+        self.0.stream_to_end(computed(stream))
     }
 }
 
-impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
+impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
     fn is_human_readable(&self) -> bool {
         self.0.is_human_readable()
     }
@@ -115,7 +115,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
 
     fn str(&mut self, value: &'a str) -> Result {
         self.0.text_begin(Some(value.len()))?;
-        self.0.text_fragment(value)?;
+        self.0.text_fragment_computed(value)?;
         self.0.text_end()
     }
 
@@ -123,8 +123,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.text_begin(num_bytes_hint)
     }
 
-    fn text_fragment(&mut self, fragment: &str) -> Result {
-        self.0.text_fragment(fragment)
+    fn text_fragment_computed(&mut self, fragment: &str) -> Result {
+        self.0.text_fragment_computed(fragment)
     }
 
     fn text_end(&mut self) -> Result {
@@ -133,7 +133,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
 
     fn bytes(&mut self, value: &'a [u8]) -> Result {
         self.0.binary_begin(Some(value.len()))?;
-        self.0.binary_fragment(value)?;
+        self.0.binary_fragment_computed(value)?;
         self.0.binary_end()
     }
 
@@ -141,8 +141,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         self.0.binary_begin(num_bytes_hint)
     }
 
-    fn binary_fragment(&mut self, fragment: &[u8]) -> Result {
-        self.0.binary_fragment(fragment)
+    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
+        self.0.binary_fragment_computed(fragment)
     }
 
     fn binary_end(&mut self) -> Result {
@@ -162,7 +162,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
     }
 
     fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
-        self.0.tagged(tagged.map_value(for_all))
+        self.0.tagged(tagged.map_value(computed))
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
@@ -194,15 +194,15 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
         key: K,
         value: V,
     ) -> Result {
-        self.0.map_entry(for_all(key), for_all(value))
+        self.0.map_entry(computed(key), computed(value))
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        self.0.map_key(for_all(key))
+        self.0.map_key(computed(key))
     }
 
     fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.0.map_value(for_all(value))
+        self.0.map_value(computed(value))
     }
 
     fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
@@ -222,6 +222,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for ForAll<R> {
     }
 
     fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-        self.0.seq_elem(for_all(elem))
+        self.0.seq_elem(computed(elem))
     }
 }

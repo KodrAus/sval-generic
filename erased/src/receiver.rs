@@ -40,7 +40,9 @@ mod private {
 
         fn dispatch_text_end(&mut self) -> sval::Result;
 
-        fn dispatch_text_fragment(&mut self, fragment: &str) -> sval::Result;
+        fn dispatch_text_fragment(&mut self, fragment: &'a str) -> sval::Result;
+
+        fn dispatch_text_fragment_computed(&mut self, fragment: &str) -> sval::Result;
 
         fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result;
 
@@ -48,7 +50,9 @@ mod private {
 
         fn dispatch_binary_end(&mut self) -> sval::Result;
 
-        fn dispatch_binary_fragment(&mut self, fragment: &[u8]) -> sval::Result;
+        fn dispatch_binary_fragment(&mut self, fragment: &'a [u8]) -> sval::Result;
+
+        fn dispatch_binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result;
 
         fn dispatch_tag(&mut self, tag: sval::data::Tag) -> sval::Result;
 
@@ -195,8 +199,12 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.text_end()
     }
 
-    fn dispatch_text_fragment(&mut self, fragment: &str) -> sval::Result {
+    fn dispatch_text_fragment(&mut self, fragment: &'a str) -> sval::Result {
         self.text_fragment(fragment)
+    }
+
+    fn dispatch_text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
+        self.text_fragment_computed(fragment)
     }
 
     fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result {
@@ -211,8 +219,12 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.binary_end()
     }
 
-    fn dispatch_binary_fragment(&mut self, fragment: &[u8]) -> sval::Result {
+    fn dispatch_binary_fragment(&mut self, fragment: &'a [u8]) -> sval::Result {
         self.binary_fragment(fragment)
+    }
+
+    fn dispatch_binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
+        self.binary_fragment_computed(fragment)
     }
 
     fn dispatch_tag(&mut self, tag: sval::data::Tag) -> sval::Result {
@@ -374,8 +386,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_text_end()
             }
 
-            fn text_fragment(&mut self, fragment: &str) -> sval::Result {
-                self.erase_receiver().0.dispatch_text_fragment(&fragment)
+            fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
+                self.erase_receiver().0.dispatch_text_fragment_computed(&fragment)
             }
 
             fn bytes(&mut self, value: &'a [u8]) -> sval::Result {
@@ -390,8 +402,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_binary_end()
             }
 
-            fn binary_fragment(&mut self, fragment: &[u8]) -> sval::Result {
-                self.erase_receiver().0.dispatch_binary_fragment(fragment.as_ref())
+            fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
+                self.erase_receiver().0.dispatch_binary_fragment_computed(fragment.as_ref())
             }
 
             fn tag(&mut self, tag: sval::data::Tag) -> sval::Result {

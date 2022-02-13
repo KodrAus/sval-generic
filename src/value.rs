@@ -39,7 +39,7 @@ where
                 error::unsupported()
             }
 
-            fn text_fragment(&mut self, _: &str) -> Result {
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
                 error::unsupported()
             }
 
@@ -51,7 +51,7 @@ where
                 error::unsupported()
             }
 
-            fn binary_fragment(&mut self, _: &[u8]) -> Result {
+            fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {
                 error::unsupported()
             }
 
