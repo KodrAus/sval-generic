@@ -66,7 +66,7 @@ pub trait Receiver<'a> {
 
     fn str(&mut self, value: &'a str) -> Result {
         self.text_begin(Some(value.len()))?;
-        self.text_fragment_computed(value)?;
+        self.text_fragment(value)?;
         self.text_end()
     }
 
@@ -82,7 +82,7 @@ pub trait Receiver<'a> {
 
     fn bytes(&mut self, value: &'a [u8]) -> Result {
         self.binary_begin(Some(value.len()))?;
-        self.binary_fragment_computed(value)?;
+        self.binary_fragment(value)?;
         self.binary_end()
     }
 
@@ -175,154 +175,191 @@ pub trait Receiver<'a> {
 }
 
 macro_rules! impl_receiver_forward {
-    ($($r:tt)*) => {
+    ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
             fn is_human_readable(&self) -> bool {
-                (**self).is_human_readable()
+                let $bind = self;
+                ($($forward)*).is_human_readable()
             }
 
             fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
-                (**self).value(value)
+                let $bind = self;
+                ($($forward)*).value(value)
             }
 
             fn null(&mut self) -> Result {
-                (**self).null()
+                let $bind = self;
+                ($($forward)*).null()
             }
 
             fn u8(&mut self, value: u8) -> Result {
-                (**self).u8(value)
+                let $bind = self;
+                ($($forward)*).u8(value)
             }
 
             fn u16(&mut self, value: u16) -> Result {
-                (**self).u16(value)
+                let $bind = self;
+                ($($forward)*).u16(value)
             }
 
             fn u32(&mut self, value: u32) -> Result {
-                (**self).u32(value)
+                let $bind = self;
+                ($($forward)*).u32(value)
             }
 
             fn u64(&mut self, value: u64) -> Result {
-                (**self).u64(value)
+                let $bind = self;
+                ($($forward)*).u64(value)
             }
 
             fn u128(&mut self, value: u128) -> Result {
-                (**self).u128(value)
+                let $bind = self;
+                ($($forward)*).u128(value)
             }
 
             fn i8(&mut self, value: i8) -> Result {
-                (**self).i8(value)
+                let $bind = self;
+                ($($forward)*).i8(value)
             }
 
             fn i16(&mut self, value: i16) -> Result {
-                (**self).i16(value)
+                let $bind = self;
+                ($($forward)*).i16(value)
             }
 
             fn i32(&mut self, value: i32) -> Result {
-                (**self).i32(value)
+                let $bind = self;
+                ($($forward)*).i32(value)
             }
 
             fn i64(&mut self, value: i64) -> Result {
-                (**self).i64(value)
+                let $bind = self;
+                ($($forward)*).i64(value)
             }
 
             fn i128(&mut self, value: i128) -> Result {
-                (**self).i128(value)
+                let $bind = self;
+                ($($forward)*).i128(value)
             }
 
             fn f32(&mut self, value: f32) -> Result {
-                (**self).f32(value)
+                let $bind = self;
+                ($($forward)*).f32(value)
             }
 
             fn f64(&mut self, value: f64) -> Result {
-                (**self).f64(value)
+                let $bind = self;
+                ($($forward)*).f64(value)
             }
 
             fn bool(&mut self, value: bool) -> Result {
-                (**self).bool(value)
+                let $bind = self;
+                ($($forward)*).bool(value)
             }
 
             fn char(&mut self, value: char) -> Result {
-                (**self).char(value)
+                let $bind = self;
+                ($($forward)*).char(value)
             }
 
             fn str(&mut self, value: &'a str) -> Result {
-                (**self).str(value)
+                let $bind = self;
+                ($($forward)*).str(value)
             }
 
             fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
-                (**self).text_begin(num_bytes_hint)
+                let $bind = self;
+                ($($forward)*).text_begin(num_bytes_hint)
             }
 
             fn text_end(&mut self) -> Result {
-                (**self).text_end()
+                let $bind = self;
+                ($($forward)*).text_end()
             }
 
             fn text_fragment(&mut self, fragment: &'a str) -> Result {
-                (**self).text_fragment(fragment)
+                let $bind = self;
+                ($($forward)*).text_fragment(fragment)
             }
 
             fn text_fragment_computed(&mut self, fragment: &str) -> Result {
-                (**self).text_fragment_computed(fragment)
+                let $bind = self;
+                ($($forward)*).text_fragment_computed(fragment)
             }
 
             fn bytes(&mut self, value: &'a [u8]) -> Result {
-                (**self).bytes(value)
+                let $bind = self;
+                ($($forward)*).bytes(value)
             }
 
             fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
-                (**self).binary_begin(num_bytes_hint)
+                let $bind = self;
+                ($($forward)*).binary_begin(num_bytes_hint)
             }
 
             fn binary_end(&mut self) -> Result {
-                (**self).binary_end()
+                let $bind = self;
+                ($($forward)*).binary_end()
             }
 
             fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
-                (**self).binary_fragment(fragment)
+                let $bind = self;
+                ($($forward)*).binary_fragment(fragment)
             }
 
             fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
-                (**self).binary_fragment_computed(fragment)
+                let $bind = self;
+                ($($forward)*).binary_fragment_computed(fragment)
             }
 
             fn tag(&mut self, tag: data::Tag) -> Result {
-                (**self).tag(tag)
+                let $bind = self;
+                ($($forward)*).tag(tag)
             }
 
             fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-                (**self).tagged_begin(tag)
+                let $bind = self;
+                ($($forward)*).tagged_begin(tag)
             }
 
             fn tagged_end(&mut self, tag: data::Tag) -> Result {
-                (**self).tagged_end(tag)
+                let $bind = self;
+                ($($forward)*).tagged_end(tag)
             }
 
             fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
-                (**self).tagged(tagged)
+                let $bind = self;
+                ($($forward)*).tagged(tagged)
             }
 
             fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
-                (**self).map_begin(num_entries_hint)
+                let $bind = self;
+                ($($forward)*).map_begin(num_entries_hint)
             }
 
             fn map_end(&mut self) -> Result {
-                (**self).map_end()
+                let $bind = self;
+                ($($forward)*).map_end()
             }
 
             fn map_key_begin(&mut self) -> Result {
-                (**self).map_key_begin()
+                let $bind = self;
+                ($($forward)*).map_key_begin()
             }
 
             fn map_key_end(&mut self) -> Result {
-                (**self).map_key_end()
+                let $bind = self;
+                ($($forward)*).map_key_end()
             }
 
             fn map_value_begin(&mut self) -> Result {
-                (**self).map_value_begin()
+                let $bind = self;
+                ($($forward)*).map_value_begin()
             }
 
             fn map_value_end(&mut self) -> Result {
-                (**self).map_value_end()
+                let $bind = self;
+                ($($forward)*).map_value_end()
             }
 
             fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
@@ -330,41 +367,239 @@ macro_rules! impl_receiver_forward {
                 key: K,
                 value: V,
             ) -> Result {
-                (**self).map_entry(key, value)
+                let $bind = self;
+                ($($forward)*).map_entry(key, value)
             }
 
             fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-                (**self).map_key(key)
+                let $bind = self;
+                ($($forward)*).map_key(key)
             }
 
             fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-                (**self).map_value(value)
+                let $bind = self;
+                ($($forward)*).map_value(value)
             }
 
             fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
-                (**self).seq_begin(num_elems_hint)
+                let $bind = self;
+                ($($forward)*).seq_begin(num_elems_hint)
             }
 
             fn seq_end(&mut self) -> Result {
-                (**self).seq_end()
+                let $bind = self;
+                ($($forward)*).seq_end()
             }
 
             fn seq_elem_begin(&mut self) -> Result {
-                (**self).seq_elem_begin()
+                let $bind = self;
+                ($($forward)*).seq_elem_begin()
             }
 
             fn seq_elem_end(&mut self) -> Result {
-                (**self).seq_elem_end()
+                let $bind = self;
+                ($($forward)*).seq_elem_end()
             }
 
             fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-                (**self).seq_elem(elem)
+                let $bind = self;
+                ($($forward)*).seq_elem(elem)
             }
         }
     };
 }
 
-impl_receiver_forward!(impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R where R: Receiver<'a>);
+// Simplifies the default receivers for extracting concrete types from values
+pub(crate) trait DefaultUnsupported<'a> {
+    fn as_receiver(&mut self) -> AsReceiver<&mut Self> {
+        AsReceiver(self)
+    }
+
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
+    fn value<V: Value + ?Sized + 'a>(&mut self, _: &'a V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn null(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn u8(&mut self, _: u8) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn u16(&mut self, _: u16) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn u32(&mut self, _: u32) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn u64(&mut self, _: u64) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn u128(&mut self, _: u128) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn i8(&mut self, _: i8) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn i16(&mut self, _: i16) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn i32(&mut self, _: i32) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn i64(&mut self, _: i64) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn i128(&mut self, _: i128) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn f32(&mut self, _: f32) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn f64(&mut self, _: f64) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn bool(&mut self, _: bool) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn char(&mut self, _: char) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn str(&mut self, _: &'a str) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn text_begin(&mut self, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn text_fragment(&mut self, _: &'a str) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn text_fragment_computed(&mut self, _: &str) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn text_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn bytes(&mut self, _: &'a [u8]) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn binary_begin(&mut self, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn binary_fragment(&mut self, _: &'a [u8]) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn binary_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tag(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tagged_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tagged_end(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tagged<'v: 'a, V: Source<'v>>(&mut self, _: data::Tagged<V>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_begin(&mut self, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_key_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_key_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_value_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_value_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(&mut self, _: K, _: V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_key<'k: 'a, K: Source<'k>>(&mut self, _: K) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn map_value<'v: 'a, V: Source<'v>>(&mut self, _: V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn seq_begin(&mut self, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn seq_elem_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn seq_elem_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn seq_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
+        crate::error::unsupported()
+    }
+}
+
+pub(crate) struct AsReceiver<T>(T);
+
+impl_receiver_forward!({ impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R where R: Receiver<'a> } => x => { **x });
+impl_receiver_forward!({ impl<'a, 'b, R> Receiver<'a> for AsReceiver<&'b mut R> where R: DefaultUnsupported<'a> } => x => { x.0 });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {
@@ -372,5 +607,5 @@ mod alloc_support {
 
     use crate::std::boxed::Box;
 
-    impl_receiver_forward!(impl<'a, 'b, R: ?Sized> Receiver<'a> for Box<R> where R: Receiver<'a>);
+    impl_receiver_forward!({ impl<'a, 'b, R: ?Sized> Receiver<'a> for Box<R> where R: Receiver<'a> } => x => { **x });
 }

@@ -34,22 +34,6 @@ impl Resume {
     }
 }
 
-impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T {
-    fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Resume>
-    where
-        'a: 'c,
-    {
-        (**self).stream_resume(receiver)
-    }
-
-    fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
-    where
-        'a: 'c,
-    {
-        (**self).stream_to_end(receiver)
-    }
-}
-
 impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where
@@ -66,25 +50,35 @@ impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
     }
 }
 
+macro_rules! impl_source_forward {
+    ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
+        $($r)* {
+            fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Resume>
+            where
+                'a: 'c,
+            {
+                let $bind = self;
+                ($($forward)*).stream_resume(receiver)
+            }
+
+            fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
+            where
+                'a: 'c,
+            {
+                let $bind = self;
+                ($($forward)*).stream_to_end(receiver)
+            }
+        }
+    };
+}
+
+impl_source_forward!({impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T} => x => { **x });
+
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;
 
     use crate::{std::boxed::Box, Receiver, Result, Source};
 
-    impl<'a, T: Source<'a> + ?Sized> Source<'a> for Box<T> {
-        fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Resume>
-        where
-            'a: 'c,
-        {
-            (**self).stream_resume(receiver)
-        }
-
-        fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
-        where
-            'a: 'c,
-        {
-            (**self).stream_to_end(receiver)
-        }
-    }
+    impl_source_forward!({impl<'a, T: Source<'a> + ?Sized> Source<'a> for Box<T>} => x => { **x });
 }

@@ -4,6 +4,10 @@ impl Value for char {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.char(*self)
     }
+
+    fn to_char(&self) -> Option<char> {
+        Some(*self)
+    }
 }
 
 impl<'a> Source<'a> for char {
@@ -25,6 +29,10 @@ impl<'a> Source<'a> for char {
 impl Value for str {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.str(self)
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        Some(self)
     }
 }
 

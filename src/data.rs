@@ -35,6 +35,70 @@ impl<T: Value> Value for Option<T> {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
         self.as_ref().stream_to_end(receiver)
     }
+
+    fn to_bool(&self) -> Option<bool> {
+        self.as_ref().and_then(|value| value.to_bool())
+    }
+
+    fn to_f32(&self) -> Option<f32> {
+        self.as_ref().and_then(|value| value.to_f32())
+    }
+
+    fn to_f64(&self) -> Option<f64> {
+        self.as_ref().and_then(|value| value.to_f64())
+    }
+
+    fn to_i8(&self) -> Option<i8> {
+        self.as_ref().and_then(|value| value.to_i8())
+    }
+
+    fn to_i16(&self) -> Option<i16> {
+        self.as_ref().and_then(|value| value.to_i16())
+    }
+
+    fn to_i32(&self) -> Option<i32> {
+        self.as_ref().and_then(|value| value.to_i32())
+    }
+
+    fn to_i64(&self) -> Option<i64> {
+        self.as_ref().and_then(|value| value.to_i64())
+    }
+
+    fn to_i128(&self) -> Option<i128> {
+        self.as_ref().and_then(|value| value.to_i128())
+    }
+
+    fn to_u8(&self) -> Option<u8> {
+        self.as_ref().and_then(|value| value.to_u8())
+    }
+
+    fn to_u16(&self) -> Option<u16> {
+        self.as_ref().and_then(|value| value.to_u16())
+    }
+
+    fn to_u32(&self) -> Option<u32> {
+        self.as_ref().and_then(|value| value.to_u32())
+    }
+
+    fn to_u64(&self) -> Option<u64> {
+        self.as_ref().and_then(|value| value.to_u64())
+    }
+
+    fn to_u128(&self) -> Option<u128> {
+        self.as_ref().and_then(|value| value.to_u128())
+    }
+
+    fn to_char(&self) -> Option<char> {
+        self.as_ref().and_then(|value| value.to_char())
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        self.as_ref().and_then(|value| value.to_str())
+    }
+
+    fn to_bytes(&self) -> Option<&[u8]> {
+        self.as_ref().and_then(|value| value.to_bytes())
+    }
 }
 
 impl<'a, T: Source<'a>> Source<'a> for Option<T> {
@@ -61,6 +125,10 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
 impl Value for bool {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.bool(*self)
+    }
+
+    fn to_bool(&self) -> Option<bool> {
+        Some(*self)
     }
 }
 

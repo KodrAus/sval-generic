@@ -2,12 +2,16 @@ use crate::{source, Receiver, Source, Value};
 
 macro_rules! digits {
     ($(
-        $ty:ident,
+        $convert:ident => $ty:ident,
     )+) => {
         $(
             impl Value for $ty {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
                     receiver.$ty(*self)
+                }
+
+                fn $convert(&self) -> Option<$ty> {
+                    Some(*self)
                 }
             }
 
@@ -30,4 +34,17 @@ macro_rules! digits {
     };
 }
 
-digits!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64,);
+digits!(
+    to_u8 => u8,
+    to_u16 => u16,
+    to_u32 => u32,
+    to_u64 => u64,
+    to_u128 => u128,
+    to_i8 => i8,
+    to_i16 => i16,
+    to_i32 => i32,
+    to_i64 => i64,
+    to_i128 => i128,
+    to_f32 => f32,
+    to_f64 => f64,
+);
