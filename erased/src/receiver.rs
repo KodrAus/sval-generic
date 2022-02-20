@@ -4,6 +4,8 @@ mod private {
     pub trait DispatchReceiver<'a> {
         fn dispatch_is_human_readable(&self) -> bool;
 
+        fn dispatch_unit(&mut self) -> sval::Result;
+
         fn dispatch_null(&mut self) -> sval::Result;
 
         fn dispatch_u8(&mut self, value: u8) -> sval::Result;
@@ -54,8 +56,6 @@ mod private {
 
         fn dispatch_binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result;
 
-        fn dispatch_tag(&mut self, tag: sval::data::Tag) -> sval::Result;
-
         fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
 
         fn dispatch_tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result;
@@ -104,8 +104,6 @@ mod private {
     }
 }
 
-use core::fmt::Display;
-
 use crate::Source;
 
 pub trait Receiver<'a>: private::EraseReceiver<'a> {}
@@ -125,6 +123,10 @@ impl<'a, R: sval::Receiver<'a>> private::EraseReceiver<'a> for R {
 impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
     fn dispatch_is_human_readable(&self) -> bool {
         self.is_human_readable()
+    }
+
+    fn dispatch_unit(&mut self) -> sval::Result {
+        self.unit()
     }
 
     fn dispatch_null(&mut self) -> sval::Result {
@@ -227,10 +229,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.binary_fragment_computed(fragment)
     }
 
-    fn dispatch_tag(&mut self, tag: sval::data::Tag) -> sval::Result {
-        self.tag(tag)
-    }
-
     fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
         self.tagged_begin(tag)
     }
@@ -312,6 +310,10 @@ macro_rules! impl_receiver {
         $($impl)* {
             fn is_human_readable(&self) -> bool {
                 self.erase_receiver_ref().0.dispatch_is_human_readable()
+            }
+
+            fn unit(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_unit()
             }
 
             fn null(&mut self) -> sval::Result {
@@ -404,10 +406,6 @@ macro_rules! impl_receiver {
 
             fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
                 self.erase_receiver().0.dispatch_binary_fragment_computed(fragment.as_ref())
-            }
-
-            fn tag(&mut self, tag: sval::data::Tag) -> sval::Result {
-                self.erase_receiver().0.dispatch_tag(tag)
             }
 
             fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {

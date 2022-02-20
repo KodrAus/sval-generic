@@ -11,7 +11,7 @@ pub use self::{computed::*, tag::*, text::*};
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.null()
+        receiver.unit()
     }
 }
 
@@ -113,10 +113,39 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
     where
         'a: 'b,
     {
+        struct Null;
+
+        impl<'a> Source<'a> for Null {
+            fn stream_resume<'b, R: Receiver<'b>>(
+                &mut self,
+                receiver: R,
+            ) -> crate::Result<crate::Resume>
+            where
+                'a: 'b,
+            {
+                self.stream_to_end(receiver).map(|_| crate::Resume::Done)
+            }
+
+            fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
+            where
+                'a: 'b,
+            {
+                receiver.null()
+            }
+        }
+
         match self {
-            None => tagged((), tag().for_nullable().with_id(0).with_label("None"))
+            None => tag()
+                .for_nullable()
+                .with_id(0)
+                .with_label("None")
+                .with_value(Null)
                 .stream_to_end(receiver),
-            Some(v) => tagged(v, tag().for_nullable().with_id(1).with_label("Some"))
+            Some(v) => tag()
+                .for_nullable()
+                .with_id(1)
+                .with_label("Some")
+                .with_value(v)
                 .stream_to_end(receiver),
         }
     }

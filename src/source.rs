@@ -3,6 +3,9 @@ use crate::{Receiver, Result, Value};
 // Implementation: The `'a` lifetime needs to be bounded by the target type
 // This can be wrapped, as in `Box<impl SourceRef<'a>>` or external as in
 // `&'a impl SourceValue` and `Cow<'a, impl SourceValue>`
+/**
+A streamed and resumable source of structured data.
+*/
 pub trait Source<'a> {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
     where

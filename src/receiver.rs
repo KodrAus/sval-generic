@@ -1,5 +1,8 @@
 use crate::{data, Result, Source, Value};
 
+/**
+An observer of structured data emitted by some source.
+*/
 pub trait Receiver<'a> {
     fn is_human_readable(&self) -> bool {
         true
@@ -8,6 +11,8 @@ pub trait Receiver<'a> {
     fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
         value.stream(self)
     }
+
+    fn unit(&mut self) -> Result;
 
     fn null(&mut self) -> Result;
 
@@ -96,20 +101,6 @@ pub trait Receiver<'a> {
 
     fn binary_end(&mut self) -> Result;
 
-    fn tag(&mut self, tag: data::Tag) -> Result {
-        if let Some(label) = tag.label() {
-            self.str(label)?;
-            return Ok(());
-        }
-
-        if let Some(id) = tag.id() {
-            self.u64(id)?;
-            return Ok(());
-        }
-
-        self.null()
-    }
-
     fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
         Ok(())
@@ -185,6 +176,11 @@ macro_rules! impl_receiver_forward {
             fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
                 let $bind = self;
                 ($($forward)*).value(value)
+            }
+
+            fn unit(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).unit()
             }
 
             fn null(&mut self) -> Result {
@@ -312,11 +308,6 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).binary_fragment_computed(fragment)
             }
 
-            fn tag(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).tag(tag)
-            }
-
             fn tagged_begin(&mut self, tag: data::Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_begin(tag)
@@ -420,6 +411,10 @@ pub(crate) trait DefaultUnsupported<'a> {
     }
 
     fn value<V: Value + ?Sized + 'a>(&mut self, _: &'a V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn unit(&mut self) -> Result {
         crate::error::unsupported()
     }
 

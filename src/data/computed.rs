@@ -53,6 +53,10 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.is_human_readable()
     }
 
+    fn unit(&mut self) -> Result {
+        self.0.unit()
+    }
+
     fn null(&mut self) -> Result {
         self.0.null()
     }
@@ -147,10 +151,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn binary_end(&mut self) -> Result {
         self.0.binary_end()
-    }
-
-    fn tag(&mut self, tag: data::Tag) -> Result {
-        self.0.tag(tag)
     }
 
     fn tagged_begin(&mut self, tag: data::Tag) -> Result {

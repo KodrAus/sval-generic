@@ -47,6 +47,11 @@ fn sval_erased_consistency() {
 struct TestReceiver;
 
 impl<'a> sval::Receiver<'a> for TestReceiver {
+    fn unit(&mut self) -> sval::Result {
+        println!("unit");
+        Ok(())
+    }
+
     fn null(&mut self) -> sval::Result {
         println!(" null");
         Ok(())
@@ -72,7 +77,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
         println!(" text begin");
         Ok(())
     }
@@ -87,7 +92,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
+    fn binary_begin(&mut self, _: Option<usize>) -> sval::Result {
         println!(" binary begin");
         Ok(())
     }
@@ -102,7 +107,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
+    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
         println!(" map begin");
         Ok(())
     }
@@ -132,7 +137,7 @@ impl<'a> sval::Receiver<'a> for TestReceiver {
         Ok(())
     }
 
-    fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
+    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         println!(" seq begin");
         Ok(())
     }

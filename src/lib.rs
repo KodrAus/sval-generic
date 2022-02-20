@@ -1,3 +1,10 @@
+/*!
+`sval`: Structured, Streaming Values
+
+`sval` is a serialization framework that streams data as a flat sequence of tokens.
+The source of that data could be some Rust object or some text or binary format.
+*/
+
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(feature = "std")]
@@ -12,7 +19,7 @@ extern crate core;
 mod std {
     pub use crate::{
         alloc::{borrow, boxed, string, vec},
-        core::{fmt, mem, ops, result, str},
+        core::{convert, fmt, mem, ops, result, str},
     };
 }
 

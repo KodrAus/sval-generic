@@ -7,8 +7,8 @@ pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result
 pub struct Formatter<W> {
     is_key: bool,
     is_current_depth_empty: bool,
-    is_externally_tagging: bool,
     write_str_quotes: bool,
+    last_tag: Option<sval::data::Tag>,
     out: W,
 }
 
@@ -20,8 +20,8 @@ where
         Formatter {
             is_key: false,
             write_str_quotes: true,
-            is_externally_tagging: false,
             is_current_depth_empty: true,
+            last_tag: None,
             out,
         }
     }
@@ -35,6 +35,10 @@ impl<'a, W> sval::Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
+    fn unit(&mut self) -> sval::Result {
+        self.null()
+    }
+
     fn null(&mut self) -> sval::Result {
         self.out.write_str("null")?;
 
@@ -119,53 +123,6 @@ where
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-        match tag.shape() {
-            // Big integers: We can write these directly into the output without
-            // quoting so we'll omit any quotes on the subsequent number
-            sval::data::Shape::BigInteger | sval::data::Shape::Number => {
-                self.write_str_quotes = false;
-
-                Ok(())
-            }
-            // Enums part 1: Signal that we're going to be externally
-            // tagging a variant. The following tagged item will represent
-            // the variant
-            sval::data::Shape::Enum => {
-                self.is_externally_tagging = true;
-                self.map_begin(None)
-            }
-            // Enums part 2: Write the enum variant as a key which will be
-            // followed by a single value
-            _ if self.is_externally_tagging => {
-                self.map_key(tag.label())?;
-                self.map_value_begin()?;
-
-                self.is_externally_tagging = false;
-
-                Ok(())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-        match tag.shape() {
-            // Big integers: restore string quoting
-            sval::data::Shape::BigInteger | sval::data::Shape::Number => {
-                self.write_str_quotes = true;
-
-                Ok(())
-            }
-            // Enums: finish the map value for the externally tagged value
-            sval::data::Shape::Enum => {
-                self.map_value_end()?;
-                self.map_end()
-            }
-            _ => Ok(()),
-        }
-    }
-
     fn str(&mut self, v: &'a str) -> sval::Result {
         if self.write_str_quotes {
             self.out.write_char('"')?;
@@ -216,6 +173,61 @@ where
         self.seq_end()
     }
 
+    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.last_tag = Some(tag);
+
+        match tag.shape() {
+            // Big integers: We can write these directly into the output without
+            // quoting so we'll omit any quotes on the subsequent number
+            sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
+                self.write_str_quotes = false;
+
+                Ok(())
+            }
+            sval::data::TagShape::Enum => todo!(),
+            _ => Ok(()),
+        }
+    }
+
+    fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
+        match tag.shape() {
+            // Big integers: restore string quoting
+            sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
+                self.write_str_quotes = true;
+            }
+            sval::data::TagShape::Enum => todo!(),
+            _ => (),
+        }
+
+        self.last_tag = Some(tag);
+
+        Ok(())
+    }
+
+    fn tagged<'v: 'a, V: sval::Source<'v>>(
+        &mut self,
+        mut tagged: sval::data::Tagged<V>,
+    ) -> sval::Result {
+        let tag = tagged.tag();
+
+        match tag.shape() {
+            // If we encounter a struct field then attempt to write its label
+            // If it doesn't have a label then we'll fall back to its content
+            sval::data::TagShape::StructField => {
+                if let Some(key) = tag.label() {
+                    escape_str(key, &mut self.out)?;
+
+                    return Ok(());
+                }
+            }
+            _ => (),
+        }
+
+        self.tagged_begin(tag)?;
+        tagged.value_mut().stream_to_end(&mut *self)?;
+        self.tagged_end(tag)
+    }
+
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
@@ -223,14 +235,6 @@ where
 
         self.is_current_depth_empty = true;
         self.out.write_char('{')?;
-
-        Ok(())
-    }
-
-    fn map_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
-        self.out.write_char('}')?;
 
         Ok(())
     }
@@ -267,6 +271,40 @@ where
         Ok(())
     }
 
+    fn map_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
+        self.out.write_char('}')?;
+
+        Ok(())
+    }
+
+    fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
+        &mut self,
+        mut key: K,
+        mut value: V,
+    ) -> sval::Result {
+        if !self.is_current_depth_empty {
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
+        }
+
+        self.is_key = true;
+        self.write_str_quotes = false;
+
+        key.stream_to_end(&mut *self)?;
+
+        self.is_key = false;
+        self.write_str_quotes = true;
+
+        self.out.write_str("\":")?;
+
+        self.is_current_depth_empty = false;
+
+        value.stream_to_end(&mut *self)
+    }
+
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
@@ -275,14 +313,6 @@ where
         self.is_current_depth_empty = true;
 
         self.out.write_char('[')?;
-
-        Ok(())
-    }
-
-    fn seq_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
-        self.out.write_char(']')?;
 
         Ok(())
     }
@@ -298,6 +328,14 @@ where
     }
 
     fn seq_elem_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn seq_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
+        self.out.write_char(']')?;
+
         Ok(())
     }
 }

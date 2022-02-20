@@ -1,11 +1,15 @@
 use crate::{error, receiver::DefaultUnsupported, std::convert::TryInto, Receiver, Result, Source};
 
+/**
+An immutable and repeatable source of structured data.
+*/
 pub trait Value
 where
     for<'a> &'a Self: Source<'a>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
 
+    #[inline]
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
 
@@ -21,6 +25,7 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_f32(&self) -> Option<f32> {
         struct Extract(Option<f32>);
 
@@ -36,6 +41,7 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_f64(&self) -> Option<f64> {
         struct Extract(Option<f64>);
 
@@ -51,22 +57,27 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_i8(&self) -> Option<i8> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_i16(&self) -> Option<i16> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_i32(&self) -> Option<i32> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_i64(&self) -> Option<i64> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_i128(&self) -> Option<i128> {
         struct Extract(Option<i128>);
 
@@ -82,22 +93,27 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_u8(&self) -> Option<u8> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_u16(&self) -> Option<u16> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_u32(&self) -> Option<u32> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_u64(&self) -> Option<u64> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    #[inline]
     fn to_u128(&self) -> Option<u128> {
         struct Extract(Option<u128>);
 
@@ -113,6 +129,7 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_char(&self) -> Option<char> {
         struct Extract(Option<char>);
 
@@ -128,6 +145,7 @@ where
         extract.0
     }
 
+    #[inline]
     fn to_str(&self) -> Option<&str> {
         struct Extract<'a> {
             extracted: Option<&'a str>,
@@ -176,6 +194,7 @@ where
         extract.extracted
     }
 
+    #[inline]
     fn to_bytes(&self) -> Option<&[u8]> {
         struct Extract<'a> {
             extracted: Option<&'a [u8]>,
@@ -233,81 +252,97 @@ macro_rules! impl_value_forward {
                 ($($forward)*).stream(receiver)
             }
 
+            #[inline]
             fn to_bool(&self) -> Option<bool> {
                 let $bind = self;
                 ($($forward)*).to_bool()
             }
 
+            #[inline]
             fn to_f32(&self) -> Option<f32> {
                 let $bind = self;
                 ($($forward)*).to_f32()
             }
 
+            #[inline]
             fn to_f64(&self) -> Option<f64> {
                 let $bind = self;
                 ($($forward)*).to_f64()
             }
 
+            #[inline]
             fn to_i8(&self) -> Option<i8> {
                 let $bind = self;
                 ($($forward)*).to_i8()
             }
 
+            #[inline]
             fn to_i16(&self) -> Option<i16> {
                 let $bind = self;
                 ($($forward)*).to_i16()
             }
 
+            #[inline]
             fn to_i32(&self) -> Option<i32> {
                 let $bind = self;
                 ($($forward)*).to_i32()
             }
 
+            #[inline]
             fn to_i64(&self) -> Option<i64> {
                 let $bind = self;
                 ($($forward)*).to_i64()
             }
 
+            #[inline]
             fn to_i128(&self) -> Option<i128> {
                 let $bind = self;
                 ($($forward)*).to_i128()
             }
 
+            #[inline]
             fn to_u8(&self) -> Option<u8> {
                 let $bind = self;
                 ($($forward)*).to_u8()
             }
 
+            #[inline]
             fn to_u16(&self) -> Option<u16> {
                 let $bind = self;
                 ($($forward)*).to_u16()
             }
 
+            #[inline]
             fn to_u32(&self) -> Option<u32> {
                 let $bind = self;
                 ($($forward)*).to_u32()
             }
 
+            #[inline]
             fn to_u64(&self) -> Option<u64> {
                 let $bind = self;
                 ($($forward)*).to_u64()
             }
 
+            #[inline]
             fn to_u128(&self) -> Option<u128> {
                 let $bind = self;
                 ($($forward)*).to_u128()
             }
 
+            #[inline]
             fn to_char(&self) -> Option<char> {
                 let $bind = self;
                 ($($forward)*).to_char()
             }
 
+            #[inline]
             fn to_str(&self) -> Option<&str> {
                 let $bind = self;
                 ($($forward)*).to_str()
             }
 
+            #[inline]
             fn to_bytes(&self) -> Option<&[u8]> {
                 let $bind = self;
                 ($($forward)*).to_bytes()
