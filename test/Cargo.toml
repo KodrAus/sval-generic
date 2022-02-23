@@ -1,0 +1,11 @@
+[package]
+name = "sval-test"
+version = "0.0.0"
+edition = "2021"
+
+[features]
+alloc = ["sval/alloc"]
+std = ["sval/std"]
+
+[dependencies.sval]
+path = "../"

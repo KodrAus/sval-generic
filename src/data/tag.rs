@@ -10,9 +10,9 @@ pub fn tagged<V>(tag: Tag, value: V) -> Tagged<V> {
     Tagged::new(tag, value)
 }
 
-// Shape is purely structural. It's based on the flattened calls a `Receiver` may get
-// Tags are optional, but if they're used they can change shape. The presence of a label
-// also affects shape, but `Receiver`s may or may not consider labels.
+// Shape is purely structural. It's based on the flattened calls a `Receiver` may get.
+// Tags are optional, but if they're used they can change shape. A tag and its associated
+// data are considered to have the same shape if they're equal (that includes labels).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TagShape {
@@ -59,12 +59,13 @@ impl Default for TagShape {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tag {
-    label: Option<&'static str>,
-    id: Option<u64>,
-    shape: TagShape,
+    // NOTE: These fields are public and `Tag` is constructable (not non-exhaustive)
+    // *specifically* to limit any possible changes to its shape.
+    pub label: Option<&'static str>,
+    pub id: Option<u64>,
+    pub shape: TagShape,
 }
 
 impl Default for Tag {
@@ -82,21 +83,6 @@ impl Tag {
     #[inline]
     pub fn new() -> Self {
         Tag::default()
-    }
-
-    #[inline]
-    pub fn label(&self) -> Option<&'static str> {
-        self.label
-    }
-
-    #[inline]
-    pub fn id(&self) -> Option<u64> {
-        self.id
-    }
-
-    #[inline]
-    pub fn shape(&self) -> TagShape {
-        self.shape
     }
 
     #[inline]
@@ -188,7 +174,6 @@ impl Tag {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
 pub struct Tagged<V> {
     tag: Tag,
     value: V,

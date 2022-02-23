@@ -176,7 +176,7 @@ where
     fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
         self.last_tag = Some(tag);
 
-        match tag.shape() {
+        match tag.shape {
             // Big integers: We can write these directly into the output without
             // quoting so we'll omit any quotes on the subsequent number
             sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
@@ -190,7 +190,7 @@ where
     }
 
     fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-        match tag.shape() {
+        match tag.shape {
             // Big integers: restore string quoting
             sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
                 self.write_str_quotes = true;
@@ -210,11 +210,11 @@ where
     ) -> sval::Result {
         let tag = tagged.tag();
 
-        match tag.shape() {
+        match tag.shape {
             // If we encounter a struct field then attempt to write its label
             // If it doesn't have a label then we'll fall back to its content
             sval::data::TagShape::StructField => {
-                if let Some(key) = tag.label() {
+                if let Some(key) = tag.label {
                     escape_str(key, &mut self.out)?;
 
                     return Ok(());

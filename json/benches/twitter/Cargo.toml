@@ -1,5 +1,5 @@
 [package]
-name = "sval-json-twitter-benches"
+name = "sval-json-benches-twitter"
 version = "0.0.0"
 authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"
@@ -8,7 +8,7 @@ publish = false
 [lib]
 path = "lib.rs"
 
-[dependencies.sval-json-twitter-tests]
+[dependencies.sval-json-tests-twitter]
 path = "../../tests/twitter"
 
 [dependencies.sval-erased]
