@@ -112,9 +112,9 @@ pub trait Receiver<'a> {
     }
 
     fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: data::Tagged<V>) -> Result {
-        self.tagged_begin(tagged.tag())?;
-        tagged.value_mut().stream_to_end(&mut *self)?;
-        self.tagged_end(tagged.tag())
+        self.tagged_begin(tagged.tag)?;
+        tagged.value.stream_to_end(&mut *self)?;
+        self.tagged_end(tagged.tag)
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;

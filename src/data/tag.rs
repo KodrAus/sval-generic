@@ -12,7 +12,7 @@ pub fn tagged<V>(tag: Tag, value: V) -> Tagged<V> {
 
 // Shape is purely structural. It's based on the flattened calls a `Receiver` may get.
 // Tags are optional, but if they're used they can change shape. A tag and its associated
-// data are considered to have the same shape if they're equal (that includes labels).
+// data are considered to have the same shape if their `TagShape` is the same.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TagShape {
@@ -86,24 +86,6 @@ impl Tag {
     }
 
     #[inline]
-    pub fn with_label(self, label: &'static str) -> Tag {
-        Tag {
-            label: Some(label),
-            id: self.id,
-            shape: self.shape,
-        }
-    }
-
-    #[inline]
-    pub fn with_id(self, id: u64) -> Self {
-        Tag {
-            label: self.label,
-            id: Some(id),
-            shape: self.shape,
-        }
-    }
-
-    #[inline]
     pub fn for_nullable(self) -> Self {
         self.with_shape(TagShape::Nullable)
     }
@@ -159,6 +141,24 @@ impl Tag {
     }
 
     #[inline]
+    pub fn with_label(self, label: &'static str) -> Tag {
+        Tag {
+            label: Some(label),
+            id: self.id,
+            shape: self.shape,
+        }
+    }
+
+    #[inline]
+    pub fn with_id(self, id: u64) -> Self {
+        Tag {
+            label: self.label,
+            id: Some(id),
+            shape: self.shape,
+        }
+    }
+
+    #[inline]
     pub fn with_shape(self, shape: TagShape) -> Self {
         Tag {
             label: self.label,
@@ -173,31 +173,18 @@ impl Tag {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tagged<V> {
-    tag: Tag,
-    value: V,
+    // NOTE: These fields are public and `Tag` is constructable (not non-exhaustive)
+    // *specifically* to limit any possible changes to its shape.
+    pub tag: Tag,
+    pub value: V,
 }
 
 impl<V> Tagged<V> {
     #[inline]
     pub fn new(tag: Tag, value: V) -> Self {
         Tagged { tag, value }
-    }
-
-    #[inline]
-    pub fn tag(&self) -> Tag {
-        self.tag
-    }
-
-    #[inline]
-    pub fn value(&self) -> &V {
-        &self.value
-    }
-
-    #[inline]
-    pub fn value_mut(&mut self) -> &mut V {
-        &mut self.value
     }
 
     #[inline]

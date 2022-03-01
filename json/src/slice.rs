@@ -135,6 +135,8 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
                     self.head += 1;
                 }
                 // TODO: Numbers
+                // NOTE: For big numbers we'll need to know whether we're looking at a human readable format or not
+                // If it's not, then we need to convert it into its binary representation
                 _ => todo!(),
             }
         }

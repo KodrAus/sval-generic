@@ -328,9 +328,9 @@ pub fn assert_stream<'a>(
 
         fn tagged<'v: 'a, V: sval::Source<'v>>(
             &mut self,
-            mut tagged: sval::data::Tagged<V>,
+            tagged: sval::data::Tagged<V>,
         ) -> sval::Result {
-            self.expect_tagged(tagged.tag(), tagged.value_mut())
+            self.expect_tagged(tagged.tag, tagged.value)
         }
 
         fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
