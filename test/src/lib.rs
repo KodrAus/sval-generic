@@ -136,10 +136,15 @@ pub fn assert_stream<'a>(
         }
 
         fn expect(&mut self, token: Token) -> sval::Result {
-            assert_eq!(token, self.tokens[0]);
-            self.advance();
+            match self.tokens.get(0) {
+                Some(expected) => {
+                    assert_eq!(token, *expected);
+                    self.advance();
 
-            Ok(())
+                    Ok(())
+                }
+                None => panic!("unexpected end of stream"),
+            }
         }
 
         fn expect_tagged<'c>(
@@ -147,15 +152,17 @@ pub fn assert_stream<'a>(
             tag: sval::data::Tag,
             source: impl sval::Source<'c>,
         ) -> sval::Result {
-            if let Token::Tagged(expected_tag, tokens) = self.tokens[0] {
-                assert_eq!(expected_tag, tag);
+            match self.tokens.get(0) {
+                Some(Token::Tagged(expected_tag, expected)) => {
+                    assert_eq!(*expected_tag, tag);
 
-                Expect::stream_to_end(self.human_readable, tokens, source)?;
-                self.advance();
+                    Expect::stream_to_end(self.human_readable, expected, source)?;
+                    self.advance();
 
-                Ok(())
-            } else {
-                panic!("expected tagged");
+                    Ok(())
+                }
+                Some(token) => panic!("unexpected `{:?}`; expected `Tagged`", token),
+                None => panic!("unexpected end of stream; expected `Tagged`"),
             }
         }
 
@@ -164,47 +171,55 @@ pub fn assert_stream<'a>(
             key: impl sval::Source<'c>,
             value: impl sval::Source<'d>,
         ) -> sval::Result {
-            if let Token::MapEntry(key_tokens, value_tokens) = self.tokens[0] {
-                Expect::stream_to_end(self.human_readable, key_tokens, key)?;
-                Expect::stream_to_end(self.human_readable, value_tokens, value)?;
-                self.advance();
+            match self.tokens.get(0) {
+                Some(Token::MapEntry(key_tokens, value_tokens)) => {
+                    Expect::stream_to_end(self.human_readable, key_tokens, key)?;
+                    Expect::stream_to_end(self.human_readable, value_tokens, value)?;
+                    self.advance();
 
-                Ok(())
-            } else {
-                panic!("expected map entry");
+                    Ok(())
+                }
+                Some(token) => panic!("unexpected `{:?}`; expected `MapEntry`", token),
+                None => panic!("unexpected end of stream; expected `MapEntry`"),
             }
         }
 
         fn expect_map_key<'c>(&mut self, key: impl sval::Source<'c>) -> sval::Result {
-            if let Token::MapKey(tokens) = self.tokens[0] {
-                Expect::stream_to_end(self.human_readable, tokens, key)?;
-                self.advance();
+            match self.tokens.get(0) {
+                Some(Token::MapKey(expected)) => {
+                    Expect::stream_to_end(self.human_readable, expected, key)?;
+                    self.advance();
 
-                Ok(())
-            } else {
-                panic!("expected map key");
+                    Ok(())
+                }
+                Some(token) => panic!("unexpected `{:?}`; expected `MapKey`", token),
+                None => panic!("unexpected end of stream; expected `MapKey`"),
             }
         }
 
         fn expect_map_value<'c>(&mut self, value: impl sval::Source<'c>) -> sval::Result {
-            if let Token::MapValue(tokens) = self.tokens[0] {
-                Expect::stream_to_end(self.human_readable, tokens, value)?;
-                self.advance();
+            match self.tokens.get(0) {
+                Some(Token::MapValue(expected)) => {
+                    Expect::stream_to_end(self.human_readable, expected, value)?;
+                    self.advance();
 
-                Ok(())
-            } else {
-                panic!("expected map key");
+                    Ok(())
+                }
+                Some(token) => panic!("unexpected `{:?}`; expected `MapValue`", token),
+                None => panic!("unexpected end of stream; expected `MapValue`"),
             }
         }
 
         fn expect_seq_elem<'c>(&mut self, elem: impl sval::Source<'c>) -> sval::Result {
-            if let Token::SeqElem(tokens) = self.tokens[0] {
-                Expect::stream_to_end(self.human_readable, tokens, elem)?;
-                self.advance();
+            match self.tokens.get(0) {
+                Some(Token::SeqElem(expected)) => {
+                    Expect::stream_to_end(self.human_readable, expected, elem)?;
+                    self.advance();
 
-                Ok(())
-            } else {
-                panic!("expected seq elem");
+                    Ok(())
+                }
+                Some(token) => panic!("unexpected `{:?}`; expected `SeqElem`", token),
+                None => panic!("unexpected end of stream; expected `SeqElem`"),
             }
         }
     }

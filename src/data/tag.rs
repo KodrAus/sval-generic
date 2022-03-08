@@ -141,19 +141,19 @@ impl Tag {
     }
 
     #[inline]
-    pub fn with_label(self, label: &'static str) -> Tag {
+    pub fn with_label(self, label: impl Into<Option<&'static str>>) -> Tag {
         Tag {
-            label: Some(label),
+            label: label.into(),
             id: self.id,
             shape: self.shape,
         }
     }
 
     #[inline]
-    pub fn with_id(self, id: u64) -> Self {
+    pub fn with_id(self, id: impl Into<Option<u64>>) -> Self {
         Tag {
             label: self.label,
-            id: Some(id),
+            id: id.into(),
             shape: self.shape,
         }
     }
