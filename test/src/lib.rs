@@ -508,13 +508,12 @@ mod tests {
     fn stream_tuple() {
         assert_stream(
             true,
-            &(1, true, "a string"),
+            &("Title", 42u64),
             &[
                 TaggedBegin(sval::data::tag().for_tuple()),
-                SeqBegin(Some(3)),
-                SeqElem(&[I32(1)]),
-                SeqElem(&[Bool(true)]),
-                SeqElem(&[Str("a string")]),
+                SeqBegin(Some(2)),
+                SeqElem(&[Tagged(sval::data::tag().with_id(0), &[Str("Title")])]),
+                SeqElem(&[Tagged(sval::data::tag().with_id(1), &[U64(42)])]),
                 SeqEnd,
                 TaggedEnd(sval::data::tag().for_tuple()),
             ],

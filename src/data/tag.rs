@@ -13,6 +13,9 @@ pub fn tagged<V>(tag: Tag, value: V) -> Tagged<V> {
 // Shape is purely structural. It's based on the flattened calls a `Receiver` may get.
 // Tags are optional, but if they're used they can change shape. A tag and its associated
 // data are considered to have the same shape if their `TagShape` is the same.
+// The context of the shape of a value depends on the tags that contain it.
+// We can say some value "always has the same shape" when it appears within the
+// same nesting of tags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TagShape {
@@ -29,7 +32,7 @@ pub enum TagShape {
     // A map that follows struct rules: static string keys
     // Expect next: a map
     Struct,
-    // The name of a field in a struct
+    // A field in a struct
     StructField,
     // A seq that follows tuple rules: fixed size
     // Expect next: a seq

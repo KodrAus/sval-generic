@@ -194,12 +194,12 @@ fn stream_struct(
 
         #(
             receiver.map_entry(
+                #field_lit,
                 sval::data::tag()
                     .for_struct_field()
                     .with_label(#field_lit)
                     .with_id(#field_id)
-                    .with_value(#field_lit),
-                #field_ident,
+                    .with_value(#field_ident),
             )?;
         )*
 
@@ -237,10 +237,12 @@ fn stream_tuple(
     };
 
     let mut field_ident = Vec::new();
+    let mut field_id = Vec::new();
     let mut field_count = 0usize;
 
     for field in &fields.unnamed {
         field_ident.push(Ident::new(&format!("field{}", field_count), field.span()));
+        field_id.push(field_count as u64);
         field_count += 1;
     }
 
@@ -249,7 +251,7 @@ fn stream_tuple(
         receiver.seq_begin(Some(#field_count))?;
 
         #(
-            receiver.seq_elem(#field_ident)?;
+            receiver.seq_elem(sval::data::tag().with_id(#field_id).with_value(#field_ident))?;
         )*
 
         receiver.seq_end()?;

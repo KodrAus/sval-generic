@@ -2,9 +2,8 @@
 extern crate sval_derive;
 
 #[derive(Value)]
-pub struct Data {
-    title: &'static str,
-    id: u64,
+pub enum Data {
+    StructVariant { title: &'static str, id: u64 },
 }
 
 fn main() {
@@ -13,9 +12,10 @@ fn main() {
 
     assert_stream(
         true,
-        &Data { title: "Title", id: 42 },
+        &Data::StructVariant { title: "Title", id: 42 },
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Struct }),
+            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
+            TaggedBegin(Tag { label: Some("StructVariant"), id: Some(0), shape: Struct }),
             MapBegin(Some(2)),
             MapEntry(
                 &[Str("title")],
@@ -26,6 +26,7 @@ fn main() {
                 &[Tagged(Tag { label: Some("id"), id: Some(1), shape: StructField }, &[U64(42)])],
             ),
             MapEnd,
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Struct }),
+            TaggedEnd(Tag { label: Some("StructVariant"), id: Some(0), shape: Struct }),
+            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Enum }),
         ]);
 }

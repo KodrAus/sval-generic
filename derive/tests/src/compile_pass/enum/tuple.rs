@@ -2,7 +2,9 @@
 extern crate sval_derive;
 
 #[derive(Value)]
-pub struct Data(&'static str, u64);
+pub enum Data {
+    TupleVariant(&'static str, u64),
+}
 
 fn main() {
     use sval::data::{Tag, TagShape::*};
@@ -10,9 +12,10 @@ fn main() {
 
     assert_stream(
         true,
-        &Data("Title", 42),
+        &Data::TupleVariant("Title", 42),
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Tuple }),
+            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
+            TaggedBegin(Tag { label: Some("TupleVariant"), id: Some(0), shape: Tuple }),
             SeqBegin(Some(2)),
             SeqElem(&[
                 Tagged(
@@ -27,6 +30,7 @@ fn main() {
                 ),
             ]),
             SeqEnd,
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Tuple }),
+            TaggedEnd(Tag { label: Some("TupleVariant"), id: Some(0), shape: Tuple }),
+            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Enum }),
         ]);
 }

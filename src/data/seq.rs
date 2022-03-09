@@ -41,7 +41,7 @@ macro_rules! tuple {
                     receiver.seq_begin(Some($len))?;
 
                     $(
-                        receiver.seq_elem(&self.$i)?;
+                        receiver.seq_elem(data::tag().with_id($i).with_value(&self.$i))?;
                     )+
 
                     receiver.seq_end()?;

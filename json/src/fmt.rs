@@ -208,19 +208,6 @@ where
         &mut self,
         mut tagged: sval::data::Tagged<V>,
     ) -> sval::Result {
-        match tagged.tag.shape {
-            // If we encounter a struct field then attempt to write its label
-            // If it doesn't have a label then we'll fall back to its content
-            sval::data::TagShape::StructField => {
-                if let Some(key) = tagged.tag.label {
-                    escape_str(key, &mut self.out)?;
-
-                    return Ok(());
-                }
-            }
-            _ => (),
-        }
-
         self.tagged_begin(tagged.tag)?;
         tagged.value.stream_to_end(&mut *self)?;
         self.tagged_end(tagged.tag)
