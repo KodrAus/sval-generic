@@ -14,13 +14,24 @@ fn main() {
         true,
         &Data::NewtypeVariant(42),
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
+            TaggedBegin(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
             Tagged(
-                Tag { label: Some("NewtypeVariant"), id: Some(0), shape: Unspecified },
-                &[
-                    U64(42),
-                ],
+                Tag {
+                    label: Some("NewtypeVariant"),
+                    id: Some(0),
+                    shape: Contents,
+                },
+                &[U64(42)],
             ),
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Enum }),
-        ]);
+            TaggedEnd(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
+        ],
+    );
 }

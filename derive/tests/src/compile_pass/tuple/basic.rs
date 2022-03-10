@@ -16,13 +16,13 @@ fn main() {
             SeqBegin(Some(2)),
             SeqElem(&[
                 Tagged(
-                    Tag { label: None, id: Some(0), shape: Unspecified },
+                    Tag { label: None, id: Some(0), shape: Field },
                     &[Str("Title")]
                 ),
             ]),
             SeqElem(&[
                 Tagged(
-                    Tag { label: None, id: Some(1), shape: Unspecified },
+                    Tag { label: None, id: Some(1), shape: Field },
                     &[U64(42)]
                 ),
             ]),

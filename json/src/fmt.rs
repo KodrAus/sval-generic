@@ -177,13 +177,6 @@ where
         self.last_tag = Some(tag);
 
         match tag.shape {
-            // Big integers: We can write these directly into the output without
-            // quoting so we'll omit any quotes on the subsequent number
-            sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
-                self.write_str_quotes = false;
-
-                Ok(())
-            }
             sval::data::TagShape::Enum => todo!(),
             _ => Ok(()),
         }
@@ -191,10 +184,6 @@ where
 
     fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
         match tag.shape {
-            // Big integers: restore string quoting
-            sval::data::TagShape::BigInteger | sval::data::TagShape::Number => {
-                self.write_str_quotes = true;
-            }
             sval::data::TagShape::Enum => todo!(),
             _ => (),
         }

@@ -11,12 +11,13 @@ fn main() {
     assert_stream(
         true,
         &Data(42),
-        &[
-            Tagged(
-                Tag { label: Some("Data"), id: None, shape: Unspecified },
-                &[
-                    U64(42),
-                ],
-            ),
-        ]);
+        &[Tagged(
+            Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Contents,
+            },
+            &[U64(42)],
+        )],
+    );
 }

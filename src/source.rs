@@ -1,10 +1,16 @@
 use crate::{Receiver, Result, Value};
 
-// Implementation: The `'a` lifetime needs to be bounded by the target type
-// This can be wrapped, as in `Box<impl SourceRef<'a>>` or external as in
-// `&'a impl SourceValue` and `Cow<'a, impl SourceValue>`
 /**
 A streamed and resumable source of structured data.
+
+# Implementation notes
+
+Valid implementations of `Source` must adhere to the following requirements:
+
+1. All instances of this type must always stream with the same shape. If a type
+may change its shape dynamically then it must be wrapped in [`Tag::for_any`](data/struct.Tag.html#method.for_any).
+2. The result of [`Source::stream_to_end`] must be the same as continually calling [`Source::stream_resume`]
+until [`Resume::Done`] is returned. This is guaranteed by the default implementation of [`Source::stream_to_end`].
 */
 pub trait Source<'a> {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>

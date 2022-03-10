@@ -2,6 +2,15 @@ use crate::{error, receiver::DefaultUnsupported, std::convert::TryInto, Receiver
 
 /**
 An immutable and repeatable source of structured data.
+
+# Implementation notes
+
+Valid implementations of `Value` must adhere to the following requirements:
+
+1. All instances of this type must always stream with the same shape. If a type
+may change its shape then it needs to be wrapped in [`Tag::for_any`](data/struct.Tag.html#method.for_any).
+2. If the type also implements [`Source`] then [`Value::stream`] must be the same
+as [`Source::stream_to_end`].
 */
 pub trait Value
 where

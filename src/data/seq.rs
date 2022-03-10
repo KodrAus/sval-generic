@@ -2,23 +2,7 @@ use crate::{data, Receiver, Result, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.seq_begin(Some(self.len()))?;
-
-        for elem in self {
-            receiver.seq_elem(elem)?;
-        }
-
-        receiver.seq_end()
-    }
-}
-
-impl<T: Value, const N: usize> Value for [T; N] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        // NOTE: We use `tuple` here instead of `array`.
-        // Even though we're streaming a homogenous Rust array
-        // it's not guaranteed to produce a sequence where all elements
-        // have the same shape.
-        receiver.tagged_begin(data::tag().for_tuple())?;
+        receiver.tagged_begin(data::tag().for_slice())?;
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -26,7 +10,21 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         receiver.seq_end()?;
-        receiver.tagged_end(data::tag().for_tuple())
+        receiver.tagged_end(data::tag().for_slice())
+    }
+}
+
+impl<T: Value, const N: usize> Value for [T; N] {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+        receiver.tagged_begin(data::tag().for_array())?;
+        receiver.seq_begin(Some(self.len()))?;
+
+        for elem in self {
+            receiver.seq_elem(elem)?;
+        }
+
+        receiver.seq_end()?;
+        receiver.tagged_end(data::tag().for_array())
     }
 }
 
@@ -41,7 +39,7 @@ macro_rules! tuple {
                     receiver.seq_begin(Some($len))?;
 
                     $(
-                        receiver.seq_elem(data::tag().with_id($i).with_value(&self.$i))?;
+                        receiver.seq_elem(data::tag().for_field().with_id($i).with_value(&self.$i))?;
                     )+
 
                     receiver.seq_end()?;

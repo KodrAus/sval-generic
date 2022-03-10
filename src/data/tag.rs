@@ -10,55 +10,98 @@ pub fn tagged<V>(tag: Tag, value: V) -> Tagged<V> {
     Tagged::new(tag, value)
 }
 
-// Shape is purely structural. It's based on the flattened calls a `Receiver` may get.
-// Tags are optional, but if they're used they can change shape. A tag and its associated
-// data are considered to have the same shape if their `TagShape` is the same.
-// The context of the shape of a value depends on the tags that contain it.
-// We can say some value "always has the same shape" when it appears within the
-// same nesting of tags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TagShape {
-    // No hint
-    // Expect next: anything
-    Unspecified,
-    // An optional value
-    // tagged(Nullable, null) and tagged(Nullable, T) have the same shape
+    /**
+    The tagged value inherits its shape from its contents.
+
+    Values tagged with this shape have the same shape so long as their contents
+    also have the same shape.
+    */
+    Contents,
+    /**
+    The tagged value may change dynamically.
+
+    Values tagged with this shape have the same shape as any other value also
+    tagged with this shape.
+    */
+    Dynamic,
+    /**
+    The tagged value may be null.
+
+    Values tagged with this shape have the same shape so long as their contents
+    also have the same shape, or their contents are null.
+    */
     Nullable,
-    // An enum
-    // Followed by a second tagged item with a shape of EnumVariant
+    /**
+    The tagged value is always the same.
+
+    Values tagged with this shape have the same shape so long as their contents
+    match exactly.
+    */
+    Constant,
+    /**
+    The tagged value is an enum variant.
+
+    Values tagged with this shape have the same shape so long as the variant
+    tag is different, or the contents have the same shape.
+    */
     Enum,
-    EnumConstant,
-    // A map that follows struct rules: static string keys
-    // Expect next: a map
+    /**
+    The tagged value is a struct.
+
+    Values tagged with this shape have the same shape so long as any overlapping
+    fields also have the same shape.
+    */
     Struct,
-    // A field in a struct
-    StructField,
-    // A seq that follows tuple rules: fixed size
-    // Expect next: a seq
+    /**
+    The tagged value is a tuple.
+
+    Values tagged with this shape have the same shape so long as the number of
+    fields matches and the shapes of those fields match.
+    */
     Tuple,
-    // A sequence that follows array rules: fixed size, single-type
-    // NOTE: Rust slices _aren't_ necessarily arrays in sval. They
-    // can contain the same Rust type but produce different shapes
+    /**
+    The tagged value is a struct or tuple field.
+
+    Values tagged with this shape have the same shape so long as their contents
+    also have the same shape.
+    */
+    Field,
+    /**
+    The tagged value is a variable-length array.
+
+    All elements of the array must have the same shape.
+
+    Values tagged with this shape have the same shape so long as the shape of
+    their elements is the same.
+    */
+    Slice,
+    /**
+    The tagged value is a fixed-length array.
+
+    All elements of the array must have the same shape.
+
+    Values tagged with this shape have the same shape so long as the shape of
+    their elements is the same.
+    */
     Array,
-    // Text: A string formatted as a RFC8259 number
-    // Binary: A tuple of two integers: mantissa and base-2 scaling factor
-    Number,
-    // Text: A string containing a sequence of digits from 0-9 with optional leading `-`
-    // Binary: A two's compliment integer in LE format
-    BigInteger,
-    // Text: A string formatted as a RFC3339 timestamp
-    // Binary: An integer or number with seconds offset since Unix Epoch
-    DateTime,
-    // All: A string formatted as a RFC3986 URI
-    Uri,
-    // A custom shape that's only understood by a specific combination of source and receiver
+    /**
+    The tagged value is application-specific.
+
+    This shape is not recommended for public types. It should only be used
+    between sources and receivers in the same application.
+
+    Whether or not values tagged with this shape have the same shape depends
+    on how the application interprets the identifier.
+    */
     Custom(u64),
 }
 
 impl Default for TagShape {
     fn default() -> Self {
-        TagShape::Unspecified
+        TagShape::Contents
     }
 }
 
@@ -89,6 +132,11 @@ impl Tag {
     }
 
     #[inline]
+    pub fn for_dynamic(self) -> Self {
+        self.with_shape(TagShape::Dynamic)
+    }
+
+    #[inline]
     pub fn for_nullable(self) -> Self {
         self.with_shape(TagShape::Nullable)
     }
@@ -99,8 +147,8 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_enum_constant(self) -> Self {
-        self.with_shape(TagShape::EnumConstant)
+    pub fn for_constant(self) -> Self {
+        self.with_shape(TagShape::Constant)
     }
 
     #[inline]
@@ -109,13 +157,13 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_struct_field(self) -> Self {
-        self.with_shape(TagShape::StructField)
+    pub fn for_tuple(self) -> Self {
+        self.with_shape(TagShape::Tuple)
     }
 
     #[inline]
-    pub fn for_tuple(self) -> Self {
-        self.with_shape(TagShape::Tuple)
+    pub fn for_slice(self) -> Self {
+        self.with_shape(TagShape::Slice)
     }
 
     #[inline]
@@ -124,23 +172,8 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_number(self) -> Self {
-        self.with_shape(TagShape::Number)
-    }
-
-    #[inline]
-    pub fn for_big_integer(self) -> Self {
-        self.with_shape(TagShape::BigInteger)
-    }
-
-    #[inline]
-    pub fn for_date_time(self) -> Self {
-        self.with_shape(TagShape::DateTime)
-    }
-
-    #[inline]
-    pub fn for_uri(self) -> Self {
-        self.with_shape(TagShape::Uri)
+    pub fn for_field(self) -> Self {
+        self.with_shape(TagShape::Field)
     }
 
     #[inline]

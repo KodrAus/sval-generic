@@ -15,6 +15,10 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
     where
         'a: 'b,
     {
+        if self.head == 0 {
+            receiver.tagged_begin(sval::data::tag().for_dynamic())?;
+        }
+
         while self.head < self.src.len() {
             match self.src[self.head] {
                 // Begin a string
@@ -32,7 +36,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
                     return if !partial {
                         receiver.str(fragment)?;
 
-                        self.maybe_done()
+                        self.maybe_done(receiver)
                     }
                     // If the string has escapes then yield this fragment
                     // The next time we loop through we'll grab the next one
@@ -52,9 +56,9 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
                 b'}' => {
                     self.head += 1;
 
-                    self.map_end(receiver)?;
+                    self.map_end(&mut receiver)?;
 
-                    return self.maybe_done();
+                    return self.maybe_done(receiver);
                 }
                 // Begin a seq
                 b'[' => {
@@ -68,9 +72,9 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
                 b']' => {
                     self.head += 1;
 
-                    self.seq_end(receiver)?;
+                    self.seq_end(&mut receiver)?;
 
-                    return self.maybe_done();
+                    return self.maybe_done(receiver);
                 }
                 // End a map key
                 b':' => {
@@ -97,7 +101,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
 
                         receiver.bool(true)?;
 
-                        return self.maybe_done();
+                        return self.maybe_done(receiver);
                     } else {
                         todo!()
                     }
@@ -111,7 +115,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
 
                         receiver.bool(false)?;
 
-                        return self.maybe_done();
+                        return self.maybe_done(receiver);
                     } else {
                         todo!()
                     }
@@ -125,7 +129,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
 
                         receiver.null()?;
 
-                        return self.maybe_done();
+                        return self.maybe_done(receiver);
                     } else {
                         todo!()
                     }
@@ -141,7 +145,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
             }
         }
 
-        self.maybe_done()
+        self.maybe_done(receiver)
     }
 }
 
@@ -288,11 +292,16 @@ impl<'a> JsonBufReader<'a> {
         }
     }
 
-    fn maybe_done(&mut self) -> sval::Result<sval::Resume> {
+    fn maybe_done<'b>(
+        &mut self,
+        mut receiver: impl sval::Receiver<'b>,
+    ) -> sval::Result<sval::Resume> {
         if self.head < self.src.len() {
             Ok(sval::Resume::Continue)
         } else {
             self.stack.finish()?;
+
+            receiver.tagged_end(sval::data::tag().for_dynamic())?;
 
             Ok(sval::Resume::Done)
         }

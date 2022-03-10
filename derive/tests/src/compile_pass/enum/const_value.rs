@@ -19,7 +19,7 @@ fn main() {
         &[
             TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
             Tagged(
-                Tag { label: Some("A"), id: Some(0), shape: EnumConstant },
+                Tag { label: Some("A"), id: Some(0), shape: Constant },
                 &[
                     Str("A"),
                 ],

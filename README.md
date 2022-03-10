@@ -113,11 +113,11 @@ In `sval`, buffering and borrowing are both optional. You can use them to optimi
 
 ### Type, shape, and tags
 
-In Rust, all values have a _type_ that describes its common properties. In `sval`, all data has a _shape_ that describes its common structure. Rust values with the same type may not always have the same shape.
+In Rust, all values have a _type_ that describes its common properties. In `sval`, all data has a _shape_ that describes its common structure.
 
 The shape of a value is determined by the calls it makes on a `Receiver` while streaming.
 
-`sval` extends its basic data model with the concept of _tags_: in-band annotations that influence the shape and semantics of basic data. As an example, a regular map can be annotated as a struct, which requires all keys are strings and values always have the same shape:
+`sval` extends its basic data model with the concept of _tags_: in-band annotations that influence the shape and semantics of basic data. As an example, a regular map can be annotated as a struct, which requires all keys are strings:
 
 ```rust
 receiver.tagged_begin(tag().for_struct().with_label("Data"));
@@ -142,4 +142,33 @@ receiver.map_end()?;
 receiver.tagged_end(tag().for_struct().with_label("Data"));
 ```
 
-The nesting of tags determines the position of a value. If a tag requires a value at a certain position always has the same shape, it refers to a value immediately at that path. In the above example, the field `title` exists at the path `Struct("Data").StructField("title")`. The context of a path is bounded by untagged containers.
+### Dynamic values
+
+`sval` is strict in its requirement that all `Source`s and `Value`s with the same Rust type produce data with the same `sval` shape.
+This is a departure from `serde`'s data model and isn't always desirable, so there's a tag shape that identifies values as changing their shape dynamically:
+
+```rust
+receiver.tagged_begin(tag().for_dynamic())?;
+
+if some_condition() {
+    receiver.i32(42)?;
+} else {
+    receiver.bool(false)?;
+}
+
+receiver.tagged_end(tag().for_dynamic())?;
+```
+
+Dynamic values can also be represented as enums:
+
+```rust
+receiver.tagged_begin(tag().for_enum().with_label("Data"))?;
+
+if some_condition() {
+    receiver.tagged(tag().with_label("Variant1"), 42)?;
+} else {
+    receiver.tagged(tag().with_label("Variant2"), false)?;
+}
+
+receiver.tagged_end(tag().for_enum().with_label("Data"))?;
+```

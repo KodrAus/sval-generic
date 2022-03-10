@@ -477,6 +477,7 @@ mod tests {
             true,
             &[1, 2, 3, 4, 5] as &[i32],
             &[
+                TaggedBegin(sval::data::tag().for_slice()),
                 SeqBegin(Some(5)),
                 SeqElem(&[I32(1)]),
                 SeqElem(&[I32(2)]),
@@ -484,6 +485,7 @@ mod tests {
                 SeqElem(&[I32(4)]),
                 SeqElem(&[I32(5)]),
                 SeqEnd,
+                TaggedEnd(sval::data::tag().for_slice()),
             ],
         );
 
@@ -491,7 +493,7 @@ mod tests {
             true,
             &[1, 2, 3, 4, 5],
             &[
-                TaggedBegin(sval::data::tag().for_tuple()),
+                TaggedBegin(sval::data::tag().for_array()),
                 SeqBegin(Some(5)),
                 SeqElem(&[I32(1)]),
                 SeqElem(&[I32(2)]),
@@ -499,7 +501,7 @@ mod tests {
                 SeqElem(&[I32(4)]),
                 SeqElem(&[I32(5)]),
                 SeqEnd,
-                TaggedEnd(sval::data::tag().for_tuple()),
+                TaggedEnd(sval::data::tag().for_array()),
             ],
         );
     }
@@ -512,8 +514,11 @@ mod tests {
             &[
                 TaggedBegin(sval::data::tag().for_tuple()),
                 SeqBegin(Some(2)),
-                SeqElem(&[Tagged(sval::data::tag().with_id(0), &[Str("Title")])]),
-                SeqElem(&[Tagged(sval::data::tag().with_id(1), &[U64(42)])]),
+                SeqElem(&[Tagged(
+                    sval::data::tag().for_field().with_id(0),
+                    &[Str("Title")],
+                )]),
+                SeqElem(&[Tagged(sval::data::tag().for_field().with_id(1), &[U64(42)])]),
                 SeqEnd,
                 TaggedEnd(sval::data::tag().for_tuple()),
             ],

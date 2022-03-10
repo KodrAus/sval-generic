@@ -136,7 +136,7 @@ fn derive_enum<'a>(
                 Some(variant_match_arms.len() as u64),
                 fields,
             ),
-            Fields::Unit => stream_enum_constant(
+            Fields::Unit => stream_constant(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
                 Some(variant_match_arms.len() as u64),
@@ -196,7 +196,7 @@ fn stream_struct(
             receiver.map_entry(
                 #field_lit,
                 sval::data::tag()
-                    .for_struct_field()
+                    .for_field()
                     .with_label(#field_lit)
                     .with_id(#field_id)
                     .with_value(#field_ident),
@@ -251,7 +251,7 @@ fn stream_tuple(
         receiver.seq_begin(Some(#field_count))?;
 
         #(
-            receiver.seq_elem(sval::data::tag().with_id(#field_id).with_value(#field_ident))?;
+            receiver.seq_elem(sval::data::tag().for_field().with_id(#field_id).with_value(#field_ident))?;
         )*
 
         receiver.seq_end()?;
@@ -259,7 +259,7 @@ fn stream_tuple(
     })
 }
 
-fn stream_enum_constant(
+fn stream_constant(
     path: proc_macro2::TokenStream,
     label: &Ident,
     id: Option<u64>,
@@ -271,6 +271,6 @@ fn stream_enum_constant(
     };
 
     quote!(#path => {
-        receiver.tagged(sval::data::tag().for_enum_constant().with_label(#tag).with_id(#id).with_value(#tag))?;
+        receiver.tagged(sval::data::tag().for_constant().with_label(#tag).with_id(#id).with_value(#tag))?;
     })
 }
