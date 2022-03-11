@@ -14,23 +14,44 @@ fn main() {
         true,
         &Data::TupleVariant("Title", 42),
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
-            TaggedBegin(Tag { label: Some("TupleVariant"), id: Some(0), shape: Tuple }),
+            TaggedBegin(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
+            TaggedBegin(Tag {
+                label: Some("TupleVariant"),
+                id: Some(0),
+                shape: Struct,
+            }),
             SeqBegin(Some(2)),
-            SeqElem(&[
-                Tagged(
-                    Tag { label: None, id: Some(0), shape: Field },
-                    &[Str("Title")]
-                ),
-            ]),
-            SeqElem(&[
-                Tagged(
-                    Tag { label: None, id: Some(1), shape: Field },
-                    &[U64(42)]
-                ),
-            ]),
+            SeqElem(&[Tagged(
+                Tag {
+                    label: None,
+                    id: Some(0),
+                    shape: StructValue,
+                },
+                &[Str("Title")],
+            )]),
+            SeqElem(&[Tagged(
+                Tag {
+                    label: None,
+                    id: Some(1),
+                    shape: StructValue,
+                },
+                &[U64(42)],
+            )]),
             SeqEnd,
-            TaggedEnd(Tag { label: Some("TupleVariant"), id: Some(0), shape: Tuple }),
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Enum }),
-        ]);
+            TaggedEnd(Tag {
+                label: Some("TupleVariant"),
+                id: Some(0),
+                shape: Struct,
+            }),
+            TaggedEnd(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
+        ],
+    );
 }

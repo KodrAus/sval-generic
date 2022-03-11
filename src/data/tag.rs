@@ -28,6 +28,13 @@ pub enum TagShape {
     */
     Dynamic,
     /**
+    The tagged value is always the same.
+
+    Values tagged with this shape have the same shape so long as their contents
+    match exactly.
+     */
+    Constant,
+    /**
     The tagged value may be null.
 
     Values tagged with this shape have the same shape so long as their contents
@@ -35,12 +42,23 @@ pub enum TagShape {
     */
     Nullable,
     /**
-    The tagged value is always the same.
+    The tagged value is a variable-length array.
 
-    Values tagged with this shape have the same shape so long as their contents
-    match exactly.
-    */
-    Constant,
+    All elements of the array must have the same shape.
+
+    Values tagged with this shape have the same shape so long as the shape of
+    their elements is the same.
+     */
+    Slice,
+    /**
+    The tagged value is a fixed-length array.
+
+    All elements of the array must have the same shape.
+
+    Values tagged with this shape have the same shape so long as the shape of
+    their elements is the same.
+     */
+    Array,
     /**
     The tagged value is an enum variant.
 
@@ -56,37 +74,19 @@ pub enum TagShape {
     */
     Struct,
     /**
-    The tagged value is a tuple.
-
-    Values tagged with this shape have the same shape so long as the number of
-    fields matches and the shapes of those fields match.
-    */
-    Tuple,
-    /**
-    The tagged value is a struct or tuple field.
+    The tagged value is the key in a struct with named fields.
 
     Values tagged with this shape have the same shape so long as their contents
     also have the same shape.
     */
-    Field,
+    StructKey,
     /**
-    The tagged value is a variable-length array.
+    The tagged value is a struct with named or unnamed fields.
 
-    All elements of the array must have the same shape.
-
-    Values tagged with this shape have the same shape so long as the shape of
-    their elements is the same.
-    */
-    Slice,
-    /**
-    The tagged value is a fixed-length array.
-
-    All elements of the array must have the same shape.
-
-    Values tagged with this shape have the same shape so long as the shape of
-    their elements is the same.
-    */
-    Array,
+    Values tagged with this shape have the same shape so long as their contents
+    also have the same shape.
+     */
+    StructValue,
     /**
     The tagged value is application-specific.
 
@@ -157,8 +157,13 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_tuple(self) -> Self {
-        self.with_shape(TagShape::Tuple)
+    pub fn for_struct_key(self) -> Self {
+        self.with_shape(TagShape::StructKey)
+    }
+
+    #[inline]
+    pub fn for_struct_value(self) -> Self {
+        self.with_shape(TagShape::StructValue)
     }
 
     #[inline]
@@ -169,11 +174,6 @@ impl Tag {
     #[inline]
     pub fn for_array(self) -> Self {
         self.with_shape(TagShape::Array)
-    }
-
-    #[inline]
-    pub fn for_field(self) -> Self {
-        self.with_shape(TagShape::Field)
     }
 
     #[inline]

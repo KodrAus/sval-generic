@@ -512,15 +512,18 @@ mod tests {
             true,
             &("Title", 42u64),
             &[
-                TaggedBegin(sval::data::tag().for_tuple()),
+                TaggedBegin(sval::data::tag().for_struct()),
                 SeqBegin(Some(2)),
                 SeqElem(&[Tagged(
-                    sval::data::tag().for_field().with_id(0),
+                    sval::data::tag().for_struct_value().with_id(0),
                     &[Str("Title")],
                 )]),
-                SeqElem(&[Tagged(sval::data::tag().for_field().with_id(1), &[U64(42)])]),
+                SeqElem(&[Tagged(
+                    sval::data::tag().for_struct_value().with_id(1),
+                    &[U64(42)],
+                )]),
                 SeqEnd,
-                TaggedEnd(sval::data::tag().for_tuple()),
+                TaggedEnd(sval::data::tag().for_struct()),
             ],
         );
     }

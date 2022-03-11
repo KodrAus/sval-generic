@@ -7,9 +7,8 @@ pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result
 pub struct Formatter<W> {
     is_key: bool,
     is_current_depth_empty: bool,
-    write_str_quotes: bool,
     last_tag: Option<sval::data::Tag>,
-    out: W,
+    writer: ValueWriter<W>,
 }
 
 impl<W> Formatter<W>
@@ -19,19 +18,279 @@ where
     pub fn new(out: W) -> Self {
         Formatter {
             is_key: false,
-            write_str_quotes: true,
-            is_current_depth_empty: true,
             last_tag: None,
-            out,
+            is_current_depth_empty: true,
+            writer: ValueWriter {
+                write_str_quotes: true,
+                out,
+            },
         }
     }
 
     pub fn into_inner(self) -> W {
-        self.out
+        self.writer.out
     }
 }
 
 impl<'a, W> sval::Receiver<'a> for Formatter<W>
+where
+    W: Write,
+{
+    fn unit(&mut self) -> sval::Result {
+        self.null()
+    }
+
+    fn null(&mut self) -> sval::Result {
+        self.writer.null()
+    }
+
+    fn u8(&mut self, v: u8) -> sval::Result {
+        self.writer.u8(v)
+    }
+
+    fn u16(&mut self, v: u16) -> sval::Result {
+        self.writer.u16(v)
+    }
+
+    fn u32(&mut self, v: u32) -> sval::Result {
+        self.writer.u32(v)
+    }
+
+    fn u64(&mut self, v: u64) -> sval::Result {
+        self.writer.u64(v)
+    }
+
+    fn u128(&mut self, v: u128) -> sval::Result {
+        self.writer.u128(v)
+    }
+
+    fn i8(&mut self, v: i8) -> sval::Result {
+        self.writer.i8(v)
+    }
+
+    fn i16(&mut self, v: i16) -> sval::Result {
+        self.writer.i16(v)
+    }
+
+    fn i32(&mut self, v: i32) -> sval::Result {
+        self.writer.i32(v)
+    }
+
+    fn i64(&mut self, v: i64) -> sval::Result {
+        self.writer.i64(v)
+    }
+
+    fn i128(&mut self, v: i128) -> sval::Result {
+        self.writer.i128(v)
+    }
+
+    fn f32(&mut self, v: f32) -> sval::Result {
+        self.writer.f32(v)
+    }
+
+    fn f64(&mut self, v: f64) -> sval::Result {
+        self.writer.f64(v)
+    }
+
+    fn bool(&mut self, v: bool) -> sval::Result {
+        self.writer.bool(v)
+    }
+
+    fn str(&mut self, v: &'a str) -> sval::Result {
+        self.writer.str(v)
+    }
+
+    fn text_begin(&mut self, num_bytes: Option<usize>) -> sval::Result {
+        self.writer.text_begin(num_bytes)
+    }
+
+    fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
+        self.writer.text_fragment_computed(v)
+    }
+
+    fn text_end(&mut self) -> sval::Result {
+        self.writer.text_end()
+    }
+
+    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
+        self.seq_begin(size)
+    }
+
+    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
+        for b in v {
+            self.seq_elem(b)?;
+        }
+
+        Ok(())
+    }
+
+    fn binary_end(&mut self) -> sval::Result {
+        self.seq_end()
+    }
+
+    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.last_tag = Some(tag);
+
+        match tag {
+            sval::data::Tag {
+                shape: sval::data::TagShape::Enum,
+                ..
+            } => todo!(),
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
+        match tag {
+            sval::data::Tag {
+                shape: sval::data::TagShape::Enum,
+                ..
+            } => todo!(),
+            _ => (),
+        }
+
+        self.last_tag = Some(tag);
+
+        Ok(())
+    }
+
+    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
+        if self.is_key {
+            return Err(sval::Error);
+        }
+
+        self.is_current_depth_empty = true;
+        self.writer.write_char('{')?;
+
+        Ok(())
+    }
+
+    fn map_key_begin(&mut self) -> sval::Result {
+        self.is_key = true;
+        self.writer.write_str_quotes = false;
+
+        if !self.is_current_depth_empty {
+            self.writer.write_str(",\"")?;
+        } else {
+            self.writer.write_char('"')?;
+        }
+
+        self.is_current_depth_empty = false;
+
+        Ok(())
+    }
+
+    fn map_key_end(&mut self) -> sval::Result {
+        self.writer.write_str("\":")?;
+
+        self.is_key = false;
+        self.writer.write_str_quotes = true;
+
+        Ok(())
+    }
+
+    fn map_value_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn map_value_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn map_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
+        self.writer.write_char('}')?;
+
+        Ok(())
+    }
+
+    fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
+        &mut self,
+        mut key: K,
+        mut value: V,
+    ) -> sval::Result {
+        if !self.is_current_depth_empty {
+            self.writer.write_str(",\"")?;
+        } else {
+            self.writer.write_char('"')?;
+        }
+
+        self.is_key = true;
+        self.writer.write_str_quotes = false;
+
+        key.stream_to_end(&mut self.writer)?;
+
+        self.is_key = false;
+        self.writer.write_str_quotes = true;
+
+        self.writer.write_str("\":")?;
+
+        self.is_current_depth_empty = false;
+
+        value.stream_to_end(&mut *self)
+    }
+
+    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
+        if self.is_key {
+            return Err(sval::Error);
+        }
+
+        self.is_current_depth_empty = true;
+
+        self.writer.write_char('[')?;
+
+        Ok(())
+    }
+
+    fn seq_elem_begin(&mut self) -> sval::Result {
+        if !self.is_current_depth_empty {
+            self.writer.write_char(',')?;
+        }
+
+        self.is_current_depth_empty = false;
+
+        Ok(())
+    }
+
+    fn seq_elem_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn seq_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
+        self.writer.write_char(']')?;
+
+        Ok(())
+    }
+}
+
+struct ValueWriter<W> {
+    write_str_quotes: bool,
+    out: W,
+}
+
+impl<W> ValueWriter<W>
+where
+    W: Write,
+{
+    fn write_char(&mut self, c: char) -> sval::Result {
+        self.out.write_char(c)?;
+
+        Ok(())
+    }
+
+    fn write_str(&mut self, v: &str) -> sval::Result {
+        self.out.write_str(v)?;
+
+        Ok(())
+    }
+}
+
+impl<'a, W> sval::Receiver<'a> for ValueWriter<W>
 where
     W: Write,
 {
@@ -157,160 +416,56 @@ where
         Ok(())
     }
 
-    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
-        self.seq_begin(size)
+    fn binary_begin(&mut self, _: Option<usize>) -> sval::Result {
+        Err(sval::Error)
     }
 
-    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
-        for b in v {
-            self.seq_elem(b)?;
-        }
-
-        Ok(())
+    fn binary_fragment_computed(&mut self, _: &[u8]) -> sval::Result {
+        Err(sval::Error)
     }
 
     fn binary_end(&mut self) -> sval::Result {
-        self.seq_end()
-    }
-
-    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-        self.last_tag = Some(tag);
-
-        match tag.shape {
-            sval::data::TagShape::Enum => todo!(),
-            _ => Ok(()),
-        }
-    }
-
-    fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-        match tag.shape {
-            sval::data::TagShape::Enum => todo!(),
-            _ => (),
-        }
-
-        self.last_tag = Some(tag);
-
-        Ok(())
-    }
-
-    fn tagged<'v: 'a, V: sval::Source<'v>>(
-        &mut self,
-        mut tagged: sval::data::Tagged<V>,
-    ) -> sval::Result {
-        self.tagged_begin(tagged.tag)?;
-        tagged.value.stream_to_end(&mut *self)?;
-        self.tagged_end(tagged.tag)
+        Err(sval::Error)
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.is_key {
-            return Err(sval::Error);
-        }
-
-        self.is_current_depth_empty = true;
-        self.out.write_char('{')?;
-
-        Ok(())
+        Err(sval::Error)
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.is_key = true;
-        self.write_str_quotes = false;
-
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
-        }
-
-        self.is_current_depth_empty = false;
-
-        Ok(())
+        Err(sval::Error)
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.out.write_str("\":")?;
-
-        self.is_key = false;
-        self.write_str_quotes = true;
-
-        Ok(())
+        Err(sval::Error)
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        Ok(())
+        Err(sval::Error)
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        Ok(())
+        Err(sval::Error)
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
-        self.out.write_char('}')?;
-
-        Ok(())
-    }
-
-    fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
-        &mut self,
-        mut key: K,
-        mut value: V,
-    ) -> sval::Result {
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
-        }
-
-        self.is_key = true;
-        self.write_str_quotes = false;
-
-        key.stream_to_end(&mut *self)?;
-
-        self.is_key = false;
-        self.write_str_quotes = true;
-
-        self.out.write_str("\":")?;
-
-        self.is_current_depth_empty = false;
-
-        value.stream_to_end(&mut *self)
+        Err(sval::Error)
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.is_key {
-            return Err(sval::Error);
-        }
-
-        self.is_current_depth_empty = true;
-
-        self.out.write_char('[')?;
-
-        Ok(())
+        Err(sval::Error)
     }
 
     fn seq_elem_begin(&mut self) -> sval::Result {
-        if !self.is_current_depth_empty {
-            self.out.write_char(',')?;
-        }
-
-        self.is_current_depth_empty = false;
-
-        Ok(())
+        Err(sval::Error)
     }
 
     fn seq_elem_end(&mut self) -> sval::Result {
-        Ok(())
+        Err(sval::Error)
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
-        self.out.write_char(']')?;
-
-        Ok(())
+        Err(sval::Error)
     }
 }
 

@@ -17,13 +17,24 @@ fn main() {
         true,
         &Data::A,
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Enum }),
+            TaggedBegin(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
             Tagged(
-                Tag { label: Some("A"), id: Some(0), shape: Constant },
-                &[
-                    Str("A"),
-                ],
+                Tag {
+                    label: Some("A"),
+                    id: Some(0),
+                    shape: Constant,
+                },
+                &[Str("A")],
             ),
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Enum }),
-        ]);
+            TaggedEnd(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Enum,
+            }),
+        ],
+    );
 }

@@ -13,19 +13,59 @@ fn main() {
 
     assert_stream(
         true,
-        &Data { title: "Title", id: 42 },
+        &Data {
+            title: "Title",
+            id: 42,
+        },
         &[
-            TaggedBegin(Tag { label: Some("Data"), id: None, shape: Struct }),
+            TaggedBegin(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Struct,
+            }),
             MapBegin(Some(2)),
             MapEntry(
-                &[Str("title")],
-                &[Tagged(Tag { label: Some("title"), id: Some(0), shape: Field }, &[Str("Title")])],
+                &[Tagged(
+                    Tag {
+                        label: Some("title"),
+                        id: Some(0),
+                        shape: StructKey,
+                    },
+                    &[Str("title")],
+                )],
+                &[Tagged(
+                    Tag {
+                        label: Some("title"),
+                        id: Some(0),
+                        shape: StructValue,
+                    },
+                    &[Str("Title")],
+                )],
             ),
             MapEntry(
-                &[Str("id")],
-                &[Tagged(Tag { label: Some("id"), id: Some(1), shape: Field }, &[U64(42)])],
+                &[Tagged(
+                    Tag {
+                        label: Some("id"),
+                        id: Some(1),
+                        shape: StructKey,
+                    },
+                    &[Str("id")],
+                )],
+                &[Tagged(
+                    Tag {
+                        label: Some("id"),
+                        id: Some(1),
+                        shape: StructValue,
+                    },
+                    &[U64(42)],
+                )],
             ),
             MapEnd,
-            TaggedEnd(Tag { label: Some("Data"), id: None, shape: Struct }),
-        ]);
+            TaggedEnd(Tag {
+                label: Some("Data"),
+                id: None,
+                shape: Struct,
+            }),
+        ],
+    );
 }
