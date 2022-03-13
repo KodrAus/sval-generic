@@ -9,6 +9,8 @@ use crate::{source, Receiver, Source, Value};
 #[doc(inline)]
 pub use self::{computed::*, tag::*};
 
+pub(crate) use self::{number::*, text::*};
+
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
         receiver.unit()

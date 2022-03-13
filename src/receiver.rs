@@ -1,4 +1,3 @@
-use crate::error::unsupported;
 use crate::{data, Result, Source, Value};
 
 /**
@@ -26,8 +25,7 @@ pub trait Receiver<'a> {
     fn u64(&mut self, value: u64) -> Result;
 
     fn u128(&mut self, value: u128) -> Result {
-        let _ = value;
-        unsupported()
+        data::u128_bigint(value, self)
     }
 
     fn i8(&mut self, value: i8) -> Result;
@@ -39,8 +37,7 @@ pub trait Receiver<'a> {
     fn i64(&mut self, value: i64) -> Result;
 
     fn i128(&mut self, value: i128) -> Result {
-        let _ = value;
-        unsupported()
+        data::i128_bigint(value, self)
     }
 
     fn f32(&mut self, value: f32) -> Result;

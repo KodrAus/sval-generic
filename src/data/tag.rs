@@ -48,7 +48,7 @@ pub enum TagShape {
 
     Values tagged with this shape have the same shape so long as the shape of
     their elements is the same.
-     */
+    */
     Slice,
     /**
     The tagged value is a fixed-length array.
@@ -57,8 +57,22 @@ pub enum TagShape {
 
     Values tagged with this shape have the same shape so long as the shape of
     their elements is the same.
-     */
+    */
     Array,
+    /**
+    The tagged value is a big integer.
+
+    The shape of a big integer depends on whether the receiver is human
+    readable or not.
+
+    For human readable receivers, a big integer is a text value with an
+    optional leading `+` or `-` sign, followed by a sequence of one or more digits
+    `0`-`9`.
+
+    For binary receivers, a big integer is a binary value consisting of the
+    siged, little-endian bytes of the integer.
+    */
+    BigInt,
     /**
     The tagged value is an enum variant.
 
@@ -174,6 +188,11 @@ impl Tag {
     #[inline]
     pub fn for_array(self) -> Self {
         self.with_shape(TagShape::Array)
+    }
+
+    #[inline]
+    pub fn for_bigint(self) -> Self {
+        self.with_shape(TagShape::BigInt)
     }
 
     #[inline]

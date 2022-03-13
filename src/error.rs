@@ -16,6 +16,13 @@ impl From<fmt::Error> for Error {
     }
 }
 
+impl From<Error> for fmt::Error {
+    #[inline]
+    fn from(_: Error) -> fmt::Error {
+        fmt::Error
+    }
+}
+
 impl From<str::Utf8Error> for Error {
     #[inline]
     fn from(_: str::Utf8Error) -> Error {

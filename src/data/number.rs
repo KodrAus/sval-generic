@@ -1,5 +1,51 @@
 use crate::{source, Receiver, Source, Value};
 
+pub(crate) fn i128_bigint<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate::Result {
+    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+
+    if receiver.is_human_readable() {
+        crate::data::text(v, &mut receiver)?;
+    } else {
+        let bytes = v.to_le_bytes();
+
+        receiver.binary_begin(Some(bytes.len()))?;
+        receiver.binary_fragment_computed(&bytes)?;
+        receiver.binary_end()?;
+    }
+
+    receiver.tagged_end(crate::data::tag().for_bigint())
+}
+
+pub(crate) fn u128_bigint<'a>(v: u128, mut receiver: impl Receiver<'a>) -> crate::Result {
+    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+
+    if receiver.is_human_readable() {
+        crate::data::text(v, &mut receiver)?;
+    } else {
+        // If the value fits in a signed 128bit number then write out its bytes
+        if let Ok(v) = v.try_into::<i128>() {
+            let bytes = v.to_le_bytes();
+
+            receiver.binary_begin(Some(bytes.len()))?;
+            receiver.binary_fragment_computed(&bytes)?;
+            receiver.binary_end()?;
+        }
+        // If the value doesn't fit in a signed 128bit number then we need to
+        // append an extra byte to make it signed. This byte will always be empty
+        // ensuring the sign is kept positive.
+        else {
+            let bytes = v.to_le_bytes();
+
+            receiver.binary_begin(Some(bytes.len() + 1))?;
+            receiver.binary_fragment_computed(&bytes)?;
+            receiver.binary_fragment_computed(&[0])?;
+            receiver.binary_end()?;
+        }
+    }
+
+    receiver.tagged_end(crate::data::tag().for_bigint())
+}
+
 macro_rules! digits {
     ($(
         $convert:ident => $ty:ident,

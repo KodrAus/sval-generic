@@ -1,4 +1,24 @@
-use crate::{source, Receiver, Source, Value};
+use crate::{
+    source,
+    std::fmt::{self, Write},
+    Receiver, Source, Value,
+};
+
+pub(crate) fn text<'a>(v: impl fmt::Display, mut receiver: impl Receiver<'a>) -> crate::Result {
+    struct Text<R>(R);
+
+    impl<'a, R: Receiver<'a>> Write for Text<R> {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            self.0.text_fragment_computed(s)?;
+
+            Ok(())
+        }
+    }
+
+    receiver.text_begin(None)?;
+    write!(Text(&mut receiver), "{}", v)?;
+    receiver.text_end()
+}
 
 impl Value for char {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
