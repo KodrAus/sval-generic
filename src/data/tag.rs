@@ -60,19 +60,19 @@ pub enum TagShape {
     */
     Array,
     /**
-    The tagged value is a big integer.
+    The tagged value is an arbitrarily sized integer.
 
-    The shape of a big integer depends on whether the receiver is human
+    The shape of an arbitrarily sized integer depends on whether the receiver is human
     readable or not.
 
-    For human readable receivers, a big integer is a text value with an
+    For human readable receivers, an arbitrarily sized integer is a text value with an
     optional leading `+` or `-` sign, followed by a sequence of one or more digits
     `0`-`9`.
 
-    For binary receivers, a big integer is a binary value consisting of the
-    siged, little-endian bytes of the integer.
+    For binary receivers, an arbitrarily sized integer is a binary value consisting of the
+    signed little-endian bytes of the integer.
     */
-    BigInt,
+    BigInteger,
     /**
     The tagged value is an enum variant.
 
@@ -191,8 +191,8 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_bigint(self) -> Self {
-        self.with_shape(TagShape::BigInt)
+    pub fn for_big_integer(self) -> Self {
+        self.with_shape(TagShape::BigInteger)
     }
 
     #[inline]

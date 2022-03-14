@@ -1,7 +1,7 @@
 use crate::{source, Receiver, Source, Value};
 
-pub(crate) fn i128_bigint<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+pub(crate) fn i128_big_integer<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate::Result {
+    receiver.tagged_begin(crate::data::tag().for_big_integer())?;
 
     if receiver.is_human_readable() {
         crate::data::text(v, &mut receiver)?;
@@ -13,37 +13,38 @@ pub(crate) fn i128_bigint<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate
         receiver.binary_end()?;
     }
 
-    receiver.tagged_end(crate::data::tag().for_bigint())
+    receiver.tagged_end(crate::data::tag().for_big_integer())
 }
 
-pub(crate) fn u128_bigint<'a>(v: u128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+pub(crate) fn u128_big_integer<'a>(v: u128, mut receiver: impl Receiver<'a>) -> crate::Result {
+    receiver.tagged_begin(crate::data::tag().for_big_integer())?;
 
     if receiver.is_human_readable() {
         crate::data::text(v, &mut receiver)?;
     } else {
-        // If the value fits in a signed 128bit number then write out its bytes
-        if let Ok(v) = v.try_into::<i128>() {
-            let bytes = v.to_le_bytes();
+        let bytes = v.to_le_bytes();
 
-            receiver.binary_begin(Some(bytes.len()))?;
-            receiver.binary_fragment_computed(&bytes)?;
-            receiver.binary_end()?;
-        }
         // If the value doesn't fit in a signed 128bit number then we need to
         // append an extra byte to make it signed. This byte will always be empty
         // ensuring the sign is kept positive.
-        else {
-            let bytes = v.to_le_bytes();
+        let extra: &[u8] = if v <= (i128::MAX as u128) {
+            &[]
+        } else {
+            &[0]
+        };
 
-            receiver.binary_begin(Some(bytes.len() + 1))?;
-            receiver.binary_fragment_computed(&bytes)?;
-            receiver.binary_fragment_computed(&[0])?;
-            receiver.binary_end()?;
+        receiver.binary_begin(Some(bytes.len() + extra.len()))?;
+
+        receiver.binary_fragment_computed(&bytes)?;
+
+        if extra.len() > 0 {
+            receiver.binary_fragment_computed(extra)?;
         }
+
+        receiver.binary_end()?;
     }
 
-    receiver.tagged_end(crate::data::tag().for_bigint())
+    receiver.tagged_end(crate::data::tag().for_big_integer())
 }
 
 macro_rules! digits {

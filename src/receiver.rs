@@ -16,31 +16,45 @@ pub trait Receiver<'a> {
 
     fn null(&mut self) -> Result;
 
-    fn u8(&mut self, value: u8) -> Result;
+    fn u8(&mut self, value: u8) -> Result {
+        self.u16(value as u16)
+    }
 
-    fn u16(&mut self, value: u16) -> Result;
+    fn u16(&mut self, value: u16) -> Result {
+        self.u32(value as u32)
+    }
 
-    fn u32(&mut self, value: u32) -> Result;
+    fn u32(&mut self, value: u32) -> Result {
+        self.u64(value as u64)
+    }
 
     fn u64(&mut self, value: u64) -> Result;
 
     fn u128(&mut self, value: u128) -> Result {
-        data::u128_bigint(value, self)
+        data::u128_big_integer(value, self)
     }
 
-    fn i8(&mut self, value: i8) -> Result;
+    fn i8(&mut self, value: i8) -> Result {
+        self.i16(value as i16)
+    }
 
-    fn i16(&mut self, value: i16) -> Result;
+    fn i16(&mut self, value: i16) -> Result {
+        self.i32(value as i32)
+    }
 
-    fn i32(&mut self, value: i32) -> Result;
+    fn i32(&mut self, value: i32) -> Result {
+        self.i64(value as i64)
+    }
 
     fn i64(&mut self, value: i64) -> Result;
 
     fn i128(&mut self, value: i128) -> Result {
-        data::i128_bigint(value, self)
+        data::i128_big_integer(value, self)
     }
 
-    fn f32(&mut self, value: f32) -> Result;
+    fn f32(&mut self, value: f32) -> Result {
+        self.f64(value as f64)
+    }
 
     fn f64(&mut self, value: f64) -> Result;
 
