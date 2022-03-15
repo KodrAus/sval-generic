@@ -66,8 +66,7 @@ pub enum TagShape {
     readable or not.
 
     For human readable receivers, an arbitrarily sized integer is a text value with an
-    optional leading `+` or `-` sign, followed by a sequence of one or more digits
-    `0`-`9`.
+    optional leading `-` sign, followed by a sequence of one or more digits `0`-`9`.
 
     For binary receivers, an arbitrarily sized integer is a binary value consisting of the
     signed little-endian bytes of the integer.

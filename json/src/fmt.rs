@@ -132,10 +132,21 @@ where
         self.last_tag = Some(tag);
 
         match tag {
+            // Enums are internally tagged so we need to wrap them
+            // in a map
             sval::data::Tag {
                 shape: sval::data::TagShape::Enum,
                 ..
             } => todo!(),
+            // Big integers are compatible with JSON numbers
+            // so we want to emit their contents directly into the writer
+            sval::data::Tag {
+                shape: sval::data::TagShape::BigInteger,
+                ..
+            } => {
+                debug_assert!(self.writer.write_str_quotes);
+                self.writer.write_str_quotes = false;
+            }
             _ => (),
         }
 
@@ -144,10 +155,21 @@ where
 
     fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
         match tag {
+            // Enums are internally tagged so we need to wrap them
+            // in a map
             sval::data::Tag {
                 shape: sval::data::TagShape::Enum,
                 ..
             } => todo!(),
+            // Big integers are compatible with JSON numbers
+            // so we want to emit their contents directly into the writer
+            sval::data::Tag {
+                shape: sval::data::TagShape::BigInteger,
+                ..
+            } => {
+                debug_assert!(!self.writer.write_str_quotes);
+                self.writer.write_str_quotes = true;
+            }
             _ => (),
         }
 
