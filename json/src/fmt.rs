@@ -118,7 +118,7 @@ where
 
     fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
         for b in v {
-            self.seq_elem(b)?;
+            self.seq_value(b)?;
         }
 
         Ok(())
@@ -267,7 +267,7 @@ where
         Ok(())
     }
 
-    fn seq_elem_begin(&mut self) -> sval::Result {
+    fn seq_value_begin(&mut self) -> sval::Result {
         if !self.is_current_depth_empty {
             self.writer.write_char(',')?;
         }
@@ -277,7 +277,7 @@ where
         Ok(())
     }
 
-    fn seq_elem_end(&mut self) -> sval::Result {
+    fn seq_value_end(&mut self) -> sval::Result {
         Ok(())
     }
 
@@ -478,11 +478,11 @@ where
         Err(sval::Error)
     }
 
-    fn seq_elem_begin(&mut self) -> sval::Result {
+    fn seq_value_begin(&mut self) -> sval::Result {
         Err(sval::Error)
     }
 
-    fn seq_elem_end(&mut self) -> sval::Result {
+    fn seq_value_end(&mut self) -> sval::Result {
         Err(sval::Error)
     }
 

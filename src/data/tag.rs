@@ -71,7 +71,7 @@ pub enum TagShape {
     For binary receivers, an arbitrarily sized integer is a binary value consisting of the
     signed little-endian bytes of the integer.
     */
-    BigInteger,
+    BigInt,
     /**
     The tagged value is an enum variant.
 
@@ -190,8 +190,8 @@ impl Tag {
     }
 
     #[inline]
-    pub fn for_big_integer(self) -> Self {
-        self.with_shape(TagShape::BigInteger)
+    pub fn for_bigint(self) -> Self {
+        self.with_shape(TagShape::BigInt)
     }
 
     #[inline]

@@ -210,7 +210,7 @@ pub fn assert_stream<'a>(
             }
         }
 
-        fn expect_seq_elem<'c>(&mut self, elem: impl sval::Source<'c>) -> sval::Result {
+        fn expect_seq_value<'c>(&mut self, elem: impl sval::Source<'c>) -> sval::Result {
             match self.tokens.get(0) {
                 Some(Token::SeqElem(expected)) => {
                     Expect::stream_to_end(self.human_readable, expected, elem)?;
@@ -392,11 +392,11 @@ pub fn assert_stream<'a>(
             self.expect(Token::SeqBegin(num_elems_hint))
         }
 
-        fn seq_elem_begin(&mut self) -> sval::Result {
+        fn seq_value_begin(&mut self) -> sval::Result {
             self.expect(Token::SeqElemBegin)
         }
 
-        fn seq_elem_end(&mut self) -> sval::Result {
+        fn seq_value_end(&mut self) -> sval::Result {
             self.expect(Token::SeqElemEnd)
         }
 
@@ -404,8 +404,8 @@ pub fn assert_stream<'a>(
             self.expect(Token::SeqEnd)
         }
 
-        fn seq_elem<'e: 'a, E: sval::Source<'e>>(&mut self, elem: E) -> sval::Result {
-            self.expect_seq_elem(elem)
+        fn seq_value<'e: 'a, V: sval::Source<'e>>(&mut self, value: V) -> sval::Result {
+            self.expect_seq_value(value)
         }
     }
 

@@ -88,7 +88,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
                 b',' => {
                     self.head += 1;
 
-                    self.map_value_seq_elem_end(receiver)?;
+                    self.map_value_seq_value_end(receiver)?;
 
                     return Ok(sval::Resume::Continue);
                 }
@@ -171,7 +171,7 @@ impl<'a> JsonBufReader<'a> {
 
     fn map_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
         match self.position {
-            Position::SeqEmpty | Position::SeqElem => receiver.seq_elem_begin()?,
+            Position::SeqEmpty | Position::SeqElem => receiver.seq_value_begin()?,
             Position::MapValue => receiver.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
@@ -216,7 +216,7 @@ impl<'a> JsonBufReader<'a> {
         'a: 'b,
     {
         match self.position {
-            Position::SeqEmpty | Position::SeqElem => receiver.seq_elem_begin()?,
+            Position::SeqEmpty | Position::SeqElem => receiver.seq_value_begin()?,
             Position::MapValue => receiver.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
@@ -235,7 +235,7 @@ impl<'a> JsonBufReader<'a> {
         match self.position {
             Position::SeqEmpty => (),
             Position::SeqElem => {
-                receiver.seq_elem_end()?;
+                receiver.seq_value_end()?;
             }
             _ => todo!(),
         }
@@ -246,12 +246,12 @@ impl<'a> JsonBufReader<'a> {
         receiver.seq_end()
     }
 
-    fn map_value_seq_elem_end<'b>(
+    fn map_value_seq_value_end<'b>(
         &mut self,
         mut receiver: impl sval::Receiver<'b>,
     ) -> sval::Result {
         match self.position {
-            Position::SeqElem => receiver.seq_elem_end(),
+            Position::SeqElem => receiver.seq_value_end(),
             Position::MapValue => {
                 self.position = Position::MapKey;
 
@@ -266,7 +266,7 @@ impl<'a> JsonBufReader<'a> {
             Position::SeqEmpty | Position::SeqElem => {
                 self.position = Position::SeqElem;
 
-                receiver.seq_elem_begin()
+                receiver.seq_value_begin()
             }
             Position::MapEmpty => {
                 self.position = Position::MapKey;
@@ -284,7 +284,7 @@ impl<'a> JsonBufReader<'a> {
             Position::SeqEmpty | Position::SeqElem => {
                 self.position = Position::SeqElem;
 
-                receiver.seq_elem_begin()
+                receiver.seq_value_begin()
             }
             Position::MapValue => receiver.map_value_begin(),
             Position::Root => Ok(()),

@@ -209,19 +209,19 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.seq_begin(num_elems_hint)
     }
 
-    fn seq_elem_begin(&mut self) -> Result {
-        self.0.seq_elem_begin()
+    fn seq_value_begin(&mut self) -> Result {
+        self.0.seq_value_begin()
     }
 
-    fn seq_elem_end(&mut self) -> Result {
-        self.0.seq_elem_end()
+    fn seq_value_end(&mut self) -> Result {
+        self.0.seq_value_end()
     }
 
     fn seq_end(&mut self) -> Result {
         self.0.seq_end()
     }
 
-    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
-        self.0.seq_elem(computed(elem))
+    fn seq_value<'e: 'a, V: Source<'e>>(&mut self, value: V) -> Result {
+        self.0.seq_value(computed(value))
     }
 }

@@ -91,11 +91,11 @@ mod private {
 
         fn dispatch_seq_end(&mut self) -> sval::Result;
 
-        fn dispatch_seq_elem_begin(&mut self) -> sval::Result;
+        fn dispatch_seq_value_begin(&mut self) -> sval::Result;
 
-        fn dispatch_seq_elem_end(&mut self) -> sval::Result;
+        fn dispatch_seq_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_seq_elem<'e: 'a>(&mut self, elem: &mut dyn Source<'e>) -> sval::Result;
+        fn dispatch_seq_value<'e: 'a>(&mut self, value: &mut dyn Source<'e>) -> sval::Result;
     }
 
     pub trait EraseReceiver<'a> {
@@ -292,16 +292,16 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.seq_end()
     }
 
-    fn dispatch_seq_elem_begin(&mut self) -> sval::Result {
-        self.seq_elem_begin()
+    fn dispatch_seq_value_begin(&mut self) -> sval::Result {
+        self.seq_value_begin()
     }
 
-    fn dispatch_seq_elem_end(&mut self) -> sval::Result {
-        self.seq_elem_end()
+    fn dispatch_seq_value_end(&mut self) -> sval::Result {
+        self.seq_value_end()
     }
 
-    fn dispatch_seq_elem<'e: 'a>(&mut self, elem: &mut dyn Source<'e>) -> sval::Result {
-        self.seq_elem(elem)
+    fn dispatch_seq_value<'e: 'a>(&mut self, elem: &mut dyn Source<'e>) -> sval::Result {
+        self.seq_value(elem)
     }
 }
 
@@ -468,16 +468,16 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_seq_end()
             }
 
-            fn seq_elem_begin(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_seq_elem_begin()
+            fn seq_value_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_value_begin()
             }
 
-            fn seq_elem_end(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_seq_elem_end()
+            fn seq_value_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_value_end()
             }
 
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> sval::Result {
-                self.erase_receiver().0.dispatch_seq_elem(&mut elem)
+            fn seq_value<'e: 'a, V: Source<'e>>(&mut self, mut value: V) -> sval::Result {
+                self.erase_receiver().0.dispatch_seq_value(&mut value)
             }
         }
     }

@@ -30,6 +30,28 @@ impl From<str::Utf8Error> for Error {
     }
 }
 
+#[cfg(feature = "std")]
+mod std_support {
+    use super::*;
+
+    use crate::std::{error, io};
+
+    impl error::Error for Error {}
+
+    impl From<io::Error> for Error {
+        #[inline]
+        fn from(_: io::Error) -> Error {
+            Error
+        }
+    }
+
+    impl From<Error> for io::Error {
+        fn from(e: Error) -> io::Error {
+            io::Error::new(io::ErrorKind::Other, e)
+        }
+    }
+}
+
 pub fn unsupported() -> crate::Result {
     Err(crate::Error)
 }

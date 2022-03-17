@@ -1,4 +1,52 @@
-use crate::{data, Receiver, Result, Value};
+use crate::{data, source, std::ops, Receiver, Result, Source, Value};
+
+pub fn bytes<'a>(bytes: &'a impl AsRef<[u8]>) -> Bytes<'a> {
+    Bytes::new(bytes)
+}
+
+pub struct Bytes<'a>(&'a [u8]);
+
+impl<'a> Bytes<'a> {
+    pub fn new(bytes: &'a impl AsRef<[u8]>) -> Self {
+        Bytes(bytes.as_ref())
+    }
+}
+
+impl<'a> Value for Bytes<'a> {
+    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
+        receiver.bytes(self.0)
+    }
+}
+
+impl<'a> Source<'a> for Bytes<'a> {
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        receiver.bytes(self.0)
+    }
+}
+
+impl<'a> AsRef<[u8]> for Bytes<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.0
+    }
+}
+
+impl<'a> ops::Deref for Bytes<'a> {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        self.0
+    }
+}
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
@@ -6,7 +54,7 @@ impl<T: Value> Value for [T] {
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_elem(elem)?;
+            receiver.seq_value(elem)?;
         }
 
         receiver.seq_end()?;
@@ -20,7 +68,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_elem(elem)?;
+            receiver.seq_value(elem)?;
         }
 
         receiver.seq_end()?;
@@ -39,7 +87,7 @@ macro_rules! tuple {
                     receiver.seq_begin(Some($len))?;
 
                     $(
-                        receiver.seq_elem(data::tag().for_struct_value().with_id($i).with_value(&self.$i))?;
+                        receiver.seq_value(data::tag().for_struct_value().with_id($i).with_value(&self.$i))?;
                     )+
 
                     receiver.seq_end()?;
@@ -225,11 +273,11 @@ tuple! {
 mod alloc_support {
     use super::*;
 
-    use crate::{source, std::vec::Vec, Source};
+    use crate::std::vec::Vec;
 
     impl<T: Value> Value for Vec<T> {
-        fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
-            (&**self).stream(stream)
+        fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {
+            (&**self).stream(receiver)
         }
     }
 
@@ -245,13 +293,15 @@ mod alloc_support {
         where
             'a: 'b,
         {
+            receiver.tagged_begin(data::tag().for_slice())?;
             receiver.seq_begin(Some(self.len()))?;
 
             for elem in self.drain(..) {
-                receiver.seq_elem(elem)?;
+                receiver.seq_value(elem)?;
             }
 
-            receiver.seq_end()
+            receiver.seq_end()?;
+            receiver.tagged_end(data::tag().for_slice())
         }
     }
 }

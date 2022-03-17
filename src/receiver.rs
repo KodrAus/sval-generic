@@ -152,16 +152,16 @@ pub trait Receiver<'a> {
 
     fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result;
 
-    fn seq_elem_begin(&mut self) -> Result;
+    fn seq_value_begin(&mut self) -> Result;
 
-    fn seq_elem_end(&mut self) -> Result;
+    fn seq_value_end(&mut self) -> Result;
 
     fn seq_end(&mut self) -> Result;
 
-    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, mut elem: E) -> Result {
-        self.seq_elem_begin()?;
-        elem.stream_to_end(&mut *self)?;
-        self.seq_elem_end()
+    fn seq_value<'e: 'a, V: Source<'e>>(&mut self, mut value: V) -> Result {
+        self.seq_value_begin()?;
+        value.stream_to_end(&mut *self)?;
+        self.seq_value_end()
     }
 }
 
@@ -382,19 +382,19 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).seq_end()
             }
 
-            fn seq_elem_begin(&mut self) -> Result {
+            fn seq_value_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).seq_elem_begin()
+                ($($forward)*).seq_value_begin()
             }
 
-            fn seq_elem_end(&mut self) -> Result {
+            fn seq_value_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).seq_elem_end()
+                ($($forward)*).seq_value_end()
             }
 
-            fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, elem: E) -> Result {
+            fn seq_value<'e: 'a, V: Source<'e>>(&mut self, value: V) -> Result {
                 let $bind = self;
-                ($($forward)*).seq_elem(elem)
+                ($($forward)*).seq_value(value)
             }
         }
     };
@@ -574,11 +574,11 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn seq_elem_begin(&mut self) -> Result {
+    fn seq_value_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn seq_elem_end(&mut self) -> Result {
+    fn seq_value_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
@@ -586,7 +586,7 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn seq_elem<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
+    fn seq_value<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
         crate::error::unsupported()
     }
 }

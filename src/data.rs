@@ -7,9 +7,9 @@ mod text;
 use crate::{source, Receiver, Source, Value};
 
 #[doc(inline)]
-pub use self::{computed::*, tag::*};
+pub use self::{computed::*, seq::*, tag::*, text::*};
 
-pub(crate) use self::{number::*, text::*};
+pub(crate) use self::number::*;
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {

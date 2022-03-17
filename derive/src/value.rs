@@ -255,7 +255,7 @@ fn stream_tuple(
         receiver.seq_begin(Some(#field_count))?;
 
         #(
-            receiver.seq_elem(sval::data::tag().for_struct_value().with_id(#field_id).with_value(#field_ident))?;
+            receiver.seq_value(sval::data::tag().for_struct_value().with_id(#field_id).with_value(#field_ident))?;
         )*
 
         receiver.seq_end()?;
