@@ -50,7 +50,7 @@ impl<'a> ops::Deref for Bytes<'a> {
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.tagged_begin(data::tag().for_slice())?;
+        receiver.slice_begin(data::tag())?;
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -58,13 +58,13 @@ impl<T: Value> Value for [T] {
         }
 
         receiver.seq_end()?;
-        receiver.tagged_end(data::tag().for_slice())
+        receiver.slice_end()
     }
 }
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.tagged_begin(data::tag().for_array())?;
+        receiver.array_begin(data::tag())?;
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -72,7 +72,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         receiver.seq_end()?;
-        receiver.tagged_end(data::tag().for_array())
+        receiver.array_end()
     }
 }
 
@@ -83,15 +83,15 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-                    receiver.tagged_begin(data::tag().for_struct())?;
+                    receiver.struct_begin(data::tag())?;
                     receiver.seq_begin(Some($len))?;
 
                     $(
-                        receiver.seq_value(data::tag().for_struct_value().with_id($i).with_value(&self.$i))?;
+                        receiver.seq_value(data::struct_value(data::tag().with_id($i), &self.$i))?;
                     )+
 
                     receiver.seq_end()?;
-                    receiver.tagged_end(data::tag().for_struct())
+                    receiver.struct_end()
                 }
             }
         )+
@@ -293,7 +293,7 @@ mod alloc_support {
         where
             'a: 'b,
         {
-            receiver.tagged_begin(data::tag().for_slice())?;
+            receiver.slice_begin(data::tag())?;
             receiver.seq_begin(Some(self.len()))?;
 
             for elem in self.drain(..) {
@@ -301,7 +301,7 @@ mod alloc_support {
             }
 
             receiver.seq_end()?;
-            receiver.tagged_end(data::tag().for_slice())
+            receiver.slice_end()
         }
     }
 }

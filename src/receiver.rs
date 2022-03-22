@@ -4,8 +4,8 @@ use crate::{data, Result, Source, Value};
 An observer of structured data emitted by some source.
 */
 pub trait Receiver<'a> {
-    fn is_human_readable(&self) -> bool {
-        true
+    fn is_text_based(&self) -> bool {
+        false
     }
 
     fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
@@ -101,22 +101,6 @@ pub trait Receiver<'a> {
 
     fn binary_end(&mut self) -> Result;
 
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-        Ok(())
-    }
-
-    fn tagged_end(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-        Ok(())
-    }
-
-    fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: data::Tagged<V>) -> Result {
-        self.tagged_begin(tagged.tag)?;
-        tagged.value.stream_to_end(&mut *self)?;
-        self.tagged_end(tagged.tag)
-    }
-
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     fn map_key_begin(&mut self) -> Result;
@@ -129,7 +113,7 @@ pub trait Receiver<'a> {
 
     fn map_end(&mut self) -> Result;
 
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
         value: V,
@@ -150,7 +134,7 @@ pub trait Receiver<'a> {
         self.map_value_end()
     }
 
-    fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result;
+    fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     fn seq_value_begin(&mut self) -> Result;
 
@@ -163,14 +147,137 @@ pub trait Receiver<'a> {
         value.stream_to_end(&mut *self)?;
         self.seq_value_end()
     }
+
+    fn struct_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn struct_key_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn struct_value_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn struct_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn enum_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn enum_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn array_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn array_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn slice_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn slice_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn dynamic_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn constant_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn constant_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn nullable_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn nullable_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn tagged_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn bigint_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn bigint_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
+        let _ = tag;
+        let _ = app_specific_id;
+
+        Ok(())
+    }
+
+    fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
+        let _ = app_specific_id;
+
+        Ok(())
+    }
 }
 
 macro_rules! impl_receiver_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn is_human_readable(&self) -> bool {
+            fn is_text_based(&self) -> bool {
                 let $bind = self;
-                ($($forward)*).is_human_readable()
+                ($($forward)*).is_text_based()
             }
 
             fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
@@ -308,21 +415,6 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).binary_fragment_computed(fragment)
             }
 
-            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).tagged_begin(tag)
-            }
-
-            fn tagged_end(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).tagged_end(tag)
-            }
-
-            fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
-                let $bind = self;
-                ($($forward)*).tagged(tagged)
-            }
-
             fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).map_begin(num_entries_hint)
@@ -353,13 +445,13 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).map_value_end()
             }
 
-            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+            fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
                 &mut self,
                 key: K,
                 value: V,
             ) -> Result {
                 let $bind = self;
-                ($($forward)*).map_entry(key, value)
+                ($($forward)*).map_key_value(key, value)
             }
 
             fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
@@ -372,9 +464,9 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).map_value(value)
             }
 
-            fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
+            fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).seq_begin(num_elems_hint)
+                ($($forward)*).seq_begin(num_entries_hint)
             }
 
             fn seq_end(&mut self) -> Result {
@@ -396,6 +488,126 @@ macro_rules! impl_receiver_forward {
                 let $bind = self;
                 ($($forward)*).seq_value(value)
             }
+
+            fn struct_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_begin(tag)
+            }
+
+            fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_key_begin(tag)
+            }
+
+            fn struct_key_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_key_end()
+            }
+
+            fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_value_begin(tag)
+            }
+
+            fn struct_value_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_value_end()
+            }
+
+            fn struct_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_end()
+            }
+
+            fn enum_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).enum_begin(tag)
+            }
+
+            fn enum_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).enum_end()
+            }
+
+            fn array_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).array_begin(tag)
+            }
+
+            fn array_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).array_end()
+            }
+
+            fn slice_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).slice_begin(tag)
+            }
+
+            fn slice_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).slice_end()
+            }
+
+            fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).dynamic_begin(tag)
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).dynamic_end()
+            }
+
+            fn constant_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).constant_begin(tag)
+            }
+
+            fn constant_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).constant_end()
+            }
+
+            fn nullable_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).nullable_begin(tag)
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).nullable_end()
+            }
+
+            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).tagged_begin(tag)
+            }
+
+            fn tagged_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).tagged_end()
+            }
+
+            fn bigint_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).bigint_begin(tag)
+            }
+
+            fn bigint_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).bigint_end()
+            }
+
+            fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
+                let $bind = self;
+                ($($forward)*).app_specific_begin(tag, app_specific_id)
+            }
+
+            fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
+                let $bind = self;
+                ($($forward)*).app_specific_end(app_specific_id)
+            }
         }
     };
 }
@@ -406,7 +618,7 @@ pub(crate) trait DefaultUnsupported<'a> {
         AsReceiver(self)
     }
 
-    fn is_human_readable(&self) -> bool {
+    fn is_text_based(&self) -> bool {
         false
     }
 
@@ -518,22 +730,6 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn tag(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn tagged_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn tagged_end(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn tagged<'v: 'a, V: Source<'v>>(&mut self, _: data::Tagged<V>) -> Result {
-        crate::error::unsupported()
-    }
-
     fn map_begin(&mut self, _: Option<usize>) -> Result {
         crate::error::unsupported()
     }
@@ -558,7 +754,11 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(&mut self, _: K, _: V) -> Result {
+    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+        &mut self,
+        _: K,
+        _: V,
+    ) -> Result {
         crate::error::unsupported()
     }
 
@@ -587,6 +787,102 @@ pub(crate) trait DefaultUnsupported<'a> {
     }
 
     fn seq_value<'e: 'a, E: Source<'e>>(&mut self, _: E) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_key_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_key_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_value_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_value_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn enum_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn enum_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn array_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn array_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn slice_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn slice_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn dynamic_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn dynamic_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn constant_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn constant_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn nullable_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn nullable_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tagged_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn tagged_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn bigint_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn bigint_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn app_specific_begin(&mut self, _: data::Tag, _: u128) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn app_specific_end(&mut self, _: u128) -> Result {
         crate::error::unsupported()
     }
 }

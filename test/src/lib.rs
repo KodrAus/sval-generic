@@ -99,26 +99,19 @@ impl<'a, 'b> PartialEq<Token<'b>> for Token<'a> {
     }
 }
 
-pub fn assert_stream<'a>(
-    human_readable: bool,
-    source: impl sval::Source<'a>,
-    expected: &[Token<'a>],
-) {
+pub fn assert_stream<'a>(text_based: bool, source: impl sval::Source<'a>, expected: &[Token<'a>]) {
     struct Expect<'a, 'b> {
-        human_readable: bool,
+        text_based: bool,
         tokens: &'b [Token<'a>],
     }
 
     impl<'a, 'b> Expect<'a, 'b> {
         fn stream_to_end<'c>(
-            human_readable: bool,
+            text_based: bool,
             tokens: &'b [Token<'a>],
             mut source: impl sval::Source<'c>,
         ) -> sval::Result {
-            let mut expect = Expect {
-                human_readable,
-                tokens,
-            };
+            let mut expect = Expect { text_based, tokens };
 
             source.stream_to_end(&mut expect)?;
 
@@ -156,7 +149,7 @@ pub fn assert_stream<'a>(
                 Some(Token::Tagged(expected_tag, expected)) => {
                     assert_eq!(*expected_tag, tag);
 
-                    Expect::stream_to_end(self.human_readable, expected, source)?;
+                    Expect::stream_to_end(self.text_based, expected, source)?;
                     self.advance();
 
                     Ok(())
@@ -166,15 +159,15 @@ pub fn assert_stream<'a>(
             }
         }
 
-        fn expect_map_entry<'c, 'd>(
+        fn expect_map_key_value<'c, 'd>(
             &mut self,
             key: impl sval::Source<'c>,
             value: impl sval::Source<'d>,
         ) -> sval::Result {
             match self.tokens.get(0) {
                 Some(Token::MapEntry(key_tokens, value_tokens)) => {
-                    Expect::stream_to_end(self.human_readable, key_tokens, key)?;
-                    Expect::stream_to_end(self.human_readable, value_tokens, value)?;
+                    Expect::stream_to_end(self.text_based, key_tokens, key)?;
+                    Expect::stream_to_end(self.text_based, value_tokens, value)?;
                     self.advance();
 
                     Ok(())
@@ -187,7 +180,7 @@ pub fn assert_stream<'a>(
         fn expect_map_key<'c>(&mut self, key: impl sval::Source<'c>) -> sval::Result {
             match self.tokens.get(0) {
                 Some(Token::MapKey(expected)) => {
-                    Expect::stream_to_end(self.human_readable, expected, key)?;
+                    Expect::stream_to_end(self.text_based, expected, key)?;
                     self.advance();
 
                     Ok(())
@@ -200,7 +193,7 @@ pub fn assert_stream<'a>(
         fn expect_map_value<'c>(&mut self, value: impl sval::Source<'c>) -> sval::Result {
             match self.tokens.get(0) {
                 Some(Token::MapValue(expected)) => {
-                    Expect::stream_to_end(self.human_readable, expected, value)?;
+                    Expect::stream_to_end(self.text_based, expected, value)?;
                     self.advance();
 
                     Ok(())
@@ -213,7 +206,7 @@ pub fn assert_stream<'a>(
         fn expect_seq_value<'c>(&mut self, elem: impl sval::Source<'c>) -> sval::Result {
             match self.tokens.get(0) {
                 Some(Token::SeqElem(expected)) => {
-                    Expect::stream_to_end(self.human_readable, expected, elem)?;
+                    Expect::stream_to_end(self.text_based, expected, elem)?;
                     self.advance();
 
                     Ok(())
@@ -225,8 +218,8 @@ pub fn assert_stream<'a>(
     }
 
     impl<'a, 'b> sval::Receiver<'a> for Expect<'a, 'b> {
-        fn is_human_readable(&self) -> bool {
-            self.human_readable
+        fn is_text_based(&self) -> bool {
+            self.text_based
         }
 
         fn unit(&mut self) -> sval::Result {
@@ -333,21 +326,6 @@ pub fn assert_stream<'a>(
             self.expect(Token::BinaryEnd)
         }
 
-        fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-            self.expect(Token::TaggedBegin(tag))
-        }
-
-        fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-            self.expect(Token::TaggedEnd(tag))
-        }
-
-        fn tagged<'v: 'a, V: sval::Source<'v>>(
-            &mut self,
-            tagged: sval::data::Tagged<V>,
-        ) -> sval::Result {
-            self.expect_tagged(tagged.tag, tagged.value)
-        }
-
         fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
             self.expect(Token::MapBegin(num_entries_hint))
         }
@@ -372,12 +350,12 @@ pub fn assert_stream<'a>(
             self.expect(Token::MapEnd)
         }
 
-        fn map_entry<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
+        fn map_key_value<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
             &mut self,
             key: K,
             value: V,
         ) -> sval::Result {
-            self.expect_map_entry(key, value)
+            self.expect_map_key_value(key, value)
         }
 
         fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, key: K) -> sval::Result {
@@ -409,7 +387,7 @@ pub fn assert_stream<'a>(
         }
     }
 
-    Expect::stream_to_end(human_readable, expected, source).expect("invalid source");
+    Expect::stream_to_end(text_based, expected, source).expect("invalid source");
 }
 
 #[cfg(test)]

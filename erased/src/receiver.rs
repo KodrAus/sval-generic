@@ -2,7 +2,7 @@ mod private {
     use crate::Source;
 
     pub trait DispatchReceiver<'a> {
-        fn dispatch_is_human_readable(&self) -> bool;
+        fn dispatch_is_text_based(&self) -> bool;
 
         fn dispatch_unit(&mut self) -> sval::Result;
 
@@ -56,15 +56,6 @@ mod private {
 
         fn dispatch_binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result;
 
-        fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
-
-        fn dispatch_tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result;
-
-        fn dispatch_tagged<'v: 'a>(
-            &mut self,
-            tagged: sval::data::Tagged<&mut dyn Source<'v>>,
-        ) -> sval::Result;
-
         fn dispatch_map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_map_end(&mut self) -> sval::Result;
@@ -77,7 +68,7 @@ mod private {
 
         fn dispatch_map_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_map_entry<'k: 'a, 'v: 'a>(
+        fn dispatch_map_key_value<'k: 'a, 'v: 'a>(
             &mut self,
             key: &mut dyn Source<'k>,
             value: &mut dyn Source<'v>,
@@ -96,6 +87,58 @@ mod private {
         fn dispatch_seq_value_end(&mut self) -> sval::Result;
 
         fn dispatch_seq_value<'e: 'a>(&mut self, value: &mut dyn Source<'e>) -> sval::Result;
+
+        fn dispatch_struct_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_struct_key_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_struct_key_end(&mut self) -> sval::Result;
+
+        fn dispatch_struct_value_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_struct_value_end(&mut self) -> sval::Result;
+
+        fn dispatch_struct_end(&mut self) -> sval::Result;
+
+        fn dispatch_enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_enum_end(&mut self) -> sval::Result;
+
+        fn dispatch_array_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_array_end(&mut self) -> sval::Result;
+
+        fn dispatch_slice_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_slice_end(&mut self) -> sval::Result;
+
+        fn dispatch_dynamic_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_dynamic_end(&mut self) -> sval::Result;
+
+        fn dispatch_constant_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_constant_end(&mut self) -> sval::Result;
+
+        fn dispatch_nullable_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_nullable_end(&mut self) -> sval::Result;
+
+        fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_tagged_end(&mut self) -> sval::Result;
+
+        fn dispatch_bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_bigint_end(&mut self) -> sval::Result;
+
+        fn dispatch_app_specific_begin(
+            &mut self,
+            tag: sval::data::Tag,
+            app_specific_id: u128,
+        ) -> sval::Result;
+
+        fn dispatch_app_specific_end(&mut self, app_specific_id: u128) -> sval::Result;
     }
 
     pub trait EraseReceiver<'a> {
@@ -121,8 +164,8 @@ impl<'a, R: sval::Receiver<'a>> private::EraseReceiver<'a> for R {
 }
 
 impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
-    fn dispatch_is_human_readable(&self) -> bool {
-        self.is_human_readable()
+    fn dispatch_is_text_based(&self) -> bool {
+        self.is_text_based()
     }
 
     fn dispatch_unit(&mut self) -> sval::Result {
@@ -229,21 +272,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.binary_fragment_computed(fragment)
     }
 
-    fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-        self.tagged_begin(tag)
-    }
-
-    fn dispatch_tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-        self.tagged_end(tag)
-    }
-
-    fn dispatch_tagged<'v: 'a>(
-        &mut self,
-        tagged: sval::data::Tagged<&mut dyn Source<'v>>,
-    ) -> sval::Result {
-        self.tagged(tagged)
-    }
-
     fn dispatch_map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
         self.map_begin(num_entries_hint)
     }
@@ -268,12 +296,12 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.map_value_end()
     }
 
-    fn dispatch_map_entry<'k: 'a, 'v: 'a>(
+    fn dispatch_map_key_value<'k: 'a, 'v: 'a>(
         &mut self,
         key: &mut dyn Source<'k>,
         value: &mut dyn Source<'v>,
     ) -> sval::Result {
-        self.map_entry(key, value)
+        self.map_key_value(key, value)
     }
 
     fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result {
@@ -303,13 +331,113 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
     fn dispatch_seq_value<'e: 'a>(&mut self, elem: &mut dyn Source<'e>) -> sval::Result {
         self.seq_value(elem)
     }
+
+    fn dispatch_struct_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.struct_begin(tag)
+    }
+
+    fn dispatch_struct_key_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.struct_key_begin(tag)
+    }
+
+    fn dispatch_struct_key_end(&mut self) -> sval::Result {
+        self.struct_key_end()
+    }
+
+    fn dispatch_struct_value_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.struct_value_begin(tag)
+    }
+
+    fn dispatch_struct_value_end(&mut self) -> sval::Result {
+        self.struct_value_end()
+    }
+
+    fn dispatch_struct_end(&mut self) -> sval::Result {
+        self.struct_end()
+    }
+
+    fn dispatch_enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.enum_begin(tag)
+    }
+
+    fn dispatch_enum_end(&mut self) -> sval::Result {
+        self.enum_end()
+    }
+
+    fn dispatch_array_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.array_begin(tag)
+    }
+
+    fn dispatch_array_end(&mut self) -> sval::Result {
+        self.array_end()
+    }
+
+    fn dispatch_slice_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.slice_begin(tag)
+    }
+
+    fn dispatch_slice_end(&mut self) -> sval::Result {
+        self.slice_end()
+    }
+
+    fn dispatch_dynamic_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.dynamic_begin(tag)
+    }
+
+    fn dispatch_dynamic_end(&mut self) -> sval::Result {
+        self.dynamic_end()
+    }
+
+    fn dispatch_constant_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.constant_begin(tag)
+    }
+
+    fn dispatch_constant_end(&mut self) -> sval::Result {
+        self.constant_end()
+    }
+
+    fn dispatch_nullable_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.nullable_begin(tag)
+    }
+
+    fn dispatch_nullable_end(&mut self) -> sval::Result {
+        self.nullable_end()
+    }
+
+    fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.tagged_begin(tag)
+    }
+
+    fn dispatch_tagged_end(&mut self) -> sval::Result {
+        self.tagged_end()
+    }
+
+    fn dispatch_bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.bigint_begin(tag)
+    }
+
+    fn dispatch_bigint_end(&mut self) -> sval::Result {
+        self.bigint_end()
+    }
+
+    fn dispatch_app_specific_begin(
+        &mut self,
+        tag: sval::data::Tag,
+        app_specific_id: u128,
+    ) -> sval::Result {
+        self.app_specific_begin(tag, app_specific_id)
+    }
+
+    fn dispatch_app_specific_end(&mut self, app_specific_id: u128) -> sval::Result {
+        self.app_specific_end(app_specific_id)
+    }
 }
 
 macro_rules! impl_receiver {
     ($($impl:tt)*) => {
         $($impl)* {
-            fn is_human_readable(&self) -> bool {
-                self.erase_receiver_ref().0.dispatch_is_human_readable()
+            fn is_text_based(&self) -> bool {
+                self.erase_receiver_ref().0.dispatch_is_text_based()
             }
 
             fn unit(&mut self) -> sval::Result {
@@ -408,18 +536,6 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_binary_fragment_computed(fragment.as_ref())
             }
 
-            fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-                self.erase_receiver().0.dispatch_tagged_begin(tag)
-            }
-
-            fn tagged_end(&mut self, tag: sval::data::Tag) -> sval::Result {
-                self.erase_receiver().0.dispatch_tagged_end(tag)
-            }
-
-            fn tagged<'v: 'a, V: Source<'v>>(&mut self, mut tagged: sval::data::Tagged<V>) -> sval::Result {
-                self.erase_receiver().0.dispatch_tagged(tagged.as_mut().map_value(|v| v as &mut dyn Source<'v>))
-            }
-
             fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_receiver().0.dispatch_map_begin(num_entries_hint)
             }
@@ -444,12 +560,12 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_map_value_end()
             }
 
-            fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+            fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
                 &mut self,
                 mut key: K,
                 mut value: V,
             ) -> sval::Result {
-                self.erase_receiver().0.dispatch_map_entry(&mut key, &mut value)
+                self.erase_receiver().0.dispatch_map_key_value(&mut key, &mut value)
             }
 
             fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> sval::Result {
@@ -478,6 +594,106 @@ macro_rules! impl_receiver {
 
             fn seq_value<'e: 'a, V: Source<'e>>(&mut self, mut value: V) -> sval::Result {
                 self.erase_receiver().0.dispatch_seq_value(&mut value)
+            }
+
+            fn struct_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_begin(tag)
+            }
+
+            fn struct_key_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_key_begin(tag)
+            }
+
+            fn struct_key_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_key_end()
+            }
+
+            fn struct_value_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_value_begin(tag)
+            }
+
+            fn struct_value_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_value_end()
+            }
+
+            fn struct_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_struct_end()
+            }
+
+            fn enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_enum_begin(tag)
+            }
+
+            fn enum_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_enum_end()
+            }
+
+            fn array_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_array_begin(tag)
+            }
+
+            fn array_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_array_end()
+            }
+
+            fn slice_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_slice_begin(tag)
+            }
+
+            fn slice_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_slice_end()
+            }
+
+            fn dynamic_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_dynamic_begin(tag)
+            }
+
+            fn dynamic_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_dynamic_end()
+            }
+
+            fn constant_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_constant_begin(tag)
+            }
+
+            fn constant_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_constant_end()
+            }
+
+            fn nullable_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_nullable_begin(tag)
+            }
+
+            fn nullable_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_nullable_end()
+            }
+
+            fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_tagged_begin(tag)
+            }
+
+            fn tagged_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_tagged_end()
+            }
+
+            fn bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_bigint_begin(tag)
+            }
+
+            fn bigint_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_bigint_end()
+            }
+
+            fn app_specific_begin(
+                &mut self,
+                tag: sval::data::Tag,
+                app_specific_id: u128,
+            ) -> sval::Result {
+                self.erase_receiver().0.dispatch_app_specific_begin(tag, app_specific_id)
+            }
+
+            fn app_specific_end(&mut self, app_specific_id: u128) -> sval::Result {
+                self.erase_receiver().0.dispatch_app_specific_end(app_specific_id)
             }
         }
     }

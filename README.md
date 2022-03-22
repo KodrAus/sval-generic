@@ -79,9 +79,9 @@ Each call roughly corresponds to a token in the JSON stream. At its core, `sval`
 ```rust
 receiver.map_begin(Some(3))?;
 
-receiver.map_entry("id", 42)?;
-receiver.map_entry("title", "My Document")?;
-receiver.map_entry("active", true)?;
+receiver.map_key_value("id", 42)?;
+receiver.map_key_value("title", "My Document")?;
+receiver.map_key_value("active", true)?;
 
 receiver.map_end()?;
 ```
@@ -110,65 +110,3 @@ In `sval`, buffering and borrowing are both optional. You can use them to optimi
         - **Binary blobs**: Byte sequences of known or unknown length, streamed in fragments.
     - **Maps**: Homogenous mapping of value keys to value data.
     - **Sequences**: Homogenous array of values.
-
-### Type, shape, and tags
-
-In Rust, all values have a _type_ that describes its common properties. In `sval`, all data has a _shape_ that describes its common structure.
-
-The shape of a value is determined by the calls it makes on a `Receiver` while streaming.
-
-`sval` extends its basic data model with the concept of _tags_: in-band annotations that influence the shape and semantics of basic data. As an example, a regular map can be annotated as a struct, which requires all keys are strings:
-
-```rust
-receiver.tagged_begin(tag().for_struct().with_label("Data"));
-receiver.map_begin(Some(3))?;
-
-receiver.map_entry(
-    "id",
-    tag().for_struct_field().with_label("id").with_value(42)
-)?;
-
-receiver.map_entry(
-    "title",
-    tag().for_struct_field().with_label("title").with_value("My document")
-)?;
-
-receiver.map_entry(
-    "active",
-    tag().for_struct_field().with_label("active").with_value(true)
-)?;
-
-receiver.map_end()?;
-receiver.tagged_end(tag().for_struct().with_label("Data"));
-```
-
-### Dynamic values
-
-`sval` is strict in its requirement that all `Source`s and `Value`s with the same Rust type produce data with the same `sval` shape.
-This is a departure from `serde`'s data model and isn't always desirable, so there's a tag shape that identifies values as changing their shape dynamically:
-
-```rust
-receiver.tagged_begin(tag().for_dynamic())?;
-
-if some_condition() {
-    receiver.i32(42)?;
-} else {
-    receiver.bool(false)?;
-}
-
-receiver.tagged_end(tag().for_dynamic())?;
-```
-
-Dynamic values can also be represented as enums:
-
-```rust
-receiver.tagged_begin(tag().for_enum().with_label("Data"))?;
-
-if some_condition() {
-    receiver.tagged(tag().with_label("Variant1"), 42)?;
-} else {
-    receiver.tagged(tag().with_label("Variant2"), false)?;
-}
-
-receiver.tagged_end(tag().for_enum().with_label("Data"))?;
-```

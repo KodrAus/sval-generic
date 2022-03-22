@@ -27,8 +27,8 @@ impl<T> Computed<T> {
 }
 
 impl<T: Value> Value for Computed<T> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, stream: S) -> Result {
-        self.0.stream(stream)
+    fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {
+        self.0.stream(receiver)
     }
 }
 
@@ -49,8 +49,8 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for Computed<T> {
 }
 
 impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
-    fn is_human_readable(&self) -> bool {
-        self.0.is_human_readable()
+    fn is_text_based(&self) -> bool {
+        self.0.is_text_based()
     }
 
     fn unit(&mut self) -> Result {
@@ -153,18 +153,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.binary_end()
     }
 
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.tagged_begin(tag)
-    }
-
-    fn tagged_end(&mut self, tag: data::Tag) -> Result {
-        self.0.tagged_end(tag)
-    }
-
-    fn tagged<'v: 'a, V: Source<'v>>(&mut self, tagged: data::Tagged<V>) -> Result {
-        self.0.tagged(tagged.map_value(computed))
-    }
-
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
         self.0.map_begin(num_entries_hint)
     }
@@ -189,12 +177,12 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.map_end()
     }
 
-    fn map_entry<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
+    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
         &mut self,
         key: K,
         value: V,
     ) -> Result {
-        self.0.map_entry(computed(key), computed(value))
+        self.0.map_key_value(computed(key), computed(value))
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
@@ -223,5 +211,101 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn seq_value<'e: 'a, V: Source<'e>>(&mut self, value: V) -> Result {
         self.0.seq_value(computed(value))
+    }
+
+    fn struct_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_begin(tag)
+    }
+
+    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_key_begin(tag)
+    }
+
+    fn struct_key_end(&mut self) -> Result {
+        self.0.struct_key_end()
+    }
+
+    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_value_begin(tag)
+    }
+
+    fn struct_value_end(&mut self) -> Result {
+        self.0.struct_value_end()
+    }
+
+    fn struct_end(&mut self) -> Result {
+        self.0.struct_end()
+    }
+
+    fn enum_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.enum_begin(tag)
+    }
+
+    fn enum_end(&mut self) -> Result {
+        self.0.enum_end()
+    }
+
+    fn array_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.array_begin(tag)
+    }
+
+    fn array_end(&mut self) -> Result {
+        self.0.array_end()
+    }
+
+    fn slice_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.slice_begin(tag)
+    }
+
+    fn slice_end(&mut self) -> Result {
+        self.0.slice_end()
+    }
+
+    fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.dynamic_begin(tag)
+    }
+
+    fn dynamic_end(&mut self) -> Result {
+        self.0.dynamic_end()
+    }
+
+    fn constant_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.constant_begin(tag)
+    }
+
+    fn constant_end(&mut self) -> Result {
+        self.0.constant_end()
+    }
+
+    fn nullable_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.nullable_begin(tag)
+    }
+
+    fn nullable_end(&mut self) -> Result {
+        self.0.nullable_end()
+    }
+
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.tagged_begin(tag)
+    }
+
+    fn tagged_end(&mut self) -> Result {
+        self.0.tagged_end()
+    }
+
+    fn bigint_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.bigint_begin(tag)
+    }
+
+    fn bigint_end(&mut self) -> Result {
+        self.0.bigint_end()
+    }
+
+    fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
+        self.0.app_specific_begin(tag, app_specific_id)
+    }
+
+    fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
+        self.0.app_specific_end(app_specific_id)
     }
 }

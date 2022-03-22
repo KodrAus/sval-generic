@@ -111,7 +111,7 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
         self.stream_to_end(receiver).map(|_| source::Resume::Done)
     }
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
     where
         'a: 'b,
     {
@@ -137,18 +137,16 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
         }
 
         match self {
-            None => tag()
-                .for_nullable()
-                .with_id(0)
-                .with_label("None")
-                .with_value(Null)
-                .stream_to_end(receiver),
-            Some(v) => tag()
-                .for_nullable()
-                .with_id(1)
-                .with_label("Some")
-                .with_value(v)
-                .stream_to_end(receiver),
+            None => {
+                receiver.nullable_begin(tag().with_label("None").with_id(0))?;
+                Null.stream_to_end(&mut receiver)?;
+                receiver.nullable_end()
+            }
+            Some(v) => {
+                receiver.nullable_begin(tag().with_label("Some").with_id(1))?;
+                v.stream_to_end(&mut receiver)?;
+                receiver.nullable_end()
+            }
         }
     }
 }

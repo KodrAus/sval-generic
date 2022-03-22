@@ -16,7 +16,7 @@ impl<'a> sval::Source<'a> for JsonBufReader<'a> {
         'a: 'b,
     {
         if self.head == 0 {
-            receiver.tagged_begin(sval::data::tag().for_dynamic())?;
+            receiver.dynamic_begin(sval::data::tag().with_label("Json"))?;
         }
 
         while self.head < self.src.len() {
@@ -301,7 +301,7 @@ impl<'a> JsonBufReader<'a> {
         } else {
             self.stack.finish()?;
 
-            receiver.tagged_end(sval::data::tag().for_dynamic())?;
+            receiver.dynamic_end()?;
 
             Ok(sval::Resume::Done)
         }

@@ -1,9 +1,9 @@
 use crate::{data, source, Receiver, Source, Value};
 
 pub(crate) fn i128_big_integer<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+    receiver.bigint_begin(data::tag())?;
 
-    if receiver.is_human_readable() {
+    if receiver.is_text_based() {
         data::text(v).stream_to_end(&mut receiver)?;
     } else {
         let bytes = v.to_le_bytes();
@@ -11,13 +11,13 @@ pub(crate) fn i128_big_integer<'a>(v: i128, mut receiver: impl Receiver<'a>) -> 
         data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
     }
 
-    receiver.tagged_end(crate::data::tag().for_bigint())
+    receiver.bigint_end()
 }
 
 pub(crate) fn u128_big_integer<'a>(v: u128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.tagged_begin(crate::data::tag().for_bigint())?;
+    receiver.bigint_begin(data::tag())?;
 
-    if receiver.is_human_readable() {
+    if receiver.is_text_based() {
         data::text(v).stream_to_end(data::computed(&mut receiver))?;
     } else {
         let bytes = v.to_le_bytes();
@@ -38,7 +38,7 @@ pub(crate) fn u128_big_integer<'a>(v: u128, mut receiver: impl Receiver<'a>) -> 
         receiver.binary_end()?;
     }
 
-    receiver.tagged_end(crate::data::tag().for_bigint())
+    receiver.bigint_end()
 }
 
 macro_rules! digits {
