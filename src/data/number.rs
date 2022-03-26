@@ -1,47 +1,68 @@
 use crate::{data, source, Receiver, Source, Value};
 
-pub(crate) fn i128_big_integer<'a>(v: i128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.bigint_begin(data::tag())?;
+macro_rules! int {
+    ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
+        $(
+            pub(crate) fn $fi<'a>(v: $i, mut receiver: impl Receiver<'a>) -> crate::Result {
+                receiver.int_begin()?;
 
-    if receiver.is_text_based() {
-        data::text(v).stream_to_end(&mut receiver)?;
-    } else {
-        let bytes = v.to_le_bytes();
+                if receiver.is_text_based() {
+                    data::text(v).stream_to_end(&mut receiver)?;
+                } else {
+                    let bytes = v.to_le_bytes();
 
-        data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
-    }
+                    data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                }
 
-    receiver.bigint_end()
+                receiver.int_end()
+            }
+
+            pub(crate) fn $fu<'a>(v: $u, mut receiver: impl Receiver<'a>) -> crate::Result {
+                receiver.int_begin()?;
+
+                if receiver.is_text_based() {
+                    data::text(v).stream_to_end(data::computed(&mut receiver))?;
+                } else {
+                    let bytes = v.to_le_bytes();
+
+                    let extra: &[u8] = if v <= (<$i>::MAX as $u) { &[] } else { &[0] };
+
+                    receiver.binary_begin(Some(bytes.len() + extra.len()))?;
+
+                    receiver.binary_fragment_computed(&bytes)?;
+
+                    if extra.len() > 0 {
+                        receiver.binary_fragment_computed(extra)?;
+                    }
+
+                    receiver.binary_end()?;
+                }
+
+                receiver.int_end()
+            }
+        )*
+    };
 }
 
-pub(crate) fn u128_big_integer<'a>(v: u128, mut receiver: impl Receiver<'a>) -> crate::Result {
-    receiver.bigint_begin(data::tag())?;
+macro_rules! float {
+    ($($f:ident => $n:ty,)*) => {
+        $(
+            pub(crate) fn $f<'a>(v: $n, mut receiver: impl Receiver<'a>) -> crate::Result {
+                receiver.number_begin()?;
 
-    if receiver.is_text_based() {
-        data::text(v).stream_to_end(data::computed(&mut receiver))?;
-    } else {
-        let bytes = v.to_le_bytes();
+                if receiver.is_text_based() {
+                    data::text(v).stream_to_end(&mut receiver)?;
+                } else {
+                    unimplemented!("convert to IEEE754 decimal")
+                }
 
-        // If the value doesn't fit in a signed 128bit number then we need to
-        // append an extra byte to make it signed. This byte will always be empty
-        // ensuring the sign is kept positive.
-        let extra: &[u8] = if v <= (i128::MAX as u128) { &[] } else { &[0] };
-
-        receiver.binary_begin(Some(bytes.len() + extra.len()))?;
-
-        receiver.binary_fragment_computed(&bytes)?;
-
-        if extra.len() > 0 {
-            receiver.binary_fragment_computed(extra)?;
-        }
-
-        receiver.binary_end()?;
-    }
-
-    receiver.bigint_end()
+                receiver.number_end()
+            }
+        )*
+    };
 }
 
-macro_rules! digits {
+macro_rules! convert {
     ($(
         $convert:ident => $ty:ident,
     )+) => {
@@ -75,7 +96,25 @@ macro_rules! digits {
     };
 }
 
-digits!(
+int!(
+    i8_int => i8,
+    u8_int => u8,
+    i16_int => i16,
+    u16_int => u16,
+    i32_int => i32,
+    u32_int => u32,
+    i64_int => i64,
+    u64_int => u64,
+    i128_int => i128,
+    u128_int => u128,
+);
+
+float!(
+    f32_number => f32,
+    f64_number => f64,
+);
+
+convert!(
     to_u8 => u8,
     to_u16 => u16,
     to_u32 => u32,

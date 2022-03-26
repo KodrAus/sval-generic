@@ -228,11 +228,7 @@ where
         Ok(())
     }
 
-    fn map_key_value<'k: 'a, 'v: 'a, K: sval::Source<'k>, V: sval::Source<'v>>(
-        &mut self,
-        mut key: K,
-        mut value: V,
-    ) -> sval::Result {
+    fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, mut key: K) -> sval::Result {
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
         } else {
@@ -251,6 +247,10 @@ where
 
         self.is_current_depth_empty = false;
 
+        Ok(())
+    }
+
+    fn map_value<'v: 'a, V: sval::Source<'v>>(&mut self, mut value: V) -> sval::Result {
         value.stream_to_end(&mut *self)
     }
 
@@ -288,13 +288,13 @@ where
         Ok(())
     }
 
-    fn bigint_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+    fn int_begin(&mut self, _: sval::data::Tag) -> sval::Result {
         self.write_str_quotes = false;
 
         Ok(())
     }
 
-    fn bigint_end(&mut self) -> sval::Result {
+    fn int_end(&mut self) -> sval::Result {
         self.write_str_quotes = true;
 
         Ok(())

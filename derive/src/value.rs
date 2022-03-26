@@ -193,8 +193,11 @@ fn stream_struct(
         receiver.map_begin(Some(#field_count))?;
 
         #(
-            receiver.map_key_value(
+            receiver.map_key(
                 sval::data::struct_key(sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_lit),
+            )?;
+
+            receiver.map_value(
                 sval::data::struct_value(sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_ident),
             )?;
         )*

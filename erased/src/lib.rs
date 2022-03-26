@@ -12,3 +12,6 @@ mod private {
 }
 
 pub use self::{receiver::Receiver, source::Source, value::Value};
+
+// TODO: Dynamic<&dyn Value> / Dynamic<&mut dyn Source>
+// That way we can correctly convert dynamic data with necessary state

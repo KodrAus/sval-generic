@@ -5,60 +5,24 @@ An observer of structured data emitted by some source.
 */
 pub trait Receiver<'a> {
     fn is_text_based(&self) -> bool {
-        false
+        true
     }
 
     fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
         value.stream(self)
     }
 
+    fn dynamic_begin(&mut self) -> Result;
+
+    fn dynamic_end(&mut self) -> Result;
+
     fn unit(&mut self) -> Result;
 
     fn null(&mut self) -> Result;
 
-    fn u8(&mut self, value: u8) -> Result {
-        self.u16(value as u16)
+    fn bool(&mut self, value: bool) -> Result {
+        value.then(|| ()).stream_to_end(self)
     }
-
-    fn u16(&mut self, value: u16) -> Result {
-        self.u32(value as u32)
-    }
-
-    fn u32(&mut self, value: u32) -> Result {
-        self.u64(value as u64)
-    }
-
-    fn u64(&mut self, value: u64) -> Result;
-
-    fn u128(&mut self, value: u128) -> Result {
-        data::u128_big_integer(value, self)
-    }
-
-    fn i8(&mut self, value: i8) -> Result {
-        self.i16(value as i16)
-    }
-
-    fn i16(&mut self, value: i16) -> Result {
-        self.i32(value as i32)
-    }
-
-    fn i32(&mut self, value: i32) -> Result {
-        self.i64(value as i64)
-    }
-
-    fn i64(&mut self, value: i64) -> Result;
-
-    fn i128(&mut self, value: i128) -> Result {
-        data::i128_big_integer(value, self)
-    }
-
-    fn f32(&mut self, value: f32) -> Result {
-        self.f64(value as f64)
-    }
-
-    fn f64(&mut self, value: f64) -> Result;
-
-    fn bool(&mut self, value: bool) -> Result;
 
     fn char(&mut self, value: char) -> Result {
         let mut buf = [0; 4];
@@ -101,6 +65,54 @@ pub trait Receiver<'a> {
 
     fn binary_end(&mut self) -> Result;
 
+    fn u8(&mut self, value: u8) -> Result {
+        data::u8_int(value, self)
+    }
+
+    fn u16(&mut self, value: u16) -> Result {
+        data::u16_int(value, self)
+    }
+
+    fn u32(&mut self, value: u32) -> Result {
+        data::u32_int(value, self)
+    }
+
+    fn u64(&mut self, value: u64) -> Result {
+        data::u64_int(value, self)
+    }
+
+    fn u128(&mut self, value: u128) -> Result {
+        data::u128_int(value, self)
+    }
+
+    fn i8(&mut self, value: i8) -> Result {
+        data::i8_int(value, self)
+    }
+
+    fn i16(&mut self, value: i16) -> Result {
+        data::i16_int(value, self)
+    }
+
+    fn i32(&mut self, value: i32) -> Result {
+        data::i32_int(value, self)
+    }
+
+    fn i64(&mut self, value: i64) -> Result {
+        data::i64_int(value, self)
+    }
+
+    fn i128(&mut self, value: i128) -> Result {
+        data::i128_int(value, self)
+    }
+
+    fn f32(&mut self, value: f32) -> Result {
+        data::f32_number(value, self)
+    }
+
+    fn f64(&mut self, value: f64) -> Result {
+        data::f64_number(value, self)
+    }
+
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     fn map_key_begin(&mut self) -> Result;
@@ -112,15 +124,6 @@ pub trait Receiver<'a> {
     fn map_value_end(&mut self) -> Result;
 
     fn map_end(&mut self) -> Result;
-
-    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-        &mut self,
-        key: K,
-        value: V,
-    ) -> Result {
-        self.map_key(key)?;
-        self.map_value(value)
-    }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
@@ -148,73 +151,13 @@ pub trait Receiver<'a> {
         self.seq_value_end()
     }
 
-    fn struct_begin(&mut self, tag: data::Tag) -> Result {
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
-    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn struct_key_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn struct_value_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn struct_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn enum_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn enum_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn array_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn array_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn slice_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn slice_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
-    }
-
-    fn dynamic_end(&mut self) -> Result {
+    fn tagged_end(&mut self) -> Result {
         Ok(())
     }
 
@@ -228,38 +171,87 @@ pub trait Receiver<'a> {
         Ok(())
     }
 
+    fn struct_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        Ok(())
+    }
+
+    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        self.dynamic_begin()
+    }
+
+    fn struct_key_end(&mut self) -> Result {
+        self.dynamic_end()
+    }
+
+    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        self.dynamic_begin()
+    }
+
+    fn struct_value_end(&mut self) -> Result {
+        self.dynamic_end()
+    }
+
+    fn struct_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn enum_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        self.dynamic_begin()
+    }
+
+    fn enum_end(&mut self) -> Result {
+        self.dynamic_end()
+    }
+
     fn nullable_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
-        Ok(())
+        self.dynamic_begin()
     }
 
     fn nullable_end(&mut self) -> Result {
+        self.dynamic_end()
+    }
+
+    fn fixed_size_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
+    fn fixed_size_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn tagged_end(&mut self) -> Result {
+    // Extension: Big integers
+    // Text: JSON number without `.` or exponent
+    // Binary: Signed LE integer bytes
+    fn int_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn bigint_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
+    fn int_end(&mut self) -> Result {
         Ok(())
     }
 
-    fn bigint_end(&mut self) -> Result {
+    // Extension: Arbitrary precision numbers
+    // Text: JSON number
+    // Binary: IEEE754 LE DPD interchange decimal
+    fn number_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
-        let _ = tag;
+    fn number_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
         let _ = app_specific_id;
 
         Ok(())
@@ -445,15 +437,6 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).map_value_end()
             }
 
-            fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-                &mut self,
-                key: K,
-                value: V,
-            ) -> Result {
-                let $bind = self;
-                ($($forward)*).map_key_value(key, value)
-            }
-
             fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
                 let $bind = self;
                 ($($forward)*).map_key(key)
@@ -529,29 +512,19 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).enum_end()
             }
 
-            fn array_begin(&mut self, tag: data::Tag) -> Result {
+            fn fixed_size_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).array_begin(tag)
+                ($($forward)*).fixed_size_begin()
             }
 
-            fn array_end(&mut self) -> Result {
+            fn fixed_size_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).array_end()
+                ($($forward)*).fixed_size_end()
             }
 
-            fn slice_begin(&mut self, tag: data::Tag) -> Result {
+            fn dynamic_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).slice_begin(tag)
-            }
-
-            fn slice_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).slice_end()
-            }
-
-            fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).dynamic_begin(tag)
+                ($($forward)*).dynamic_begin()
             }
 
             fn dynamic_end(&mut self) -> Result {
@@ -589,19 +562,29 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).tagged_end()
             }
 
-            fn bigint_begin(&mut self, tag: data::Tag) -> Result {
+            fn int_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).bigint_begin(tag)
+                ($($forward)*).int_begin()
             }
 
-            fn bigint_end(&mut self) -> Result {
+            fn int_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).bigint_end()
+                ($($forward)*).int_end()
             }
 
-            fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
+            fn number_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).app_specific_begin(tag, app_specific_id)
+                ($($forward)*).number_begin()
+            }
+
+            fn number_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).number_end()
+            }
+
+            fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
+                let $bind = self;
+                ($($forward)*).app_specific_begin(app_specific_id)
             }
 
             fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
@@ -754,14 +737,6 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-        &mut self,
-        _: K,
-        _: V,
-    ) -> Result {
-        crate::error::unsupported()
-    }
-
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, _: K) -> Result {
         crate::error::unsupported()
     }
@@ -822,23 +797,15 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn array_begin(&mut self, _: data::Tag) -> Result {
+    fn fixed_size_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn array_end(&mut self) -> Result {
+    fn fixed_size_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn slice_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn slice_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn dynamic_begin(&mut self, _: data::Tag) -> Result {
+    fn dynamic_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
@@ -870,15 +837,23 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn bigint_begin(&mut self, _: data::Tag) -> Result {
+    fn int_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn bigint_end(&mut self) -> Result {
+    fn int_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn app_specific_begin(&mut self, _: data::Tag, _: u128) -> Result {
+    fn number_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn number_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn app_specific_begin(&mut self, _: u128) -> Result {
         crate::error::unsupported()
     }
 

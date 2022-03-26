@@ -53,12 +53,64 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.is_text_based()
     }
 
+    fn dynamic_begin(&mut self) -> Result {
+        self.0.dynamic_begin()
+    }
+
+    fn dynamic_end(&mut self) -> Result {
+        self.0.dynamic_end()
+    }
+
     fn unit(&mut self) -> Result {
         self.0.unit()
     }
 
     fn null(&mut self) -> Result {
         self.0.null()
+    }
+
+    fn bool(&mut self, value: bool) -> Result {
+        self.0.bool(value)
+    }
+
+    fn char(&mut self, value: char) -> Result {
+        self.0.char(value)
+    }
+
+    fn str(&mut self, value: &'a str) -> Result {
+        self.0.text_begin(Some(value.len()))?;
+        self.0.text_fragment_computed(value)?;
+        self.0.text_end()
+    }
+
+    fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+        self.0.text_begin(num_bytes_hint)
+    }
+
+    fn text_fragment_computed(&mut self, fragment: &str) -> Result {
+        self.0.text_fragment_computed(fragment)
+    }
+
+    fn text_end(&mut self) -> Result {
+        self.0.text_end()
+    }
+
+    fn bytes(&mut self, value: &'a [u8]) -> Result {
+        self.0.binary_begin(Some(value.len()))?;
+        self.0.binary_fragment_computed(value)?;
+        self.0.binary_end()
+    }
+
+    fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
+        self.0.binary_begin(num_bytes_hint)
+    }
+
+    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
+        self.0.binary_fragment_computed(fragment)
+    }
+
+    fn binary_end(&mut self) -> Result {
+        self.0.binary_end()
     }
 
     fn u8(&mut self, value: u8) -> Result {
@@ -109,50 +161,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.f64(value)
     }
 
-    fn bool(&mut self, value: bool) -> Result {
-        self.0.bool(value)
-    }
-
-    fn char(&mut self, value: char) -> Result {
-        self.0.char(value)
-    }
-
-    fn str(&mut self, value: &'a str) -> Result {
-        self.0.text_begin(Some(value.len()))?;
-        self.0.text_fragment_computed(value)?;
-        self.0.text_end()
-    }
-
-    fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
-        self.0.text_begin(num_bytes_hint)
-    }
-
-    fn text_fragment_computed(&mut self, fragment: &str) -> Result {
-        self.0.text_fragment_computed(fragment)
-    }
-
-    fn text_end(&mut self) -> Result {
-        self.0.text_end()
-    }
-
-    fn bytes(&mut self, value: &'a [u8]) -> Result {
-        self.0.binary_begin(Some(value.len()))?;
-        self.0.binary_fragment_computed(value)?;
-        self.0.binary_end()
-    }
-
-    fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
-        self.0.binary_begin(num_bytes_hint)
-    }
-
-    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
-        self.0.binary_fragment_computed(fragment)
-    }
-
-    fn binary_end(&mut self) -> Result {
-        self.0.binary_end()
-    }
-
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
         self.0.map_begin(num_entries_hint)
     }
@@ -175,14 +183,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn map_end(&mut self) -> Result {
         self.0.map_end()
-    }
-
-    fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-        &mut self,
-        key: K,
-        value: V,
-    ) -> Result {
-        self.0.map_key_value(computed(key), computed(value))
     }
 
     fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
@@ -211,6 +211,22 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn seq_value<'e: 'a, V: Source<'e>>(&mut self, value: V) -> Result {
         self.0.seq_value(computed(value))
+    }
+
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.tagged_begin(tag)
+    }
+
+    fn tagged_end(&mut self) -> Result {
+        self.0.tagged_end()
+    }
+
+    fn constant_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.constant_begin(tag)
+    }
+
+    fn constant_end(&mut self) -> Result {
+        self.0.constant_end()
     }
 
     fn struct_begin(&mut self, tag: data::Tag) -> Result {
@@ -245,38 +261,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.enum_end()
     }
 
-    fn array_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.array_begin(tag)
-    }
-
-    fn array_end(&mut self) -> Result {
-        self.0.array_end()
-    }
-
-    fn slice_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.slice_begin(tag)
-    }
-
-    fn slice_end(&mut self) -> Result {
-        self.0.slice_end()
-    }
-
-    fn dynamic_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.dynamic_begin(tag)
-    }
-
-    fn dynamic_end(&mut self) -> Result {
-        self.0.dynamic_end()
-    }
-
-    fn constant_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.constant_begin(tag)
-    }
-
-    fn constant_end(&mut self) -> Result {
-        self.0.constant_end()
-    }
-
     fn nullable_begin(&mut self, tag: data::Tag) -> Result {
         self.0.nullable_begin(tag)
     }
@@ -285,24 +269,32 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.nullable_end()
     }
 
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.tagged_begin(tag)
+    fn fixed_size_begin(&mut self) -> Result {
+        self.0.fixed_size_begin()
     }
 
-    fn tagged_end(&mut self) -> Result {
-        self.0.tagged_end()
+    fn fixed_size_end(&mut self) -> Result {
+        self.0.fixed_size_end()
     }
 
-    fn bigint_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.bigint_begin(tag)
+    fn int_begin(&mut self) -> Result {
+        self.0.int_begin()
     }
 
-    fn bigint_end(&mut self) -> Result {
-        self.0.bigint_end()
+    fn int_end(&mut self) -> Result {
+        self.0.int_end()
     }
 
-    fn app_specific_begin(&mut self, tag: data::Tag, app_specific_id: u128) -> Result {
-        self.0.app_specific_begin(tag, app_specific_id)
+    fn number_begin(&mut self) -> Result {
+        self.0.number_begin()
+    }
+
+    fn number_end(&mut self) -> Result {
+        self.0.number_end()
+    }
+
+    fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
+        self.0.app_specific_begin(app_specific_id)
     }
 
     fn app_specific_end(&mut self, app_specific_id: u128) -> Result {

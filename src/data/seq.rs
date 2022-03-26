@@ -50,21 +50,19 @@ impl<'a> ops::Deref for Bytes<'a> {
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.slice_begin(data::tag())?;
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
             receiver.seq_value(elem)?;
         }
 
-        receiver.seq_end()?;
-        receiver.slice_end()
+        receiver.seq_end()
     }
 }
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.array_begin(data::tag())?;
+        receiver.fixed_size_begin()?;
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -72,7 +70,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         receiver.seq_end()?;
-        receiver.array_end()
+        receiver.fixed_size_end()
     }
 }
 
@@ -293,15 +291,13 @@ mod alloc_support {
         where
             'a: 'b,
         {
-            receiver.slice_begin(data::tag())?;
             receiver.seq_begin(Some(self.len()))?;
 
             for elem in self.drain(..) {
                 receiver.seq_value(elem)?;
             }
 
-            receiver.seq_end()?;
-            receiver.slice_end()
+            receiver.seq_end()
         }
     }
 }

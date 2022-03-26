@@ -68,12 +68,6 @@ mod private {
 
         fn dispatch_map_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_map_key_value<'k: 'a, 'v: 'a>(
-            &mut self,
-            key: &mut dyn Source<'k>,
-            value: &mut dyn Source<'v>,
-        ) -> sval::Result;
-
         fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result;
 
         fn dispatch_map_value<'v: 'a>(&mut self, value: &mut dyn Source<'v>) -> sval::Result;
@@ -128,9 +122,13 @@ mod private {
 
         fn dispatch_tagged_end(&mut self) -> sval::Result;
 
-        fn dispatch_bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+        fn dispatch_int_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
 
-        fn dispatch_bigint_end(&mut self) -> sval::Result;
+        fn dispatch_int_end(&mut self) -> sval::Result;
+
+        fn dispatch_number_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
+
+        fn dispatch_number_end(&mut self) -> sval::Result;
 
         fn dispatch_app_specific_begin(
             &mut self,
@@ -296,14 +294,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.map_value_end()
     }
 
-    fn dispatch_map_key_value<'k: 'a, 'v: 'a>(
-        &mut self,
-        key: &mut dyn Source<'k>,
-        value: &mut dyn Source<'v>,
-    ) -> sval::Result {
-        self.map_key_value(key, value)
-    }
-
     fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result {
         self.map_key(key)
     }
@@ -412,12 +402,20 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.tagged_end()
     }
 
-    fn dispatch_bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-        self.bigint_begin(tag)
+    fn dispatch_int_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.int_begin(tag)
     }
 
-    fn dispatch_bigint_end(&mut self) -> sval::Result {
-        self.bigint_end()
+    fn dispatch_int_end(&mut self) -> sval::Result {
+        self.int_end()
+    }
+
+    fn dispatch_number_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        self.number_begin(tag)
+    }
+
+    fn dispatch_number_end(&mut self) -> sval::Result {
+        self.number_end()
     }
 
     fn dispatch_app_specific_begin(
@@ -560,14 +558,6 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_map_value_end()
             }
 
-            fn map_key_value<'k: 'a, 'v: 'a, K: Source<'k>, V: Source<'v>>(
-                &mut self,
-                mut key: K,
-                mut value: V,
-            ) -> sval::Result {
-                self.erase_receiver().0.dispatch_map_key_value(&mut key, &mut value)
-            }
-
             fn map_key<'k: 'a, K: Source<'k>>(&mut self, mut key: K) -> sval::Result {
                 self.erase_receiver().0.dispatch_map_key(&mut key)
             }
@@ -676,12 +666,20 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_tagged_end()
             }
 
-            fn bigint_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
-                self.erase_receiver().0.dispatch_bigint_begin(tag)
+            fn int_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_int_begin(tag)
             }
 
-            fn bigint_end(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_bigint_end()
+            fn int_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_int_end()
+            }
+
+            fn number_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+                self.erase_receiver().0.dispatch_number_begin(tag)
+            }
+
+            fn number_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_number_end()
             }
 
             fn app_specific_begin(
