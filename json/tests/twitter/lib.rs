@@ -42,6 +42,17 @@ fn sval_erased_consistency() {
     );
 }
 
+#[test]
+fn sval_json_roundtrip() {
+    let s = input_struct();
+
+    let json = sval_json::to_string(&s).unwrap();
+
+    let roundtrip = sval_json::to_string(sval_json::JsonSliceReader::new(&json)).unwrap();
+
+    assert_eq!(json, roundtrip);
+}
+
 #[derive(Debug, Serialize, Deserialize, MiniSerialize, Value, Valuable)]
 pub struct Twitter {
     statuses: Vec<Status>,

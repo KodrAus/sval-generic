@@ -11,6 +11,7 @@ members = [
     "json",
     "erased",
     "json/benches/twitter",
+    "json/tests",
     "json/tests/twitter",
 ]
 

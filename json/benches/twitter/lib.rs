@@ -108,3 +108,120 @@ fn twitter_std_fmt(b: &mut test::Bencher) {
 
     b.iter(|| s.to_string());
 }
+
+#[bench]
+fn twitter_scan_sval(b: &mut test::Bencher) {
+    let json = input_json();
+
+    b.iter(|| {
+        use sval::Source;
+
+        let mut json = sval_json::JsonSliceReader::new(&json);
+
+        json.stream_to_end(EmptyReceiver).unwrap()
+    });
+}
+
+struct EmptyReceiver;
+
+impl<'a> sval::Receiver<'a> for EmptyReceiver {
+    #[inline(never)]
+    fn dynamic_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn dynamic_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn unit(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn null(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn text_fragment_computed(&mut self, _: &str) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn text_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn binary_begin(&mut self, _: Option<usize>) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn binary_fragment_computed(&mut self, _: &[u8]) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn binary_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_key_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_key_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_value_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_value_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn map_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn seq_value_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn seq_value_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn seq_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+}

@@ -7,8 +7,8 @@ pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result
 pub struct Formatter<W> {
     is_key: bool,
     is_internally_tagged: bool,
-    write_str_quotes: bool,
     is_current_depth_empty: bool,
+    write_str_quotes: bool,
     out: W,
 }
 
@@ -20,8 +20,8 @@ where
         Formatter {
             is_key: false,
             is_internally_tagged: false,
-            write_str_quotes: true,
             is_current_depth_empty: true,
+            write_str_quotes: true,
             out,
         }
     }
