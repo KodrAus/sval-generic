@@ -7,8 +7,7 @@ A streamed and resumable source of structured data.
 
 Valid implementations of `Source` must adhere to the following requirements:
 
-1. All instances of this type must always stream with the same shape. If a type
-may change its shape dynamically then it must be wrapped in [`Tag::for_any`](data/struct.Tag.html#method.for_any).
+1. All instances of this type must always stream with the same shape.
 2. The result of [`Source::stream_to_end`] must be the same as continually calling [`Source::stream_resume`]
 until [`Resume::Done`] is returned. This is guaranteed by the default implementation of [`Source::stream_to_end`].
 */
@@ -24,6 +23,11 @@ pub trait Source<'a> {
         while let Resume::Continue = self.stream_resume(&mut receiver)? {}
 
         Ok(())
+    }
+
+    #[inline]
+    fn maybe_dynamic(&self) -> Option<bool> {
+        None
     }
 }
 
@@ -76,6 +80,12 @@ macro_rules! impl_source_forward {
             {
                 let $bind = self;
                 ($($forward)*).stream_to_end(receiver)
+            }
+
+            #[inline]
+            fn maybe_dynamic(&self) -> Option<bool> {
+                let $bind = self;
+                ($($forward)*).maybe_dynamic()
             }
         }
     };

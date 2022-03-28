@@ -138,12 +138,12 @@ impl<'a, T: Source<'a>> Source<'a> for Option<T> {
 
         match self {
             None => {
-                receiver.nullable_begin(tag().with_label("None").with_id(0))?;
+                receiver.nullable_begin()?;
                 Null.stream_to_end(&mut receiver)?;
                 receiver.nullable_end()
             }
             Some(v) => {
-                receiver.nullable_begin(tag().with_label("Some").with_id(1))?;
+                receiver.nullable_begin()?;
                 v.stream_to_end(&mut receiver)?;
                 receiver.nullable_end()
             }

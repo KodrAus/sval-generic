@@ -162,58 +162,96 @@ pub trait Receiver<'a> {
     }
 
     fn constant_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
+        self.tagged_begin(tag)
     }
 
     fn constant_end(&mut self) -> Result {
-        Ok(())
+        self.tagged_end()
     }
 
-    fn struct_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
-        Ok(())
+    fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+        self.tagged_begin(tag)?;
+        self.map_begin(num_entries_hint)
     }
 
-    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
+        self.map_key_begin()?;
         self.dynamic_begin()
     }
 
-    fn struct_key_end(&mut self) -> Result {
-        self.dynamic_end()
+    fn struct_map_key_end(&mut self) -> Result {
+        self.dynamic_end()?;
+        self.map_key_end()
     }
 
-    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
+    fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
+        self.map_value_begin()?;
         self.dynamic_begin()
     }
 
-    fn struct_value_end(&mut self) -> Result {
-        self.dynamic_end()
+    fn struct_map_value_end(&mut self) -> Result {
+        self.dynamic_end()?;
+        self.map_value_end()
     }
 
-    fn struct_end(&mut self) -> Result {
-        Ok(())
+    fn struct_map_end(&mut self) -> Result {
+        self.map_end()
+    }
+
+    fn struct_map_key<'k: 'a, K: Source<'k>>(&mut self, tag: data::Tag, mut key: K) -> Result {
+        self.struct_map_key_begin(tag)?;
+        key.stream_to_end(&mut *self)?;
+        self.struct_map_key_end()
+    }
+
+    fn struct_map_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, mut value: V) -> Result {
+        self.struct_map_value_begin(tag)?;
+        value.stream_to_end(&mut *self)?;
+        self.struct_map_value_end()
+    }
+
+    fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+        self.tagged_begin(tag)?;
+        self.seq_begin(num_entries_hint)
+    }
+
+    fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
+        let _ = tag;
+
+        self.seq_value_begin()?;
+        self.dynamic_begin()
+    }
+
+    fn struct_seq_value_end(&mut self) -> Result {
+        self.dynamic_end()?;
+        self.seq_value_end()
+    }
+
+    fn struct_seq_end(&mut self) -> Result {
+        self.seq_end()
+    }
+
+    fn struct_seq_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, mut value: V) -> Result {
+        self.struct_seq_value_begin(tag)?;
+        value.stream_to_end(&mut *self)?;
+        self.struct_seq_value_end()
     }
 
     fn enum_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
+        self.tagged_begin(tag)?;
         self.dynamic_begin()
     }
 
     fn enum_end(&mut self) -> Result {
-        self.dynamic_end()
+        self.dynamic_end()?;
+        self.tagged_end()
     }
 
-    fn nullable_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
-
+    fn nullable_begin(&mut self) -> Result {
         self.dynamic_begin()
     }
 
@@ -275,6 +313,16 @@ macro_rules! impl_receiver_forward {
             fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
                 let $bind = self;
                 ($($forward)*).value(value)
+            }
+
+            fn dynamic_begin(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).dynamic_begin()
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).dynamic_end()
             }
 
             fn unit(&mut self) -> Result {
@@ -472,64 +520,14 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).seq_value(value)
             }
 
-            fn struct_begin(&mut self, tag: data::Tag) -> Result {
+            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_begin(tag)
+                ($($forward)*).tagged_begin(tag)
             }
 
-            fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
+            fn tagged_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_key_begin(tag)
-            }
-
-            fn struct_key_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_key_end()
-            }
-
-            fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_value_begin(tag)
-            }
-
-            fn struct_value_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_value_end()
-            }
-
-            fn struct_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_end()
-            }
-
-            fn enum_begin(&mut self, tag: data::Tag) -> Result {
-                let $bind = self;
-                ($($forward)*).enum_begin(tag)
-            }
-
-            fn enum_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).enum_end()
-            }
-
-            fn fixed_size_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).fixed_size_begin()
-            }
-
-            fn fixed_size_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).fixed_size_end()
-            }
-
-            fn dynamic_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).dynamic_begin()
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).dynamic_end()
+                ($($forward)*).tagged_end()
             }
 
             fn constant_begin(&mut self, tag: data::Tag) -> Result {
@@ -542,9 +540,84 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).constant_end()
             }
 
-            fn nullable_begin(&mut self, tag: data::Tag) -> Result {
+            fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).nullable_begin(tag)
+                ($($forward)*).struct_map_begin(tag, num_entries_hint)
+            }
+
+            fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_key_begin(tag)
+            }
+
+            fn struct_map_key_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_key_end()
+            }
+
+            fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_value_begin(tag)
+            }
+
+            fn struct_map_value_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_value_end()
+            }
+
+            fn struct_map_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_end()
+            }
+
+            fn struct_map_key<'k: 'a, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_key(tag, key)
+            }
+
+            fn struct_map_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_map_value(tag, value)
+            }
+
+            fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_seq_begin(tag, num_entries_hint)
+            }
+
+            fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_seq_value_begin(tag)
+            }
+
+            fn struct_seq_value_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_seq_value_end()
+            }
+
+            fn struct_seq_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_seq_end()
+            }
+
+            fn struct_seq_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
+                let $bind = self;
+                ($($forward)*).struct_seq_value(tag, value)
+            }
+
+            fn enum_begin(&mut self, tag: data::Tag) -> Result {
+                let $bind = self;
+                ($($forward)*).enum_begin(tag)
+            }
+
+            fn enum_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).enum_end()
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).nullable_begin()
             }
 
             fn nullable_end(&mut self) -> Result {
@@ -552,14 +625,14 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).nullable_end()
             }
 
-            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+            fn fixed_size_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).tagged_begin(tag)
+                ($($forward)*).fixed_size_begin()
             }
 
-            fn tagged_end(&mut self) -> Result {
+            fn fixed_size_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).tagged_end()
+                ($($forward)*).fixed_size_end()
             }
 
             fn int_begin(&mut self) -> Result {
@@ -606,6 +679,14 @@ pub(crate) trait DefaultUnsupported<'a> {
     }
 
     fn value<V: Value + ?Sized + 'a>(&mut self, _: &'a V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn dynamic_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn dynamic_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
@@ -765,51 +846,11 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn struct_begin(&mut self, _: data::Tag) -> Result {
+    fn tagged_begin(&mut self, _: data::Tag) -> Result {
         crate::error::unsupported()
     }
 
-    fn struct_key_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_key_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_value_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_value_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn enum_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn enum_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn fixed_size_begin(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn fixed_size_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn dynamic_begin(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn dynamic_end(&mut self) -> Result {
+    fn tagged_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
@@ -821,7 +862,67 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn nullable_begin(&mut self, _: data::Tag) -> Result {
+    fn struct_map_begin(&mut self, _: data::Tag, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_key_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_key_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_value_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_value_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_key<'k: 'a, K: Source<'k>>(&mut self, _: data::Tag, _: K) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_map_value<'v: 'a, V: Source<'v>>(&mut self, _: data::Tag, _: V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_seq_begin(&mut self, _: data::Tag, _: Option<usize>) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_seq_value_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_seq_value_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_seq_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn struct_seq_value<'v: 'a, V: Source<'v>>(&mut self, _: data::Tag, _: V) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn enum_begin(&mut self, _: data::Tag) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn enum_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn nullable_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
@@ -829,11 +930,11 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn tagged_begin(&mut self, _: data::Tag) -> Result {
+    fn fixed_size_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn tagged_end(&mut self) -> Result {
+    fn fixed_size_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 

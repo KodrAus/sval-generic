@@ -7,8 +7,7 @@ An immutable and repeatable source of structured data.
 
 Valid implementations of `Value` must adhere to the following requirements:
 
-1. All instances of this type must always stream with the same shape. If a type
-may change its shape then it needs to be wrapped in [`Tag::for_any`](data/struct.Tag.html#method.for_any).
+1. All instances of this type must always stream with the same shape.
 2. If the type also implements [`Source`] then [`Value::stream`] must be the same
 as [`Source::stream_to_end`].
 */
@@ -17,6 +16,29 @@ where
     for<'a> &'a Self: Source<'a>,
 {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
+
+    #[inline]
+    fn is_dynamic(&self) -> bool {
+        struct Check(bool);
+
+        impl<'a> DefaultUnsupported<'a> for Check {
+            fn dynamic_begin(&mut self) -> Result {
+                self.0 = true;
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+        }
+
+        let mut check = Check(false);
+        if let Ok(()) = self.stream(check.as_receiver()) {
+            check.0
+        } else {
+            false
+        }
+    }
 
     #[inline]
     fn to_bool(&self) -> Option<bool> {
@@ -259,6 +281,12 @@ macro_rules! impl_value_forward {
             fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
                 let $bind = self;
                 ($($forward)*).stream(receiver)
+            }
+
+            #[inline]
+            fn is_dynamic(&self) -> bool {
+                let $bind = self;
+                ($($forward)*).is_dynamic()
             }
 
             #[inline]

@@ -6,6 +6,7 @@ mod private {
 
     pub trait DispatchValue {
         fn dispatch_stream<'a>(&'a self, receiver: &mut dyn Receiver<'a>) -> sval::Result;
+        fn dispatch_is_dynamic(&self) -> bool;
         fn dispatch_to_bool(&self) -> Option<bool>;
         fn dispatch_to_f32(&self) -> Option<f32>;
         fn dispatch_to_f64(&self) -> Option<f64>;
@@ -42,6 +43,10 @@ impl<T: sval::Value> private::EraseValue for T {
 impl<T: sval::Value> private::DispatchValue for T {
     fn dispatch_stream<'a>(&'a self, receiver: &mut dyn Receiver<'a>) -> sval::Result {
         self.stream(receiver)
+    }
+
+    fn dispatch_is_dynamic(&self) -> bool {
+        self.is_dynamic()
     }
 
     fn dispatch_to_bool(&self) -> Option<bool> {
@@ -114,6 +119,10 @@ macro_rules! impl_value {
         $($impl)* {
             fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
                 self.erase_value().0.dispatch_stream(&mut receiver)
+            }
+
+            fn is_dynamic(&self) -> bool {
+                self.erase_value().0.dispatch_is_dynamic()
             }
 
             fn to_bool(&self) -> Option<bool> {

@@ -189,21 +189,19 @@ fn stream_struct(
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        receiver.struct_begin(sval::data::tag().with_label(#tag).with_id(#id))?;
-        receiver.map_begin(Some(#field_count))?;
+        receiver.struct_map_begin(sval::data::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
 
         #(
-            receiver.map_key(
-                sval::data::struct_key(sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_lit),
+            receiver.struct_map_key(
+                sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_lit,
             )?;
 
-            receiver.map_value(
-                sval::data::struct_value(sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_ident),
+            receiver.struct_map_value(
+                sval::data::tag().with_label(#field_lit).with_id(#field_id), #field_ident,
             )?;
         )*
 
-        receiver.map_end()?;
-        receiver.struct_end()?;
+        receiver.struct_map_end()?;
     })
 }
 
@@ -248,17 +246,15 @@ fn stream_tuple(
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        receiver.struct_begin(sval::data::tag().with_label(#tag).with_id(#id))?;
-        receiver.seq_begin(Some(#tag), #id, Some(#field_count))?;
+        receiver.struct_seq_begin(sval::data::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
 
         #(
-            receiver.seq_value(
-                sval::data::struct_value(sval::data::tag().with_id(#field_id), #field_ident)
+            receiver.struct_seq_value(
+                sval::data::tag().with_id(#field_id), #field_ident
             )?;
         )*
 
-        receiver.seq_end()?;
-        receiver.struct_end()?;
+        receiver.struct_seq_end()?;
     })
 }
 

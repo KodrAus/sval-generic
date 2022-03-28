@@ -30,6 +30,74 @@ impl<T: Value> Value for Computed<T> {
     fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {
         self.0.stream(receiver)
     }
+
+    fn is_dynamic(&self) -> bool {
+        self.0.is_dynamic()
+    }
+
+    fn to_bool(&self) -> Option<bool> {
+        self.0.to_bool()
+    }
+
+    fn to_f32(&self) -> Option<f32> {
+        self.0.to_f32()
+    }
+
+    fn to_f64(&self) -> Option<f64> {
+        self.0.to_f64()
+    }
+
+    fn to_i8(&self) -> Option<i8> {
+        self.0.to_i8()
+    }
+
+    fn to_i16(&self) -> Option<i16> {
+        self.0.to_i16()
+    }
+
+    fn to_i32(&self) -> Option<i32> {
+        self.0.to_i32()
+    }
+
+    fn to_i64(&self) -> Option<i64> {
+        self.0.to_i64()
+    }
+
+    fn to_i128(&self) -> Option<i128> {
+        self.0.to_i128()
+    }
+
+    fn to_u8(&self) -> Option<u8> {
+        self.0.to_u8()
+    }
+
+    fn to_u16(&self) -> Option<u16> {
+        self.0.to_u16()
+    }
+
+    fn to_u32(&self) -> Option<u32> {
+        self.0.to_u32()
+    }
+
+    fn to_u64(&self) -> Option<u64> {
+        self.0.to_u64()
+    }
+
+    fn to_u128(&self) -> Option<u128> {
+        self.0.to_u128()
+    }
+
+    fn to_char(&self) -> Option<char> {
+        self.0.to_char()
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        self.0.to_str()
+    }
+
+    fn to_bytes(&self) -> Option<&[u8]> {
+        self.0.to_bytes()
+    }
 }
 
 impl<'a, 'b, T: Source<'b>> Source<'a> for Computed<T> {
@@ -229,28 +297,56 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.constant_end()
     }
 
-    fn struct_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.struct_begin(tag)
+    fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+        self.0.struct_map_begin(tag, num_entries_hint)
     }
 
-    fn struct_key_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.struct_key_begin(tag)
+    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_map_key_begin(tag)
     }
 
-    fn struct_key_end(&mut self) -> Result {
-        self.0.struct_key_end()
+    fn struct_map_key_end(&mut self) -> Result {
+        self.0.struct_map_key_end()
     }
 
-    fn struct_value_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.struct_value_begin(tag)
+    fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_map_value_begin(tag)
     }
 
-    fn struct_value_end(&mut self) -> Result {
-        self.0.struct_value_end()
+    fn struct_map_value_end(&mut self) -> Result {
+        self.0.struct_map_value_end()
     }
 
-    fn struct_end(&mut self) -> Result {
-        self.0.struct_end()
+    fn struct_map_end(&mut self) -> Result {
+        self.0.struct_map_end()
+    }
+
+    fn struct_map_key<'k: 'a, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result {
+        self.0.struct_map_key(tag, computed(key))
+    }
+
+    fn struct_map_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
+        self.0.struct_map_value(tag, computed(value))
+    }
+
+    fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+        self.0.struct_seq_begin(tag, num_entries_hint)
+    }
+
+    fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
+        self.0.struct_seq_value_begin(tag)
+    }
+
+    fn struct_seq_value_end(&mut self) -> Result {
+        self.0.struct_seq_value_end()
+    }
+
+    fn struct_seq_end(&mut self) -> Result {
+        self.0.struct_seq_end()
+    }
+
+    fn struct_seq_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
+        self.0.struct_seq_value(tag, computed(value))
     }
 
     fn enum_begin(&mut self, tag: data::Tag) -> Result {
@@ -261,8 +357,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.enum_end()
     }
 
-    fn nullable_begin(&mut self, tag: data::Tag) -> Result {
-        self.0.nullable_begin(tag)
+    fn nullable_begin(&mut self) -> Result {
+        self.0.nullable_begin()
     }
 
     fn nullable_end(&mut self) -> Result {

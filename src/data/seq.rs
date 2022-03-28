@@ -81,15 +81,13 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-                    receiver.struct_begin(data::tag())?;
-                    receiver.seq_begin(Some($len))?;
+                    receiver.struct_seq_begin(data::tag(), Some($len))?;
 
                     $(
-                        receiver.seq_value(data::struct_value(data::tag().with_id($i), &self.$i))?;
+                        receiver.struct_seq_value(data::tag().with_id($i), &self.$i)?;
                     )+
 
-                    receiver.seq_end()?;
-                    receiver.struct_end()
+                    receiver.struct_seq_end()
                 }
             }
         )+

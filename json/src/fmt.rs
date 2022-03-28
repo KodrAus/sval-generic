@@ -6,6 +6,7 @@ pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result
 
 pub struct Formatter<W> {
     is_key: bool,
+    is_internally_tagged: bool,
     write_str_quotes: bool,
     is_current_depth_empty: bool,
     out: W,
@@ -18,6 +19,7 @@ where
     pub fn new(out: W) -> Self {
         Formatter {
             is_key: false,
+            is_internally_tagged: false,
             write_str_quotes: true,
             is_current_depth_empty: true,
             out,
@@ -39,6 +41,14 @@ impl<'a, W> sval::Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
+    fn dynamic_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn dynamic_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
     fn unit(&mut self) -> sval::Result {
         self.null()
     }
@@ -47,6 +57,62 @@ where
         self.out.write_str("null")?;
 
         Ok(())
+    }
+
+    fn bool(&mut self, v: bool) -> sval::Result {
+        self.out.write_str(if v { "true" } else { "false" })?;
+
+        Ok(())
+    }
+
+    fn str(&mut self, v: &'a str) -> sval::Result {
+        if self.write_str_quotes {
+            self.out.write_char('"')?;
+            self.escape_str(v)?;
+            self.out.write_char('"')?;
+        } else {
+            self.escape_str(v)?;
+        }
+
+        Ok(())
+    }
+
+    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
+        if self.write_str_quotes {
+            self.out.write_char('"')?;
+        }
+
+        Ok(())
+    }
+
+    fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
+        self.escape_str(v)?;
+
+        Ok(())
+    }
+
+    fn text_end(&mut self) -> sval::Result {
+        if self.write_str_quotes {
+            self.out.write_char('"')?;
+        }
+
+        Ok(())
+    }
+
+    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
+        self.seq_begin(size)
+    }
+
+    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
+        for b in v {
+            self.seq_value(b)?;
+        }
+
+        Ok(())
+    }
+
+    fn binary_end(&mut self) -> sval::Result {
+        self.seq_end()
     }
 
     fn u8(&mut self, v: u8) -> sval::Result {
@@ -119,62 +185,6 @@ where
         self.out.write_str(ryu::Buffer::new().format(v))?;
 
         Ok(())
-    }
-
-    fn bool(&mut self, v: bool) -> sval::Result {
-        self.out.write_str(if v { "true" } else { "false" })?;
-
-        Ok(())
-    }
-
-    fn str(&mut self, v: &'a str) -> sval::Result {
-        if self.write_str_quotes {
-            self.out.write_char('"')?;
-            self.escape_str(v)?;
-            self.out.write_char('"')?;
-        } else {
-            self.escape_str(v)?;
-        }
-
-        Ok(())
-    }
-
-    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.write_str_quotes {
-            self.out.write_char('"')?;
-        }
-
-        Ok(())
-    }
-
-    fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
-        self.escape_str(v)?;
-
-        Ok(())
-    }
-
-    fn text_end(&mut self) -> sval::Result {
-        if self.write_str_quotes {
-            self.out.write_char('"')?;
-        }
-
-        Ok(())
-    }
-
-    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
-        self.seq_begin(size)
-    }
-
-    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
-        for b in v {
-            self.seq_value(b)?;
-        }
-
-        Ok(())
-    }
-
-    fn binary_end(&mut self) -> sval::Result {
-        self.seq_end()
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
@@ -288,7 +298,58 @@ where
         Ok(())
     }
 
-    fn int_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+        if self.is_internally_tagged {
+            self.map_begin(Some(1))?;
+
+            match tag {
+                sval::data::Tag {
+                    label: Some(label), ..
+                } => self.map_key(label)?,
+                sval::data::Tag { id: Some(id), .. } => self.map_key(id)?,
+                _ => sval::error::unsupported()?,
+            }
+
+            self.map_value_begin()?;
+        }
+
+        Ok(())
+    }
+
+    fn tagged_end(&mut self) -> sval::Result {
+        self.is_internally_tagged = true;
+
+        Ok(())
+    }
+
+    fn constant_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+        self.is_internally_tagged = false;
+
+        Ok(())
+    }
+
+    fn constant_end(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn enum_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+        self.is_internally_tagged = true;
+
+        Ok(())
+    }
+
+    fn enum_end(&mut self) -> sval::Result {
+        if self.is_internally_tagged {
+            self.map_value_end()?;
+            self.map_end()?;
+        }
+
+        self.is_internally_tagged = false;
+
+        Ok(())
+    }
+
+    fn int_begin(&mut self) -> sval::Result {
         self.write_str_quotes = false;
 
         Ok(())
@@ -296,6 +357,18 @@ where
 
     fn int_end(&mut self) -> sval::Result {
         self.write_str_quotes = true;
+
+        Ok(())
+    }
+
+    fn number_begin(&mut self) -> sval::Result {
+        self.write_str_quotes = false;
+
+        Ok(())
+    }
+
+    fn number_end(&mut self) -> sval::Result {
+        self.write_str_quotes = false;
 
         Ok(())
     }
