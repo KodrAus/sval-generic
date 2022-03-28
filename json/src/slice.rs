@@ -1,5 +1,9 @@
 use core::{cmp::Ordering, mem};
 
+pub fn slice(json: &str) -> &JsonSlice {
+    JsonSlice::new(json)
+}
+
 #[repr(transparent)]
 pub struct JsonSlice(str);
 
@@ -14,6 +18,11 @@ impl sval::Value for JsonSlice {
         use sval::Source;
 
         JsonSliceReader::new(&self.0).stream_to_end(receiver)
+    }
+
+    #[inline]
+    fn is_dynamic(&self) -> bool {
+        true
     }
 }
 

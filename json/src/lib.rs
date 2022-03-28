@@ -7,7 +7,7 @@ mod fmt;
 mod slice;
 pub use self::{
     fmt::{to_fmt, Formatter},
-    slice::{JsonSlice, JsonSliceReader},
+    slice::{slice, JsonSlice, JsonSliceReader},
 };
 
 #[cfg(feature = "alloc")]

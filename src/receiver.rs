@@ -678,16 +678,16 @@ pub(crate) trait DefaultUnsupported<'a> {
         false
     }
 
-    fn value<V: Value + ?Sized + 'a>(&mut self, _: &'a V) -> Result {
-        crate::error::unsupported()
+    fn value<V: Value + ?Sized + 'a>(&mut self, v: &'a V) -> Result {
+        v.stream(self.as_receiver())
     }
 
     fn dynamic_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        Ok(())
     }
 
     fn dynamic_end(&mut self) -> Result {
-        crate::error::unsupported()
+        Ok(())
     }
 
     fn unit(&mut self) -> Result {
@@ -963,10 +963,10 @@ pub(crate) trait DefaultUnsupported<'a> {
     }
 }
 
-pub(crate) struct AsReceiver<T>(T);
+pub(crate) struct AsReceiver<T: ?Sized>(T);
 
 impl_receiver_forward!({ impl<'a, 'b, R: ?Sized> Receiver<'a> for &'b mut R where R: Receiver<'a> } => x => { **x });
-impl_receiver_forward!({ impl<'a, 'b, R> Receiver<'a> for AsReceiver<&'b mut R> where R: DefaultUnsupported<'a> } => x => { x.0 });
+impl_receiver_forward!({ impl<'a, 'b, R: ?Sized> Receiver<'a> for AsReceiver<&'b mut R> where R: DefaultUnsupported<'a> } => x => { x.0 });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {

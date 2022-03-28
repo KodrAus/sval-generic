@@ -62,7 +62,7 @@ fn enum_roundtrip() {
     ] {
         let json = sval_json::to_string(&e).unwrap();
 
-        let roundtrip = sval_json::to_string(&sval_json::JsonSlice::new(&json)).unwrap();
+        let roundtrip = sval_json::to_string(&sval_json::slice(&json)).unwrap();
 
         assert_eq!(json, roundtrip);
     }
@@ -72,7 +72,7 @@ fn enum_roundtrip() {
 fn struct_roundtrip() {
     let json = sval_json::to_string(&Map { a: 42, b: true }).unwrap();
 
-    let roundtrip = sval_json::to_string(&sval_json::JsonSlice::new(&json)).unwrap();
+    let roundtrip = sval_json::to_string(&sval_json::slice(&json)).unwrap();
 
     assert_eq!(json, roundtrip);
 }
@@ -81,7 +81,15 @@ fn struct_roundtrip() {
 fn tuple_roundtrip() {
     let json = sval_json::to_string(&Seq(42, true)).unwrap();
 
-    let roundtrip = sval_json::to_string(&sval_json::JsonSlice::new(&json)).unwrap();
+    let roundtrip = sval_json::to_string(&sval_json::slice(&json)).unwrap();
 
     assert_eq!(json, roundtrip);
+}
+
+#[test]
+fn slice_convert() {
+    use sval::Value;
+
+    assert_eq!(Some(true), sval_json::slice("true").to_bool());
+    assert_eq!(Some("a string"), sval_json::slice("\"a string\"").to_str());
 }
