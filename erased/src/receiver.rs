@@ -156,9 +156,13 @@ mod private {
 
         fn dispatch_int_end(&mut self) -> sval::Result;
 
-        fn dispatch_decimal_begin(&mut self) -> sval::Result;
+        fn dispatch_binfloat_begin(&mut self) -> sval::Result;
 
-        fn dispatch_decimal_end(&mut self) -> sval::Result;
+        fn dispatch_binfloat_end(&mut self) -> sval::Result;
+
+        fn dispatch_decfloat_begin(&mut self) -> sval::Result;
+
+        fn dispatch_decfloat_end(&mut self) -> sval::Result;
 
         fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result;
 
@@ -476,12 +480,20 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.int_end()
     }
 
-    fn dispatch_decimal_begin(&mut self) -> sval::Result {
-        self.decimal_begin()
+    fn dispatch_binfloat_begin(&mut self) -> sval::Result {
+        self.binfloat_begin()
     }
 
-    fn dispatch_decimal_end(&mut self) -> sval::Result {
-        self.decimal_end()
+    fn dispatch_binfloat_end(&mut self) -> sval::Result {
+        self.binfloat_end()
+    }
+
+    fn dispatch_decfloat_begin(&mut self) -> sval::Result {
+        self.decfloat_begin()
+    }
+
+    fn dispatch_decfloat_end(&mut self) -> sval::Result {
+        self.decfloat_end()
     }
 
     fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {
@@ -756,12 +768,20 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_int_end()
             }
 
-            fn decimal_begin(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_decimal_begin()
+            fn binfloat_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_binfloat_begin()
             }
 
-            fn decimal_end(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_decimal_end()
+            fn binfloat_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_binfloat_end()
+            }
+
+            fn decfloat_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_decfloat_begin()
+            }
+
+            fn decfloat_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_decfloat_end()
             }
 
             fn app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {

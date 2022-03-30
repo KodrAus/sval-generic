@@ -352,9 +352,9 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
 
                     self.value_begin(&mut receiver)?;
 
-                    receiver.decimal_begin()?;
+                    receiver.decfloat_begin()?;
                     receiver.str(n)?;
-                    receiver.decimal_end()?;
+                    receiver.decfloat_end()?;
 
                     return self.maybe_done(receiver);
                 }

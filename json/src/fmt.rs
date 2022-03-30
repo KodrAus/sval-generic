@@ -184,13 +184,21 @@ where
     }
 
     fn f32(&mut self, v: f32) -> sval::Result {
-        self.out.write_str(ryu::Buffer::new().format(v))?;
+        if v.is_nan() || v.is_infinite() {
+            self.null()?;
+        } else {
+            self.out.write_str(ryu::Buffer::new().format_finite(v))?;
+        }
 
         Ok(())
     }
 
     fn f64(&mut self, v: f64) -> sval::Result {
-        self.out.write_str(ryu::Buffer::new().format(v))?;
+        if v.is_nan() || v.is_infinite() {
+            self.null()?;
+        } else {
+            self.out.write_str(ryu::Buffer::new().format_finite(v))?;
+        }
 
         Ok(())
     }
@@ -369,36 +377,116 @@ where
         Ok(())
     }
 
-    fn decimal_begin(&mut self) -> sval::Result {
+    fn binfloat_begin(&mut self) -> sval::Result {
         self.write_str_quotes = false;
-        self.text_handler = Some(|mut v, state, out| {
-            if *state == 0 {
-                if v.starts_with("+") {
-                    v = &v[1..];
-                }
-
-                if v.eq_ignore_ascii_case("nan") || v.eq_ignore_ascii_case("inf") {
-                    v = "null";
-                }
-            }
-
-            out.write_str(v)?;
-            *state += v.len() as u32;
-
-            Ok(())
-        });
+        self.text_handler = Some(float_text_handler);
         self.text_handler_state = Default::default();
 
         Ok(())
     }
 
-    fn decimal_end(&mut self) -> sval::Result {
+    fn binfloat_end(&mut self) -> sval::Result {
         self.write_str_quotes = false;
         self.text_handler = None;
         self.text_handler_state = Default::default();
 
         Ok(())
     }
+
+    fn decfloat_begin(&mut self) -> sval::Result {
+        self.write_str_quotes = false;
+        self.text_handler = Some(float_text_handler);
+        self.text_handler_state = Default::default();
+
+        Ok(())
+    }
+
+    fn decfloat_end(&mut self) -> sval::Result {
+        self.write_str_quotes = false;
+        self.text_handler = None;
+        self.text_handler_state = Default::default();
+
+        Ok(())
+    }
+}
+
+fn float_text_handler(mut v: &str, state: &mut u32, out: &mut dyn Write) -> sval::Result {
+    // The state tracks what kind of number we've detected across calls
+    struct State<'a>(&'a mut u32);
+
+    impl<'a> State<'a> {
+        fn check_write_negative_sign(&self) -> bool {
+            *self.0 >> 16 == 1
+        }
+
+        fn must_write_negative_sign(&mut self) {
+            *self.0 |= 1u32 << 16;
+        }
+
+        fn complete_write_negative_sign(&mut self) {
+            *self.0 &= u16::MAX as u32;
+        }
+
+        fn check_nan_or_inf(&self) -> bool {
+            *self.0 as u16 == 0
+        }
+
+        fn check_write_digits(&self) -> bool {
+            *self.0 as u16 == 2
+        }
+
+        fn must_not_write_digits(&mut self) {
+            *self.0 = 1;
+        }
+
+        fn must_write_digits(&mut self) {
+            *self.0 = *self.0 | 2;
+        }
+    }
+
+    let mut skip = 0;
+    let mut s = State(state);
+
+    // Check whether the number is NaN or +/- infinity
+    // In these cases we want to write `null` instead
+    if s.check_nan_or_inf() {
+        for b in v.as_bytes() {
+            match b {
+                b'+' => {
+                    skip = 1;
+                }
+                b'-' => {
+                    skip = 1;
+                    s.must_write_negative_sign();
+                }
+                b'n' | b'i' | b'N' | b'I' => {
+                    out.write_str("null")?;
+                    s.must_not_write_digits();
+
+                    return Ok(());
+                }
+                _ => {
+                    s.must_write_digits();
+                    break;
+                }
+            }
+        }
+    }
+
+    // A leading sign will be stripped
+    // This means we make 2 calls to the writer for negative numbers
+    v = &v[skip..];
+
+    if s.check_write_digits() {
+        if s.check_write_negative_sign() {
+            out.write_str("-")?;
+            s.complete_write_negative_sign();
+        }
+
+        out.write_str(v)?;
+    }
+
+    Ok(())
 }
 
 /*

@@ -275,11 +275,19 @@ pub trait Receiver<'a> {
         Ok(())
     }
 
-    fn decimal_begin(&mut self) -> Result {
+    fn binfloat_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn decimal_end(&mut self) -> Result {
+    fn binfloat_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn decfloat_begin(&mut self) -> Result {
+        Ok(())
+    }
+
+    fn decfloat_end(&mut self) -> Result {
         Ok(())
     }
 
@@ -639,14 +647,24 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).int_end()
             }
 
-            fn decimal_begin(&mut self) -> Result {
+            fn binfloat_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).decimal_begin()
+                ($($forward)*).binfloat_begin()
             }
 
-            fn decimal_end(&mut self) -> Result {
+            fn binfloat_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).decimal_end()
+                ($($forward)*).binfloat_end()
+            }
+
+            fn decfloat_begin(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).decfloat_begin()
+            }
+
+            fn decfloat_end(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).decfloat_end()
             }
 
             fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
@@ -940,11 +958,19 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn decimal_begin(&mut self) -> Result {
+    fn binfloat_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn decimal_end(&mut self) -> Result {
+    fn binfloat_end(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn decfloat_begin(&mut self) -> Result {
+        crate::error::unsupported()
+    }
+
+    fn decfloat_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 

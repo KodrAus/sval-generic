@@ -48,15 +48,17 @@ macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
             pub(crate) fn $f<'a>(v: $n, mut receiver: impl Receiver<'a>) -> crate::Result {
-                receiver.decimal_begin()?;
+                receiver.binfloat_begin()?;
 
                 if receiver.is_text_based() {
                     data::text(v).stream_to_end(&mut receiver)?;
                 } else {
-                    unimplemented!("convert to IEEE754 decimal")
+                    let bytes = v.to_le_bytes();
+
+                    data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
                 }
 
-                receiver.decimal_end()
+                receiver.binfloat_end()
             }
         )*
     };
