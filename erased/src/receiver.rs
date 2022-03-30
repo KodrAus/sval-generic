@@ -156,9 +156,9 @@ mod private {
 
         fn dispatch_int_end(&mut self) -> sval::Result;
 
-        fn dispatch_number_begin(&mut self) -> sval::Result;
+        fn dispatch_decimal_begin(&mut self) -> sval::Result;
 
-        fn dispatch_number_end(&mut self) -> sval::Result;
+        fn dispatch_decimal_end(&mut self) -> sval::Result;
 
         fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result;
 
@@ -476,12 +476,12 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.int_end()
     }
 
-    fn dispatch_number_begin(&mut self) -> sval::Result {
-        self.number_begin()
+    fn dispatch_decimal_begin(&mut self) -> sval::Result {
+        self.decimal_begin()
     }
 
-    fn dispatch_number_end(&mut self) -> sval::Result {
-        self.number_end()
+    fn dispatch_decimal_end(&mut self) -> sval::Result {
+        self.decimal_end()
     }
 
     fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {
@@ -756,12 +756,12 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_int_end()
             }
 
-            fn number_begin(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_number_begin()
+            fn decimal_begin(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_decimal_begin()
             }
 
-            fn number_end(&mut self) -> sval::Result {
-                self.erase_receiver().0.dispatch_number_end()
+            fn decimal_end(&mut self) -> sval::Result {
+                self.erase_receiver().0.dispatch_decimal_end()
             }
 
             fn app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {

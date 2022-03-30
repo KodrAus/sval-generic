@@ -381,12 +381,12 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.int_end()
     }
 
-    fn number_begin(&mut self) -> Result {
-        self.0.number_begin()
+    fn decimal_begin(&mut self) -> Result {
+        self.0.decimal_begin()
     }
 
-    fn number_end(&mut self) -> Result {
-        self.0.number_end()
+    fn decimal_end(&mut self) -> Result {
+        self.0.decimal_end()
     }
 
     fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {

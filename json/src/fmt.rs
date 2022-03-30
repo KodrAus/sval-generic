@@ -9,6 +9,8 @@ pub struct Formatter<W> {
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
     write_str_quotes: bool,
+    text_handler: Option<fn(&str, &mut u32, &mut dyn Write) -> sval::Result>,
+    text_handler_state: u32,
     out: W,
 }
 
@@ -22,6 +24,8 @@ where
             is_internally_tagged: false,
             is_current_depth_empty: true,
             write_str_quotes: true,
+            text_handler: None,
+            text_handler_state: 0,
             out,
         }
     }
@@ -86,7 +90,11 @@ where
     }
 
     fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
-        self.escape_str(v)?;
+        if let Some(text_handler) = self.text_handler {
+            text_handler(v, &mut self.text_handler_state, &mut self.out)?;
+        } else {
+            self.escape_str(v)?;
+        }
 
         Ok(())
     }
@@ -361,14 +369,33 @@ where
         Ok(())
     }
 
-    fn number_begin(&mut self) -> sval::Result {
+    fn decimal_begin(&mut self) -> sval::Result {
         self.write_str_quotes = false;
+        self.text_handler = Some(|mut v, state, out| {
+            if *state == 0 {
+                if v.starts_with("+") {
+                    v = &v[1..];
+                }
+
+                if v.eq_ignore_ascii_case("nan") || v.eq_ignore_ascii_case("inf") {
+                    v = "null";
+                }
+            }
+
+            out.write_str(v)?;
+            *state += v.len() as u32;
+
+            Ok(())
+        });
+        self.text_handler_state = Default::default();
 
         Ok(())
     }
 
-    fn number_end(&mut self) -> sval::Result {
+    fn decimal_end(&mut self) -> sval::Result {
         self.write_str_quotes = false;
+        self.text_handler = None;
+        self.text_handler_state = Default::default();
 
         Ok(())
     }

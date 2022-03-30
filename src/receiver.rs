@@ -267,9 +267,6 @@ pub trait Receiver<'a> {
         Ok(())
     }
 
-    // Extension: Big integers
-    // Text: JSON number without `.` or exponent
-    // Binary: Signed LE integer bytes
     fn int_begin(&mut self) -> Result {
         Ok(())
     }
@@ -278,14 +275,11 @@ pub trait Receiver<'a> {
         Ok(())
     }
 
-    // Extension: Arbitrary precision numbers
-    // Text: JSON number
-    // Binary: IEEE754 LE DPD interchange decimal
-    fn number_begin(&mut self) -> Result {
+    fn decimal_begin(&mut self) -> Result {
         Ok(())
     }
 
-    fn number_end(&mut self) -> Result {
+    fn decimal_end(&mut self) -> Result {
         Ok(())
     }
 
@@ -645,14 +639,14 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).int_end()
             }
 
-            fn number_begin(&mut self) -> Result {
+            fn decimal_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).number_begin()
+                ($($forward)*).decimal_begin()
             }
 
-            fn number_end(&mut self) -> Result {
+            fn decimal_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).number_end()
+                ($($forward)*).decimal_end()
             }
 
             fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
@@ -946,11 +940,11 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn number_begin(&mut self) -> Result {
+    fn decimal_begin(&mut self) -> Result {
         crate::error::unsupported()
     }
 
-    fn number_end(&mut self) -> Result {
+    fn decimal_end(&mut self) -> Result {
         crate::error::unsupported()
     }
 
