@@ -38,8 +38,6 @@ mod private {
 
         fn dispatch_bool(&mut self, value: bool) -> sval::Result;
 
-        fn dispatch_char(&mut self, value: char) -> sval::Result;
-
         fn dispatch_str(&mut self, value: &'a str) -> sval::Result;
 
         fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
@@ -264,12 +262,8 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.bool(value)
     }
 
-    fn dispatch_char(&mut self, value: char) -> sval::Result {
-        self.char(value)
-    }
-
     fn dispatch_str(&mut self, value: &'a str) -> sval::Result {
-        self.str(value)
+        self.text(value)
     }
 
     fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
@@ -289,7 +283,7 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
     }
 
     fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result {
-        self.bytes(value)
+        self.binary(value)
     }
 
     fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
@@ -578,10 +572,6 @@ macro_rules! impl_receiver {
 
             fn bool(&mut self, value: bool) -> sval::Result {
                 self.erase_receiver().0.dispatch_bool(value)
-            }
-
-            fn char(&mut self, value: char) -> sval::Result {
-                self.erase_receiver().0.dispatch_char(value)
             }
 
             fn str(&mut self, value: &'a str) -> sval::Result {

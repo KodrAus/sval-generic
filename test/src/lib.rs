@@ -286,7 +286,7 @@ pub fn assert_stream<'a>(text_based: bool, source: impl sval::Source<'a>, expect
             self.expect(Token::Char(value))
         }
 
-        fn str(&mut self, value: &'a str) -> sval::Result {
+        fn text(&mut self, value: &'a str) -> sval::Result {
             self.expect(Token::Str(value))
         }
 
@@ -306,7 +306,7 @@ pub fn assert_stream<'a>(text_based: bool, source: impl sval::Source<'a>, expect
             self.expect(Token::TextEnd)
         }
 
-        fn bytes(&mut self, value: &'a [u8]) -> sval::Result {
+        fn binary(&mut self, value: &'a [u8]) -> sval::Result {
             self.expect(Token::Bytes(value))
         }
 

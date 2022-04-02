@@ -11,7 +11,7 @@ macro_rules! int {
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                    data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
                 }
 
                 receiver.int_end()
@@ -23,19 +23,18 @@ macro_rules! int {
                 if receiver.is_text_based() {
                     data::text(v).stream_to_end(data::computed(&mut receiver))?;
                 } else {
-                    let bytes = v.to_le_bytes();
+                    if v <= (<$i>::MAX as $u) {
+                        let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
+                        let unsigned = v.to_le_bytes();
 
-                    let extra: &[u8] = if v <= (<$i>::MAX as $u) { &[] } else { &[0] };
+                        bytes[..unsigned.len()].copy_from_slice(&unsigned);
 
-                    receiver.binary_begin(Some(bytes.len() + extra.len()))?;
+                        data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                    } else {
+                        let bytes = v.to_le_bytes();
 
-                    receiver.binary_fragment_computed(&bytes)?;
-
-                    if extra.len() > 0 {
-                        receiver.binary_fragment_computed(extra)?;
+                        data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
                     }
-
-                    receiver.binary_end()?;
                 }
 
                 receiver.int_end()
@@ -55,7 +54,7 @@ macro_rules! float {
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    data::bytes(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                    data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
                 }
 
                 receiver.binfloat_end()

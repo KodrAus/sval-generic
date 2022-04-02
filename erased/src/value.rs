@@ -20,9 +20,8 @@ mod private {
         fn dispatch_to_u32(&self) -> Option<u32>;
         fn dispatch_to_u64(&self) -> Option<u64>;
         fn dispatch_to_u128(&self) -> Option<u128>;
-        fn dispatch_to_char(&self) -> Option<char>;
-        fn dispatch_to_str(&self) -> Option<&str>;
-        fn dispatch_to_bytes(&self) -> Option<&[u8]>;
+        fn dispatch_to_text(&self) -> Option<&str>;
+        fn dispatch_to_binary(&self) -> Option<&[u8]>;
     }
 
     pub trait EraseValue {
@@ -101,16 +100,12 @@ impl<T: sval::Value> private::DispatchValue for T {
         self.to_u128()
     }
 
-    fn dispatch_to_char(&self) -> Option<char> {
-        self.to_char()
+    fn dispatch_to_text(&self) -> Option<&str> {
+        self.to_text()
     }
 
-    fn dispatch_to_str(&self) -> Option<&str> {
-        self.to_str()
-    }
-
-    fn dispatch_to_bytes(&self) -> Option<&[u8]> {
-        self.to_bytes()
+    fn dispatch_to_binary(&self) -> Option<&[u8]> {
+        self.to_binary()
     }
 }
 
@@ -177,16 +172,12 @@ macro_rules! impl_value {
                 self.erase_value().0.dispatch_to_u128()
             }
 
-            fn to_char(&self) -> Option<char> {
-                self.erase_value().0.dispatch_to_char()
+            fn to_text(&self) -> Option<&str> {
+                self.erase_value().0.dispatch_to_text()
             }
 
-            fn to_str(&self) -> Option<&str> {
-                self.erase_value().0.dispatch_to_str()
-            }
-
-            fn to_bytes(&self) -> Option<&[u8]> {
-                self.erase_value().0.dispatch_to_bytes()
+            fn to_binary(&self) -> Option<&[u8]> {
+                self.erase_value().0.dispatch_to_binary()
             }
         }
     }

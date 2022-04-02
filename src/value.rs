@@ -161,30 +161,14 @@ where
     }
 
     #[inline]
-    fn to_char(&self) -> Option<char> {
-        struct Extract(Option<char>);
-
-        impl<'a> DefaultUnsupported<'a> for Extract {
-            fn char(&mut self, value: char) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-        }
-
-        let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
-        extract.0
-    }
-
-    #[inline]
-    fn to_str(&self) -> Option<&str> {
+    fn to_text(&self) -> Option<&str> {
         struct Extract<'a> {
             extracted: Option<&'a str>,
             seen_fragment: bool,
         }
 
         impl<'a> DefaultUnsupported<'a> for Extract<'a> {
-            fn str(&mut self, value: &'a str) -> Result {
+            fn text(&mut self, value: &'a str) -> Result {
                 // Allow either independent strings, or fragments of a single borrowed string
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -201,7 +185,7 @@ where
             }
 
             fn text_fragment(&mut self, fragment: &'a str) -> Result {
-                self.str(fragment)
+                self.text(fragment)
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
@@ -226,14 +210,14 @@ where
     }
 
     #[inline]
-    fn to_bytes(&self) -> Option<&[u8]> {
+    fn to_binary(&self) -> Option<&[u8]> {
         struct Extract<'a> {
             extracted: Option<&'a [u8]>,
             seen_fragment: bool,
         }
 
         impl<'a> DefaultUnsupported<'a> for Extract<'a> {
-            fn bytes(&mut self, value: &'a [u8]) -> Result {
+            fn binary(&mut self, value: &'a [u8]) -> Result {
                 // Allow either independent bytes, or fragments of a single borrowed byte stream
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -250,7 +234,7 @@ where
             }
 
             fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
-                self.bytes(fragment)
+                self.binary(fragment)
             }
 
             fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {
@@ -368,21 +352,15 @@ macro_rules! impl_value_forward {
             }
 
             #[inline]
-            fn to_char(&self) -> Option<char> {
+            fn to_text(&self) -> Option<&str> {
                 let $bind = self;
-                ($($forward)*).to_char()
+                ($($forward)*).to_text()
             }
 
             #[inline]
-            fn to_str(&self) -> Option<&str> {
+            fn to_binary(&self) -> Option<&[u8]> {
                 let $bind = self;
-                ($($forward)*).to_str()
-            }
-
-            #[inline]
-            fn to_bytes(&self) -> Option<&[u8]> {
-                let $bind = self;
-                ($($forward)*).to_bytes()
+                ($($forward)*).to_binary()
             }
         }
     };

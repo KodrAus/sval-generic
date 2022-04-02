@@ -91,7 +91,7 @@ fn slice_convert() {
     use sval::Value;
 
     assert_eq!(Some(true), sval_json::slice("true").to_bool());
-    assert_eq!(Some("a string"), sval_json::slice("\"a string\"").to_str());
+    assert_eq!(Some("a string"), sval_json::slice("\"a string\"").to_text());
 }
 
 struct BinFloat<'a>(&'a [&'a str]);

@@ -24,21 +24,6 @@ pub trait Receiver<'a> {
         value.then(|| ()).stream_to_end(self)
     }
 
-    fn char(&mut self, value: char) -> Result {
-        let mut buf = [0; 4];
-        let value = &*value.encode_utf8(&mut buf);
-
-        self.text_begin(Some(value.len()))?;
-        self.text_fragment_computed(value)?;
-        self.text_end()
-    }
-
-    fn str(&mut self, value: &'a str) -> Result {
-        self.text_begin(Some(value.len()))?;
-        self.text_fragment(value)?;
-        self.text_end()
-    }
-
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
     fn text_fragment(&mut self, fragment: &'a str) -> Result {
@@ -49,10 +34,10 @@ pub trait Receiver<'a> {
 
     fn text_end(&mut self) -> Result;
 
-    fn bytes(&mut self, value: &'a [u8]) -> Result {
-        self.binary_begin(Some(value.len()))?;
-        self.binary_fragment(value)?;
-        self.binary_end()
+    fn text(&mut self, value: &'a str) -> Result {
+        self.text_begin(Some(value.len()))?;
+        self.text_fragment(value)?;
+        self.text_end()
     }
 
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
@@ -64,6 +49,12 @@ pub trait Receiver<'a> {
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result;
 
     fn binary_end(&mut self) -> Result;
+
+    fn binary(&mut self, value: &'a [u8]) -> Result {
+        self.binary_begin(Some(value.len()))?;
+        self.binary_fragment(value)?;
+        self.binary_end()
+    }
 
     fn u8(&mut self, value: u8) -> Result {
         data::u8_int(value, self)
@@ -402,14 +393,9 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).bool(value)
             }
 
-            fn char(&mut self, value: char) -> Result {
+            fn text(&mut self, value: &'a str) -> Result {
                 let $bind = self;
-                ($($forward)*).char(value)
-            }
-
-            fn str(&mut self, value: &'a str) -> Result {
-                let $bind = self;
-                ($($forward)*).str(value)
+                ($($forward)*).text(value)
             }
 
             fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
@@ -432,9 +418,9 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).text_fragment_computed(fragment)
             }
 
-            fn bytes(&mut self, value: &'a [u8]) -> Result {
+            fn binary(&mut self, value: &'a [u8]) -> Result {
                 let $bind = self;
-                ($($forward)*).bytes(value)
+                ($($forward)*).binary(value)
             }
 
             fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
@@ -762,11 +748,7 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn char(&mut self, _: char) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn str(&mut self, _: &'a str) -> Result {
+    fn text(&mut self, _: &'a str) -> Result {
         crate::error::unsupported()
     }
 
@@ -786,7 +768,7 @@ pub(crate) trait DefaultUnsupported<'a> {
         crate::error::unsupported()
     }
 
-    fn bytes(&mut self, _: &'a [u8]) -> Result {
+    fn binary(&mut self, _: &'a [u8]) -> Result {
         crate::error::unsupported()
     }
 

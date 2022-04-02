@@ -87,16 +87,12 @@ impl<T: Value> Value for Computed<T> {
         self.0.to_u128()
     }
 
-    fn to_char(&self) -> Option<char> {
-        self.0.to_char()
+    fn to_text(&self) -> Option<&str> {
+        self.0.to_text()
     }
 
-    fn to_str(&self) -> Option<&str> {
-        self.0.to_str()
-    }
-
-    fn to_bytes(&self) -> Option<&[u8]> {
-        self.0.to_bytes()
+    fn to_binary(&self) -> Option<&[u8]> {
+        self.0.to_binary()
     }
 }
 
@@ -141,11 +137,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.bool(value)
     }
 
-    fn char(&mut self, value: char) -> Result {
-        self.0.char(value)
-    }
-
-    fn str(&mut self, value: &'a str) -> Result {
+    fn text(&mut self, value: &'a str) -> Result {
         self.0.text_begin(Some(value.len()))?;
         self.0.text_fragment_computed(value)?;
         self.0.text_end()
@@ -163,7 +155,7 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.text_end()
     }
 
-    fn bytes(&mut self, value: &'a [u8]) -> Result {
+    fn binary(&mut self, value: &'a [u8]) -> Result {
         self.0.binary_begin(Some(value.len()))?;
         self.0.binary_fragment_computed(value)?;
         self.0.binary_end()

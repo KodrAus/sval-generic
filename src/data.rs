@@ -1,3 +1,4 @@
+mod binary;
 mod computed;
 mod number;
 mod seq;
@@ -7,7 +8,7 @@ mod text;
 use crate::{source, Receiver, Source, Value};
 
 #[doc(inline)]
-pub use self::{computed::*, seq::*, tag::*, text::*};
+pub use self::{binary::*, computed::*, tag::*, text::*};
 
 pub(crate) use self::number::*;
 
@@ -90,16 +91,12 @@ impl<T: Value> Value for Option<T> {
         self.as_ref().and_then(|value| value.to_u128())
     }
 
-    fn to_char(&self) -> Option<char> {
-        self.as_ref().and_then(|value| value.to_char())
+    fn to_text(&self) -> Option<&str> {
+        self.as_ref().and_then(|value| value.to_text())
     }
 
-    fn to_str(&self) -> Option<&str> {
-        self.as_ref().and_then(|value| value.to_str())
-    }
-
-    fn to_bytes(&self) -> Option<&[u8]> {
-        self.as_ref().and_then(|value| value.to_bytes())
+    fn to_binary(&self) -> Option<&[u8]> {
+        self.as_ref().and_then(|value| value.to_binary())
     }
 }
 
@@ -200,6 +197,6 @@ mod tests {
 
         assert_eq!(Some(true), Some(true).to_bool());
 
-        assert_eq!(Some("a string"), Some("a string").to_str());
+        assert_eq!(Some("a string"), Some("a string").to_text());
     }
 }

@@ -64,12 +64,9 @@ impl<'a, T: fmt::Display> Source<'a> for Text<T> {
 }
 
 impl Value for char {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.char(*self)
-    }
-
-    fn to_char(&self) -> Option<char> {
-        Some(*self)
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
+        let mut value = *self;
+        value.stream_to_end(receiver)
     }
 }
 
@@ -85,16 +82,21 @@ impl<'a> Source<'a> for char {
     where
         'a: 'b,
     {
-        receiver.char(*self)
+        let mut buf = [0; 4];
+        let value = &*self.encode_utf8(&mut buf);
+
+        receiver.text_begin(Some(value.len()))?;
+        receiver.text_fragment_computed(value)?;
+        receiver.text_end()
     }
 }
 
 impl Value for str {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.str(self)
+        receiver.text(self)
     }
 
-    fn to_str(&self) -> Option<&str> {
+    fn to_text(&self) -> Option<&str> {
         Some(self)
     }
 }
@@ -107,11 +109,11 @@ mod alloc_support {
 
     impl Value for String {
         fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-            receiver.str(&**self)
+            receiver.text(&**self)
         }
 
         #[inline]
-        fn to_str(&self) -> Option<&str> {
+        fn to_text(&self) -> Option<&str> {
             Some(self)
         }
     }

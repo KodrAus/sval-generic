@@ -69,7 +69,7 @@ where
         Ok(())
     }
 
-    fn str(&mut self, v: &'a str) -> sval::Result {
+    fn text(&mut self, v: &'a str) -> sval::Result {
         if self.write_str_quotes {
             self.out.write_char('"')?;
             self.escape_str(v)?;

@@ -1,52 +1,4 @@
-use crate::{data, source, std::ops, Receiver, Result, Source, Value};
-
-pub fn bytes<'a>(bytes: &'a impl AsRef<[u8]>) -> Bytes<'a> {
-    Bytes::new(bytes)
-}
-
-pub struct Bytes<'a>(&'a [u8]);
-
-impl<'a> Bytes<'a> {
-    pub fn new(bytes: &'a impl AsRef<[u8]>) -> Self {
-        Bytes(bytes.as_ref())
-    }
-}
-
-impl<'a> Value for Bytes<'a> {
-    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
-        receiver.bytes(self.0)
-    }
-}
-
-impl<'a> Source<'a> for Bytes<'a> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Resume::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-    where
-        'a: 'b,
-    {
-        receiver.bytes(self.0)
-    }
-}
-
-impl<'a> AsRef<[u8]> for Bytes<'a> {
-    fn as_ref(&self) -> &[u8] {
-        self.0
-    }
-}
-
-impl<'a> ops::Deref for Bytes<'a> {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        self.0
-    }
-}
+use crate::{data, Receiver, Result, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
@@ -269,7 +221,7 @@ tuple! {
 mod alloc_support {
     use super::*;
 
-    use crate::std::vec::Vec;
+    use crate::{source, std::vec::Vec, Source};
 
     impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {

@@ -230,7 +230,7 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                     // If the string is complete (with no escapes)
                     // then we can yield it directly
                     return if !partial {
-                        receiver.str(fragment)?;
+                        receiver.text(fragment)?;
 
                         self.maybe_done(receiver)
                     }
@@ -353,7 +353,7 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                     self.value_begin(&mut receiver)?;
 
                     receiver.decfloat_begin()?;
-                    receiver.str(n)?;
+                    receiver.text(n)?;
                     receiver.decfloat_end()?;
 
                     return self.maybe_done(receiver);
