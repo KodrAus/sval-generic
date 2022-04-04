@@ -13,15 +13,15 @@ as [`Source::stream_to_end`].
 */
 pub trait Value
 where
-    for<'a> &'a Self: Source<'a>,
+    for<'src> &'src Self: Source<'src>,
 {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result;
+    fn stream<'data, R: Receiver<'data>>(&'data self, receiver: R) -> Result;
 
     #[inline]
     fn is_dynamic(&self) -> bool {
         struct Check(bool);
 
-        impl<'a> DefaultUnsupported<'a> for Check {
+        impl<'data> DefaultUnsupported<'data> for Check {
             fn dynamic_begin(&mut self) -> Result {
                 self.0 = true;
                 Ok(())
@@ -44,7 +44,7 @@ where
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
 
-        impl<'a> DefaultUnsupported<'a> for Extract {
+        impl<'data> DefaultUnsupported<'data> for Extract {
             fn bool(&mut self, value: bool) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -60,7 +60,7 @@ where
     fn to_f32(&self) -> Option<f32> {
         struct Extract(Option<f32>);
 
-        impl<'a> DefaultUnsupported<'a> for Extract {
+        impl<'data> DefaultUnsupported<'data> for Extract {
             fn f32(&mut self, value: f32) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -76,7 +76,7 @@ where
     fn to_f64(&self) -> Option<f64> {
         struct Extract(Option<f64>);
 
-        impl<'a> DefaultUnsupported<'a> for Extract {
+        impl<'data> DefaultUnsupported<'data> for Extract {
             fn f64(&mut self, value: f64) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -112,7 +112,7 @@ where
     fn to_i128(&self) -> Option<i128> {
         struct Extract(Option<i128>);
 
-        impl<'a> DefaultUnsupported<'a> for Extract {
+        impl<'data> DefaultUnsupported<'data> for Extract {
             fn i128(&mut self, value: i128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -148,7 +148,7 @@ where
     fn to_u128(&self) -> Option<u128> {
         struct Extract(Option<u128>);
 
-        impl<'a> DefaultUnsupported<'a> for Extract {
+        impl<'data> DefaultUnsupported<'data> for Extract {
             fn u128(&mut self, value: u128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -162,13 +162,13 @@ where
 
     #[inline]
     fn to_text(&self) -> Option<&str> {
-        struct Extract<'a> {
-            extracted: Option<&'a str>,
+        struct Extract<'data> {
+            extracted: Option<&'data str>,
             seen_fragment: bool,
         }
 
-        impl<'a> DefaultUnsupported<'a> for Extract<'a> {
-            fn text(&mut self, value: &'a str) -> Result {
+        impl<'data> DefaultUnsupported<'data> for Extract<'data> {
+            fn text(&mut self, value: &'data str) -> Result {
                 // Allow either independent strings, or fragments of a single borrowed string
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -184,7 +184,7 @@ where
                 Ok(())
             }
 
-            fn text_fragment(&mut self, fragment: &'a str) -> Result {
+            fn text_fragment(&mut self, fragment: &'data str) -> Result {
                 self.text(fragment)
             }
 
@@ -211,13 +211,13 @@ where
 
     #[inline]
     fn to_binary(&self) -> Option<&[u8]> {
-        struct Extract<'a> {
-            extracted: Option<&'a [u8]>,
+        struct Extract<'data> {
+            extracted: Option<&'data [u8]>,
             seen_fragment: bool,
         }
 
-        impl<'a> DefaultUnsupported<'a> for Extract<'a> {
-            fn binary(&mut self, value: &'a [u8]) -> Result {
+        impl<'data> DefaultUnsupported<'data> for Extract<'data> {
+            fn binary(&mut self, value: &'data [u8]) -> Result {
                 // Allow either independent bytes, or fragments of a single borrowed byte stream
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -233,7 +233,7 @@ where
                 Ok(())
             }
 
-            fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
+            fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
                 self.binary(fragment)
             }
 
@@ -366,7 +366,7 @@ macro_rules! impl_value_forward {
     };
 }
 
-impl_value_forward!({impl<'a, T: Value + ?Sized> Value for &'a T} => x => { **x });
+impl_value_forward!({impl<'data, T: Value + ?Sized> Value for &'data T} => x => { **x });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {

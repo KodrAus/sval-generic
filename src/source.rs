@@ -11,14 +11,14 @@ Valid implementations of `Source` must adhere to the following requirements:
 2. The result of [`Source::stream_to_end`] must be the same as continually calling [`Source::stream_resume`]
 until [`Resume::Done`] is returned. This is guaranteed by the default implementation of [`Source::stream_to_end`].
 */
-pub trait Source<'a> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
+pub trait Source<'src> {
+    fn stream_resume<'data, R: Receiver<'data>>(&mut self, receiver: R) -> Result<Resume>
     where
-        'a: 'b;
+        'src: 'data;
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    fn stream_to_end<'data, R: Receiver<'data>>(&mut self, mut receiver: R) -> Result
     where
-        'a: 'b,
+        'src: 'data,
     {
         while let Resume::Continue = self.stream_resume(&mut receiver)? {}
 
@@ -47,17 +47,17 @@ impl Resume {
     }
 }
 
-impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<Resume>
+impl<'src, T: Value + ?Sized> Source<'src> for &'src T {
+    fn stream_resume<'data, R: Receiver<'data>>(&mut self, receiver: R) -> Result<Resume>
     where
-        'a: 'b,
+        'src: 'data,
     {
         self.stream_to_end(receiver).map(|_| Resume::Done)
     }
 
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    fn stream_to_end<'data, R: Receiver<'data>>(&mut self, mut receiver: R) -> Result
     where
-        'a: 'b,
+        'src: 'data,
     {
         receiver.value(*self)
     }
@@ -66,17 +66,17 @@ impl<'a, T: Value + ?Sized> Source<'a> for &'a T {
 macro_rules! impl_source_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn stream_resume<'c, S: Receiver<'c>>(&mut self, receiver: S) -> Result<Resume>
+            fn stream_resume<'data, S: Receiver<'data>>(&mut self, receiver: S) -> Result<Resume>
             where
-                'a: 'c,
+                'src: 'data,
             {
                 let $bind = self;
                 ($($forward)*).stream_resume(receiver)
             }
 
-            fn stream_to_end<'c, R: Receiver<'c>>(&mut self, receiver: R) -> Result
+            fn stream_to_end<'data, R: Receiver<'data>>(&mut self, receiver: R) -> Result
             where
-                'a: 'c,
+                'src: 'data,
             {
                 let $bind = self;
                 ($($forward)*).stream_to_end(receiver)
@@ -91,7 +91,7 @@ macro_rules! impl_source_forward {
     };
 }
 
-impl_source_forward!({impl<'a, 'b, T: Source<'a> + ?Sized> Source<'a> for &'b mut T} => x => { **x });
+impl_source_forward!({impl<'src, 'a, T: Source<'src> + ?Sized> Source<'src> for &'a mut T} => x => { **x });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {
@@ -99,5 +99,5 @@ mod alloc_support {
 
     use crate::{std::boxed::Box, Receiver, Result, Source};
 
-    impl_source_forward!({impl<'a, T: Source<'a> + ?Sized> Source<'a> for Box<T>} => x => { **x });
+    impl_source_forward!({impl<'src, T: Source<'src> + ?Sized> Source<'src> for Box<T>} => x => { **x });
 }
