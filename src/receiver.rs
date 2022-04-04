@@ -13,6 +13,9 @@ Each receiver expects either text-based or binary-based data.
 This decision is communicated by [`Receiver::is_text_based`].
 Some [data types](#data-types) may be streamed differently depending on whether a receiver is text-based or binary-based.
 
+Receivers should only ever expect data encoded using either their text or binary representation.
+This means `sval` effectively has two in-memory representations of its data model: one for text and one for binary.
+
 ## Data types
 
 Data types represent the distinct kinds of data that a receiver may choose to interpret or encode in a particular way.
@@ -28,15 +31,16 @@ The basic data model includes:
 - **Binary blobs**: arbitrary byte strings. See [`Receiver::binary_begin`].
 - **Maps**: homogenous collection of key-value pairs, where keys and values are [values](#values). See [`Receiver::map_begin`].
 - **Sequences**: homogenous collection of values, where elements are [values](#values). See [`Receiver::seq_begin`].
-- **Dynamic**: make values heterogenous. See [`Receiver::dynamic_begin`].
 
 All other data types map onto this basic model somehow.
 
 ### Extended data types
 
-Receivers may opt-in to direct support for data types in the extended data model either as an optimization, or to handle the differently.
+Receivers may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
 The extended data model includes:
 
+- **Dynamic**: make [values](#values) heterogenous so that maps and sequences can contain values of different data types. See [`Receiver::dynamic_begin`].
+- **Booleans**: the values `true` and `false`. See [`Receiver::bool`].
 - **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Receiver::int_begin`] and [integer encoding](#integer-encoding).
 - **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Receiver::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
 - **Decimal floating points**: These don't have a native Rust counterpart. See [`Receiver::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
@@ -44,6 +48,57 @@ The extended data model includes:
 ## Values
 
 A value is the sequence of calls that represent a complete [data type](#data-types).
+The following are all examples of values.
+
+A single integer:
+
+```
+# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+receiver.i32(42)?;
+# Ok(())
+# }
+```
+
+A text blob, streamed as a contiguous borrowed value:
+
+```
+# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+receiver.text("A blob of text")?;
+# Ok(())
+# }
+```
+
+A text blob, streamed as a collection of fragments:
+
+```
+# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+receiver.text_begin(Some(14))?;
+
+receiver.text_fragment("A blob ")?;
+receiver.text_fragment("of text")?;
+
+receiver.text_end()?;
+# Ok(())
+# }
+```
+
+A map of text-integer key-value pairs:
+
+```
+# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+receiver.map_begin(Some(2))?;
+
+receiver.map_key("a")?;
+receiver.map_value(1)?;
+
+receiver.map_key("b")?;
+receiver.map_value(2)?;
+
+receiver.map_end()?;
+# Ok(())
+# }
+```
+
 A receiver should expect just one value over its lifetime.
 
 ## Validation
@@ -72,49 +127,408 @@ pub trait Receiver<'data> {
     Whether or not the receiver expects text or binary data.
 
     This choice is expected to be constant over a single complete value.
+    Callers are expected to check this method before choosing between the text or binary encoding for a particular [data type](#data-type).
     */
     fn is_text_based(&self) -> bool {
         true
     }
 
+    /**
+    A borrowed value.
+
+    This is a niche method that simply calls back into the receiver, so shouldn't be called from [`Value::stream`].
+    It can be useful for separating borrowed data out to avoid needing to buffer it.
+    */
     fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result {
         value.stream(self)
     }
 
+    /**
+    A value that simply _is_.
+
+    Unit is one of the [basic data types](basic-data-types), but isn't commonly used directly.
+
+    # Examples
+
+    Stream a unit:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.unit()?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `()` type also streams as unit:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    ().stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    Unit is a distinct data type that only matches other units.
+    That means unit and null are not the same data type, and unit and other values like `i32` are not the same data type.
+    */
     fn unit(&mut self) -> Result;
 
+    /**
+    A value that simply _isn't_.
+
+    Null is one of the [basic data types](basic-data-types), but isn't commonly used directly.
+    Rust typically represents null through the `Option` type, which may also be the `Some` variant of another type.
+
+    # Examples
+
+    Stream a null:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.null()?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    Null is a distinct data type that only matches other nulls.
+    That means unit and null are not the same data type.
+
+    Rust doesn't have a primitive type that maps to null.
+    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Receiver::nullable_begin`]) so that it
+    has the same data type as its `Some` variant.
+    That means that `Option::None` and null don't actually have the same data type.
+    */
     fn null(&mut self) -> Result;
 
+    /**
+    The values `true` or `false`.
+
+    Boolean is one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a boolean:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.bool(true)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `bool` type also streams as a boolean:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    true.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    Boolean is a distinct data type that only matches other booleans.
+    The values `true` and `false` do have the same data type.
+
+    # Boolean encoding
+
+    Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Receiver::unit`]) and `false` will become null (see [`Receiver::null`]).
+    */
     fn bool(&mut self, value: bool) -> Result {
+        // This streams as a nullable (Option<()>)
         value.then(|| ()).stream_to_end(self)
     }
 
+    /**
+    Begin a UTF8 text blob.
+
+    Text blobs are one of the [basic data types](basic-data-types).
+    Most other data types map to text blobs for [text-based receivers](text-and-binary-data), but binary-based receivers may also stream text.
+
+    The `num_bytes_hint` argument is a hint for how many bytes the text blob will contain.
+    If a hint is given it should be as accurate as possible.
+
+    Also see [`Receiver::text`] as a simpler alternative that streams a borrowed string as a text blob.
+
+    # Structure
+
+    After beginning a text blob, the receiver should only expect zero or more text fragments ([`Receiver::text_fragment`] or [`Receiver::text_fragment_computed`]) followed by a call to [`Receiver::text_end`]:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.text_begin(num_bytes_hint)?;
+
+    // 0 or more calls to any combination of text_fragment and text_fragment_computed
+
+    receiver.text_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Borrowing
+
+    Text blobs may contain data that's borrowed for the receiver's `'data` lifetime.
+    Fragments streamed using [`Receiver::text_fragment`] will be borrowed for `'data`.
+    Fragments streamed using [`Receiver::text_fragment_computed`] will be arbitrarily short-lived.
+
+    Callers should use data borrowed for `'data` wherever possible.
+    Borrowing is just an optimization though, so receivers need to cater to both cases.
+
+    # Examples
+
+    Stream a text blob using a single string:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.text_begin(Some(14))?;
+
+    receiver.text_fragment("A blob of text")?;
+
+    receiver.text_end()?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `str` type also streams as a text blob:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    "A blob of text".stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    Types that implement the standard `Display` trait can be streamed using the [`data::display`] utility:
+
+    ```
+    # use sval::Value;
+    # fn wrap<R: for<'a> sval::Receiver<'a>>(mut receiver: R) -> sval::Result {
+    sval::data::display(42).stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    Text may need to be computed instead of just being available.
+    The [`Receiver::text_fragment_computed`] method can be used to stream text that doesn't satisfy the `'data` lifetime:
+
+    ```
+    # fn compute_text() -> String { Default::default() }
+    # fn wrap<'a>(borrowed_text: &'a str, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.text_begin(None)?;
+
+    // This borrowed text lives for `'data`
+    receiver.text_fragment(borrowed_text)?;
+
+    // This owned text only lives until the end of our function call
+    // So we need to stream it as a computed fragment
+    let s: String = compute_text();
+    receiver.text_fragment_computed(&s)?;
+
+    receiver.text_end()?;
+    # Ok(())
+    # }
+    ```
+    */
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
+    /**
+    A UTF8 text fragment that's borrowed for `'data`.
+
+    See [`Receiver::text_begin`] for details on text fragments.
+    The [`Receiver::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
+    */
     fn text_fragment(&mut self, fragment: &'data str) -> Result {
         self.text_fragment_computed(fragment)
     }
 
+    /**
+    A UTF8 text fragment that's borrowed for some arbitrarily short lifetime.
+
+    See [`Receiver::text_begin`] for details on text fragments.
+    The [`Receiver::text_fragment`] method is an alternative to this one that borrows for `'data`.
+    */
     fn text_fragment_computed(&mut self, fragment: &str) -> Result;
 
+    /**
+    End a UTF8 text blob.
+
+    See [`Receiver::text_begin`] for details on text fragments.
+    */
     fn text_end(&mut self) -> Result;
 
+    /**
+    Stream a text blob as a single, contiguous fragment borrowed for `'data`.
+
+    See [`Receiver::text_begin`] for details on text fragments.
+
+    # Examples
+
+    Stream a text blob using a single string:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.text("A blob of text")?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `str` type also streams as a single contiguous text blob:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    "A blob of text".stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+    */
     fn text(&mut self, value: &'data str) -> Result {
         self.text_begin(Some(value.len()))?;
         self.text_fragment(value)?;
         self.text_end()
     }
 
+    /**
+    Begin a binary blob.
+
+    Binary blobs are one of the [basic data types](basic-data-types).
+    Most other data types map to binary blobs for [binary-based receivers](text-and-binary-data), but text-based receivers may also stream binary.
+
+    The `num_bytes_hint` argument is a hint for how many bytes the binary blob will contain.
+    If a hint is given it should be as accurate as possible.
+
+    Also see [`Receiver::binary`] as a simpler alternative that streams a borrowed slice as a binary blob.
+
+    # Structure
+
+    After beginning a binary blob, the receiver should only expect zero or more binary fragments ([`Receiver::binary_fragment`] or [`Receiver::binary_fragment_computed`]) followed by a call to [`Receiver::binary_end`]:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.binary_begin(num_bytes_hint)?;
+
+    // 0 or more calls to any combination of binary_fragment and binary_fragment_computed
+
+    receiver.binary_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Borrowing
+
+    Binary blobs may contain data that's borrowed for the receiver's `'data` lifetime.
+    Fragments streamed using [`Receiver::binary_fragment`] will be borrowed for `'data`.
+    Fragments streamed using [`Receiver::binary_fragment_computed`] will be arbitrarily short-lived.
+
+    Callers should use data borrowed for `'data` wherever possible.
+    Borrowing is just an optimization though, so receivers need to cater to both cases.
+
+    # Examples
+
+    Stream a binary blob using a single string:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.binary_begin(Some(5))?;
+
+    receiver.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
+
+    receiver.binary_end()?;
+    # Ok(())
+    # }
+    ```
+
+    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::binary`] utility will wrap one so that it will:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    sval::data::binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    Binary may need to be computed instead of just being available.
+    The [`Receiver::binary_fragment_computed`] method can be used to stream binary that doesn't satisfy the `'data` lifetime:
+
+    ```
+    # fn compute_binary() -> Vec<u8> { Default::default() }
+    # fn wrap<'a>(borrowed_binary: &'a [u8], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.binary_begin(None)?;
+
+    // This borrowed binary lives for `'data`
+    receiver.binary_fragment(borrowed_binary)?;
+
+    // This owned binary only lives until the end of our function call
+    // So we need to stream it as a computed fragment
+    let s: Vec<u8> = compute_binary();
+    receiver.binary_fragment_computed(&s)?;
+
+    receiver.binary_end()?;
+    # Ok(())
+    # }
+    ```
+    */
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
+    /**
+    A binary fragment that's borrowed for `'data`.
+
+    See [`Receiver::binary_begin`] for details on binary fragments.
+    The [`Receiver::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
+    */
     fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
 
+    /**
+    A binary fragment that's borrowed for some arbitrarily short lifetime.
+
+    See [`Receiver::binary_begin`] for details on binary fragments.
+    The [`Receiver::binary_fragment`] method is an alternative to this one that borrows for `'data`.
+    */
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result;
 
+    /**
+    End a binary blob.
+
+    See [`Receiver::binary_begin`] for details on binary fragments.
+    */
     fn binary_end(&mut self) -> Result;
 
+    /**
+    Stream a binary blob as a single, contiguous fragment borrowed for `'data`.
+
+    See [`Receiver::binary_begin`] for details on binary fragments.
+
+    # Examples
+
+    Stream a binary blob using a single string:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
+    # Ok(())
+    # }
+    ```
+
+    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::binary`] utility will wrap one so that it will:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    sval::data::binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+    */
     fn binary(&mut self, value: &'data [u8]) -> Result {
         self.binary_begin(Some(value.len()))?;
         self.binary_fragment(value)?;
@@ -207,9 +621,13 @@ pub trait Receiver<'data> {
         self.seq_value_end()
     }
 
-    fn dynamic_begin(&mut self) -> Result;
+    fn dynamic_begin(&mut self) -> Result {
+        Ok(())
+    }
 
-    fn dynamic_end(&mut self) -> Result;
+    fn dynamic_end(&mut self) -> Result {
+        Ok(())
+    }
 
     fn fixed_size_begin(&mut self) -> Result {
         Ok(())

@@ -4,24 +4,24 @@ use crate::{
     Receiver, Result, Source, Value,
 };
 
-pub fn text<T: fmt::Display>(text: T) -> Text<T> {
-    Text::new(text)
+pub fn display<T: fmt::Display>(text: T) -> Display<T> {
+    Display::new(text)
 }
 
 #[derive(Clone, Copy)]
-pub struct Text<T>(T);
+pub struct Display<T>(T);
 
-impl<T> Text<T> {
+impl<T> Display<T> {
     pub fn new(text: T) -> Self {
-        Text(text)
+        Display(text)
     }
 
-    pub fn by_ref(&self) -> Text<&T> {
-        Text(&self.0)
+    pub fn by_ref(&self) -> Display<&T> {
+        Display(&self.0)
     }
 
-    pub fn by_mut(&mut self) -> Text<&mut T> {
-        Text(&mut self.0)
+    pub fn by_mut(&mut self) -> Display<&mut T> {
+        Display(&mut self.0)
     }
 
     pub fn into_inner(self) -> T {
@@ -29,13 +29,13 @@ impl<T> Text<T> {
     }
 }
 
-impl<T: fmt::Display> Value for Text<T> {
+impl<T: fmt::Display> Value for Display<T> {
     fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
-        Text::new(&self.0).stream_to_end(receiver)
+        Display::new(&self.0).stream_to_end(receiver)
     }
 }
 
-impl<'a, T: fmt::Display> Source<'a> for Text<T> {
+impl<'a, T: fmt::Display> Source<'a> for Display<T> {
     fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
     where
         'a: 'b,

@@ -7,7 +7,7 @@ macro_rules! int {
                 receiver.int_begin()?;
 
                 if receiver.is_text_based() {
-                    data::text(v).stream_to_end(&mut receiver)?;
+                    data::display(v).stream_to_end(&mut receiver)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
@@ -21,7 +21,7 @@ macro_rules! int {
                 receiver.int_begin()?;
 
                 if receiver.is_text_based() {
-                    data::text(v).stream_to_end(data::computed(&mut receiver))?;
+                    data::display(v).stream_to_end(data::computed(&mut receiver))?;
                 } else {
                     if v <= (<$i>::MAX as $u) {
                         let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
@@ -50,7 +50,7 @@ macro_rules! float {
                 receiver.binfloat_begin()?;
 
                 if receiver.is_text_based() {
-                    data::text(v).stream_to_end(&mut receiver)?;
+                    data::display(v).stream_to_end(&mut receiver)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
