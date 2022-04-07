@@ -239,6 +239,7 @@ pub trait Receiver<'data> {
     # Boolean encoding
 
     Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Receiver::unit`]) and `false` will become null (see [`Receiver::null`]).
+    Also see [`Receiver::nullable_begin`] for more details.
     */
     fn bool(&mut self, value: bool) -> Result {
         // This streams as a nullable (Option<()>)
@@ -535,50 +536,482 @@ pub trait Receiver<'data> {
         self.binary_end()
     }
 
+    /**
+    Stream an 8bit unsigned integer.
+
+    `u8`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `u8`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.u8(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `u8` type also streams as an 8bit unsigned integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42u8.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `u8` is a distinct data type that only matches other `u8`s.
+    That means `u8` doesn't have the same type as `i8`, `u16`, or arbitrary sized integers.
+
+    # `u8` encoding
+
+    `u8`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn u8(&mut self, value: u8) -> Result {
         data::u8_int(value, self)
     }
 
+    /**
+    Stream a 16bit unsigned integer.
+
+    `u16`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `u16`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.u16(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `u16` type also streams as a 16bit unsigned integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42u16.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `u16` is a distinct data type that only matches other `u16`s.
+    That means `u16` doesn't have the same type as `i16`, `u8`, or arbitrary sized integers.
+
+    # `u16` encoding
+
+    `u16`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn u16(&mut self, value: u16) -> Result {
         data::u16_int(value, self)
     }
 
+    /**
+    Stream a 32bit unsigned integer.
+
+    `u32`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `u32`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.u32(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `u32` type also streams as a 32bit unsigned integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42u32.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `u32` is a distinct data type that only matches other `u32`s.
+    That means `u32` doesn't have the same type as `i32`, `f32`, `u64`, or arbitrary sized integers.
+
+    # `u32` encoding
+
+    `u32`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn u32(&mut self, value: u32) -> Result {
         data::u32_int(value, self)
     }
 
+    /**
+    Stream a 64bit unsigned integer.
+
+    `u64`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `u64`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.u64(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `u64` type also streams as a 64bit unsigned integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42u64.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `u64` is a distinct data type that only matches other `u64`s.
+    That means `u64` doesn't have the same type as `i64`, `f64`, `u128`, or arbitrary sized integers.
+
+    # `u64` encoding
+
+    `u64`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn u64(&mut self, value: u64) -> Result {
         data::u64_int(value, self)
     }
 
+    /**
+    Stream a 128bit unsigned integer.
+
+    `u128`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `u128`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.u128(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `u128` type also streams as a 128bit unsigned integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42u128.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `u128` is a distinct data type that only matches other `u128`s.
+    That means `u128` doesn't have the same type as `i128` or arbitrary sized integers.
+
+    # `u128` encoding
+
+    `u128`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn u128(&mut self, value: u128) -> Result {
         data::u128_int(value, self)
     }
 
+    /**
+    Stream an 8bit signed integer.
+
+    `i8`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream an `i8`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.i8(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `i8` type also streams as an 8bit signed integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42i8.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `i8` is a distinct data type that only matches other `i8`s.
+    That means `i8` doesn't have the same type as `u8`, `i16`, or arbitrary sized integers.
+
+    # `i8` encoding
+
+    `i8`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn i8(&mut self, value: i8) -> Result {
         data::i8_int(value, self)
     }
 
+    /**
+    Stream a 16bit signed integer.
+
+    `i16`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream an `i16`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.i16(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `i16` type also streams as a 16bit signed integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42i16.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `i16` is a distinct data type that only matches other `i16`s.
+    That means `i16` doesn't have the same type as `u16`, `i8`, or arbitrary sized integers.
+
+    # `i16` encoding
+
+    `i16`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn i16(&mut self, value: i16) -> Result {
         data::i16_int(value, self)
     }
 
+    /**
+    Stream a 32bit signed integer.
+
+    `i32`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream an `i32`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.i32(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `i32` type also streams as a 32bit signed integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42i32.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `i32` is a distinct data type that only matches other `i32`s.
+    That means `i32` doesn't have the same type as `u32`, `f32`, `i64`, or arbitrary sized integers.
+
+    # `i32` encoding
+
+    `i32`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn i32(&mut self, value: i32) -> Result {
         data::i32_int(value, self)
     }
 
+    /**
+    Stream a 64bit signed integer.
+
+    `i64`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream an `i64`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.i64(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `i64` type also streams as a 64bit signed integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42i64.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `i64` is a distinct data type that only matches other `i64`s.
+    That means `i64` doesn't have the same type as `u64`, `f64`, `i128`, or arbitrary sized integers.
+
+    # `i64` encoding
+
+    `i64`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn i64(&mut self, value: i64) -> Result {
         data::i64_int(value, self)
     }
 
+    /**
+    Stream a 128bit signed integer.
+
+    `i128`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream an `i128`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.i128(42)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `i128` type also streams as a 128bit signed integer:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    42i128.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `i128` is a distinct data type that only matches other `i128`s.
+    That means `i128` doesn't have the same type as `u128` or arbitrary sized integers.
+
+    # `i128` encoding
+
+    `i128`s map to the basic data model as a text or binary blob containing an integer.
+    See [`Receiver::int_begin`] for more details.
+    */
     fn i128(&mut self, value: i128) -> Result {
         data::i128_int(value, self)
     }
 
+    /**
+    Stream a 32bit binary floating number.
+
+    `f32`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `f32`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.f32(4.2)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `f32` type also streams as a 32bit binary floating number:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    4.2f32.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `f32` is a distinct data type that only matches other `f32`s.
+    That means `f32` doesn't have the same type as `i32`, `f64`, or arbitrary sized floating points.
+
+    # `f32` encoding
+
+    `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
+    See [`Receiver::binfloat_begin`] for more details.
+    */
     fn f32(&mut self, value: f32) -> Result {
         data::f32_number(value, self)
     }
 
+    /**
+    Stream a 64bit binary floating number.
+
+    `f64`s are one of the [extended data types](extended-data-types).
+
+    # Examples
+
+    Stream a `f64`:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.f64(4.2)?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's `f64` type also streams as a 64bit binary floating number:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    4.2f64.stream(receiver)?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    `f64` is a distinct data type that only matches other `f64`s.
+    That means `f64` doesn't have the same type as `f32`, or arbitrary sized floating points.
+
+    # `f64` encoding
+
+    `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
+    See [`Receiver::binfloat_begin`] for more details.
+    */
     fn f64(&mut self, value: f64) -> Result {
         data::f64_number(value, self)
     }
