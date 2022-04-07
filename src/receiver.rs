@@ -1016,6 +1016,15 @@ pub trait Receiver<'data> {
         data::f64_number(value, self)
     }
 
+    /**
+    Begin a homogenous map of key-value pairs.
+
+    The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
+
+    # Structure
+
+    Maps must contain zero or more pairs of keys and values, followed by a call to [`Receiver::map_end`].
+    */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     fn map_key_begin(&mut self) -> Result;
@@ -1189,6 +1198,26 @@ pub trait Receiver<'data> {
     /**
     Begin an arbitrarily sized integer.
 
+    # Structure
+
+    Arbitrary sized integers wrap a text or binary blob with the encoding described below.
+    A call to `int_begin` must be followed by a call to `int_end` after the integer value:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.int_begin()?;
+
+    if receiver.is_text_based() {
+        receiver.text("754")?;
+    } else {
+        receiver.binary(&[0b11110010, 0b00000010])?;
+    }
+
+    receiver.int_end()?;
+    # Ok(())
+    # }
+    ```
+
     # Integer encoding
 
     Each kind of integer is considered a different data type.
@@ -1218,12 +1247,37 @@ pub trait Receiver<'data> {
         Ok(())
     }
 
+    /**
+    End an arbitrary sized integer.
+
+    See [`Receiver::int_begin`] for details on arbitrary sized integers.
+    */
     fn int_end(&mut self) -> Result {
         Ok(())
     }
 
     /**
     Begin an arbitrarily sized binary floating point number.
+
+    # Structure
+
+    Arbitrary sized binary floating points wrap a text or binary blob with the encoding described below.
+    A call to `binfloat_begin` must be followed by a call to `binfloat_end` after the floating point value:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.binfloat_begin()?;
+
+    if receiver.is_text_based() {
+        receiver.text("1333.754")?;
+    } else {
+        receiver.binary(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
+    }
+
+    receiver.binfloat_end()?;
+    # Ok(())
+    # }
+    ```
 
     # Binary floating point encoding
 
@@ -1257,12 +1311,37 @@ pub trait Receiver<'data> {
         Ok(())
     }
 
+    /**
+    End an arbitrary sized binary floating point number.
+
+    See [`Receiver::binfloat_begin`] for details on arbitrary sized binary floating points.
+    */
     fn binfloat_end(&mut self) -> Result {
         Ok(())
     }
 
     /**
     Begin an arbitrarily sized decimal floating point number.
+
+    # Structure
+
+    Arbitrary sized decimal floating points wrap a text or binary blob with the encoding described below.
+    A call to `decfloat_begin` must be followed by a call to `decfloat_end` after the floating point value:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.decfloat_begin()?;
+
+    if receiver.is_text_based() {
+        receiver.text("1333.754")?;
+    } else {
+        receiver.binary(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
+    }
+
+    receiver.decfloat_end()?;
+    # Ok(())
+    # }
+    ```
 
     # Decimal floating point encoding
 
@@ -1287,19 +1366,12 @@ pub trait Receiver<'data> {
         Ok(())
     }
 
+    /**
+    End an arbitrary sized decimal floating point number.
+
+    See [`Receiver::decfloat_begin`] for details on arbitrary sized decimal floating points.
+     */
     fn decfloat_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
-        let _ = app_specific_id;
-
-        Ok(())
-    }
-
-    fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
-        let _ = app_specific_id;
-
         Ok(())
     }
 }
@@ -1661,16 +1733,6 @@ macro_rules! impl_receiver_forward {
                 let $bind = self;
                 ($($forward)*).decfloat_end()
             }
-
-            fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
-                let $bind = self;
-                ($($forward)*).app_specific_begin(app_specific_id)
-            }
-
-            fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
-                let $bind = self;
-                ($($forward)*).app_specific_end(app_specific_id)
-            }
         }
     };
 }
@@ -1962,14 +2024,6 @@ pub(crate) trait DefaultUnsupported<'data> {
     }
 
     fn decfloat_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn app_specific_begin(&mut self, _: u128) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn app_specific_end(&mut self, _: u128) -> Result {
         crate::error::unsupported()
     }
 }

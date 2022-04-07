@@ -161,10 +161,6 @@ mod private {
         fn dispatch_decfloat_begin(&mut self) -> sval::Result;
 
         fn dispatch_decfloat_end(&mut self) -> sval::Result;
-
-        fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result;
-
-        fn dispatch_app_specific_end(&mut self, app_specific_id: u128) -> sval::Result;
     }
 
     pub trait EraseReceiver<'a> {
@@ -489,14 +485,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
     fn dispatch_decfloat_end(&mut self) -> sval::Result {
         self.decfloat_end()
     }
-
-    fn dispatch_app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {
-        self.app_specific_begin(app_specific_id)
-    }
-
-    fn dispatch_app_specific_end(&mut self, app_specific_id: u128) -> sval::Result {
-        self.app_specific_end(app_specific_id)
-    }
 }
 
 macro_rules! impl_receiver {
@@ -772,14 +760,6 @@ macro_rules! impl_receiver {
 
             fn decfloat_end(&mut self) -> sval::Result {
                 self.erase_receiver().0.dispatch_decfloat_end()
-            }
-
-            fn app_specific_begin(&mut self, app_specific_id: u128) -> sval::Result {
-                self.erase_receiver().0.dispatch_app_specific_begin(app_specific_id)
-            }
-
-            fn app_specific_end(&mut self, app_specific_id: u128) -> sval::Result {
-                self.erase_receiver().0.dispatch_app_specific_end(app_specific_id)
             }
         }
     }

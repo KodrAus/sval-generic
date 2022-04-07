@@ -388,12 +388,4 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
     fn decfloat_end(&mut self) -> Result {
         self.0.decfloat_end()
     }
-
-    fn app_specific_begin(&mut self, app_specific_id: u128) -> Result {
-        self.0.app_specific_begin(app_specific_id)
-    }
-
-    fn app_specific_end(&mut self, app_specific_id: u128) -> Result {
-        self.0.app_specific_end(app_specific_id)
-    }
 }
