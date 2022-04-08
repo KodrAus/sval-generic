@@ -1,5 +1,6 @@
 mod binary;
 mod computed;
+mod dynamic;
 mod number;
 mod seq;
 mod tag;
@@ -8,7 +9,7 @@ mod text;
 use crate::{source, Receiver, Source, Value};
 
 #[doc(inline)]
-pub use self::{binary::*, computed::*, tag::*, text::*};
+pub use self::{binary::*, computed::*, dynamic::*, tag::*, text::*};
 
 pub(crate) use self::number::*;
 

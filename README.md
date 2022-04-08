@@ -89,24 +89,3 @@ receiver.map_end()?;
 This is much closer to how `serde` represents structure in its model.
 
 In `sval`, buffering and borrowing are both optional. You can use them to optimize streaming, but receivers work on flat structure too.
-
-### Data model
-
-`sval`'s core data-model is JSON-like. It supports:
-
-- **Values**:
-    - **Null**: A value that simply _isn't_.
-    - **Unit**: A value that simply _is_.
-    - **Numbers**:
-        - **Signed integers**: `i8` to `i128`.
-        - **Unsigned integers**: `u8` to `u128`.
-        - **Floating point**: `f32` to `f64`.
-    - **Booleans**: `true` and `false`.
-    - **Text**:
-        - **String values**: `str`.
-        - **Text blobs**: UTF8 strings of known or unknown length, streamed in fragments.
-    - **Binary**:
-        - **Byte values**: `[u8]`.
-        - **Binary blobs**: Byte sequences of known or unknown length, streamed in fragments.
-    - **Maps**: Homogenous mapping of value keys to value data.
-    - **Sequences**: Homogenous array of values.

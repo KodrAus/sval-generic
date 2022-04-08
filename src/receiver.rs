@@ -19,6 +19,8 @@ This means `sval` effectively has two in-memory representations of its data mode
 ## Data types
 
 Data types represent the distinct kinds of data that a receiver may choose to interpret or encode in a particular way.
+If two values have the same data type then a receiver is expected to handle them in compatible ways, even if their content is different.
+As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Receiver` may rely on their size when encoding them.
 
 ### Basic data types
 
@@ -39,7 +41,7 @@ All other data types map onto this basic model somehow.
 Receivers may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
 The extended data model includes:
 
-- **Dynamic**: make [values](#values) heterogenous so that maps and sequences can contain values of different data types. See [`Receiver::dynamic_begin`].
+- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Receiver::dynamic_begin`].
 - **Booleans**: the values `true` and `false`. See [`Receiver::bool`].
 - **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Receiver::int_begin`] and [integer encoding](#integer-encoding).
 - **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Receiver::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
@@ -1019,30 +1021,144 @@ pub trait Receiver<'data> {
     /**
     Begin a homogenous map of key-value pairs.
 
+    Maps are one of the [basic data types](basic-data-types).
+
     The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
+    Keys aren't required to be strings.
 
     # Structure
 
     Maps must contain zero or more pairs of keys and values, followed by a call to [`Receiver::map_end`].
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(key_values: &'a [(impl sval::Value, impl sval::Value)], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.map_begin(None)?;
+
+    // Maps contain 0 or more key-value pairs
+    for (key, value) in key_values {
+        // Keys are a value surrounded by `map_key_begin` and `map_key_end`
+        receiver.map_key_begin()?;
+        receiver.value(key)?;
+        receiver.map_key_end()?;
+
+        // Values are a value surrounded by `map_value_begin` and `map_value_end`
+        // Values must follow keys and all keys must be followed by a value
+        receiver.map_value_begin()?;
+        receiver.value(value)?;
+        receiver.map_value_end()?;
+    }
+
+    receiver.map_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Examples
+
+    Stream some key-value pairs as a map:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.map_begin(Some(2))?;
+
+    receiver.map_key("a")?;
+    receiver.map_value(true)?;
+
+    receiver.map_key("b")?;
+    receiver.map_value(false)?;
+
+    receiver.map_end()?;
+    # Ok(())
+    # }
+    ```
+
+    Maps can contain heterogeneous data if keys and values are dynamic.
+    See [`Receiver::dynamic_begin`] for more details.
+    The following example is a map with string keys and dynamic values:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.map_begin(Some(2))?;
+
+    receiver.map_key("id")?;
+    receiver.map_value(sval::data::dynamic(42))?;
+
+    receiver.map_key("title")?;
+    receiver.map_value(sval::data::dynamic("A document"))?;
+
+    receiver.map_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    Maps have the same [data type](data-types) as other maps where the data types of their keys and values match, regardless of their length.
     */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
+    /**
+    Begin a map key.
+
+    See [`Receiver::map_begin`] for more details.
+
+    # Data type
+
+    Map keys are a positional element and aren't considered a data type on their own.
+    */
     fn map_key_begin(&mut self) -> Result;
 
+    /**
+    Complete a map key.
+    */
     fn map_key_end(&mut self) -> Result;
 
+    /**
+    Begin a map value.
+
+    See [`Receiver::map_begin`] for more details.
+
+    # Data type
+
+    Map values are a positional element and aren't considered a data type on their own.
+    */
     fn map_value_begin(&mut self) -> Result;
 
+    /**
+    Complete a map value.
+    */
     fn map_value_end(&mut self) -> Result;
 
+    /**
+    Complete a map.
+    */
     fn map_end(&mut self) -> Result;
 
+    /**
+    Stream a value as a map key.
+
+    This method is a convenience that surrounds the value with [`Receiver::map_key_begin`] and [`Receiver::map_key_end`].
+    The key will be fully streamed before this method returns.
+    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a key manually.
+
+    See [`Receiver::map_key_begin`] for more details.
+    */
     fn map_key<'k: 'data, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
         key.stream_to_end(&mut *self)?;
         self.map_key_end()
     }
 
+    /**
+    Stream a value as a map value.
+
+    This method is a convenience that surrounds the value with [`Receiver::map_value_begin`] and [`Receiver::map_value_end`].
+    The value will be fully streamed before this method returns.
+    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a value manually.
+
+    See [`Receiver::map_value_begin`] for more details.
+     */
     fn map_value<'v: 'data, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
         value.stream_to_end(&mut *self)?;

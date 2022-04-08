@@ -1,4 +1,4 @@
-use crate::{data, source, Receiver, Result, Source, Value};
+use crate::{data, source, std::mem, Receiver, Result, Source, Value};
 
 #[inline]
 pub fn computed<T>(value: T) -> Computed<T> {
@@ -6,11 +6,20 @@ pub fn computed<T>(value: T) -> Computed<T> {
 }
 
 #[derive(Clone, Copy)]
+#[repr(transparent)]
 pub struct Computed<T>(T);
 
 impl<T> Computed<T> {
     pub fn new(value: T) -> Self {
         Computed(value)
+    }
+
+    pub fn new_ref(value: &T) -> &Self {
+        unsafe { mem::transmute::<&T, &Computed<T>>(value) }
+    }
+
+    pub fn new_mut(value: &mut T) -> &mut Self {
+        unsafe { mem::transmute::<&mut T, &mut Computed<T>>(value) }
     }
 
     pub fn by_ref(&self) -> Computed<&T> {
