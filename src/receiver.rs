@@ -1026,6 +1026,9 @@ pub trait Receiver<'data> {
     The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
     Keys aren't required to be strings.
 
+    The `num_entries_hint` parameter is an optional hint for the number of pairs the map will contain.
+    If a hint is given it should be accurate, but receivers can't rely on the correctness of any hints.
+
     # Structure
 
     Maps must contain zero or more pairs of keys and values, followed by a call to [`Receiver::map_end`].
@@ -1082,7 +1085,7 @@ pub trait Receiver<'data> {
     receiver.map_begin(Some(2))?;
 
     receiver.map_key("id")?;
-    receiver.map_value(sval::data::dynamic(42))?;
+    receiver.map_value(sval::data::dynamic(&42))?;
 
     receiver.map_key("title")?;
     receiver.map_value(sval::data::dynamic("A document"))?;
@@ -1095,6 +1098,11 @@ pub trait Receiver<'data> {
     # Data type
 
     Maps have the same [data type](data-types) as other maps where the data types of their keys and values match, regardless of their length.
+
+    # Maps and structs
+
+    Types defined as Rust `struct`s with named fields can be more semantically represented as "struct maps".
+    See the [`Receiver::struct_map_begin`] method for details.
     */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
@@ -1158,21 +1166,118 @@ pub trait Receiver<'data> {
     Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a value manually.
 
     See [`Receiver::map_value_begin`] for more details.
-     */
+    */
     fn map_value<'v: 'data, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
         value.stream_to_end(&mut *self)?;
         self.map_value_end()
     }
 
+    /**
+    Begin a homogenous sequence of values.
+
+    Sequences are one of the [basic data types](basic-data-types).
+
+    The [data type](data-types) of all values must be the same.
+
+    The `num_entries_hint` parameter is an optional hint for the number of values the sequence will contain.
+    If a hint is given it should be accurate, but receivers can't rely on the correctness of any hints.
+
+    # Structure
+
+    Sequences must contain zero or more values, followed by a call to [`Receiver::seq_end`].
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(values: &'a [impl sval::Value], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.seq_begin(None)?;
+
+    // Maps contain 0 or more key-value pairs
+    for value in values {
+        // Values are a value surrounded by `seq_value_begin` and `seq_value_end`
+        receiver.seq_value_begin()?;
+        receiver.value(value)?;
+        receiver.seq_value_end()?;
+    }
+
+    receiver.seq_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Examples
+
+    Stream some values as a sequence:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.seq_begin(Some(2))?;
+
+    receiver.seq_value(true)?;
+    receiver.seq_value(false)?;
+
+    receiver.seq_end()?;
+    # Ok(())
+    # }
+    ```
+
+    Maps can contain heterogeneous data if keys and values are dynamic.
+    See [`Receiver::dynamic_begin`] for more details.
+    The following example is a sequence with dynamic values:
+
+    ```
+    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
+    receiver.seq_begin(Some(2))?;
+
+    receiver.seq_value(sval::data::dynamic(&42))?;
+    receiver.seq_value(sval::data::dynamic("A document"))?;
+
+    receiver.seq_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Data type
+
+    Sequences have the same [data type](data-types) as other sequences where the data types of their values match, regardless of their length.
+
+    # Sequences and structs
+
+    Types defined as Rust `struct`s with unnamed fields can be more semantically represented as "struct sequences".
+    See the [`Receiver::struct_seq_begin`] method for details.
+    */
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
+    /**
+    Begin a sequence value.
+
+    See [`Receiver::seq_begin`] for more details.
+
+    # Data type
+
+    Sequence values are a positional element and aren't considered a data type on their own.
+    */
     fn seq_value_begin(&mut self) -> Result;
 
+    /**
+    Complete a sequence value.
+    */
     fn seq_value_end(&mut self) -> Result;
 
+    /**
+    Complete a sequence.
+    */
     fn seq_end(&mut self) -> Result;
 
+    /**
+    Stream a value as a sequence value.
+
+    This method is a convenience that surrounds the value with [`Receiver::seq_value_begin`] and [`Receiver::seq_value_end`].
+    The value will be fully streamed before this method returns.
+    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a value manually.
+
+    See [`Receiver::seq_value_begin`] for more details.
+    */
     fn seq_value<'e: 'data, V: Source<'e>>(&mut self, mut value: V) -> Result {
         self.seq_value_begin()?;
         value.stream_to_end(&mut *self)?;

@@ -1,42 +1,20 @@
-use crate::{source, std::mem, Receiver, Result, Source, Value};
+use crate::{std::mem, Receiver, Result, Value};
 
-#[inline]
-pub fn dynamic<T>(value: T) -> Dynamic<T> {
+pub fn dynamic<T: Value + ?Sized>(value: &T) -> &Dynamic<T> {
     Dynamic::new(value)
 }
 
-#[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct Dynamic<T>(T);
+pub struct Dynamic<T: ?Sized>(T);
 
-impl<T> Dynamic<T> {
-    pub fn new(value: T) -> Self {
-        Dynamic(value)
-    }
-
-    pub fn new_ref(value: &T) -> &Self {
-        unsafe { mem::transmute::<&T, &Dynamic<T>>(value) }
-    }
-
-    pub fn new_mut(value: &mut T) -> &mut Self {
-        unsafe { mem::transmute::<&mut T, &mut Dynamic<T>>(value) }
-    }
-
-    pub fn by_ref(&self) -> Dynamic<&T> {
-        Dynamic(&self.0)
-    }
-
-    pub fn by_mut(&mut self) -> Dynamic<&mut T> {
-        Dynamic(&mut self.0)
-    }
-
-    pub fn into_inner(self) -> T {
-        self.0
+impl<T: ?Sized> Dynamic<T> {
+    pub fn new<'a>(value: &'a T) -> &'a Self {
+        unsafe { mem::transmute::<&'a T, &'a Dynamic<T>>(value) }
     }
 }
 
-impl<T: Value> Value for Dynamic<T> {
-    fn stream<'a, S: Receiver<'a>>(&'a self, mut receiver: S) -> Result {
+impl<T: Value + ?Sized> Value for Dynamic<T> {
+    fn stream<'b, R: Receiver<'b>>(&'b self, mut receiver: R) -> Result {
         receiver.dynamic_begin()?;
         self.0.stream(&mut receiver)?;
         receiver.dynamic_end()
@@ -104,23 +82,5 @@ impl<T: Value> Value for Dynamic<T> {
 
     fn to_binary(&self) -> Option<&[u8]> {
         self.0.to_binary()
-    }
-}
-
-impl<'a, T: Source<'a>> Source<'a> for Dynamic<T> {
-    fn stream_resume<'b, S: Receiver<'b>>(&mut self, receiver: S) -> Result<source::Resume>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Resume::Done)
-    }
-
-    fn stream_to_end<'b, S: Receiver<'b>>(&mut self, mut receiver: S) -> Result
-    where
-        'a: 'b,
-    {
-        receiver.dynamic_begin()?;
-        self.0.stream_to_end(&mut receiver)?;
-        receiver.dynamic_end()
     }
 }
