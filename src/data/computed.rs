@@ -7,13 +7,19 @@ pub fn computed<T>(value: T) -> Computed<T> {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct Computed<T>(T);
+pub struct Computed<T: ?Sized>(T);
 
 impl<T> Computed<T> {
     pub fn new(value: T) -> Self {
         Computed(value)
     }
 
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<T: ?Sized> Computed<T> {
     pub fn new_ref(value: &T) -> &Self {
         unsafe { mem::transmute::<&T, &Computed<T>>(value) }
     }
@@ -28,10 +34,6 @@ impl<T> Computed<T> {
 
     pub fn by_mut(&mut self) -> Computed<&mut T> {
         Computed(&mut self.0)
-    }
-
-    pub fn into_inner(self) -> T {
-        self.0
     }
 }
 
@@ -119,6 +121,10 @@ impl<'a, 'b, T: Source<'b>> Source<'a> for Computed<T> {
     {
         self.0.stream_to_end(computed(stream))
     }
+
+    fn maybe_dynamic(&self) -> Option<bool> {
+        self.0.maybe_dynamic()
+    }
 }
 
 impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
@@ -126,12 +132,8 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.is_text_based()
     }
 
-    fn dynamic_begin(&mut self) -> Result {
-        self.0.dynamic_begin()
-    }
-
-    fn dynamic_end(&mut self) -> Result {
-        self.0.dynamic_end()
+    fn value<V: Value + ?Sized + 'a>(&mut self, value: &'a V) -> Result {
+        value.stream(self)
     }
 
     fn unit(&mut self) -> Result {
@@ -146,14 +148,12 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.bool(value)
     }
 
-    fn text(&mut self, value: &'a str) -> Result {
-        self.0.text_begin(Some(value.len()))?;
-        self.0.text_fragment_computed(value)?;
-        self.0.text_end()
-    }
-
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
         self.0.text_begin(num_bytes_hint)
+    }
+
+    fn text_fragment(&mut self, fragment: &'a str) -> Result {
+        self.0.text_fragment_computed(fragment)
     }
 
     fn text_fragment_computed(&mut self, fragment: &str) -> Result {
@@ -164,14 +164,18 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.text_end()
     }
 
-    fn binary(&mut self, value: &'a [u8]) -> Result {
-        self.0.binary_begin(Some(value.len()))?;
-        self.0.binary_fragment_computed(value)?;
-        self.0.binary_end()
+    fn text(&mut self, value: &'a str) -> Result {
+        self.0.text_begin(Some(value.len()))?;
+        self.0.text_fragment_computed(value)?;
+        self.0.text_end()
     }
 
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
         self.0.binary_begin(num_bytes_hint)
+    }
+
+    fn binary_fragment(&mut self, fragment: &'a [u8]) -> Result {
+        self.0.binary_fragment_computed(fragment)
     }
 
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
@@ -179,6 +183,12 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
     }
 
     fn binary_end(&mut self) -> Result {
+        self.0.binary_end()
+    }
+
+    fn binary(&mut self, value: &'a [u8]) -> Result {
+        self.0.binary_begin(Some(value.len()))?;
+        self.0.binary_fragment_computed(value)?;
         self.0.binary_end()
     }
 
@@ -282,6 +292,22 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.seq_value(computed(value))
     }
 
+    fn dynamic_begin(&mut self) -> Result {
+        self.0.dynamic_begin()
+    }
+
+    fn dynamic_end(&mut self) -> Result {
+        self.0.dynamic_end()
+    }
+
+    fn fixed_size_begin(&mut self) -> Result {
+        self.0.fixed_size_begin()
+    }
+
+    fn fixed_size_end(&mut self) -> Result {
+        self.0.fixed_size_end()
+    }
+
     fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         self.0.tagged_begin(tag)
     }
@@ -364,14 +390,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn nullable_end(&mut self) -> Result {
         self.0.nullable_end()
-    }
-
-    fn fixed_size_begin(&mut self) -> Result {
-        self.0.fixed_size_begin()
-    }
-
-    fn fixed_size_end(&mut self) -> Result {
-        self.0.fixed_size_end()
     }
 
     fn int_begin(&mut self) -> Result {

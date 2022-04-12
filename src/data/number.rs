@@ -1,5 +1,6 @@
-use crate::{data, source, Receiver, Source, Value};
+use crate::{source, Receiver, Source, Value};
 
+#[cfg(not(test))]
 macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
@@ -7,11 +8,11 @@ macro_rules! int {
                 receiver.int_begin()?;
 
                 if receiver.is_text_based() {
-                    data::display(v).stream_to_end(&mut receiver)?;
+                    crate::data::display(v).stream_to_end(&mut receiver)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                    crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
                 }
 
                 receiver.int_end()
@@ -21,7 +22,7 @@ macro_rules! int {
                 receiver.int_begin()?;
 
                 if receiver.is_text_based() {
-                    data::display(v).stream_to_end(data::computed(&mut receiver))?;
+                    crate::data::display(v).stream_to_end(crate::data::computed(&mut receiver))?;
                 } else {
                     if v <= (<$i>::MAX as $u) {
                         let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
@@ -29,11 +30,11 @@ macro_rules! int {
 
                         bytes[..unsigned.len()].copy_from_slice(&unsigned);
 
-                        data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                        crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
                     } else {
                         let bytes = v.to_le_bytes();
 
-                        data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                        crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
                     }
                 }
 
@@ -43,6 +44,7 @@ macro_rules! int {
     };
 }
 
+#[cfg(not(test))]
 macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
@@ -50,11 +52,11 @@ macro_rules! float {
                 receiver.binfloat_begin()?;
 
                 if receiver.is_text_based() {
-                    data::display(v).stream_to_end(&mut receiver)?;
+                    crate::data::display(v).stream_to_end(&mut receiver)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    data::binary(&bytes).stream_to_end(data::computed(&mut receiver))?;
+                    crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
                 }
 
                 receiver.binfloat_end()
@@ -92,11 +94,16 @@ macro_rules! convert {
                 {
                     receiver.$ty(*self)
                 }
+
+                fn maybe_dynamic(&self) -> Option<bool> {
+                    Some(false)
+                }
             }
         )+
     };
 }
 
+#[cfg(not(test))]
 int!(
     i8_int => i8,
     u8_int => u8,
@@ -110,6 +117,7 @@ int!(
     u128_int => u128,
 );
 
+#[cfg(not(test))]
 float!(
     f32_number => f32,
     f64_number => f64,

@@ -1,4 +1,7 @@
-use crate::{data, Receiver, Result, Value};
+use crate::{
+    data::{self, Position},
+    Receiver, Result, Resume, Source, Value,
+};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
@@ -217,37 +220,76 @@ tuple! {
     ),
 }
 
+pub fn seq<S: Iterator>(seq: S) -> Seq<S> {
+    Seq::new(seq)
+}
+
+pub struct Seq<S: Iterator> {
+    seq: S,
+    current: Option<S::Item>,
+    position: Position,
+}
+
+impl<S: Iterator> Seq<S> {
+    pub fn new(seq: S) -> Self {
+        Seq {
+            seq,
+            position: Position::Begin,
+            current: None,
+        }
+    }
+}
+
+impl<'src, S: Iterator> Source<'src> for Seq<S>
+where
+    S::Item: Source<'src>,
+{
+    fn stream_resume<'data, R: Receiver<'data>>(&mut self, mut receiver: R) -> Result<Resume>
+    where
+        'src: 'data,
+    {
+        loop {
+            if let Some(current) = self.current.as_mut() {
+                match current.stream_resume(&mut receiver)? {
+                    Resume::Continue => return Ok(Resume::Continue),
+                    Resume::Done => self.current = None,
+                }
+            }
+
+            debug_assert!(self.current.is_none());
+
+            match self.position {
+                Position::Begin => {
+                    receiver.seq_begin(None)?;
+                    self.position = Position::Value;
+                }
+                Position::Value => match self.seq.next() {
+                    Some(next) => self.current = Some(next),
+                    None => self.position = Position::End,
+                },
+                Position::End => {
+                    receiver.seq_end()?;
+                    self.position = Position::Done;
+                }
+                Position::Done => return Ok(Resume::Done),
+            }
+        }
+    }
+
+    fn maybe_dynamic(&self) -> Option<bool> {
+        Some(false)
+    }
+}
+
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;
 
-    use crate::{source, std::vec::Vec, Source};
+    use crate::std::vec::Vec;
 
     impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {
             (&**self).stream(receiver)
-        }
-    }
-
-    impl<'a, T: Source<'a>> Source<'a> for Vec<T> {
-        fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
-        where
-            'a: 'b,
-        {
-            self.stream_to_end(receiver).map(|_| source::Resume::Done)
-        }
-
-        fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-        where
-            'a: 'b,
-        {
-            receiver.seq_begin(Some(self.len()))?;
-
-            for elem in self.drain(..) {
-                receiver.seq_value(elem)?;
-            }
-
-            receiver.seq_end()
         }
     }
 }

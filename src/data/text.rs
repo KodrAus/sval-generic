@@ -4,24 +4,58 @@ use crate::{
     Receiver, Result, Source, Value,
 };
 
+impl Value for char {
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
+        (&*self).stream_to_end(receiver)
+    }
+}
+
+impl<'a> Source<'a> for char {
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        let mut buf = [0; 4];
+        let value = &*self.encode_utf8(&mut buf);
+
+        receiver.text_begin(Some(value.len()))?;
+        receiver.text_fragment_computed(value)?;
+        receiver.text_end()
+    }
+
+    fn maybe_dynamic(&self) -> Option<bool> {
+        Some(false)
+    }
+}
+
+impl Value for str {
+    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+        receiver.text(self)
+    }
+
+    fn to_text(&self) -> Option<&str> {
+        Some(self)
+    }
+}
+
 pub fn display<T: fmt::Display>(text: T) -> Display<T> {
     Display::new(text)
 }
 
 #[derive(Clone, Copy)]
-pub struct Display<T>(T);
+#[repr(transparent)]
+pub struct Display<T: ?Sized>(T);
 
 impl<T> Display<T> {
     pub fn new(text: T) -> Self {
         Display(text)
-    }
-
-    pub fn by_ref(&self) -> Display<&T> {
-        Display(&self.0)
-    }
-
-    pub fn by_mut(&mut self) -> Display<&mut T> {
-        Display(&mut self.0)
     }
 
     pub fn into_inner(self) -> T {
@@ -29,9 +63,13 @@ impl<T> Display<T> {
     }
 }
 
-impl<T: fmt::Display> Value for Display<T> {
-    fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
-        Display::new(&self.0).stream_to_end(receiver)
+impl<T: ?Sized> Display<T> {
+    pub fn by_ref(&self) -> Display<&T> {
+        Display(&self.0)
+    }
+
+    pub fn by_mut(&mut self) -> Display<&mut T> {
+        Display(&mut self.0)
     }
 }
 
@@ -61,43 +99,9 @@ impl<'a, T: fmt::Display> Source<'a> for Display<T> {
         write!(Writer(&mut receiver), "{}", self.0)?;
         receiver.text_end()
     }
-}
 
-impl Value for char {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        let mut value = *self;
-        value.stream_to_end(receiver)
-    }
-}
-
-impl<'a> Source<'a> for char {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Resume::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-    where
-        'a: 'b,
-    {
-        let mut buf = [0; 4];
-        let value = &*self.encode_utf8(&mut buf);
-
-        receiver.text_begin(Some(value.len()))?;
-        receiver.text_fragment_computed(value)?;
-        receiver.text_end()
-    }
-}
-
-impl Value for str {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.text(self)
-    }
-
-    fn to_text(&self) -> Option<&str> {
-        Some(self)
+    fn maybe_dynamic(&self) -> Option<bool> {
+        Some(false)
     }
 }
 

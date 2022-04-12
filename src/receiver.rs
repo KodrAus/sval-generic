@@ -3,6 +3,11 @@ use crate::{data, Result, Source, Value};
 /**
 An observer of structured data emitted by some source.
 
+# Using receivers
+
+Receivers can be used to convert between structured data and a [text or binary format](text-and-binary-data).
+They can also be used to observe and transform data as it flows between sources.
+
 # Data model
 
 Receivers encode `sval`'s data model.
@@ -31,8 +36,8 @@ The basic data model includes:
 - **Null**: the falsey value. See [`Receiver::null`].
 - **Text blobs**: UTF8 strings. See [`Receiver::text_begin`].
 - **Binary blobs**: arbitrary byte strings. See [`Receiver::binary_begin`].
-- **Maps**: homogenous collection of key-value pairs, where keys and values are [values](#values). See [`Receiver::map_begin`].
-- **Sequences**: homogenous collection of values, where elements are [values](#values). See [`Receiver::seq_begin`].
+- **Maps**: homogeneous collection of key-value pairs, where keys and values are [values](#values). See [`Receiver::map_begin`].
+- **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Receiver::seq_begin`].
 
 All other data types map onto this basic model somehow.
 
@@ -131,9 +136,13 @@ pub trait Receiver<'data> {
     This choice is expected to be constant over a single complete value.
     Callers are expected to check this method before choosing between the text or binary encoding for a particular [data type](#data-type).
     */
+    #[cfg(not(test))]
     fn is_text_based(&self) -> bool {
         true
     }
+
+    #[cfg(test)]
+    fn is_text_based(&self) -> bool;
 
     /**
     A borrowed value.
@@ -141,9 +150,13 @@ pub trait Receiver<'data> {
     This is a niche method that simply calls back into the receiver, so shouldn't be called from [`Value::stream`].
     It can be useful for separating borrowed data out to avoid needing to buffer it.
     */
+    #[cfg(not(test))]
     fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result {
         value.stream(self)
     }
+
+    #[cfg(test)]
+    fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result;
 
     /**
     A value that simply _is_.
@@ -243,10 +256,14 @@ pub trait Receiver<'data> {
     Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Receiver::unit`]) and `false` will become null (see [`Receiver::null`]).
     Also see [`Receiver::nullable_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
         // This streams as a nullable (Option<()>)
-        value.then(|| ()).stream_to_end(self)
+        value.then(|| ()).stream(data::computed(self))
     }
+
+    #[cfg(test)]
+    fn bool(&mut self, value: bool) -> Result;
 
     /**
     Begin a UTF8 text blob.
@@ -347,9 +364,13 @@ pub trait Receiver<'data> {
     See [`Receiver::text_begin`] for details on text fragments.
     The [`Receiver::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
     */
+    #[cfg(not(test))]
     fn text_fragment(&mut self, fragment: &'data str) -> Result {
         self.text_fragment_computed(fragment)
     }
+
+    #[cfg(test)]
+    fn text_fragment(&mut self, fragment: &'data str) -> Result;
 
     /**
     A UTF8 text fragment that's borrowed for some arbitrarily short lifetime.
@@ -392,11 +413,15 @@ pub trait Receiver<'data> {
     # }
     ```
     */
+    #[cfg(not(test))]
     fn text(&mut self, value: &'data str) -> Result {
         self.text_begin(Some(value.len()))?;
         self.text_fragment(value)?;
         self.text_end()
     }
+
+    #[cfg(test)]
+    fn text(&mut self, value: &'data str) -> Result;
 
     /**
     Begin a binary blob.
@@ -448,12 +473,12 @@ pub trait Receiver<'data> {
     # }
     ```
 
-    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::binary`] utility will wrap one so that it will:
+    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::bytes`] utility will wrap one so that it will:
 
     ```
     # use sval::Value;
     # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    sval::data::binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    sval::data::bytes(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
     # Ok(())
     # }
     ```
@@ -487,9 +512,13 @@ pub trait Receiver<'data> {
     See [`Receiver::binary_begin`] for details on binary fragments.
     The [`Receiver::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
     */
+    #[cfg(not(test))]
     fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
+
+    #[cfg(test)]
+    fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result;
 
     /**
     A binary fragment that's borrowed for some arbitrarily short lifetime.
@@ -522,21 +551,25 @@ pub trait Receiver<'data> {
     # }
     ```
 
-    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::binary`] utility will wrap one so that it will:
+    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::bytes`] utility will wrap one so that it will:
 
     ```
     # use sval::Value;
     # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    sval::data::binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    sval::data::bytes(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
     # Ok(())
     # }
     ```
     */
+    #[cfg(not(test))]
     fn binary(&mut self, value: &'data [u8]) -> Result {
         self.binary_begin(Some(value.len()))?;
         self.binary_fragment(value)?;
         self.binary_end()
     }
+
+    #[cfg(test)]
+    fn binary(&mut self, value: &'data [u8]) -> Result;
 
     /**
     Stream an 8bit unsigned integer.
@@ -574,9 +607,13 @@ pub trait Receiver<'data> {
     `u8`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn u8(&mut self, value: u8) -> Result {
         data::u8_int(value, self)
     }
+
+    #[cfg(test)]
+    fn u8(&mut self, value: u8) -> Result;
 
     /**
     Stream a 16bit unsigned integer.
@@ -614,9 +651,13 @@ pub trait Receiver<'data> {
     `u16`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn u16(&mut self, value: u16) -> Result {
         data::u16_int(value, self)
     }
+
+    #[cfg(test)]
+    fn u16(&mut self, value: u16) -> Result;
 
     /**
     Stream a 32bit unsigned integer.
@@ -654,9 +695,13 @@ pub trait Receiver<'data> {
     `u32`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn u32(&mut self, value: u32) -> Result {
         data::u32_int(value, self)
     }
+
+    #[cfg(test)]
+    fn u32(&mut self, value: u32) -> Result;
 
     /**
     Stream a 64bit unsigned integer.
@@ -694,9 +739,13 @@ pub trait Receiver<'data> {
     `u64`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn u64(&mut self, value: u64) -> Result {
         data::u64_int(value, self)
     }
+
+    #[cfg(test)]
+    fn u64(&mut self, value: u64) -> Result;
 
     /**
     Stream a 128bit unsigned integer.
@@ -734,9 +783,13 @@ pub trait Receiver<'data> {
     `u128`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn u128(&mut self, value: u128) -> Result {
         data::u128_int(value, self)
     }
+
+    #[cfg(test)]
+    fn u128(&mut self, value: u128) -> Result;
 
     /**
     Stream an 8bit signed integer.
@@ -774,9 +827,13 @@ pub trait Receiver<'data> {
     `i8`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn i8(&mut self, value: i8) -> Result {
         data::i8_int(value, self)
     }
+
+    #[cfg(test)]
+    fn i8(&mut self, value: i8) -> Result;
 
     /**
     Stream a 16bit signed integer.
@@ -814,9 +871,13 @@ pub trait Receiver<'data> {
     `i16`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn i16(&mut self, value: i16) -> Result {
         data::i16_int(value, self)
     }
+
+    #[cfg(test)]
+    fn i16(&mut self, value: i16) -> Result;
 
     /**
     Stream a 32bit signed integer.
@@ -854,9 +915,13 @@ pub trait Receiver<'data> {
     `i32`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn i32(&mut self, value: i32) -> Result {
         data::i32_int(value, self)
     }
+
+    #[cfg(test)]
+    fn i32(&mut self, value: i32) -> Result;
 
     /**
     Stream a 64bit signed integer.
@@ -894,9 +959,13 @@ pub trait Receiver<'data> {
     `i64`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn i64(&mut self, value: i64) -> Result {
         data::i64_int(value, self)
     }
+
+    #[cfg(test)]
+    fn i64(&mut self, value: i64) -> Result;
 
     /**
     Stream a 128bit signed integer.
@@ -934,9 +1003,13 @@ pub trait Receiver<'data> {
     `i128`s map to the basic data model as a text or binary blob containing an integer.
     See [`Receiver::int_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn i128(&mut self, value: i128) -> Result {
         data::i128_int(value, self)
     }
+
+    #[cfg(test)]
+    fn i128(&mut self, value: i128) -> Result;
 
     /**
     Stream a 32bit binary floating number.
@@ -974,9 +1047,13 @@ pub trait Receiver<'data> {
     `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
     See [`Receiver::binfloat_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn f32(&mut self, value: f32) -> Result {
         data::f32_number(value, self)
     }
+
+    #[cfg(test)]
+    fn f32(&mut self, value: f32) -> Result;
 
     /**
     Stream a 64bit binary floating number.
@@ -1014,12 +1091,16 @@ pub trait Receiver<'data> {
     `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
     See [`Receiver::binfloat_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn f64(&mut self, value: f64) -> Result {
         data::f64_number(value, self)
     }
 
+    #[cfg(test)]
+    fn f64(&mut self, value: f64) -> Result;
+
     /**
-    Begin a homogenous map of key-value pairs.
+    Begin a homogeneous map of key-value pairs.
 
     Maps are one of the [basic data types](basic-data-types).
 
@@ -1152,11 +1233,15 @@ pub trait Receiver<'data> {
 
     See [`Receiver::map_key_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn map_key<'k: 'data, K: Source<'k>>(&mut self, mut key: K) -> Result {
         self.map_key_begin()?;
         key.stream_to_end(&mut *self)?;
         self.map_key_end()
     }
+
+    #[cfg(test)]
+    fn map_key<'k: 'data, K: Source<'k>>(&mut self, key: K) -> Result;
 
     /**
     Stream a value as a map value.
@@ -1167,14 +1252,18 @@ pub trait Receiver<'data> {
 
     See [`Receiver::map_value_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn map_value<'v: 'data, V: Source<'v>>(&mut self, mut value: V) -> Result {
         self.map_value_begin()?;
         value.stream_to_end(&mut *self)?;
         self.map_value_end()
     }
 
+    #[cfg(test)]
+    fn map_value<'v: 'data, V: Source<'v>>(&mut self, value: V) -> Result;
+
     /**
-    Begin a homogenous sequence of values.
+    Begin a homogeneous sequence of values.
 
     Sequences are one of the [basic data types](basic-data-types).
 
@@ -1278,63 +1367,112 @@ pub trait Receiver<'data> {
 
     See [`Receiver::seq_value_begin`] for more details.
     */
+    #[cfg(not(test))]
     fn seq_value<'e: 'data, V: Source<'e>>(&mut self, mut value: V) -> Result {
         self.seq_value_begin()?;
         value.stream_to_end(&mut *self)?;
         self.seq_value_end()
     }
 
+    #[cfg(test)]
+    fn seq_value<'e: 'data, V: Source<'e>>(&mut self, value: V) -> Result;
+
+    #[cfg(not(test))]
     fn dynamic_begin(&mut self) -> Result {
         Ok(())
     }
 
+    #[cfg(test)]
+    fn dynamic_begin(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn dynamic_end(&mut self) -> Result {
         Ok(())
     }
 
+    #[cfg(test)]
+    fn dynamic_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn fixed_size_begin(&mut self) -> Result {
         Ok(())
     }
 
+    #[cfg(test)]
+    fn fixed_size_begin(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn fixed_size_end(&mut self) -> Result {
         Ok(())
     }
 
+    #[cfg(test)]
+    fn fixed_size_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn tagged_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
+    #[cfg(test)]
+    fn tagged_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn tagged_end(&mut self) -> Result {
         Ok(())
     }
 
+    #[cfg(test)]
+    fn tagged_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn constant_begin(&mut self, tag: data::Tag) -> Result {
         self.tagged_begin(tag)
     }
 
+    #[cfg(test)]
+    fn constant_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn constant_end(&mut self) -> Result {
         self.tagged_end()
     }
 
+    #[cfg(test)]
+    fn constant_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(num_entries_hint)
     }
 
-    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
-        let _ = tag;
+    #[cfg(test)]
+    fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result;
 
+    #[cfg(not(test))]
+    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
         self.map_key_begin()?;
-        self.dynamic_begin()
+        self.dynamic_begin()?;
+        self.constant_begin(tag)
     }
 
+    #[cfg(test)]
+    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_key_end(&mut self) -> Result {
+        self.constant_end()?;
         self.dynamic_end()?;
         self.map_key_end()
     }
 
+    #[cfg(test)]
+    fn struct_map_key_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
@@ -1342,21 +1480,37 @@ pub trait Receiver<'data> {
         self.dynamic_begin()
     }
 
+    #[cfg(test)]
+    fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_value_end(&mut self) -> Result {
         self.dynamic_end()?;
         self.map_value_end()
     }
 
+    #[cfg(test)]
+    fn struct_map_value_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_end(&mut self) -> Result {
         self.map_end()
     }
 
+    #[cfg(test)]
+    fn struct_map_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: data::Tag, mut key: K) -> Result {
         self.struct_map_key_begin(tag)?;
         key.stream_to_end(&mut *self)?;
         self.struct_map_key_end()
     }
 
+    #[cfg(test)]
+    fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result;
+
+    #[cfg(not(test))]
     fn struct_map_value<'v: 'data, V: Source<'v>>(
         &mut self,
         tag: data::Tag,
@@ -1367,11 +1521,19 @@ pub trait Receiver<'data> {
         self.struct_map_value_end()
     }
 
+    #[cfg(test)]
+    fn struct_map_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result;
+
+    #[cfg(not(test))]
     fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
     }
 
+    #[cfg(test)]
+    fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result;
+
+    #[cfg(not(test))]
     fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
         let _ = tag;
 
@@ -1379,15 +1541,27 @@ pub trait Receiver<'data> {
         self.dynamic_begin()
     }
 
+    #[cfg(test)]
+    fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn struct_seq_value_end(&mut self) -> Result {
         self.dynamic_end()?;
         self.seq_value_end()
     }
 
+    #[cfg(test)]
+    fn struct_seq_value_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_seq_end(&mut self) -> Result {
         self.seq_end()
     }
 
+    #[cfg(test)]
+    fn struct_seq_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn struct_seq_value<'v: 'data, V: Source<'v>>(
         &mut self,
         tag: data::Tag,
@@ -1398,23 +1572,42 @@ pub trait Receiver<'data> {
         self.struct_seq_value_end()
     }
 
+    #[cfg(test)]
+    fn struct_seq_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result;
+
+    #[cfg(not(test))]
     fn enum_begin(&mut self, tag: data::Tag) -> Result {
         self.tagged_begin(tag)?;
         self.dynamic_begin()
     }
 
+    #[cfg(test)]
+    fn enum_begin(&mut self, tag: data::Tag) -> Result;
+
+    #[cfg(not(test))]
     fn enum_end(&mut self) -> Result {
         self.dynamic_end()?;
         self.tagged_end()
     }
 
+    #[cfg(test)]
+    fn enum_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn nullable_begin(&mut self) -> Result {
         self.dynamic_begin()
     }
 
+    #[cfg(test)]
+    fn nullable_begin(&mut self) -> Result;
+
+    #[cfg(not(test))]
     fn nullable_end(&mut self) -> Result {
         self.dynamic_end()
     }
+
+    #[cfg(test)]
+    fn nullable_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized integer.
@@ -1464,18 +1657,26 @@ pub trait Receiver<'data> {
     | 754     | `754`         | `11110010_00000010` |
     | -754    | `-754`        | `00001110_11111101` |
     */
+    #[cfg(not(test))]
     fn int_begin(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn int_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized integer.
 
     See [`Receiver::int_begin`] for details on arbitrary sized integers.
     */
+    #[cfg(not(test))]
     fn int_end(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn int_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized binary floating point number.
@@ -1528,18 +1729,26 @@ pub trait Receiver<'data> {
     | 0                 | `0`           | `00000000_00000000`                   |
     | -0                | `-0`          | `00000000_10000000`                   |
     */
+    #[cfg(not(test))]
     fn binfloat_begin(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn binfloat_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized binary floating point number.
 
     See [`Receiver::binfloat_begin`] for details on arbitrary sized binary floating points.
     */
+    #[cfg(not(test))]
     fn binfloat_end(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn binfloat_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized decimal floating point number.
@@ -1583,18 +1792,26 @@ pub trait Receiver<'data> {
     | 0                 | `0`           | `00000000_00000000_01010000_00100010` |
     | -0                | `-0`          | `00000000_00000000_01010000_10100010` |
     */
+    #[cfg(not(test))]
     fn decfloat_begin(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn decfloat_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized decimal floating point number.
 
     See [`Receiver::decfloat_begin`] for details on arbitrary sized decimal floating points.
      */
+    #[cfg(not(test))]
     fn decfloat_end(&mut self) -> Result {
         Ok(())
     }
+
+    #[cfg(test)]
+    fn decfloat_end(&mut self) -> Result;
 }
 
 macro_rules! impl_receiver_forward {

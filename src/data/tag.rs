@@ -43,3 +43,7 @@ impl Tag {
         }
     }
 }
+
+// NOTE: `Tag` doesn't implement `Value` or `Source` because it's not expected
+// to have any general representation in the data model. It's up to receivers to
+// decide if/how they want to encode tags.

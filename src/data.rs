@@ -1,6 +1,8 @@
 mod binary;
 mod computed;
 mod dynamic;
+mod map;
+mod nullable;
 mod number;
 mod seq;
 mod tag;
@@ -9,13 +11,13 @@ mod text;
 use crate::{source, Receiver, Source, Value};
 
 #[doc(inline)]
-pub use self::{binary::*, computed::*, dynamic::*, tag::*, text::*};
+pub use self::{binary::*, computed::*, dynamic::*, map::*, nullable::*, seq::*, tag::*, text::*};
 
 pub(crate) use self::number::*;
 
 impl Value for () {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.unit()
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
+        (&*self).stream_to_end(receiver)
     }
 }
 
@@ -31,127 +33,17 @@ impl<'a> Source<'a> for () {
     where
         'a: 'b,
     {
-        receiver.null()
-    }
-}
-
-impl<T: Value> Value for Option<T> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
-        self.as_ref().stream_to_end(receiver)
+        receiver.unit()
     }
 
-    fn to_bool(&self) -> Option<bool> {
-        self.as_ref().and_then(|value| value.to_bool())
-    }
-
-    fn to_f32(&self) -> Option<f32> {
-        self.as_ref().and_then(|value| value.to_f32())
-    }
-
-    fn to_f64(&self) -> Option<f64> {
-        self.as_ref().and_then(|value| value.to_f64())
-    }
-
-    fn to_i8(&self) -> Option<i8> {
-        self.as_ref().and_then(|value| value.to_i8())
-    }
-
-    fn to_i16(&self) -> Option<i16> {
-        self.as_ref().and_then(|value| value.to_i16())
-    }
-
-    fn to_i32(&self) -> Option<i32> {
-        self.as_ref().and_then(|value| value.to_i32())
-    }
-
-    fn to_i64(&self) -> Option<i64> {
-        self.as_ref().and_then(|value| value.to_i64())
-    }
-
-    fn to_i128(&self) -> Option<i128> {
-        self.as_ref().and_then(|value| value.to_i128())
-    }
-
-    fn to_u8(&self) -> Option<u8> {
-        self.as_ref().and_then(|value| value.to_u8())
-    }
-
-    fn to_u16(&self) -> Option<u16> {
-        self.as_ref().and_then(|value| value.to_u16())
-    }
-
-    fn to_u32(&self) -> Option<u32> {
-        self.as_ref().and_then(|value| value.to_u32())
-    }
-
-    fn to_u64(&self) -> Option<u64> {
-        self.as_ref().and_then(|value| value.to_u64())
-    }
-
-    fn to_u128(&self) -> Option<u128> {
-        self.as_ref().and_then(|value| value.to_u128())
-    }
-
-    fn to_text(&self) -> Option<&str> {
-        self.as_ref().and_then(|value| value.to_text())
-    }
-
-    fn to_binary(&self) -> Option<&[u8]> {
-        self.as_ref().and_then(|value| value.to_binary())
-    }
-}
-
-impl<'a, T: Source<'a>> Source<'a> for Option<T> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Resume::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-    where
-        'a: 'b,
-    {
-        struct Null;
-
-        impl<'a> Source<'a> for Null {
-            fn stream_resume<'b, R: Receiver<'b>>(
-                &mut self,
-                receiver: R,
-            ) -> crate::Result<crate::Resume>
-            where
-                'a: 'b,
-            {
-                self.stream_to_end(receiver).map(|_| crate::Resume::Done)
-            }
-
-            fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-            where
-                'a: 'b,
-            {
-                receiver.null()
-            }
-        }
-
-        match self {
-            None => {
-                receiver.nullable_begin()?;
-                Null.stream_to_end(&mut receiver)?;
-                receiver.nullable_end()
-            }
-            Some(v) => {
-                receiver.nullable_begin()?;
-                v.stream_to_end(&mut receiver)?;
-                receiver.nullable_end()
-            }
-        }
+    fn maybe_dynamic(&self) -> Option<bool> {
+        Some(false)
     }
 }
 
 impl Value for bool {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-        receiver.bool(*self)
+    fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
+        (&*self).stream_to_end(receiver)
     }
 
     fn to_bool(&self) -> Option<bool> {
@@ -173,6 +65,18 @@ impl<'a> Source<'a> for bool {
     {
         receiver.bool(*self)
     }
+
+    fn maybe_dynamic(&self) -> Option<bool> {
+        Some(false)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Position {
+    Begin,
+    Value,
+    End,
+    Done,
 }
 
 #[cfg(test)]
