@@ -1,4 +1,3 @@
-use crate::data::Tag;
 use crate::{error, receiver::DefaultUnsupported, std::convert::TryInto, Receiver, Result, Source};
 
 /**

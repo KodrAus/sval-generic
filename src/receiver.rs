@@ -328,9 +328,9 @@ pub trait Receiver<'data> {
     Types that implement the standard `Display` trait can be streamed using the [`data::display`] utility:
 
     ```
-    # use sval::Value;
+    # use sval::Source;
     # fn wrap<R: for<'a> sval::Receiver<'a>>(mut receiver: R) -> sval::Result {
-    sval::data::display(42).stream(receiver)?;
+    sval::data::display(42).stream_to_end(receiver)?;
     # Ok(())
     # }
     ```

@@ -13,6 +13,7 @@ use crate::{source, Receiver, Source, Value};
 #[doc(inline)]
 pub use self::{binary::*, computed::*, dynamic::*, map::*, nullable::*, seq::*, tag::*, text::*};
 
+#[cfg(not(test))]
 pub(crate) use self::number::*;
 
 impl Value for () {
