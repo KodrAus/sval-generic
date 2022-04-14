@@ -9,3 +9,9 @@ std = ["sval/std"]
 
 [dependencies.sval]
 path = "../"
+
+[dev-dependencies.num-bigint]
+version = "~0.4"
+
+[dev-dependencies.num-traits]
+version = "0.2"

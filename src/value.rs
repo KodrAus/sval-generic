@@ -1,3 +1,4 @@
+use crate::data::Tag;
 use crate::{error, receiver::DefaultUnsupported, std::convert::TryInto, Receiver, Result, Source};
 
 /**
@@ -49,6 +50,22 @@ where
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                Ok(())
+            }
         }
 
         let mut extract = Extract(None);
@@ -65,6 +82,22 @@ where
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                Ok(())
+            }
         }
 
         let mut extract = Extract(None);
@@ -79,6 +112,22 @@ where
         impl<'data> DefaultUnsupported<'data> for Extract {
             fn f64(&mut self, value: f64) -> Result {
                 self.0 = Some(value);
+                Ok(())
+            }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -117,6 +166,22 @@ where
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                Ok(())
+            }
         }
 
         let mut extract = Extract(None);
@@ -151,6 +216,22 @@ where
         impl<'data> DefaultUnsupported<'data> for Extract {
             fn u128(&mut self, value: u128) -> Result {
                 self.0 = Some(value);
+                Ok(())
+            }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -196,6 +277,30 @@ where
             }
 
             fn text_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn fixed_size_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn fixed_size_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -245,6 +350,30 @@ where
             }
 
             fn binary_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn nullable_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn fixed_size_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn fixed_size_end(&mut self) -> Result {
                 Ok(())
             }
         }

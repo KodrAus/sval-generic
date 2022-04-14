@@ -17,7 +17,7 @@ pub(crate) use self::number::*;
 
 impl Value for () {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
-        (&*self).stream_to_end(receiver)
+        { *self }.stream_to_end(receiver)
     }
 }
 
@@ -43,7 +43,7 @@ impl<'a> Source<'a> for () {
 
 impl Value for bool {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> crate::Result {
-        (&*self).stream_to_end(receiver)
+        { *self }.stream_to_end(receiver)
     }
 
     fn to_bool(&self) -> Option<bool> {

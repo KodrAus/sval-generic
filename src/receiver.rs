@@ -653,7 +653,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn u16(&mut self, value: u16) -> Result {
-        data::u16_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.u8(value)
+        } else {
+            data::u16_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -697,7 +701,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn u32(&mut self, value: u32) -> Result {
-        data::u32_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.u16(value)
+        } else {
+            data::u32_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -741,7 +749,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn u64(&mut self, value: u64) -> Result {
-        data::u64_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.u32(value)
+        } else {
+            data::u64_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -785,7 +797,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn u128(&mut self, value: u128) -> Result {
-        data::u128_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.u64(value)
+        } else {
+            data::u128_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -873,7 +889,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn i16(&mut self, value: i16) -> Result {
-        data::i16_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.i8(value)
+        } else {
+            data::i16_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -917,7 +937,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn i32(&mut self, value: i32) -> Result {
-        data::i32_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.i16(value)
+        } else {
+            data::i32_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -961,7 +985,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn i64(&mut self, value: i64) -> Result {
-        data::i64_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.i32(value)
+        } else {
+            data::i64_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -1005,7 +1033,11 @@ pub trait Receiver<'data> {
     */
     #[cfg(not(test))]
     fn i128(&mut self, value: i128) -> Result {
-        data::i128_int(value, self)
+        if let Ok(value) = value.try_into() {
+            self.i64(value)
+        } else {
+            data::i128_int(value, self)
+        }
     }
 
     #[cfg(test)]
@@ -1455,8 +1487,8 @@ pub trait Receiver<'data> {
     #[cfg(not(test))]
     fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
         self.map_key_begin()?;
-        self.dynamic_begin()?;
-        self.constant_begin(tag)
+        self.constant_begin(tag)?;
+        self.dynamic_begin()
     }
 
     #[cfg(test)]
@@ -1464,8 +1496,8 @@ pub trait Receiver<'data> {
 
     #[cfg(not(test))]
     fn struct_map_key_end(&mut self) -> Result {
-        self.constant_end()?;
         self.dynamic_end()?;
+        self.constant_end()?;
         self.map_key_end()
     }
 
@@ -2190,11 +2222,11 @@ pub(crate) trait DefaultUnsupported<'data> {
     }
 
     fn dynamic_begin(&mut self) -> Result {
-        Ok(())
+        crate::error::unsupported()
     }
 
     fn dynamic_end(&mut self) -> Result {
-        Ok(())
+        crate::error::unsupported()
     }
 
     fn unit(&mut self) -> Result {

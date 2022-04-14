@@ -24,7 +24,7 @@ macro_rules! int {
                 if receiver.is_text_based() {
                     crate::data::display(v).stream_to_end(crate::data::computed(&mut receiver))?;
                 } else {
-                    if v <= (<$i>::MAX as $u) {
+                    if v >= (<$i>::MAX as $u) {
                         let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
                         let unsigned = v.to_le_bytes();
 

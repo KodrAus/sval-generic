@@ -6,7 +6,7 @@ use crate::{
 
 impl Value for char {
     fn stream<'a, R: Receiver<'a>>(&'a self, receiver: R) -> Result {
-        (&*self).stream_to_end(receiver)
+        { *self }.stream_to_end(receiver)
     }
 }
 
