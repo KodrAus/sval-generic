@@ -168,13 +168,13 @@ impl Reporting {
 
     fn fail_unexpected(&mut self, expected: &Token, actual: impl fmt::Display) {
         if self.error.is_none() {
-            self.error = Some(format!("unexpected {}, expected {:?}", actual, expected));
+            self.error = Some(format!("unexpected {}, expected {:?}: this means the source produced some data that didn't align with the static list of tokens", actual, expected));
         }
     }
 
     fn fail_end_of_stream(&mut self, actual: impl fmt::Display) {
         if self.error.is_none() {
-            self.error = Some(format!("unexpected {}, expected end of stream", actual));
+            self.error = Some(format!("unexpected {}, expected end of stream: this means the source produced more data than the static list of tokens", actual));
         }
     }
 }
