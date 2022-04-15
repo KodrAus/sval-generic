@@ -45,14 +45,6 @@ impl<'a, W> sval::Receiver<'a> for Formatter<W>
 where
     W: Write,
 {
-    fn dynamic_begin(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn dynamic_end(&mut self) -> sval::Result {
-        Ok(())
-    }
-
     fn unit(&mut self) -> sval::Result {
         self.null()
     }

@@ -1,4 +1,4 @@
-use std::fmt::{self, Write as _};
+use std::{panic::{self, AssertUnwindSafe}, fmt::{self, Write as _}, vec};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
@@ -43,6 +43,198 @@ pub enum Token<'a> {
     SeqValue(&'a [Token<'a>]),
     DynamicBegin,
     DynamicEnd,
+}
+
+const TEST_SOURCES: &[&[Token]] = &[
+    &[Token::Unit],
+    &[Token::Null],
+    &[Token::Bool(true)],
+    &[Token::Bool(false)],
+    &[Token::I8(i8::MIN)],
+    &[Token::I16(i16::MIN)],
+    &[Token::I32(i32::MIN)],
+    &[Token::I64(i64::MIN)],
+    &[Token::I128(i128::MIN)],
+    &[Token::U8(u8::MAX)],
+    &[Token::U16(u16::MAX)],
+    &[Token::U32(u32::MAX)],
+    &[Token::U64(u64::MAX)],
+    &[Token::U128(u128::MAX)],
+    &[Token::F32(-7834.87235f32)],
+    &[Token::F32(-f32::INFINITY)],
+    &[Token::F32(f32::NAN)],
+    &[Token::F64(-3478645.39728f64)],
+    &[Token::F64(-f64::INFINITY)],
+    &[Token::F64(f64::NAN)],
+    
+    &[
+        Token::MapBegin(Some(2)),
+        Token::MapKey(&[
+            Token::Text("Key 1"),
+        ]),
+        Token::MapValue(&[
+            Token::Bool(false),
+        ]),
+        Token::MapKey(&[
+            Token::Text("Key 2"),
+        ]),
+        Token::MapValue(&[
+            Token::Bool(true),
+        ]),
+        Token::MapEnd,
+    ],
+    &[
+        Token::MapBegin(Some(2)),
+        Token::MapKey(&[
+            Token::DynamicBegin,
+            Token::Text("Key 1"),
+            Token::DynamicEnd,
+        ]),
+        Token::MapValue(&[
+            Token::DynamicBegin,
+            Token::Text("Value 1"),
+            Token::DynamicEnd,
+        ]),
+        Token::MapKey(&[
+            Token::DynamicBegin,
+            Token::Bool(true),
+            Token::DynamicEnd,
+        ]),
+        Token::MapValue(&[
+            Token::DynamicBegin,
+            Token::Bool(true),
+            Token::DynamicEnd,
+        ]),
+        Token::MapEnd,
+    ],
+];
+
+pub fn permute_source(mut f: impl FnMut(TestSource)) {
+    for src in TEST_SOURCES {
+        for detect in [true, false] {
+            let windows = if src.len() > 3 {
+                3
+            } else {
+                1
+            };
+
+            for window_size in &[1, src.len() / 2, src.len()][..windows] {
+                if let Err(_) = panic::catch_unwind(AssertUnwindSafe(|| {
+                    f(TestSource::new(detect, *window_size, src))
+                })) {
+                    panic!(
+                        "failed with source `{:?}` detect dynamic `{}` and window size `{}`",
+                        src, detect, window_size
+                    );
+                }
+            }
+        }
+    }
+}
+
+pub struct TestSource<'src> {
+    tokens: vec::IntoIter<Vec<Token<'src>>>,
+    window_size: usize,
+    dynamic: Option<bool>,
+}
+
+impl<'src> TestSource<'src> {
+    fn new(detect: bool, window_size: usize, src: &[Token<'src>]) -> Self {
+        let dynamic = detect.then(|| src[0] == Token::DynamicBegin);
+
+        let tokens = src
+            .chunks(window_size)
+            .map(|chunk| chunk.iter().cloned().collect())
+            .collect::<Vec<Vec<Token<'src>>>>()
+            .into_iter();
+
+        TestSource {
+            tokens,
+            window_size,
+            dynamic,
+        }
+    }
+
+    pub fn tokens<'a>(&'a self) -> impl Iterator<Item = Token<'src>> + 'a {
+        self.tokens.as_slice().iter().flat_map(|chunk| chunk.iter().cloned())
+    }
+}
+
+impl<'src> sval::Source<'src> for TestSource<'src> {
+    fn stream_resume<'data, R: sval::Receiver<'data>>(
+        &mut self,
+        mut receiver: R,
+    ) -> sval::Result<sval::Resume>
+    where
+        'src: 'data,
+    {
+        if let Some(tokens) = self.tokens.next() {
+            for token in tokens {
+                match token {
+                    Token::Unit => receiver.unit(),
+                    Token::Null => receiver.null(),
+                    Token::Bool(v) => receiver.bool(v),
+                    Token::I8(v) => receiver.i8(v),
+                    Token::I16(v) => receiver.i16(v),
+                    Token::I32(v) => receiver.i32(v),
+                    Token::I64(v) => receiver.i64(v),
+                    Token::I128(v) => receiver.i128(v),
+                    Token::U8(v) => receiver.u8(v),
+                    Token::U16(v) => receiver.u16(v),
+                    Token::U32(v) => receiver.u32(v),
+                    Token::U64(v) => receiver.u64(v),
+                    Token::U128(v) => receiver.u128(v),
+                    Token::F32(v) => receiver.f32(v),
+                    Token::F64(v) => receiver.f64(v),
+                    Token::Text(v) => receiver.text(v),
+                    Token::TextBegin(v) => receiver.text_begin(v),
+                    Token::TextFragment(v) => receiver.text_fragment(v),
+                    Token::TextFragmentComputed(v) => receiver.text_fragment_computed(v),
+                    Token::TextEnd => receiver.text_end(),
+                    Token::Binary(v) => receiver.binary(v),
+                    Token::BinaryBegin(v) => receiver.binary_begin(v),
+                    Token::BinaryFragment(v) => receiver.binary_fragment(v),
+                    Token::BinaryFragmentComputed(v) => receiver.binary_fragment_computed(v),
+                    Token::BinaryEnd => receiver.binary_end(),
+                    Token::MapBegin(v) => receiver.map_begin(v),
+                    Token::MapKeyBegin => receiver.map_key_begin(),
+                    Token::MapKeyEnd => receiver.map_key_end(),
+                    Token::MapValueBegin => receiver.map_value_begin(),
+                    Token::MapValueEnd => receiver.map_value_end(),
+                    Token::MapEnd => receiver.map_end(),
+                    Token::MapKey(v) => receiver.map_key(TestSource::new(
+                        self.dynamic.is_some(),
+                        self.window_size,
+                        v,
+                    )),
+                    Token::MapValue(v) => receiver.map_value(TestSource::new(
+                        self.dynamic.is_some(),
+                        self.window_size,
+                        v,
+                    )),
+                    Token::SeqBegin(v) => receiver.seq_begin(v),
+                    Token::SeqValueBegin => receiver.seq_value_begin(),
+                    Token::SeqValueEnd => receiver.seq_value_end(),
+                    Token::SeqEnd => receiver.seq_end(),
+                    Token::SeqValue(v) => receiver.seq_value(TestSource::new(
+                        self.dynamic.is_some(),
+                        self.window_size,
+                        v,
+                    )),
+                    Token::DynamicBegin => receiver.dynamic_begin(),
+                    Token::DynamicEnd => receiver.dynamic_end(),
+                }?
+            }
+
+            Ok(sval::Resume::Continue)
+        } else {
+            Ok(sval::Resume::Done)
+        }
+    }
+
+    fn maybe_dynamic(&self) -> Option<bool> {
+        self.dynamic
+    }
 }
 
 pub fn assert() -> Assert {
@@ -986,122 +1178,6 @@ mod tests {
         unimplemented!("floats as bytes and text")
     }
 
-    struct SourceTokens<'src> {
-        tokens: vec::IntoIter<Vec<Token<'src>>>,
-        window_size: usize,
-        dynamic: Option<bool>,
-    }
-
-    impl<'src> SourceTokens<'src> {
-        fn new(detect: bool, window_size: usize, src: &[Token<'src>]) -> Self {
-            let dynamic = detect.then(|| src[0] == Token::DynamicBegin);
-
-            let tokens = src
-                .chunks(window_size)
-                .map(|chunk| chunk.iter().cloned().collect())
-                .collect::<Vec<Vec<Token<'src>>>>()
-                .into_iter();
-
-            SourceTokens {
-                tokens,
-                window_size,
-                dynamic,
-            }
-        }
-
-        fn permute(src: &[Token<'src>], mut f: impl FnMut(SourceTokens<'src>)) {
-            for detect in [true, false] {
-                for window_size in 1usize..5 {
-                    if let Err(_) = panic::catch_unwind(AssertUnwindSafe(|| {
-                        f(SourceTokens::new(detect, window_size, src))
-                    })) {
-                        panic!(
-                            "failed with detect dynamic `{}` and window size `{}`",
-                            detect, window_size
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    impl<'src> sval::Source<'src> for SourceTokens<'src> {
-        fn stream_resume<'data, R: Receiver<'data>>(
-            &mut self,
-            mut receiver: R,
-        ) -> sval::Result<Resume>
-        where
-            'src: 'data,
-        {
-            if let Some(tokens) = self.tokens.next() {
-                for token in tokens {
-                    match token {
-                        Unit => receiver.unit(),
-                        Null => receiver.null(),
-                        Bool(v) => receiver.bool(v),
-                        I8(v) => receiver.i8(v),
-                        I16(v) => receiver.i16(v),
-                        I32(v) => receiver.i32(v),
-                        I64(v) => receiver.i64(v),
-                        I128(v) => receiver.i128(v),
-                        U8(v) => receiver.u8(v),
-                        U16(v) => receiver.u16(v),
-                        U32(v) => receiver.u32(v),
-                        U64(v) => receiver.u64(v),
-                        U128(v) => receiver.u128(v),
-                        F32(v) => receiver.f32(v),
-                        F64(v) => receiver.f64(v),
-                        Text(v) => receiver.text(v),
-                        TextBegin(v) => receiver.text_begin(v),
-                        TextFragment(v) => receiver.text_fragment(v),
-                        TextFragmentComputed(v) => receiver.text_fragment_computed(v),
-                        TextEnd => receiver.text_end(),
-                        Binary(v) => receiver.binary(v),
-                        BinaryBegin(v) => receiver.binary_begin(v),
-                        BinaryFragment(v) => receiver.binary_fragment(v),
-                        BinaryFragmentComputed(v) => receiver.binary_fragment_computed(v),
-                        BinaryEnd => receiver.binary_end(),
-                        MapBegin(v) => receiver.map_begin(v),
-                        MapKeyBegin => receiver.map_key_begin(),
-                        MapKeyEnd => receiver.map_key_end(),
-                        MapValueBegin => receiver.map_value_begin(),
-                        MapValueEnd => receiver.map_value_end(),
-                        MapEnd => receiver.map_end(),
-                        MapKey(v) => receiver.map_key(SourceTokens::new(
-                            self.dynamic.is_some(),
-                            self.window_size,
-                            v,
-                        )),
-                        MapValue(v) => receiver.map_value(SourceTokens::new(
-                            self.dynamic.is_some(),
-                            self.window_size,
-                            v,
-                        )),
-                        SeqBegin(v) => receiver.seq_begin(v),
-                        SeqValueBegin => receiver.seq_value_begin(),
-                        SeqValueEnd => receiver.seq_value_end(),
-                        SeqEnd => receiver.seq_end(),
-                        SeqValue(v) => receiver.seq_value(SourceTokens::new(
-                            self.dynamic.is_some(),
-                            self.window_size,
-                            v,
-                        )),
-                        DynamicBegin => receiver.dynamic_begin(),
-                        DynamicEnd => receiver.dynamic_end(),
-                    }?
-                }
-
-                Ok(sval::Resume::Continue)
-            } else {
-                Ok(sval::Resume::Done)
-            }
-        }
-
-        fn maybe_dynamic(&self) -> Option<bool> {
-            self.dynamic
-        }
-    }
-
     #[test]
     fn stream_dynamic() {
         // Non-dynamic values are wrapped as dynamic
@@ -1110,58 +1186,18 @@ mod tests {
             &[DynamicBegin, I32(42), DynamicEnd],
         );
 
-        SourceTokens::permute(
-            &[
-                MapBegin(Some(1)),
-                MapKey(&[Text("a")]),
-                MapValue(&[I32(42)]),
-                MapEnd,
-            ],
-            |src| {
-                assert().stream_equal(
-                    sval::data::dynamic(src),
-                    &[
-                        DynamicBegin,
-                        MapBegin(Some(1)),
-                        MapKey(&[Text("a")]),
-                        MapValue(&[I32(42)]),
-                        MapEnd,
-                        DynamicEnd,
-                    ],
-                )
-            },
-        );
+        permute_source(|src| {
+            let mut expected = src.tokens().collect::<Vec<_>>();
 
-        // Already-dynamic values are not wrapped
-        SourceTokens::permute(&[DynamicBegin, I32(42), DynamicEnd], |src| {
+            if expected[0] != Token::DynamicBegin {
+                expected.insert(0, Token::DynamicBegin);
+                expected.push(Token::DynamicEnd);
+            }
+
             assert().stream_equal(
                 sval::data::dynamic(src),
-                &[DynamicBegin, I32(42), DynamicEnd],
+                &expected,
             )
         });
-
-        SourceTokens::permute(
-            &[
-                DynamicBegin,
-                MapBegin(Some(1)),
-                MapKey(&[Text("a")]),
-                MapValue(&[I32(42)]),
-                MapEnd,
-                DynamicEnd,
-            ],
-            |src| {
-                assert().stream_equal(
-                    sval::data::dynamic(src),
-                    &[
-                        DynamicBegin,
-                        MapBegin(Some(1)),
-                        MapKey(&[Text("a")]),
-                        MapValue(&[I32(42)]),
-                        MapEnd,
-                        DynamicEnd,
-                    ],
-                )
-            },
-        );
     }
 }

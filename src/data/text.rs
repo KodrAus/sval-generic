@@ -1,5 +1,5 @@
 use crate::{
-    source,
+    data, source,
     std::fmt::{self, Write},
     Receiver, Result, Source, Value,
 };
@@ -73,18 +73,8 @@ impl<T: ?Sized> Display<T> {
     }
 }
 
-impl<'a, T: fmt::Display> Source<'a> for Display<T> {
-    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
-    where
-        'a: 'b,
-    {
-        self.stream_to_end(receiver).map(|_| source::Resume::Done)
-    }
-
-    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> Result
-    where
-        'a: 'b,
-    {
+impl<T: fmt::Display> Value for Display<T> {
+    fn stream<'data, R: Receiver<'data>>(&'data self, mut receiver: R) -> Result {
         struct Writer<R>(R);
 
         impl<'a, R: Receiver<'a>> Write for Writer<R> {
@@ -98,6 +88,22 @@ impl<'a, T: fmt::Display> Source<'a> for Display<T> {
         receiver.text_begin(None)?;
         write!(Writer(&mut receiver), "{}", self.0)?;
         receiver.text_end()
+    }
+}
+
+impl<'a, T: fmt::Display> Source<'a> for Display<T> {
+    fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result<source::Resume>
+    where
+        'a: 'b,
+    {
+        self.stream_to_end(receiver).map(|_| source::Resume::Done)
+    }
+
+    fn stream_to_end<'b, R: Receiver<'b>>(&mut self, receiver: R) -> Result
+    where
+        'a: 'b,
+    {
+        self.stream(data::computed(receiver))
     }
 
     fn maybe_dynamic(&self) -> Option<bool> {
