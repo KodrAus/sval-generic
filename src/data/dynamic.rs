@@ -273,14 +273,6 @@ impl<'data, R: Receiver<'data>> Receiver<'data> for MaybeWrap<R> {
         self.inner.map_end()
     }
 
-    fn map_key<'k: 'data, K: Source<'k>>(&mut self, key: K) -> Result {
-        self.inner.map_key(key)
-    }
-
-    fn map_value<'v: 'data, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.inner.map_value(value)
-    }
-
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
         self.maybe_dynamic_begin()?;
         self.inner.seq_begin(num_entries_hint)
@@ -296,10 +288,6 @@ impl<'data, R: Receiver<'data>> Receiver<'data> for MaybeWrap<R> {
 
     fn seq_end(&mut self) -> Result {
         self.inner.seq_end()
-    }
-
-    fn seq_value<'e: 'data, V: Source<'e>>(&mut self, value: V) -> Result {
-        self.inner.seq_value(value)
     }
 
     fn dynamic_begin(&mut self) -> Result {
@@ -363,14 +351,6 @@ impl<'data, R: Receiver<'data>> Receiver<'data> for MaybeWrap<R> {
         self.inner.struct_map_end()
     }
 
-    fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: Tag, key: K) -> Result {
-        self.inner.struct_map_key(tag, key)
-    }
-
-    fn struct_map_value<'v: 'data, V: Source<'v>>(&mut self, tag: Tag, value: V) -> Result {
-        self.inner.struct_map_value(tag, value)
-    }
-
     fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
         self.maybe_dynamic_begin()?;
         self.inner.struct_seq_begin(tag, num_entries_hint)
@@ -386,10 +366,6 @@ impl<'data, R: Receiver<'data>> Receiver<'data> for MaybeWrap<R> {
 
     fn struct_seq_end(&mut self) -> Result {
         self.inner.struct_seq_end()
-    }
-
-    fn struct_seq_value<'v: 'data, V: Source<'v>>(&mut self, tag: Tag, value: V) -> Result {
-        self.inner.struct_seq_value(tag, value)
     }
 
     fn enum_begin(&mut self, tag: Tag) -> Result {

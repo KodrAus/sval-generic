@@ -264,14 +264,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.map_end()
     }
 
-    fn map_key<'k: 'a, K: Source<'k>>(&mut self, key: K) -> Result {
-        self.0.map_key(computed(key))
-    }
-
-    fn map_value<'v: 'a, V: Source<'v>>(&mut self, value: V) -> Result {
-        self.0.map_value(computed(value))
-    }
-
     fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> Result {
         self.0.seq_begin(num_elems_hint)
     }
@@ -286,10 +278,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn seq_end(&mut self) -> Result {
         self.0.seq_end()
-    }
-
-    fn seq_value<'e: 'a, V: Source<'e>>(&mut self, value: V) -> Result {
-        self.0.seq_value(computed(value))
     }
 
     fn dynamic_begin(&mut self) -> Result {
@@ -348,14 +336,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
         self.0.struct_map_end()
     }
 
-    fn struct_map_key<'k: 'a, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result {
-        self.0.struct_map_key(tag, computed(key))
-    }
-
-    fn struct_map_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
-        self.0.struct_map_value(tag, computed(value))
-    }
-
     fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
         self.0.struct_seq_begin(tag, num_entries_hint)
     }
@@ -370,10 +350,6 @@ impl<'a, 'b, R: Receiver<'b>> Receiver<'a> for Computed<R> {
 
     fn struct_seq_end(&mut self) -> Result {
         self.0.struct_seq_end()
-    }
-
-    fn struct_seq_value<'v: 'a, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
-        self.0.struct_seq_value(tag, computed(value))
     }
 
     fn enum_begin(&mut self, tag: data::Tag) -> Result {

@@ -8,7 +8,9 @@ impl<T: Value> Value for [T] {
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_value(elem)?;
+            receiver.seq_value_begin()?;
+            receiver.value(elem)?;
+            receiver.seq_value_end()?;
         }
 
         receiver.seq_end()
@@ -21,7 +23,9 @@ impl<T: Value, const N: usize> Value for [T; N] {
         receiver.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_value(elem)?;
+            receiver.seq_value_begin()?;
+            receiver.value(elem)?;
+            receiver.seq_value_end()?;
         }
 
         receiver.seq_end()?;
@@ -39,7 +43,9 @@ macro_rules! tuple {
                     receiver.struct_seq_begin(data::tag(), Some($len))?;
 
                     $(
-                        receiver.struct_seq_value(data::tag().with_id($i), &self.$i)?;
+                        receiver.struct_seq_value_begin(data::tag().with_id($i))?;
+                        receiver.value(&self.$i)?;
+                        receiver.struct_seq_value_end()?;
                     )+
 
                     receiver.struct_seq_end()

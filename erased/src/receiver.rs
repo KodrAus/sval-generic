@@ -1,6 +1,4 @@
 mod private {
-    use crate::Source;
-
     pub trait DispatchReceiver<'a> {
         fn dispatch_is_text_based(&self) -> bool;
 
@@ -38,7 +36,7 @@ mod private {
 
         fn dispatch_bool(&mut self, value: bool) -> sval::Result;
 
-        fn dispatch_str(&mut self, value: &'a str) -> sval::Result;
+        fn dispatch_text(&mut self, value: &'a str) -> sval::Result;
 
         fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
@@ -48,7 +46,7 @@ mod private {
 
         fn dispatch_text_fragment_computed(&mut self, fragment: &str) -> sval::Result;
 
-        fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result;
+        fn dispatch_binary(&mut self, value: &'a [u8]) -> sval::Result;
 
         fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
@@ -70,10 +68,6 @@ mod private {
 
         fn dispatch_map_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result;
-
-        fn dispatch_map_value<'v: 'a>(&mut self, value: &mut dyn Source<'v>) -> sval::Result;
-
         fn dispatch_seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_seq_end(&mut self) -> sval::Result;
@@ -81,8 +75,6 @@ mod private {
         fn dispatch_seq_value_begin(&mut self) -> sval::Result;
 
         fn dispatch_seq_value_end(&mut self) -> sval::Result;
-
-        fn dispatch_seq_value<'e: 'a>(&mut self, value: &mut dyn Source<'e>) -> sval::Result;
 
         fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
 
@@ -108,18 +100,6 @@ mod private {
 
         fn dispatch_struct_map_end(&mut self) -> sval::Result;
 
-        fn dispatch_struct_map_key<'k: 'a>(
-            &mut self,
-            tag: sval::data::Tag,
-            key: &mut dyn Source<'k>,
-        ) -> sval::Result;
-
-        fn dispatch_struct_map_value<'v: 'a>(
-            &mut self,
-            tag: sval::data::Tag,
-            value: &mut dyn Source<'v>,
-        ) -> sval::Result;
-
         fn dispatch_struct_seq_begin(
             &mut self,
             tag: sval::data::Tag,
@@ -131,12 +111,6 @@ mod private {
         fn dispatch_struct_seq_value_end(&mut self) -> sval::Result;
 
         fn dispatch_struct_seq_end(&mut self) -> sval::Result;
-
-        fn dispatch_struct_seq_value<'v: 'a>(
-            &mut self,
-            tag: sval::data::Tag,
-            value: &mut dyn Source<'v>,
-        ) -> sval::Result;
 
         fn dispatch_enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result;
 
@@ -168,8 +142,6 @@ mod private {
         fn erase_receiver(&mut self) -> crate::private::Erased<&mut dyn DispatchReceiver<'a>>;
     }
 }
-
-use crate::Source;
 
 pub trait Receiver<'a>: private::EraseReceiver<'a> {}
 
@@ -258,7 +230,7 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.bool(value)
     }
 
-    fn dispatch_str(&mut self, value: &'a str) -> sval::Result {
+    fn dispatch_text(&mut self, value: &'a str) -> sval::Result {
         self.text(value)
     }
 
@@ -278,7 +250,7 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.text_fragment_computed(fragment)
     }
 
-    fn dispatch_bytes(&mut self, value: &'a [u8]) -> sval::Result {
+    fn dispatch_binary(&mut self, value: &'a [u8]) -> sval::Result {
         self.binary(value)
     }
 
@@ -322,14 +294,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.map_value_end()
     }
 
-    fn dispatch_map_key<'k: 'a>(&mut self, key: &mut dyn Source<'k>) -> sval::Result {
-        self.map_key(key)
-    }
-
-    fn dispatch_map_value<'v: 'a>(&mut self, value: &mut dyn Source<'v>) -> sval::Result {
-        self.map_value(value)
-    }
-
     fn dispatch_seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
         self.seq_begin(num_elems_hint)
     }
@@ -344,10 +308,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
 
     fn dispatch_seq_value_end(&mut self) -> sval::Result {
         self.seq_value_end()
-    }
-
-    fn dispatch_seq_value<'e: 'a>(&mut self, elem: &mut dyn Source<'e>) -> sval::Result {
-        self.seq_value(elem)
     }
 
     fn dispatch_tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
@@ -394,22 +354,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
         self.struct_map_end()
     }
 
-    fn dispatch_struct_map_key<'k: 'a>(
-        &mut self,
-        tag: sval::data::Tag,
-        key: &mut dyn Source<'k>,
-    ) -> sval::Result {
-        self.struct_map_key(tag, key)
-    }
-
-    fn dispatch_struct_map_value<'v: 'a>(
-        &mut self,
-        tag: sval::data::Tag,
-        value: &mut dyn Source<'v>,
-    ) -> sval::Result {
-        self.struct_map_value(tag, value)
-    }
-
     fn dispatch_struct_seq_begin(
         &mut self,
         tag: sval::data::Tag,
@@ -428,14 +372,6 @@ impl<'a, R: sval::Receiver<'a>> private::DispatchReceiver<'a> for R {
 
     fn dispatch_struct_seq_end(&mut self) -> sval::Result {
         self.struct_seq_end()
-    }
-
-    fn dispatch_struct_seq_value<'v: 'a>(
-        &mut self,
-        tag: sval::data::Tag,
-        value: &mut dyn Source<'v>,
-    ) -> sval::Result {
-        self.struct_seq_value(tag, value)
     }
 
     fn dispatch_enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
@@ -562,8 +498,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_bool(value)
             }
 
-            fn str(&mut self, value: &'a str) -> sval::Result {
-                self.erase_receiver().0.dispatch_str(value)
+            fn text(&mut self, value: &'a str) -> sval::Result {
+                self.erase_receiver().0.dispatch_text(value)
             }
 
             fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
@@ -578,8 +514,8 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_text_fragment_computed(&fragment)
             }
 
-            fn bytes(&mut self, value: &'a [u8]) -> sval::Result {
-                self.erase_receiver().0.dispatch_bytes(value)
+            fn binary(&mut self, value: &'a [u8]) -> sval::Result {
+                self.erase_receiver().0.dispatch_binary(value)
             }
 
             fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
@@ -618,14 +554,6 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_map_value_end()
             }
 
-            fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, mut key: K) -> sval::Result {
-                self.erase_receiver().0.dispatch_map_key(&mut key)
-            }
-
-            fn map_value<'v: 'a, V: sval::Source<'v>>(&mut self, mut value: V) -> sval::Result {
-                self.erase_receiver().0.dispatch_map_value(&mut value)
-            }
-
             fn seq_begin(&mut self, num_elems_hint: Option<usize>) -> sval::Result {
                 self.erase_receiver().0.dispatch_seq_begin(num_elems_hint)
             }
@@ -640,10 +568,6 @@ macro_rules! impl_receiver {
 
             fn seq_value_end(&mut self) -> sval::Result {
                 self.erase_receiver().0.dispatch_seq_value_end()
-            }
-
-            fn seq_value<'e: 'a, V: sval::Source<'e>>(&mut self, mut value: V) -> sval::Result {
-                self.erase_receiver().0.dispatch_seq_value(&mut value)
             }
 
             fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
@@ -686,14 +610,6 @@ macro_rules! impl_receiver {
                 self.erase_receiver().0.dispatch_struct_map_end()
             }
 
-            fn struct_map_key<'k: 'a, K: sval::Source<'k>>(&mut self, tag: sval::data::Tag, mut key: K) -> sval::Result {
-                self.erase_receiver().0.dispatch_struct_map_key(tag, &mut key)
-            }
-
-            fn struct_map_value<'v: 'a, V: sval::Source<'v>>(&mut self, tag: sval::data::Tag, mut value: V) -> sval::Result {
-                self.erase_receiver().0.dispatch_struct_map_value(tag, &mut value)
-            }
-
             fn struct_seq_begin(&mut self, tag: sval::data::Tag, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_receiver().0.dispatch_struct_seq_begin(tag, num_entries_hint)
             }
@@ -708,10 +624,6 @@ macro_rules! impl_receiver {
 
             fn struct_seq_end(&mut self) -> sval::Result {
                 self.erase_receiver().0.dispatch_struct_seq_end()
-            }
-
-            fn struct_seq_value<'v: 'a, V: sval::Source<'v>>(&mut self, tag: sval::data::Tag, mut value: V) -> sval::Result {
-                self.erase_receiver().0.dispatch_struct_seq_value(tag, &mut value)
             }
 
             fn enum_begin(&mut self, tag: sval::data::Tag) -> sval::Result {

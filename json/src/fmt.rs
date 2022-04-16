@@ -105,7 +105,9 @@ where
 
     fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
         for b in v {
-            self.seq_value(b)?;
+            self.seq_value_begin()?;
+            self.u8(*b)?;
+            self.seq_value_end()?;
         }
 
         Ok(())
@@ -246,32 +248,6 @@ where
         Ok(())
     }
 
-    fn map_key<'k: 'a, K: sval::Source<'k>>(&mut self, mut key: K) -> sval::Result {
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
-        }
-
-        self.is_key = true;
-        self.write_str_quotes = false;
-
-        key.stream_to_end(&mut *self)?;
-
-        self.is_key = false;
-        self.write_str_quotes = true;
-
-        self.out.write_str("\":")?;
-
-        self.is_current_depth_empty = false;
-
-        Ok(())
-    }
-
-    fn map_value<'v: 'a, V: sval::Source<'v>>(&mut self, mut value: V) -> sval::Result {
-        value.stream_to_end(&mut *self)
-    }
-
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
             return Err(sval::Error);
@@ -313,8 +289,16 @@ where
             match tag {
                 sval::data::Tag {
                     label: Some(label), ..
-                } => self.map_key(label)?,
-                sval::data::Tag { id: Some(id), .. } => self.map_key(id)?,
+                } => {
+                    self.map_key_begin()?;
+                    self.text(label)?;
+                    self.map_key_end()?;
+                }
+                sval::data::Tag { id: Some(id), .. } => {
+                    self.map_key_begin()?;
+                    self.u64(id)?;
+                    self.map_key_end()?;
+                }
                 _ => sval::error::unsupported()?,
             }
 

@@ -1,4 +1,4 @@
-use crate::{data, Result, Source, Value};
+use crate::{data, Result, Value};
 
 /**
 An observer of structured data emitted by some source.
@@ -1257,44 +1257,6 @@ pub trait Receiver<'data> {
     fn map_end(&mut self) -> Result;
 
     /**
-    Stream a value as a map key.
-
-    This method is a convenience that surrounds the value with [`Receiver::map_key_begin`] and [`Receiver::map_key_end`].
-    The key will be fully streamed before this method returns.
-    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a key manually.
-
-    See [`Receiver::map_key_begin`] for more details.
-    */
-    #[cfg(not(test))]
-    fn map_key<'k: 'data, K: Source<'k>>(&mut self, mut key: K) -> Result {
-        self.map_key_begin()?;
-        key.stream_to_end(&mut *self)?;
-        self.map_key_end()
-    }
-
-    #[cfg(test)]
-    fn map_key<'k: 'data, K: Source<'k>>(&mut self, key: K) -> Result;
-
-    /**
-    Stream a value as a map value.
-
-    This method is a convenience that surrounds the value with [`Receiver::map_value_begin`] and [`Receiver::map_value_end`].
-    The value will be fully streamed before this method returns.
-    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a value manually.
-
-    See [`Receiver::map_value_begin`] for more details.
-    */
-    #[cfg(not(test))]
-    fn map_value<'v: 'data, V: Source<'v>>(&mut self, mut value: V) -> Result {
-        self.map_value_begin()?;
-        value.stream_to_end(&mut *self)?;
-        self.map_value_end()
-    }
-
-    #[cfg(test)]
-    fn map_value<'v: 'data, V: Source<'v>>(&mut self, value: V) -> Result;
-
-    /**
     Begin a homogeneous sequence of values.
 
     Sequences are one of the [basic data types](basic-data-types).
@@ -1389,25 +1351,6 @@ pub trait Receiver<'data> {
     Complete a sequence.
     */
     fn seq_end(&mut self) -> Result;
-
-    /**
-    Stream a value as a sequence value.
-
-    This method is a convenience that surrounds the value with [`Receiver::seq_value_begin`] and [`Receiver::seq_value_end`].
-    The value will be fully streamed before this method returns.
-    Receivers may override this method as an optimization but can't generally rely on callers to use it over streaming a value manually.
-
-    See [`Receiver::seq_value_begin`] for more details.
-    */
-    #[cfg(not(test))]
-    fn seq_value<'e: 'data, V: Source<'e>>(&mut self, mut value: V) -> Result {
-        self.seq_value_begin()?;
-        value.stream_to_end(&mut *self)?;
-        self.seq_value_end()
-    }
-
-    #[cfg(test)]
-    fn seq_value<'e: 'data, V: Source<'e>>(&mut self, value: V) -> Result;
 
     #[cfg(not(test))]
     fn dynamic_begin(&mut self) -> Result {
@@ -1533,30 +1476,6 @@ pub trait Receiver<'data> {
     fn struct_map_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: data::Tag, mut key: K) -> Result {
-        self.struct_map_key_begin(tag)?;
-        key.stream_to_end(&mut *self)?;
-        self.struct_map_key_end()
-    }
-
-    #[cfg(test)]
-    fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result;
-
-    #[cfg(not(test))]
-    fn struct_map_value<'v: 'data, V: Source<'v>>(
-        &mut self,
-        tag: data::Tag,
-        mut value: V,
-    ) -> Result {
-        self.struct_map_value_begin(tag)?;
-        value.stream_to_end(&mut *self)?;
-        self.struct_map_value_end()
-    }
-
-    #[cfg(test)]
-    fn struct_map_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result;
-
-    #[cfg(not(test))]
     fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
@@ -1592,20 +1511,6 @@ pub trait Receiver<'data> {
 
     #[cfg(test)]
     fn struct_seq_end(&mut self) -> Result;
-
-    #[cfg(not(test))]
-    fn struct_seq_value<'v: 'data, V: Source<'v>>(
-        &mut self,
-        tag: data::Tag,
-        mut value: V,
-    ) -> Result {
-        self.struct_seq_value_begin(tag)?;
-        value.stream_to_end(&mut *self)?;
-        self.struct_seq_value_end()
-    }
-
-    #[cfg(test)]
-    fn struct_seq_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result;
 
     #[cfg(not(test))]
     fn enum_begin(&mut self, tag: data::Tag) -> Result {
@@ -2024,16 +1929,6 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).map_value_end()
             }
 
-            fn map_key<'k: 'data, K: Source<'k>>(&mut self, key: K) -> Result {
-                let $bind = self;
-                ($($forward)*).map_key(key)
-            }
-
-            fn map_value<'v: 'data, V: Source<'v>>(&mut self, value: V) -> Result {
-                let $bind = self;
-                ($($forward)*).map_value(value)
-            }
-
             fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).seq_begin(num_entries_hint)
@@ -2052,11 +1947,6 @@ macro_rules! impl_receiver_forward {
             fn seq_value_end(&mut self) -> Result {
                 let $bind = self;
                 ($($forward)*).seq_value_end()
-            }
-
-            fn seq_value<'e: 'data, V: Source<'e>>(&mut self, value: V) -> Result {
-                let $bind = self;
-                ($($forward)*).seq_value(value)
             }
 
             fn tagged_begin(&mut self, tag: data::Tag) -> Result {
@@ -2109,16 +1999,6 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).struct_map_end()
             }
 
-            fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, tag: data::Tag, key: K) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_map_key(tag, key)
-            }
-
-            fn struct_map_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_map_value(tag, value)
-            }
-
             fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_seq_begin(tag, num_entries_hint)
@@ -2137,11 +2017,6 @@ macro_rules! impl_receiver_forward {
             fn struct_seq_end(&mut self) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_seq_end()
-            }
-
-            fn struct_seq_value<'v: 'data, V: Source<'v>>(&mut self, tag: data::Tag, value: V) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_seq_value(tag, value)
             }
 
             fn enum_begin(&mut self, tag: data::Tag) -> Result {
@@ -2353,14 +2228,6 @@ pub(crate) trait DefaultUnsupported<'data> {
         crate::error::unsupported()
     }
 
-    fn map_key<'k: 'data, K: Source<'k>>(&mut self, _: K) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn map_value<'v: 'data, V: Source<'v>>(&mut self, _: V) -> Result {
-        crate::error::unsupported()
-    }
-
     fn seq_begin(&mut self, _: Option<usize>) -> Result {
         crate::error::unsupported()
     }
@@ -2374,10 +2241,6 @@ pub(crate) trait DefaultUnsupported<'data> {
     }
 
     fn seq_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn seq_value<'e: 'data, E: Source<'e>>(&mut self, _: E) -> Result {
         crate::error::unsupported()
     }
 
@@ -2421,14 +2284,6 @@ pub(crate) trait DefaultUnsupported<'data> {
         crate::error::unsupported()
     }
 
-    fn struct_map_key<'k: 'data, K: Source<'k>>(&mut self, _: data::Tag, _: K) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_map_value<'v: 'data, V: Source<'v>>(&mut self, _: data::Tag, _: V) -> Result {
-        crate::error::unsupported()
-    }
-
     fn struct_seq_begin(&mut self, _: data::Tag, _: Option<usize>) -> Result {
         crate::error::unsupported()
     }
@@ -2442,10 +2297,6 @@ pub(crate) trait DefaultUnsupported<'data> {
     }
 
     fn struct_seq_end(&mut self) -> Result {
-        crate::error::unsupported()
-    }
-
-    fn struct_seq_value<'v: 'data, V: Source<'v>>(&mut self, _: data::Tag, _: V) -> Result {
         crate::error::unsupported()
     }
 
