@@ -26,14 +26,14 @@ mod std {
 #[cfg(all(not(feature = "alloc"), not(feature = "std")))]
 extern crate core as std;
 
-pub mod data;
-mod receiver;
-mod source;
+mod data;
+mod stream;
+mod tag;
 mod value;
 
-pub mod error;
+pub mod result;
 
 #[doc(inline)]
-pub use self::{error::Error, receiver::*, source::*, value::*};
+pub use self::{result::Error, stream::*, tag::*, value::*};
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;

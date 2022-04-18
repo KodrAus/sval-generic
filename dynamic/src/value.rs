@@ -1,11 +1,11 @@
-use crate::receiver::Receiver;
+use crate::stream::Stream;
 use crate::value::private::DispatchValue;
 
 mod private {
-    use crate::receiver::Receiver;
+    use crate::stream::Stream;
 
     pub trait DispatchValue {
-        fn dispatch_stream<'a>(&'a self, receiver: &mut dyn Receiver<'a>) -> sval::Result;
+        fn dispatch_stream<'a>(&'a self, stream: &mut dyn Stream<'a>) -> sval::Result;
         fn dispatch_is_dynamic(&self) -> bool;
         fn dispatch_to_bool(&self) -> Option<bool>;
         fn dispatch_to_f32(&self) -> Option<f32>;
@@ -40,8 +40,8 @@ impl<T: sval::Value> private::EraseValue for T {
 }
 
 impl<T: sval::Value> private::DispatchValue for T {
-    fn dispatch_stream<'a>(&'a self, receiver: &mut dyn Receiver<'a>) -> sval::Result {
-        self.stream(receiver)
+    fn dispatch_stream<'a>(&'a self, stream: &mut dyn Stream<'a>) -> sval::Result {
+        self.stream(stream)
     }
 
     fn dispatch_is_dynamic(&self) -> bool {
@@ -112,8 +112,14 @@ impl<T: sval::Value> private::DispatchValue for T {
 macro_rules! impl_value {
     ($($impl:tt)*) => {
         $($impl)* {
-            fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
-                self.erase_value().0.dispatch_stream(&mut receiver)
+            fn stream<'a, R: sval::Stream<'a>>(&'a self, mut stream: R) -> sval::Result {
+                if self.is_dynamic() {
+                    self.erase_value().0.dispatch_stream(&mut stream)
+                } else {
+                    stream.dynamic_begin()?;
+                    self.erase_value().0.dispatch_stream(&mut stream)?;
+                    stream.dynamic_end()
+                }
             }
 
             fn is_dynamic(&self) -> bool {

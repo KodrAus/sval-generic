@@ -1,35 +1,40 @@
-use crate::{
-    data::{self, Position},
-    Receiver, Result, Resume, Source, Value,
-};
+use crate::{Result, Stream, Value};
 
 impl<T: Value> Value for [T] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.seq_begin(Some(self.len()))?;
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
+        stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_value_begin()?;
-            receiver.value(elem)?;
-            receiver.seq_value_end()?;
+            stream.seq_value_begin()?;
+            stream.value(elem)?;
+            stream.seq_value_end()?;
         }
 
-        receiver.seq_end()
+        stream.seq_end()
+    }
+
+    fn is_dynamic(&self) -> bool {
+        false
     }
 }
 
 impl<T: Value, const N: usize> Value for [T; N] {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-        receiver.fixed_size_begin()?;
-        receiver.seq_begin(Some(self.len()))?;
+    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
+        stream.fixed_size_begin()?;
+        stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
-            receiver.seq_value_begin()?;
-            receiver.value(elem)?;
-            receiver.seq_value_end()?;
+            stream.seq_value_begin()?;
+            stream.value(elem)?;
+            stream.seq_value_end()?;
         }
 
-        receiver.seq_end()?;
-        receiver.fixed_size_end()
+        stream.seq_end()?;
+        stream.fixed_size_end()
+    }
+
+    fn is_dynamic(&self) -> bool {
+        false
     }
 }
 
@@ -39,16 +44,20 @@ macro_rules! tuple {
     )+) => {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
-                fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
-                    receiver.struct_seq_begin(data::tag(), Some($len))?;
+                fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+                    stream.struct_seq_begin(crate::tag(), Some($len))?;
 
                     $(
-                        receiver.struct_seq_value_begin(data::tag().with_id($i))?;
-                        receiver.value(&self.$i)?;
-                        receiver.struct_seq_value_end()?;
+                        stream.struct_seq_value_begin(crate::tag().with_id($i))?;
+                        stream.value(&self.$i)?;
+                        stream.struct_seq_value_end()?;
                     )+
 
-                    receiver.struct_seq_end()
+                    stream.struct_seq_end()
+                }
+
+                fn is_dynamic(&self) -> bool {
+                    false
                 }
             }
         )+
@@ -226,67 +235,6 @@ tuple! {
     ),
 }
 
-pub fn seq<S: Iterator>(seq: S) -> Seq<S> {
-    Seq::new(seq)
-}
-
-pub struct Seq<S: Iterator> {
-    seq: S,
-    current: Option<S::Item>,
-    position: Position,
-}
-
-impl<S: Iterator> Seq<S> {
-    pub fn new(seq: S) -> Self {
-        Seq {
-            seq,
-            position: Position::Begin,
-            current: None,
-        }
-    }
-}
-
-impl<'src, S: Iterator> Source<'src> for Seq<S>
-where
-    S::Item: Source<'src>,
-{
-    fn stream_resume<'data, R: Receiver<'data>>(&mut self, mut receiver: R) -> Result<Resume>
-    where
-        'src: 'data,
-    {
-        loop {
-            if let Some(current) = self.current.as_mut() {
-                match current.stream_resume(&mut receiver)? {
-                    Resume::Continue => return Ok(Resume::Continue),
-                    Resume::Done => self.current = None,
-                }
-            }
-
-            debug_assert!(self.current.is_none());
-
-            match self.position {
-                Position::Begin => {
-                    receiver.seq_begin(None)?;
-                    self.position = Position::Value;
-                }
-                Position::Value => match self.seq.next() {
-                    Some(next) => self.current = Some(next),
-                    None => self.position = Position::End,
-                },
-                Position::End => {
-                    receiver.seq_end()?;
-                    self.position = Position::Done;
-                }
-                Position::Done => return Ok(Resume::Done),
-            }
-        }
-    }
-
-    fn maybe_dynamic(&self) -> Option<bool> {
-        Some(false)
-    }
-}
-
 #[cfg(feature = "alloc")]
 mod alloc_support {
     use super::*;
@@ -294,8 +242,12 @@ mod alloc_support {
     use crate::std::vec::Vec;
 
     impl<T: Value> Value for Vec<T> {
-        fn stream<'a, S: Receiver<'a>>(&'a self, receiver: S) -> Result {
-            (&**self).stream(receiver)
+        fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
+            (&**self).stream(stream)
+        }
+
+        fn is_dynamic(&self) -> bool {
+            false
         }
     }
 }

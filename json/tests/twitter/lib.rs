@@ -31,8 +31,8 @@ fn sval_consistency() {
 }
 
 #[test]
-fn sval_erased_consistency() {
-    use sval_erased as erased;
+fn sval_dynamic_consistency() {
+    use sval_dynamic as erased;
 
     let s = input_struct();
 

@@ -1,4 +1,4 @@
-use crate::{error, receiver::DefaultUnsupported, std::convert::TryInto, Receiver, Result, Source};
+use crate::{result, std::convert::TryInto, stream::DefaultUnsupported, Result, Stream};
 
 /**
 An immutable and repeatable source of structured data.
@@ -8,20 +8,15 @@ An immutable and repeatable source of structured data.
 Valid implementations of `Value` must adhere to the following requirements:
 
 1. All instances of this type must always stream with the same shape.
-2. If the type also implements [`Source`] then [`Value::stream`] must be the same
-as [`Source::stream_to_end`].
 */
-pub trait Value
-where
-    for<'src> &'src Self: Source<'src>,
-{
-    fn stream<'data, R: Receiver<'data>>(&'data self, receiver: R) -> Result;
+pub trait Value {
+    fn stream<'sval, S: Stream<'sval>>(&'sval self, stream: S) -> Result;
 
     #[inline]
     fn is_dynamic(&self) -> bool {
         struct Check(bool);
 
-        impl<'data> DefaultUnsupported<'data> for Check {
+        impl<'sval> DefaultUnsupported<'sval> for Check {
             fn dynamic_begin(&mut self) -> Result {
                 self.0 = true;
                 Ok(())
@@ -33,7 +28,7 @@ where
         }
 
         let mut check = Check(false);
-        if let Ok(()) = self.stream(check.as_receiver()) {
+        if let Ok(()) = self.stream(check.as_stream()) {
             check.0
         } else {
             false
@@ -44,7 +39,7 @@ where
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
 
-        impl<'data> DefaultUnsupported<'data> for Extract {
+        impl<'sval> DefaultUnsupported<'sval> for Extract {
             fn bool(&mut self, value: bool) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -68,7 +63,7 @@ where
         }
 
         let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.0
     }
 
@@ -76,7 +71,7 @@ where
     fn to_f32(&self) -> Option<f32> {
         struct Extract(Option<f32>);
 
-        impl<'data> DefaultUnsupported<'data> for Extract {
+        impl<'sval> DefaultUnsupported<'sval> for Extract {
             fn f32(&mut self, value: f32) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -100,7 +95,7 @@ where
         }
 
         let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.0
     }
 
@@ -108,7 +103,7 @@ where
     fn to_f64(&self) -> Option<f64> {
         struct Extract(Option<f64>);
 
-        impl<'data> DefaultUnsupported<'data> for Extract {
+        impl<'sval> DefaultUnsupported<'sval> for Extract {
             fn f64(&mut self, value: f64) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -132,7 +127,7 @@ where
         }
 
         let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.0
     }
 
@@ -160,7 +155,7 @@ where
     fn to_i128(&self) -> Option<i128> {
         struct Extract(Option<i128>);
 
-        impl<'data> DefaultUnsupported<'data> for Extract {
+        impl<'sval> DefaultUnsupported<'sval> for Extract {
             fn i128(&mut self, value: i128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -184,7 +179,7 @@ where
         }
 
         let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.0
     }
 
@@ -212,7 +207,7 @@ where
     fn to_u128(&self) -> Option<u128> {
         struct Extract(Option<u128>);
 
-        impl<'data> DefaultUnsupported<'data> for Extract {
+        impl<'sval> DefaultUnsupported<'sval> for Extract {
             fn u128(&mut self, value: u128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -236,19 +231,19 @@ where
         }
 
         let mut extract = Extract(None);
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.0
     }
 
     #[inline]
     fn to_text(&self) -> Option<&str> {
-        struct Extract<'data> {
-            extracted: Option<&'data str>,
+        struct Extract<'sval> {
+            extracted: Option<&'sval str>,
             seen_fragment: bool,
         }
 
-        impl<'data> DefaultUnsupported<'data> for Extract<'data> {
-            fn text(&mut self, value: &'data str) -> Result {
+        impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+            fn text(&mut self, value: &'sval str) -> Result {
                 // Allow either independent strings, or fragments of a single borrowed string
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -264,7 +259,7 @@ where
                 Ok(())
             }
 
-            fn text_fragment(&mut self, fragment: &'data str) -> Result {
+            fn text_fragment(&mut self, fragment: &'sval str) -> Result {
                 self.text(fragment)
             }
 
@@ -272,7 +267,7 @@ where
                 self.extracted = None;
                 self.seen_fragment = true;
 
-                error::unsupported()
+                result::unsupported()
             }
 
             fn text_end(&mut self) -> Result {
@@ -309,19 +304,19 @@ where
             seen_fragment: false,
         };
 
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.extracted
     }
 
     #[inline]
     fn to_binary(&self) -> Option<&[u8]> {
-        struct Extract<'data> {
-            extracted: Option<&'data [u8]>,
+        struct Extract<'sval> {
+            extracted: Option<&'sval [u8]>,
             seen_fragment: bool,
         }
 
-        impl<'data> DefaultUnsupported<'data> for Extract<'data> {
-            fn binary(&mut self, value: &'data [u8]) -> Result {
+        impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+            fn binary(&mut self, value: &'sval [u8]) -> Result {
                 // Allow either independent bytes, or fragments of a single borrowed byte stream
                 if !self.seen_fragment {
                     self.extracted = Some(value);
@@ -337,7 +332,7 @@ where
                 Ok(())
             }
 
-            fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
+            fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
                 self.binary(fragment)
             }
 
@@ -345,7 +340,7 @@ where
                 self.extracted = None;
                 self.seen_fragment = true;
 
-                error::unsupported()
+                result::unsupported()
             }
 
             fn binary_end(&mut self) -> Result {
@@ -382,7 +377,7 @@ where
             seen_fragment: false,
         };
 
-        self.stream(extract.as_receiver()).ok()?;
+        self.stream(extract.as_stream()).ok()?;
         extract.extracted
     }
 }
@@ -390,9 +385,9 @@ where
 macro_rules! impl_value_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn stream<'b, R: Receiver<'b>>(&'b self, receiver: R) -> Result {
+            fn stream<'sval, R: Stream<'sval>>(&'sval self, stream: R) -> Result {
                 let $bind = self;
-                ($($forward)*).stream(receiver)
+                ($($forward)*).stream(stream)
             }
 
             #[inline]
@@ -494,7 +489,7 @@ macro_rules! impl_value_forward {
     };
 }
 
-impl_value_forward!({impl<'data, T: Value + ?Sized> Value for &'data T} => x => { **x });
+impl_value_forward!({impl<'a, T: Value + ?Sized> Value for &'a T} => x => { **x });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {

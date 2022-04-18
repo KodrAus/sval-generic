@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
-pub fn to_fmt<'a>(fmt: impl Write, mut v: impl sval::Source<'a>) -> sval::Result {
-    v.stream_to_end(Formatter::new(fmt))
+pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
+    v.stream(Formatter::new(fmt))
 }
 
 pub struct Formatter<W> {
@@ -41,7 +41,7 @@ where
     }
 }
 
-impl<'a, W> sval::Receiver<'a> for Formatter<W>
+impl<'a, W> sval::Stream<'a> for Formatter<W>
 where
     W: Write,
 {
@@ -199,7 +199,7 @@ where
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
-            return Err(sval::Error);
+            return sval::result::unsupported();
         }
 
         self.is_current_depth_empty = true;
@@ -250,7 +250,7 @@ where
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_key {
-            return Err(sval::Error);
+            return sval::result::unsupported();
         }
 
         self.is_current_depth_empty = true;
@@ -282,24 +282,24 @@ where
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: sval::data::Tag) -> sval::Result {
+    fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
         if self.is_internally_tagged {
             self.map_begin(Some(1))?;
 
             match tag {
-                sval::data::Tag {
+                sval::Tag {
                     label: Some(label), ..
                 } => {
                     self.map_key_begin()?;
                     self.text(label)?;
                     self.map_key_end()?;
                 }
-                sval::data::Tag { id: Some(id), .. } => {
+                sval::Tag { id: Some(id), .. } => {
                     self.map_key_begin()?;
                     self.u64(id)?;
                     self.map_key_end()?;
                 }
-                _ => sval::error::unsupported()?,
+                _ => sval::result::unsupported()?,
             }
 
             self.map_value_begin()?;
@@ -314,7 +314,7 @@ where
         Ok(())
     }
 
-    fn constant_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+    fn constant_begin(&mut self, _: sval::Tag) -> sval::Result {
         self.is_internally_tagged = false;
 
         Ok(())
@@ -324,7 +324,7 @@ where
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: sval::data::Tag) -> sval::Result {
+    fn enum_begin(&mut self, _: sval::Tag) -> sval::Result {
         self.is_internally_tagged = true;
 
         Ok(())

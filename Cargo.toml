@@ -9,7 +9,7 @@ members = [
     "derive/tests",
     "test",
     "json",
-    "erased",
+    "dynamic",
     "json/benches/twitter",
     "json/tests",
     "json/tests/twitter",

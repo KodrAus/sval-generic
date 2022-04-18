@@ -1,7 +1,13 @@
 use crate::std::{fmt, str};
 
 #[derive(Debug)]
-pub struct Error;
+pub struct Error(());
+
+impl Error {
+    pub fn unsupported() -> Self {
+        Error(())
+    }
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -12,7 +18,7 @@ impl fmt::Display for Error {
 impl From<fmt::Error> for Error {
     #[inline]
     fn from(_: fmt::Error) -> Error {
-        Error
+        Error(())
     }
 }
 
@@ -26,7 +32,7 @@ impl From<Error> for fmt::Error {
 impl From<str::Utf8Error> for Error {
     #[inline]
     fn from(_: str::Utf8Error) -> Error {
-        Error
+        Error(())
     }
 }
 
@@ -41,7 +47,7 @@ mod std_support {
     impl From<io::Error> for Error {
         #[inline]
         fn from(_: io::Error) -> Error {
-            Error
+            Error(())
         }
     }
 
@@ -53,5 +59,5 @@ mod std_support {
 }
 
 pub fn unsupported() -> crate::Result {
-    Err(crate::Error)
+    Err(Error::unsupported())
 }

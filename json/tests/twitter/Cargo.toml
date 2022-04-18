@@ -18,8 +18,8 @@ path = "../../../derive"
 path = "../../"
 features = ["alloc"]
 
-[dependencies.sval-erased]
-path = "../../../erased"
+[dependencies.sval-dynamic]
+path = "../../../dynamic"
 
 [dependencies.serde]
 version = "1"

@@ -1,60 +1,7 @@
-use crate::{data::Position, Receiver, Result, Resume, Source, Value};
-
-pub fn nullable<'src, T: Source<'src>>(nullable: Option<T>) -> Nullable<T> {
-    Nullable::new(nullable)
-}
-
-pub struct Nullable<T> {
-    nullable: Option<T>,
-    position: Position,
-}
-
-impl<T> Nullable<T> {
-    pub fn new(nullable: Option<T>) -> Self {
-        Nullable {
-            nullable,
-            position: Position::Begin,
-        }
-    }
-}
-
-impl<'src, T: Source<'src>> Source<'src> for Nullable<T> {
-    fn stream_resume<'data, R: Receiver<'data>>(&mut self, mut receiver: R) -> Result<Resume>
-    where
-        'src: 'data,
-    {
-        loop {
-            match self.position {
-                Position::Begin => {
-                    receiver.nullable_begin()?;
-                    self.position = Position::Value;
-                }
-                Position::Value => match self.nullable {
-                    Some(ref mut v) => match v.stream_resume(&mut receiver)? {
-                        Resume::Continue => return Ok(Resume::Continue),
-                        Resume::Done => self.position = Position::End,
-                    },
-                    None => {
-                        receiver.null()?;
-                        self.position = Position::End;
-                    }
-                },
-                Position::End => {
-                    receiver.nullable_end()?;
-                    self.position = Position::Done;
-                }
-                Position::Done => return Ok(Resume::Done),
-            }
-        }
-    }
-
-    fn maybe_dynamic(&self) -> Option<bool> {
-        Some(false)
-    }
-}
+use crate::{Result, Stream, Value};
 
 impl<T: Value> Value for Option<T> {
-    fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> Result {
+    fn stream<'a, S: Stream<'a>>(&'a self, mut receiver: S) -> Result {
         match self {
             None => {
                 receiver.nullable_begin()?;
@@ -131,5 +78,32 @@ impl<T: Value> Value for Option<T> {
 
     fn to_binary(&self) -> Option<&[u8]> {
         self.as_ref().and_then(|value| value.to_binary())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn option_cast() {
+        assert_eq!(Some(1u8), Some(1u8).to_u8());
+        assert_eq!(Some(2u16), Some(2u16).to_u16());
+        assert_eq!(Some(3u32), Some(3u32).to_u32());
+        assert_eq!(Some(4u64), Some(4u64).to_u64());
+        assert_eq!(Some(42u128), Some(42u128).to_u128());
+
+        assert_eq!(Some(1i8), Some(1i8).to_i8());
+        assert_eq!(Some(2i16), Some(2i16).to_i16());
+        assert_eq!(Some(3i32), Some(3i32).to_i32());
+        assert_eq!(Some(4i64), Some(4i64).to_i64());
+        assert_eq!(Some(42i128), Some(42i128).to_i128());
+
+        assert_eq!(Some(3f32), Some(3f32).to_f32());
+        assert_eq!(Some(4f64), Some(4f64).to_f64());
+
+        assert_eq!(Some(true), Some(true).to_bool());
+
+        assert_eq!(Some("a string"), Some("a string").to_text());
     }
 }

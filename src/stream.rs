@@ -1,56 +1,56 @@
-use crate::{data, Result, Value};
+use crate::{Result, Tag, Value};
 
 /**
-An observer of structured data emitted by some source.
+An observer of structured data emitted by some value.
 
-# Using receivers
+# Using streams
 
-Receivers can be used to convert between structured data and a [text or binary format](text-and-binary-data).
-They can also be used to observe and transform data as it flows between sources.
+Streams can be used to convert between structured data and a [text or binary format](text-and-binary-data).
+They can also be used to observe and transform data as it flows between values.
 
 # Data model
 
-Receivers encode `sval`'s data model.
+Streams encode `sval`'s data model.
 
 ## Text and binary data
 
-Each receiver expects either text-based or binary-based data.
-This decision is communicated by [`Receiver::is_text_based`].
-Some [data types](#data-types) may be streamed differently depending on whether a receiver is text-based or binary-based.
+Each stream expects either text-based or binary-based data.
+This decision is communicated by [`Stream::is_text_based`].
+Some [data types](#data-types) may be streamed differently depending on whether a stream is text-based or binary-based.
 
-Receivers should only ever expect data encoded using either their text or binary representation.
+Streams should only ever expect data encoded using either their text or binary representation.
 This means `sval` effectively has two in-memory representations of its data model: one for text and one for binary.
 
 ## Data types
 
-Data types represent the distinct kinds of data that a receiver may choose to interpret or encode in a particular way.
-If two values have the same data type then a receiver is expected to handle them in compatible ways, even if their content is different.
-As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Receiver` may rely on their size when encoding them.
+Data types represent the distinct kinds of data that a stream may choose to interpret or encode in a particular way.
+If two values have the same data type then a stream is expected to handle them in compatible ways, even if their content is different.
+As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Stream` may rely on their size when encoding them.
 
 ### Basic data types
 
-The required methods on this trait represent the basic data model that all receivers need to understand.
+The required methods on this trait represent the basic data model that all streams need to understand.
 The basic data model includes:
 
-- **Unit**: the truthy value. See [`Receiver::unit`].
-- **Null**: the falsey value. See [`Receiver::null`].
-- **Text blobs**: UTF8 strings. See [`Receiver::text_begin`].
-- **Binary blobs**: arbitrary byte strings. See [`Receiver::binary_begin`].
-- **Maps**: homogeneous collection of key-value pairs, where keys and values are [values](#values). See [`Receiver::map_begin`].
-- **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Receiver::seq_begin`].
+- **Unit**: the truthy value. See [`Stream::unit`].
+- **Null**: the falsey value. See [`Stream::null`].
+- **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
+- **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
+- **Maps**: homogeneous collection of key-value pairs, where keys and values are [values](#values). See [`Stream::map_begin`].
+- **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Stream::seq_begin`].
 
 All other data types map onto this basic model somehow.
 
 ### Extended data types
 
-Receivers may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
+Streams may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
 The extended data model includes:
 
-- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Receiver::dynamic_begin`].
-- **Booleans**: the values `true` and `false`. See [`Receiver::bool`].
-- **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Receiver::int_begin`] and [integer encoding](#integer-encoding).
-- **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Receiver::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
-- **Decimal floating points**: These don't have a native Rust counterpart. See [`Receiver::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
+- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
+- **Booleans**: the values `true` and `false`. See [`Stream::bool`].
+- **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
+- **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
+- **Decimal floating points**: These don't have a native Rust counterpart. See [`Stream::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
 
 ## Values
 
@@ -60,8 +60,8 @@ The following are all examples of values.
 A single integer:
 
 ```
-# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-receiver.i32(42)?;
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.i32(42)?;
 # Ok(())
 # }
 ```
@@ -69,8 +69,8 @@ receiver.i32(42)?;
 A text blob, streamed as a contiguous borrowed value:
 
 ```
-# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-receiver.text("A blob of text")?;
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.text("A blob of text")?;
 # Ok(())
 # }
 ```
@@ -78,13 +78,13 @@ receiver.text("A blob of text")?;
 A text blob, streamed as a collection of fragments:
 
 ```
-# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-receiver.text_begin(Some(14))?;
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.text_begin(Some(14))?;
 
-receiver.text_fragment("A blob ")?;
-receiver.text_fragment("of text")?;
+stream.text_fragment("A blob ")?;
+stream.text_fragment("of text")?;
 
-receiver.text_end()?;
+stream.text_end()?;
 # Ok(())
 # }
 ```
@@ -92,46 +92,39 @@ receiver.text_end()?;
 A map of text-integer key-value pairs:
 
 ```
-# fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-receiver.map_begin(Some(2))?;
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.map_begin(Some(2))?;
 
-receiver.map_key("a")?;
-receiver.map_value(1)?;
+stream.map_key("a")?;
+stream.map_value(1)?;
 
-receiver.map_key("b")?;
-receiver.map_value(2)?;
+stream.map_key("b")?;
+stream.map_value(2)?;
 
-receiver.map_end()?;
+stream.map_end()?;
 # Ok(())
 # }
 ```
 
-A receiver should expect just one value over its lifetime.
+A stream should expect just one value over its lifetime.
 
 ## Validation
 
-Receivers aren't responsible for validating the correctness of the data they're given.
+Streams aren't responsible for validating the correctness of the data they're given.
 That's up to the caller to do.
 
 ## Forwarding
 
-If a receiver is forwarding to another it should make an effort to forward all methods accurately, unless it's specifically transforming the data in some way.
+If a stream is forwarding to another it should make an effort to forward all methods accurately, unless it's specifically transforming the data in some way.
 
 # Borrowing
 
-Receivers may accept text and binary data that's borrowed for a particular lifetime (`'data`).
-Borrowing is just an optimization though, and receivers also need to expect data that's short-lived.
-
-# Recursion and nesting
-
-Some methods on a receiver accept a source as a parameter that needs to be streamed then and there ([`Receiver::map_key`] for example).
-Methods that accept sources are just an optimization though, and receivers need to expect values will also be broken up into individual calls ([`Receiver::map_key_begin`] + [`Receiver::map_key_end`] for example).
-
-Receivers need to manage the state they need across calls themselves, rather than relying on the callstack to hold it.
+Streams may accept text and binary data that's borrowed for a particular lifetime (`'sval`).
+Borrowing is just an optimization though, and streams also need to expect data that's short-lived.
 */
-pub trait Receiver<'data> {
+pub trait Stream<'sval> {
     /**
-    Whether or not the receiver expects text or binary data.
+    Whether or not the stream expects text or binary data.
 
     This choice is expected to be constant over a single complete value.
     Callers are expected to check this method before choosing between the text or binary encoding for a particular [data type](#data-type).
@@ -147,16 +140,16 @@ pub trait Receiver<'data> {
     /**
     A borrowed value.
 
-    This is a niche method that simply calls back into the receiver, so shouldn't be called from [`Value::stream`].
+    This is a niche method that simply calls back into the stream, so shouldn't be called from [`Value::stream`].
     It can be useful for separating borrowed data out to avoid needing to buffer it.
     */
     #[cfg(not(test))]
-    fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result {
+    fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result {
         value.stream(self)
     }
 
     #[cfg(test)]
-    fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result;
+    fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result;
 
     /**
     A value that simply _is_.
@@ -168,8 +161,8 @@ pub trait Receiver<'data> {
     Stream a unit:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.unit()?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.unit()?;
     # Ok(())
     # }
     ```
@@ -178,8 +171,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    ().stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    ().stream(stream)?;
     # Ok(())
     # }
     ```
@@ -202,8 +195,8 @@ pub trait Receiver<'data> {
     Stream a null:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.null()?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.null()?;
     # Ok(())
     # }
     ```
@@ -214,7 +207,7 @@ pub trait Receiver<'data> {
     That means unit and null are not the same data type.
 
     Rust doesn't have a primitive type that maps to null.
-    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Receiver::nullable_begin`]) so that it
+    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Stream::nullable_begin`]) so that it
     has the same data type as its `Some` variant.
     That means that `Option::None` and null don't actually have the same data type.
     */
@@ -230,8 +223,8 @@ pub trait Receiver<'data> {
     Stream a boolean:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.bool(true)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.bool(true)?;
     # Ok(())
     # }
     ```
@@ -240,8 +233,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    true.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    true.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -253,13 +246,16 @@ pub trait Receiver<'data> {
 
     # Boolean encoding
 
-    Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Receiver::unit`]) and `false` will become null (see [`Receiver::null`]).
-    Also see [`Receiver::nullable_begin`] for more details.
+    Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Stream::unit`]) and `false` will become null (see [`Stream::null`]).
+    Also see [`Stream::nullable_begin`] for more details.
     */
     #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
-        // This streams as a nullable (Option<()>)
-        value.then(|| ()).stream(data::computed(self))
+        if value {
+            Some(()).stream(self)
+        } else {
+            None::<()>.stream(self)
+        }
     }
 
     #[cfg(test)]
@@ -269,48 +265,48 @@ pub trait Receiver<'data> {
     Begin a UTF8 text blob.
 
     Text blobs are one of the [basic data types](basic-data-types).
-    Most other data types map to text blobs for [text-based receivers](text-and-binary-data), but binary-based receivers may also stream text.
+    Most other data types map to text blobs for [text-based streams](text-and-binary-data), but binary-based streams may also stream text.
 
     The `num_bytes_hint` argument is a hint for how many bytes the text blob will contain.
     If a hint is given it should be as accurate as possible.
 
-    Also see [`Receiver::text`] as a simpler alternative that streams a borrowed string as a text blob.
+    Also see [`Stream::text`] as a simpler alternative that streams a borrowed string as a text blob.
 
     # Structure
 
-    After beginning a text blob, the receiver should only expect zero or more text fragments ([`Receiver::text_fragment`] or [`Receiver::text_fragment_computed`]) followed by a call to [`Receiver::text_end`]:
+    After beginning a text blob, the stream should only expect zero or more text fragments ([`Stream::text_fragment`] or [`Stream::text_fragment_computed`]) followed by a call to [`Stream::text_end`]:
 
     ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.text_begin(num_bytes_hint)?;
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.text_begin(num_bytes_hint)?;
 
     // 0 or more calls to any combination of text_fragment and text_fragment_computed
 
-    receiver.text_end()?;
+    stream.text_end()?;
     # Ok(())
     # }
     ```
 
     # Borrowing
 
-    Text blobs may contain data that's borrowed for the receiver's `'data` lifetime.
-    Fragments streamed using [`Receiver::text_fragment`] will be borrowed for `'data`.
-    Fragments streamed using [`Receiver::text_fragment_computed`] will be arbitrarily short-lived.
+    Text blobs may contain data that's borrowed for the stream's `'sval` lifetime.
+    Fragments streamed using [`Stream::text_fragment`] will be borrowed for `'sval`.
+    Fragments streamed using [`Stream::text_fragment_computed`] will be arbitrarily short-lived.
 
-    Callers should use data borrowed for `'data` wherever possible.
-    Borrowing is just an optimization though, so receivers need to cater to both cases.
+    Callers should use data borrowed for `'sval` wherever possible.
+    Borrowing is just an optimization though, so streams need to cater to both cases.
 
     # Examples
 
     Stream a text blob using a single string:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.text_begin(Some(14))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.text_begin(Some(14))?;
 
-    receiver.text_fragment("A blob of text")?;
+    stream.text_fragment("A blob of text")?;
 
-    receiver.text_end()?;
+    stream.text_end()?;
     # Ok(())
     # }
     ```
@@ -319,39 +315,29 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    "A blob of text".stream(receiver)?;
-    # Ok(())
-    # }
-    ```
-
-    Types that implement the standard `Display` trait can be streamed using the [`data::display`] utility:
-
-    ```
-    # use sval::Source;
-    # fn wrap<R: for<'a> sval::Receiver<'a>>(mut receiver: R) -> sval::Result {
-    sval::data::display(42).stream_to_end(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    "A blob of text".stream(stream)?;
     # Ok(())
     # }
     ```
 
     Text may need to be computed instead of just being available.
-    The [`Receiver::text_fragment_computed`] method can be used to stream text that doesn't satisfy the `'data` lifetime:
+    The [`Stream::text_fragment_computed`] method can be used to stream text that doesn't satisfy the `'sval` lifetime:
 
     ```
     # fn compute_text() -> String { Default::default() }
-    # fn wrap<'a>(borrowed_text: &'a str, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.text_begin(None)?;
+    # fn wrap<'a>(borrowed_text: &'a str, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.text_begin(None)?;
 
-    // This borrowed text lives for `'data`
-    receiver.text_fragment(borrowed_text)?;
+    // This borrowed text lives for `'sval`
+    stream.text_fragment(borrowed_text)?;
 
     // This owned text only lives until the end of our function call
     // So we need to stream it as a computed fragment
     let s: String = compute_text();
-    receiver.text_fragment_computed(&s)?;
+    stream.text_fragment_computed(&s)?;
 
-    receiver.text_end()?;
+    stream.text_end()?;
     # Ok(())
     # }
     ```
@@ -359,46 +345,46 @@ pub trait Receiver<'data> {
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
     /**
-    A UTF8 text fragment that's borrowed for `'data`.
+    A UTF8 text fragment that's borrowed for `'sval`.
 
-    See [`Receiver::text_begin`] for details on text fragments.
-    The [`Receiver::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
+    See [`Stream::text_begin`] for details on text fragments.
+    The [`Stream::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
     */
     #[cfg(not(test))]
-    fn text_fragment(&mut self, fragment: &'data str) -> Result {
+    fn text_fragment(&mut self, fragment: &'sval str) -> Result {
         self.text_fragment_computed(fragment)
     }
 
     #[cfg(test)]
-    fn text_fragment(&mut self, fragment: &'data str) -> Result;
+    fn text_fragment(&mut self, fragment: &'sval str) -> Result;
 
     /**
     A UTF8 text fragment that's borrowed for some arbitrarily short lifetime.
 
-    See [`Receiver::text_begin`] for details on text fragments.
-    The [`Receiver::text_fragment`] method is an alternative to this one that borrows for `'data`.
+    See [`Stream::text_begin`] for details on text fragments.
+    The [`Stream::text_fragment`] method is an alternative to this one that borrows for `'sval`.
     */
     fn text_fragment_computed(&mut self, fragment: &str) -> Result;
 
     /**
     End a UTF8 text blob.
 
-    See [`Receiver::text_begin`] for details on text fragments.
+    See [`Stream::text_begin`] for details on text fragments.
     */
     fn text_end(&mut self) -> Result;
 
     /**
-    Stream a text blob as a single, contiguous fragment borrowed for `'data`.
+    Stream a text blob as a single, contiguous fragment borrowed for `'sval`.
 
-    See [`Receiver::text_begin`] for details on text fragments.
+    See [`Stream::text_begin`] for details on text fragments.
 
     # Examples
 
     Stream a text blob using a single string:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.text("A blob of text")?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.text("A blob of text")?;
     # Ok(())
     # }
     ```
@@ -407,99 +393,89 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    "A blob of text".stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    "A blob of text".stream(stream)?;
     # Ok(())
     # }
     ```
     */
     #[cfg(not(test))]
-    fn text(&mut self, value: &'data str) -> Result {
+    fn text(&mut self, value: &'sval str) -> Result {
         self.text_begin(Some(value.len()))?;
         self.text_fragment(value)?;
         self.text_end()
     }
 
     #[cfg(test)]
-    fn text(&mut self, value: &'data str) -> Result;
+    fn text(&mut self, value: &'sval str) -> Result;
 
     /**
     Begin a binary blob.
 
     Binary blobs are one of the [basic data types](basic-data-types).
-    Most other data types map to binary blobs for [binary-based receivers](text-and-binary-data), but text-based receivers may also stream binary.
+    Most other data types map to binary blobs for [binary-based streams](text-and-binary-data), but text-based streams may also stream binary.
 
     The `num_bytes_hint` argument is a hint for how many bytes the binary blob will contain.
     If a hint is given it should be as accurate as possible.
 
-    Also see [`Receiver::binary`] as a simpler alternative that streams a borrowed slice as a binary blob.
+    Also see [`Stream::binary`] as a simpler alternative that streams a borrowed slice as a binary blob.
 
     # Structure
 
-    After beginning a binary blob, the receiver should only expect zero or more binary fragments ([`Receiver::binary_fragment`] or [`Receiver::binary_fragment_computed`]) followed by a call to [`Receiver::binary_end`]:
+    After beginning a binary blob, the stream should only expect zero or more binary fragments ([`Stream::binary_fragment`] or [`Stream::binary_fragment_computed`]) followed by a call to [`Stream::binary_end`]:
 
     ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.binary_begin(num_bytes_hint)?;
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binary_begin(num_bytes_hint)?;
 
     // 0 or more calls to any combination of binary_fragment and binary_fragment_computed
 
-    receiver.binary_end()?;
+    stream.binary_end()?;
     # Ok(())
     # }
     ```
 
     # Borrowing
 
-    Binary blobs may contain data that's borrowed for the receiver's `'data` lifetime.
-    Fragments streamed using [`Receiver::binary_fragment`] will be borrowed for `'data`.
-    Fragments streamed using [`Receiver::binary_fragment_computed`] will be arbitrarily short-lived.
+    Binary blobs may contain data that's borrowed for the stream's `'sval` lifetime.
+    Fragments streamed using [`Stream::binary_fragment`] will be borrowed for `'sval`.
+    Fragments streamed using [`Stream::binary_fragment_computed`] will be arbitrarily short-lived.
 
-    Callers should use data borrowed for `'data` wherever possible.
-    Borrowing is just an optimization though, so receivers need to cater to both cases.
+    Callers should use data borrowed for `'sval` wherever possible.
+    Borrowing is just an optimization though, so streams need to cater to both cases.
 
     # Examples
 
     Stream a binary blob using a single string:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.binary_begin(Some(5))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binary_begin(Some(5))?;
 
-    receiver.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
+    stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
 
-    receiver.binary_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::bytes`] utility will wrap one so that it will:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    sval::data::bytes(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    stream.binary_end()?;
     # Ok(())
     # }
     ```
 
     Binary may need to be computed instead of just being available.
-    The [`Receiver::binary_fragment_computed`] method can be used to stream binary that doesn't satisfy the `'data` lifetime:
+    The [`Stream::binary_fragment_computed`] method can be used to stream binary that doesn't satisfy the `'sval` lifetime:
 
     ```
     # fn compute_binary() -> Vec<u8> { Default::default() }
-    # fn wrap<'a>(borrowed_binary: &'a [u8], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.binary_begin(None)?;
+    # fn wrap<'a>(borrowed_binary: &'a [u8], mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binary_begin(None)?;
 
-    // This borrowed binary lives for `'data`
-    receiver.binary_fragment(borrowed_binary)?;
+    // This borrowed binary lives for `'sval`
+    stream.binary_fragment(borrowed_binary)?;
 
     // This owned binary only lives until the end of our function call
     // So we need to stream it as a computed fragment
     let s: Vec<u8> = compute_binary();
-    receiver.binary_fragment_computed(&s)?;
+    stream.binary_fragment_computed(&s)?;
 
-    receiver.binary_end()?;
+    stream.binary_end()?;
     # Ok(())
     # }
     ```
@@ -507,69 +483,59 @@ pub trait Receiver<'data> {
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
     /**
-    A binary fragment that's borrowed for `'data`.
+    A binary fragment that's borrowed for `'sval`.
 
-    See [`Receiver::binary_begin`] for details on binary fragments.
-    The [`Receiver::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'data`.
+    See [`Stream::binary_begin`] for details on binary fragments.
+    The [`Stream::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
     */
     #[cfg(not(test))]
-    fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
+    fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
 
     #[cfg(test)]
-    fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result;
+    fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result;
 
     /**
     A binary fragment that's borrowed for some arbitrarily short lifetime.
 
-    See [`Receiver::binary_begin`] for details on binary fragments.
-    The [`Receiver::binary_fragment`] method is an alternative to this one that borrows for `'data`.
+    See [`Stream::binary_begin`] for details on binary fragments.
+    The [`Stream::binary_fragment`] method is an alternative to this one that borrows for `'sval`.
     */
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result;
 
     /**
     End a binary blob.
 
-    See [`Receiver::binary_begin`] for details on binary fragments.
+    See [`Stream::binary_begin`] for details on binary fragments.
     */
     fn binary_end(&mut self) -> Result;
 
     /**
-    Stream a binary blob as a single, contiguous fragment borrowed for `'data`.
+    Stream a binary blob as a single, contiguous fragment borrowed for `'sval`.
 
-    See [`Receiver::binary_begin`] for details on binary fragments.
+    See [`Stream::binary_begin`] for details on binary fragments.
 
     # Examples
 
     Stream a binary blob using a single string:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
-    # Ok(())
-    # }
-    ```
-
-    Slices of bytes (`[u8]`) aren't directly streamed as binary, but the [`data::bytes`] utility will wrap one so that it will:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    sval::data::bytes(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00]).stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
     # Ok(())
     # }
     ```
     */
     #[cfg(not(test))]
-    fn binary(&mut self, value: &'data [u8]) -> Result {
+    fn binary(&mut self, value: &'sval [u8]) -> Result {
         self.binary_begin(Some(value.len()))?;
         self.binary_fragment(value)?;
         self.binary_end()
     }
 
     #[cfg(test)]
-    fn binary(&mut self, value: &'data [u8]) -> Result;
+    fn binary(&mut self, value: &'sval [u8]) -> Result;
 
     /**
     Stream an 8bit unsigned integer.
@@ -581,8 +547,8 @@ pub trait Receiver<'data> {
     Stream a `u8`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.u8(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.u8(42)?;
     # Ok(())
     # }
     ```
@@ -591,8 +557,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42u8.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42u8.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -605,11 +571,11 @@ pub trait Receiver<'data> {
     # `u8` encoding
 
     `u8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn u8(&mut self, value: u8) -> Result {
-        data::u8_int(value, self)
+        crate::data::number::u8_int(value, self)
     }
 
     #[cfg(test)]
@@ -625,8 +591,8 @@ pub trait Receiver<'data> {
     Stream a `u16`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.u16(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.u16(42)?;
     # Ok(())
     # }
     ```
@@ -635,8 +601,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42u16.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42u16.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -649,14 +615,14 @@ pub trait Receiver<'data> {
     # `u16` encoding
 
     `u16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn u16(&mut self, value: u16) -> Result {
         if let Ok(value) = value.try_into() {
             self.u8(value)
         } else {
-            data::u16_int(value, self)
+            crate::data::number::u16_int(value, self)
         }
     }
 
@@ -673,8 +639,8 @@ pub trait Receiver<'data> {
     Stream a `u32`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.u32(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.u32(42)?;
     # Ok(())
     # }
     ```
@@ -683,8 +649,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42u32.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42u32.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -697,14 +663,14 @@ pub trait Receiver<'data> {
     # `u32` encoding
 
     `u32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn u32(&mut self, value: u32) -> Result {
         if let Ok(value) = value.try_into() {
             self.u16(value)
         } else {
-            data::u32_int(value, self)
+            crate::data::number::u32_int(value, self)
         }
     }
 
@@ -721,8 +687,8 @@ pub trait Receiver<'data> {
     Stream a `u64`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.u64(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.u64(42)?;
     # Ok(())
     # }
     ```
@@ -731,8 +697,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42u64.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42u64.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -745,14 +711,14 @@ pub trait Receiver<'data> {
     # `u64` encoding
 
     `u64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn u64(&mut self, value: u64) -> Result {
         if let Ok(value) = value.try_into() {
             self.u32(value)
         } else {
-            data::u64_int(value, self)
+            crate::data::number::u64_int(value, self)
         }
     }
 
@@ -769,8 +735,8 @@ pub trait Receiver<'data> {
     Stream a `u128`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.u128(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.u128(42)?;
     # Ok(())
     # }
     ```
@@ -779,8 +745,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42u128.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42u128.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -793,14 +759,14 @@ pub trait Receiver<'data> {
     # `u128` encoding
 
     `u128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
             self.u64(value)
         } else {
-            data::u128_int(value, self)
+            crate::data::number::u128_int(value, self)
         }
     }
 
@@ -817,8 +783,8 @@ pub trait Receiver<'data> {
     Stream an `i8`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.i8(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.i8(42)?;
     # Ok(())
     # }
     ```
@@ -827,8 +793,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42i8.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42i8.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -841,11 +807,11 @@ pub trait Receiver<'data> {
     # `i8` encoding
 
     `i8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn i8(&mut self, value: i8) -> Result {
-        data::i8_int(value, self)
+        crate::data::number::i8_int(value, self)
     }
 
     #[cfg(test)]
@@ -861,8 +827,8 @@ pub trait Receiver<'data> {
     Stream an `i16`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.i16(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.i16(42)?;
     # Ok(())
     # }
     ```
@@ -871,8 +837,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42i16.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42i16.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -885,14 +851,14 @@ pub trait Receiver<'data> {
     # `i16` encoding
 
     `i16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn i16(&mut self, value: i16) -> Result {
         if let Ok(value) = value.try_into() {
             self.i8(value)
         } else {
-            data::i16_int(value, self)
+            crate::data::number::i16_int(value, self)
         }
     }
 
@@ -909,8 +875,8 @@ pub trait Receiver<'data> {
     Stream an `i32`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.i32(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.i32(42)?;
     # Ok(())
     # }
     ```
@@ -919,8 +885,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42i32.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42i32.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -933,14 +899,14 @@ pub trait Receiver<'data> {
     # `i32` encoding
 
     `i32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn i32(&mut self, value: i32) -> Result {
         if let Ok(value) = value.try_into() {
             self.i16(value)
         } else {
-            data::i32_int(value, self)
+            crate::data::number::i32_int(value, self)
         }
     }
 
@@ -957,8 +923,8 @@ pub trait Receiver<'data> {
     Stream an `i64`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.i64(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.i64(42)?;
     # Ok(())
     # }
     ```
@@ -967,8 +933,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42i64.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42i64.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -981,14 +947,14 @@ pub trait Receiver<'data> {
     # `i64` encoding
 
     `i64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn i64(&mut self, value: i64) -> Result {
         if let Ok(value) = value.try_into() {
             self.i32(value)
         } else {
-            data::i64_int(value, self)
+            crate::data::number::i64_int(value, self)
         }
     }
 
@@ -1005,8 +971,8 @@ pub trait Receiver<'data> {
     Stream an `i128`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.i128(42)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.i128(42)?;
     # Ok(())
     # }
     ```
@@ -1015,8 +981,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    42i128.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    42i128.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -1029,14 +995,14 @@ pub trait Receiver<'data> {
     # `i128` encoding
 
     `i128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Receiver::int_begin`] for more details.
+    See [`Stream::int_begin`] for more details.
     */
     #[cfg(not(test))]
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
             self.i64(value)
         } else {
-            data::i128_int(value, self)
+            crate::data::number::i128_int(value, self)
         }
     }
 
@@ -1053,8 +1019,8 @@ pub trait Receiver<'data> {
     Stream a `f32`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.f32(4.2)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.f32(4.2)?;
     # Ok(())
     # }
     ```
@@ -1063,8 +1029,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    4.2f32.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    4.2f32.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -1077,11 +1043,11 @@ pub trait Receiver<'data> {
     # `f32` encoding
 
     `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Receiver::binfloat_begin`] for more details.
+    See [`Stream::binfloat_begin`] for more details.
     */
     #[cfg(not(test))]
     fn f32(&mut self, value: f32) -> Result {
-        data::f32_number(value, self)
+        crate::data::number::f32_number(value, self)
     }
 
     #[cfg(test)]
@@ -1097,8 +1063,8 @@ pub trait Receiver<'data> {
     Stream a `f64`:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.f64(4.2)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.f64(4.2)?;
     # Ok(())
     # }
     ```
@@ -1107,8 +1073,8 @@ pub trait Receiver<'data> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    4.2f64.stream(receiver)?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    4.2f64.stream(stream)?;
     # Ok(())
     # }
     ```
@@ -1121,11 +1087,11 @@ pub trait Receiver<'data> {
     # `f64` encoding
 
     `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Receiver::binfloat_begin`] for more details.
+    See [`Stream::binfloat_begin`] for more details.
     */
     #[cfg(not(test))]
     fn f64(&mut self, value: f64) -> Result {
-        data::f64_number(value, self)
+        crate::data::number::f64_number(value, self)
     }
 
     #[cfg(test)]
@@ -1140,32 +1106,32 @@ pub trait Receiver<'data> {
     Keys aren't required to be strings.
 
     The `num_entries_hint` parameter is an optional hint for the number of pairs the map will contain.
-    If a hint is given it should be accurate, but receivers can't rely on the correctness of any hints.
+    If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
 
     # Structure
 
-    Maps must contain zero or more pairs of keys and values, followed by a call to [`Receiver::map_end`].
+    Maps must contain zero or more pairs of keys and values, followed by a call to [`Stream::map_end`].
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(key_values: &'a [(impl sval::Value, impl sval::Value)], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.map_begin(None)?;
+    # fn wrap<'a>(key_values: &'a [(impl sval::Value, impl sval::Value)], mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.map_begin(None)?;
 
     // Maps contain 0 or more key-value pairs
     for (key, value) in key_values {
         // Keys are a value surrounded by `map_key_begin` and `map_key_end`
-        receiver.map_key_begin()?;
-        receiver.value(key)?;
-        receiver.map_key_end()?;
+        stream.map_key_begin()?;
+        stream.value(key)?;
+        stream.map_key_end()?;
 
         // Values are a value surrounded by `map_value_begin` and `map_value_end`
         // Values must follow keys and all keys must be followed by a value
-        receiver.map_value_begin()?;
-        receiver.value(value)?;
-        receiver.map_value_end()?;
+        stream.map_value_begin()?;
+        stream.value(value)?;
+        stream.map_value_end()?;
     }
 
-    receiver.map_end()?;
+    stream.map_end()?;
     # Ok(())
     # }
     ```
@@ -1175,35 +1141,59 @@ pub trait Receiver<'data> {
     Stream some key-value pairs as a map:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.map_begin(Some(2))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.map_begin(Some(2))?;
 
-    receiver.map_key("a")?;
-    receiver.map_value(true)?;
+    stream.map_key_begin()?;
+    stream.text("id")?;
+    stream.map_key_end()?;
 
-    receiver.map_key("b")?;
-    receiver.map_value(false)?;
+    stream.map_value_begin()?;
+    stream.text("An id")?;
+    stream.map_value_end()?;
 
-    receiver.map_end()?;
+    stream.map_key_begin()?;
+    stream.text("title")?;
+    stream.map_key_end()?;
+
+    stream.map_value_begin()?;
+    stream.text("A document")?;
+    stream.map_value_end()?;
+
+    stream.map_end()?;
     # Ok(())
     # }
     ```
 
     Maps can contain heterogeneous data if keys and values are dynamic.
-    See [`Receiver::dynamic_begin`] for more details.
+    See [`Stream::dynamic_begin`] for more details.
     The following example is a map with string keys and dynamic values:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.map_begin(Some(2))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.map_begin(Some(2))?;
 
-    receiver.map_key("id")?;
-    receiver.map_value(sval::data::dynamic(&42))?;
+    stream.map_key_begin()?;
+    stream.text("id")?;
+    stream.map_key_end()?;
 
-    receiver.map_key("title")?;
-    receiver.map_value(sval::data::dynamic("A document"))?;
+    stream.map_value_begin()?;
+    stream.dynamic_begin()?;
+    stream.i32(42)?;
+    stream.dynamic_end()?;
+    stream.map_value_end()?;
 
-    receiver.map_end()?;
+    stream.map_key_begin()?;
+    stream.text("title")?;
+    stream.map_key_end()?;
+
+    stream.map_value_begin()?;
+    stream.dynamic_begin()?;
+    stream.text("A document")?;
+    stream.dynamic_end()?;
+    stream.map_value_end()?;
+
+    stream.map_end()?;
     # Ok(())
     # }
     ```
@@ -1215,14 +1205,14 @@ pub trait Receiver<'data> {
     # Maps and structs
 
     Types defined as Rust `struct`s with named fields can be more semantically represented as "struct maps".
-    See the [`Receiver::struct_map_begin`] method for details.
+    See the [`Stream::struct_map_begin`] method for details.
     */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     /**
     Begin a map key.
 
-    See [`Receiver::map_begin`] for more details.
+    See [`Stream::map_begin`] for more details.
 
     # Data type
 
@@ -1238,7 +1228,7 @@ pub trait Receiver<'data> {
     /**
     Begin a map value.
 
-    See [`Receiver::map_begin`] for more details.
+    See [`Stream::map_begin`] for more details.
 
     # Data type
 
@@ -1264,26 +1254,26 @@ pub trait Receiver<'data> {
     The [data type](data-types) of all values must be the same.
 
     The `num_entries_hint` parameter is an optional hint for the number of values the sequence will contain.
-    If a hint is given it should be accurate, but receivers can't rely on the correctness of any hints.
+    If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
 
     # Structure
 
-    Sequences must contain zero or more values, followed by a call to [`Receiver::seq_end`].
+    Sequences must contain zero or more values, followed by a call to [`Stream::seq_end`].
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(values: &'a [impl sval::Value], mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.seq_begin(None)?;
+    # fn wrap<'a>(values: &'a [impl sval::Value], mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.seq_begin(None)?;
 
     // Maps contain 0 or more key-value pairs
     for value in values {
         // Values are a value surrounded by `seq_value_begin` and `seq_value_end`
-        receiver.seq_value_begin()?;
-        receiver.value(value)?;
-        receiver.seq_value_end()?;
+        stream.seq_value_begin()?;
+        stream.value(value)?;
+        stream.seq_value_end()?;
     }
 
-    receiver.seq_end()?;
+    stream.seq_end()?;
     # Ok(())
     # }
     ```
@@ -1293,29 +1283,43 @@ pub trait Receiver<'data> {
     Stream some values as a sequence:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.seq_begin(Some(2))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.seq_begin(Some(2))?;
 
-    receiver.seq_value(true)?;
-    receiver.seq_value(false)?;
+    stream.seq_value_begin()?;
+    stream.i32(1)?;
+    stream.seq_value_end()?;
 
-    receiver.seq_end()?;
+    stream.seq_value_begin()?;
+    stream.i32(2)?;
+    stream.seq_value_end()?;
+
+    stream.seq_end()?;
     # Ok(())
     # }
     ```
 
     Maps can contain heterogeneous data if keys and values are dynamic.
-    See [`Receiver::dynamic_begin`] for more details.
+    See [`Stream::dynamic_begin`] for more details.
     The following example is a sequence with dynamic values:
 
     ```
-    # fn wrap<'a>(mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.seq_begin(Some(2))?;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.seq_begin(Some(2))?;
 
-    receiver.seq_value(sval::data::dynamic(&42))?;
-    receiver.seq_value(sval::data::dynamic("A document"))?;
+    stream.seq_value_begin()?;
+    stream.dynamic_begin()?;
+    stream.i32(1)?;
+    stream.dynamic_end()?;
+    stream.seq_value_end()?;
 
-    receiver.seq_end()?;
+    stream.seq_value_begin()?;
+    stream.dynamic_begin()?;
+    stream.text("A value")?;
+    stream.dynamic_end()?;
+    stream.seq_value_end()?;
+
+    stream.seq_end()?;
     # Ok(())
     # }
     ```
@@ -1327,14 +1331,14 @@ pub trait Receiver<'data> {
     # Sequences and structs
 
     Types defined as Rust `struct`s with unnamed fields can be more semantically represented as "struct sequences".
-    See the [`Receiver::struct_seq_begin`] method for details.
+    See the [`Stream::struct_seq_begin`] method for details.
     */
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
     /**
     Begin a sequence value.
 
-    See [`Receiver::seq_begin`] for more details.
+    See [`Stream::seq_begin`] for more details.
 
     # Data type
 
@@ -1385,14 +1389,14 @@ pub trait Receiver<'data> {
     fn fixed_size_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+    fn tagged_begin(&mut self, tag: Tag) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
     #[cfg(test)]
-    fn tagged_begin(&mut self, tag: data::Tag) -> Result;
+    fn tagged_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn tagged_end(&mut self) -> Result {
@@ -1403,12 +1407,12 @@ pub trait Receiver<'data> {
     fn tagged_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn constant_begin(&mut self, tag: data::Tag) -> Result {
+    fn constant_begin(&mut self, tag: Tag) -> Result {
         self.tagged_begin(tag)
     }
 
     #[cfg(test)]
-    fn constant_begin(&mut self, tag: data::Tag) -> Result;
+    fn constant_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn constant_end(&mut self) -> Result {
@@ -1419,23 +1423,23 @@ pub trait Receiver<'data> {
     fn constant_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+    fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result;
+    fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
+    fn struct_map_key_begin(&mut self, tag: Tag) -> Result {
         self.map_key_begin()?;
         self.constant_begin(tag)?;
         self.dynamic_begin()
     }
 
     #[cfg(test)]
-    fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result;
+    fn struct_map_key_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn struct_map_key_end(&mut self) -> Result {
@@ -1448,7 +1452,7 @@ pub trait Receiver<'data> {
     fn struct_map_key_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
+    fn struct_map_value_begin(&mut self, tag: Tag) -> Result {
         let _ = tag;
 
         self.map_value_begin()?;
@@ -1456,7 +1460,7 @@ pub trait Receiver<'data> {
     }
 
     #[cfg(test)]
-    fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result;
+    fn struct_map_value_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn struct_map_value_end(&mut self) -> Result {
@@ -1476,16 +1480,16 @@ pub trait Receiver<'data> {
     fn struct_map_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+    fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result;
+    fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
+    fn struct_seq_value_begin(&mut self, tag: Tag) -> Result {
         let _ = tag;
 
         self.seq_value_begin()?;
@@ -1493,7 +1497,7 @@ pub trait Receiver<'data> {
     }
 
     #[cfg(test)]
-    fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result;
+    fn struct_seq_value_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn struct_seq_value_end(&mut self) -> Result {
@@ -1513,13 +1517,13 @@ pub trait Receiver<'data> {
     fn struct_seq_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn enum_begin(&mut self, tag: data::Tag) -> Result {
+    fn enum_begin(&mut self, tag: Tag) -> Result {
         self.tagged_begin(tag)?;
         self.dynamic_begin()
     }
 
     #[cfg(test)]
-    fn enum_begin(&mut self, tag: data::Tag) -> Result;
+    fn enum_begin(&mut self, tag: Tag) -> Result;
 
     #[cfg(not(test))]
     fn enum_end(&mut self) -> Result {
@@ -1555,16 +1559,16 @@ pub trait Receiver<'data> {
     A call to `int_begin` must be followed by a call to `int_end` after the integer value:
 
     ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.int_begin()?;
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.int_begin()?;
 
-    if receiver.is_text_based() {
-        receiver.text("754")?;
+    if stream.is_text_based() {
+        stream.text("754")?;
     } else {
-        receiver.binary(&[0b11110010, 0b00000010])?;
+        stream.binary(&[0b11110010, 0b00000010])?;
     }
 
-    receiver.int_end()?;
+    stream.int_end()?;
     # Ok(())
     # }
     ```
@@ -1573,17 +1577,17 @@ pub trait Receiver<'data> {
 
     Each kind of integer is considered a different data type.
     So `u8` is a different type to `i8` and `u8` is a different type to `u16`.
-    All arbitarily sized integers (those streamed using [`Receiver::int_begin`]) are considered the same type.
+    All arbitarily sized integers (those streamed using [`Stream::int_begin`]) are considered the same type.
 
     `i8`-`i128`, `u8`-`u128`, and arbitrary-sized integers use the same text-based or binary-based encoding described below.
 
-    For [text-based receivers](#text-and-binary-data), integers map to text blobs representing a base10 number with the following grammar:
+    For [text-based streams](#text-and-binary-data), integers map to text blobs representing a base10 number with the following grammar:
 
     ```text
     -?[0-9]+
     ```
 
-    For [binary-based receivers](#binary-based-receivers), integers map to signed, little-endian, two's-compliment bytes.
+    For [binary-based streams](#binary-based-streams), integers map to signed, little-endian, two's-compliment bytes.
 
     The following table shows some example integers along with their text and binary encodings.
     The binary encoding uses the smallest possible representation, even though that's not a requirement.
@@ -1605,7 +1609,7 @@ pub trait Receiver<'data> {
     /**
     End an arbitrary sized integer.
 
-    See [`Receiver::int_begin`] for details on arbitrary sized integers.
+    See [`Stream::int_begin`] for details on arbitrary sized integers.
     */
     #[cfg(not(test))]
     fn int_end(&mut self) -> Result {
@@ -1624,16 +1628,16 @@ pub trait Receiver<'data> {
     A call to `binfloat_begin` must be followed by a call to `binfloat_end` after the floating point value:
 
     ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.binfloat_begin()?;
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binfloat_begin()?;
 
-    if receiver.is_text_based() {
-        receiver.text("1333.754")?;
+    if stream.is_text_based() {
+        stream.text("1333.754")?;
     } else {
-        receiver.binary(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
+        stream.binary(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
     }
 
-    receiver.binfloat_end()?;
+    stream.binfloat_end()?;
     # Ok(())
     # }
     ```
@@ -1641,17 +1645,17 @@ pub trait Receiver<'data> {
     # Binary floating point encoding
 
     `f32` is a different type to `f64`.
-    All arbitrarily sized binary floating points (those streamed using [`Receiver::binfloat_begin`]) are considered the same type, regardless of size.
+    All arbitrarily sized binary floating points (those streamed using [`Stream::binfloat_begin`]) are considered the same type, regardless of size.
 
     `f32`, `f64`, and arbitrarily-sized floating points use the same text-based or binary-based encoding described below.
 
-    For [text-based receivers](#text-and-binary-data), binary floating points map to text blobs representing a base10 number with the following case-insensitive grammar:
+    For [text-based streams](#text-and-binary-data), binary floating points map to text blobs representing a base10 number with the following case-insensitive grammar:
 
     ```text
     inf|[-+]?(nan|[0-9]+(\.[0-9]+)?)
     ```
 
-    For [binary-based receivers](#text-and-binary-data), binary floating points map to little-endian IEEE754 interchange binary floating points.
+    For [binary-based streams](#text-and-binary-data), binary floating points map to little-endian IEEE754 interchange binary floating points.
 
     The following table shows some example binary floating points along with their text and binary encodings.
     The binary encoding uses the smallest possible representation, even though that's not a requirement.
@@ -1677,7 +1681,7 @@ pub trait Receiver<'data> {
     /**
     End an arbitrary sized binary floating point number.
 
-    See [`Receiver::binfloat_begin`] for details on arbitrary sized binary floating points.
+    See [`Stream::binfloat_begin`] for details on arbitrary sized binary floating points.
     */
     #[cfg(not(test))]
     fn binfloat_end(&mut self) -> Result {
@@ -1696,16 +1700,16 @@ pub trait Receiver<'data> {
     A call to `decfloat_begin` must be followed by a call to `decfloat_end` after the floating point value:
 
     ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut receiver: impl sval::Receiver<'a>) -> sval::Result {
-    receiver.decfloat_begin()?;
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.decfloat_begin()?;
 
-    if receiver.is_text_based() {
-        receiver.text("1333.754")?;
+    if stream.is_text_based() {
+        stream.text("1333.754")?;
     } else {
-        receiver.binary(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
+        stream.binary(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
     }
 
-    receiver.decfloat_end()?;
+    stream.decfloat_end()?;
     # Ok(())
     # }
     ```
@@ -1713,11 +1717,11 @@ pub trait Receiver<'data> {
     # Decimal floating point encoding
 
     Rust doesn't have any native decimal floating point types.
-    All arbitrarily sized decimal floating points (those streamed using [`Receiver::decfloat_begin`]) are considered the same type.
+    All arbitrarily sized decimal floating points (those streamed using [`Stream::decfloat_begin`]) are considered the same type.
 
-    For [text-based receivers](#text-and-binary-data), decimal floating points use the same encoding as [binary floating points](#binary-floating-point-encoding).
+    For [text-based streams](#text-and-binary-data), decimal floating points use the same encoding as [binary floating points](#binary-floating-point-encoding).
 
-    For [binary-based receivers](#text-and-binary-data), decimal floating points map to little-endian IEEE754 interchange decimal floating points using the [densely-packed-decimal](https://en.wikipedia.org/wiki/Densely_packed_decimal) representation.
+    For [binary-based streams](#text-and-binary-data), decimal floating points map to little-endian IEEE754 interchange decimal floating points using the [densely-packed-decimal](https://en.wikipedia.org/wiki/Densely_packed_decimal) representation.
 
     | Number            | Text encoding | Binary encoding                       |
     | ----------------- | ------------: | ------------------------------------: |
@@ -1740,7 +1744,7 @@ pub trait Receiver<'data> {
     /**
     End an arbitrary sized decimal floating point number.
 
-    See [`Receiver::decfloat_begin`] for details on arbitrary sized decimal floating points.
+    See [`Stream::decfloat_begin`] for details on arbitrary sized decimal floating points.
      */
     #[cfg(not(test))]
     fn decfloat_end(&mut self) -> Result {
@@ -1751,7 +1755,7 @@ pub trait Receiver<'data> {
     fn decfloat_end(&mut self) -> Result;
 }
 
-macro_rules! impl_receiver_forward {
+macro_rules! impl_stream_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
             fn is_text_based(&self) -> bool {
@@ -1759,7 +1763,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).is_text_based()
             }
 
-            fn value<V: Value + ?Sized + 'data>(&mut self, value: &'data V) -> Result {
+            fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result {
                 let $bind = self;
                 ($($forward)*).value(value)
             }
@@ -1849,7 +1853,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).bool(value)
             }
 
-            fn text(&mut self, value: &'data str) -> Result {
+            fn text(&mut self, value: &'sval str) -> Result {
                 let $bind = self;
                 ($($forward)*).text(value)
             }
@@ -1864,7 +1868,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).text_end()
             }
 
-            fn text_fragment(&mut self, fragment: &'data str) -> Result {
+            fn text_fragment(&mut self, fragment: &'sval str) -> Result {
                 let $bind = self;
                 ($($forward)*).text_fragment(fragment)
             }
@@ -1874,7 +1878,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).text_fragment_computed(fragment)
             }
 
-            fn binary(&mut self, value: &'data [u8]) -> Result {
+            fn binary(&mut self, value: &'sval [u8]) -> Result {
                 let $bind = self;
                 ($($forward)*).binary(value)
             }
@@ -1889,7 +1893,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).binary_end()
             }
 
-            fn binary_fragment(&mut self, fragment: &'data [u8]) -> Result {
+            fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
                 let $bind = self;
                 ($($forward)*).binary_fragment(fragment)
             }
@@ -1949,7 +1953,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).seq_value_end()
             }
 
-            fn tagged_begin(&mut self, tag: data::Tag) -> Result {
+            fn tagged_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_begin(tag)
             }
@@ -1959,7 +1963,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).tagged_end()
             }
 
-            fn constant_begin(&mut self, tag: data::Tag) -> Result {
+            fn constant_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).constant_begin(tag)
             }
@@ -1969,12 +1973,12 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).constant_end()
             }
 
-            fn struct_map_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+            fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_map_begin(tag, num_entries_hint)
             }
 
-            fn struct_map_key_begin(&mut self, tag: data::Tag) -> Result {
+            fn struct_map_key_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_map_key_begin(tag)
             }
@@ -1984,7 +1988,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).struct_map_key_end()
             }
 
-            fn struct_map_value_begin(&mut self, tag: data::Tag) -> Result {
+            fn struct_map_value_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_map_value_begin(tag)
             }
@@ -1999,12 +2003,12 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).struct_map_end()
             }
 
-            fn struct_seq_begin(&mut self, tag: data::Tag, num_entries_hint: Option<usize>) -> Result {
+            fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_seq_begin(tag, num_entries_hint)
             }
 
-            fn struct_seq_value_begin(&mut self, tag: data::Tag) -> Result {
+            fn struct_seq_value_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_seq_value_begin(tag)
             }
@@ -2019,7 +2023,7 @@ macro_rules! impl_receiver_forward {
                 ($($forward)*).struct_seq_end()
             }
 
-            fn enum_begin(&mut self, tag: data::Tag) -> Result {
+            fn enum_begin(&mut self, tag: Tag) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_begin(tag)
             }
@@ -2082,277 +2086,277 @@ macro_rules! impl_receiver_forward {
     };
 }
 
-// Simplifies the default receivers for extracting concrete types from values
-pub(crate) trait DefaultUnsupported<'data> {
-    fn as_receiver(&mut self) -> AsReceiver<&mut Self> {
-        AsReceiver(self)
+// Simplifies the default streams for extracting concrete types from values
+pub(crate) trait DefaultUnsupported<'sval> {
+    fn as_stream(&mut self) -> AsStream<&mut Self> {
+        AsStream(self)
     }
 
     fn is_text_based(&self) -> bool {
         false
     }
 
-    fn value<V: Value + ?Sized + 'data>(&mut self, v: &'data V) -> Result {
-        v.stream(self.as_receiver())
+    fn value<V: Value + ?Sized + 'sval>(&mut self, v: &'sval V) -> Result {
+        v.stream(self.as_stream())
     }
 
     fn dynamic_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn dynamic_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn unit(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn null(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn u8(&mut self, _: u8) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn u16(&mut self, _: u16) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn u32(&mut self, _: u32) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn u64(&mut self, _: u64) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn u128(&mut self, _: u128) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn i8(&mut self, _: i8) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn i16(&mut self, _: i16) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn i32(&mut self, _: i32) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn i64(&mut self, _: i64) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn i128(&mut self, _: i128) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn f32(&mut self, _: f32) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn f64(&mut self, _: f64) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn bool(&mut self, _: bool) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn text(&mut self, _: &'data str) -> Result {
-        crate::error::unsupported()
+    fn text(&mut self, _: &'sval str) -> Result {
+        crate::result::unsupported()
     }
 
     fn text_begin(&mut self, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn text_fragment(&mut self, _: &'data str) -> Result {
-        crate::error::unsupported()
+    fn text_fragment(&mut self, _: &'sval str) -> Result {
+        crate::result::unsupported()
     }
 
     fn text_fragment_computed(&mut self, _: &str) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn text_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn binary(&mut self, _: &'data [u8]) -> Result {
-        crate::error::unsupported()
+    fn binary(&mut self, _: &'sval [u8]) -> Result {
+        crate::result::unsupported()
     }
 
     fn binary_begin(&mut self, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn binary_fragment(&mut self, _: &'data [u8]) -> Result {
-        crate::error::unsupported()
+    fn binary_fragment(&mut self, _: &'sval [u8]) -> Result {
+        crate::result::unsupported()
     }
 
     fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn binary_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_key_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_key_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_value_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_value_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn map_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn seq_value_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn seq_value_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn seq_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn tagged_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn tagged_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn tagged_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn constant_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn constant_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn constant_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn struct_map_begin(&mut self, _: data::Tag, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+    fn struct_map_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+        crate::result::unsupported()
     }
 
-    fn struct_map_key_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn struct_map_key_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn struct_map_key_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn struct_map_value_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn struct_map_value_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn struct_map_value_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn struct_map_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn struct_seq_begin(&mut self, _: data::Tag, _: Option<usize>) -> Result {
-        crate::error::unsupported()
+    fn struct_seq_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+        crate::result::unsupported()
     }
 
-    fn struct_seq_value_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn struct_seq_value_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn struct_seq_value_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn struct_seq_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
-    fn enum_begin(&mut self, _: data::Tag) -> Result {
-        crate::error::unsupported()
+    fn enum_begin(&mut self, _: Tag) -> Result {
+        crate::result::unsupported()
     }
 
     fn enum_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn nullable_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn nullable_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn fixed_size_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn fixed_size_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn int_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn int_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn binfloat_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn binfloat_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn decfloat_begin(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 
     fn decfloat_end(&mut self) -> Result {
-        crate::error::unsupported()
+        crate::result::unsupported()
     }
 }
 
-pub(crate) struct AsReceiver<T: ?Sized>(T);
+pub(crate) struct AsStream<T: ?Sized>(T);
 
-impl_receiver_forward!({ impl<'data, 'a, R: ?Sized> Receiver<'data> for &'a mut R where R: Receiver<'data> } => x => { **x });
-impl_receiver_forward!({ impl<'data, 'a, R: ?Sized> Receiver<'data> for AsReceiver<&'a mut R> where R: DefaultUnsupported<'data> } => x => { x.0 });
+impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for &'a mut S where S: Stream<'sval> } => x => { **x });
+impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for AsStream<&'a mut S> where S: DefaultUnsupported<'sval> } => x => { x.0 });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {
@@ -2360,5 +2364,5 @@ mod alloc_support {
 
     use crate::std::boxed::Box;
 
-    impl_receiver_forward!({ impl<'data, 'a, R: ?Sized> Receiver<'data> for Box<R> where R: Receiver<'data> } => x => { **x });
+    impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for Box<S> where S: Stream<'sval> } => x => { **x });
 }

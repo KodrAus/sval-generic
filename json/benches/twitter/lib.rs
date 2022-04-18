@@ -37,11 +37,11 @@ fn primitive_sval(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn primitive_erased_sval(b: &mut test::Bencher) {
-    use sval_erased as erased;
+fn primitive_sval_dynamic(b: &mut test::Bencher) {
+    use sval_dynamic as dynamic;
 
     let s = 42;
-    let s = &s as &dyn erased::Value;
+    let s = &s as &dyn dynamic::Value;
 
     b.iter(|| sval_json::to_string(s).unwrap());
 }
@@ -78,11 +78,11 @@ fn twitter_sval(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn twitter_erased_sval(b: &mut test::Bencher) {
-    use sval_erased as erased;
+fn twitter_sval_dynamic(b: &mut test::Bencher) {
+    use sval_dynamic as dynamic;
 
     let s = input_struct();
-    let s = &s as &dyn erased::Value;
+    let s = &s as &dyn dynamic::Value;
 
     b.iter(|| sval_json::to_string(&s).unwrap());
 }
@@ -114,17 +114,17 @@ fn twitter_scan_sval(b: &mut test::Bencher) {
     let json = input_json();
 
     b.iter(|| {
-        use sval::Source;
+        use sval::Value;
 
-        let mut json = sval_json::JsonSliceReader::new(&json);
+        let json = sval_json::JsonSlice::new(&json);
 
-        json.stream_to_end(EmptyReceiver).unwrap()
+        json.stream(EmptyStream).unwrap()
     });
 }
 
-struct EmptyReceiver;
+struct EmptyStream;
 
-impl<'a> sval::Receiver<'a> for EmptyReceiver {
+impl<'a> sval::Stream<'a> for EmptyStream {
     #[inline(never)]
     fn dynamic_begin(&mut self) -> sval::Result {
         Ok(())

@@ -14,10 +14,12 @@ impl JsonSlice {
 }
 
 impl sval::Value for JsonSlice {
-    fn stream<'a, R: sval::Receiver<'a>>(&'a self, receiver: R) -> sval::Result {
-        use sval::Source;
+    fn stream<'a, R: sval::Stream<'a>>(&'a self, mut stream: R) -> sval::Result {
+        let mut reader = JsonSliceReader::new(&self.0);
 
-        JsonSliceReader::new(&self.0).stream_to_end(receiver)
+        while reader.stream_resume(&mut stream)? {}
+
+        Ok(())
     }
 
     #[inline]
@@ -45,10 +47,10 @@ impl<'a> JsonSliceReader<'a> {
         }
     }
 
-    fn map_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
+    fn map_begin<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result {
         match self.position {
-            Position::SeqEmpty | Position::SeqElem => receiver.seq_value_begin()?,
-            Position::MapValue => receiver.map_value_begin()?,
+            Position::SeqEmpty | Position::SeqElem => stream.seq_value_begin()?,
+            Position::MapValue => stream.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
         }
@@ -56,27 +58,27 @@ impl<'a> JsonSliceReader<'a> {
         self.stack.push_map()?;
         self.position = Position::MapEmpty;
 
-        receiver.map_begin(None)
+        stream.map_begin(None)
     }
 
-    fn map_key_end<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
+    fn map_key_end<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result {
         if !matches!(self.position, Position::MapKey) {
             todo!();
         }
 
         self.position = Position::MapValue;
 
-        receiver.map_key_end()
+        stream.map_key_end()
     }
 
-    fn map_end<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result
+    fn map_end<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result
     where
         'a: 'b,
     {
         match self.position {
             Position::MapEmpty => (),
             Position::MapValue => {
-                receiver.map_value_end()?;
+                stream.map_value_end()?;
             }
             _ => todo!(),
         }
@@ -84,16 +86,16 @@ impl<'a> JsonSliceReader<'a> {
         self.stack.pop_map()?;
         self.position = self.stack.position();
 
-        receiver.map_end()
+        stream.map_end()
     }
 
-    fn seq_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result
+    fn seq_begin<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result
     where
         'a: 'b,
     {
         match self.position {
-            Position::SeqEmpty | Position::SeqElem => receiver.seq_value_begin()?,
-            Position::MapValue => receiver.map_value_begin()?,
+            Position::SeqEmpty | Position::SeqElem => stream.seq_value_begin()?,
+            Position::MapValue => stream.map_value_begin()?,
             Position::Root => (),
             _ => todo!(),
         }
@@ -101,17 +103,17 @@ impl<'a> JsonSliceReader<'a> {
         self.stack.push_seq()?;
         self.position = Position::SeqEmpty;
 
-        receiver.seq_begin(None)
+        stream.seq_begin(None)
     }
 
-    fn seq_end<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result
+    fn seq_end<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result
     where
         'a: 'b,
     {
         match self.position {
             Position::SeqEmpty => (),
             Position::SeqElem => {
-                receiver.seq_value_end()?;
+                stream.seq_value_end()?;
             }
             _ => todo!(),
         }
@@ -119,81 +121,70 @@ impl<'a> JsonSliceReader<'a> {
         self.stack.pop_seq()?;
         self.position = self.stack.position();
 
-        receiver.seq_end()
+        stream.seq_end()
     }
 
-    fn map_value_seq_value_end<'b>(
-        &mut self,
-        mut receiver: impl sval::Receiver<'b>,
-    ) -> sval::Result {
+    fn map_value_seq_value_end<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result {
         match self.position {
-            Position::SeqElem => receiver.seq_value_end(),
+            Position::SeqElem => stream.seq_value_end(),
             Position::MapValue => {
                 self.position = Position::MapKey;
 
-                receiver.map_value_end()
+                stream.map_value_end()
             }
             _ => todo!(),
         }
     }
 
-    fn str_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
+    fn str_begin<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result {
         match self.position {
             Position::SeqEmpty | Position::SeqElem => {
                 self.position = Position::SeqElem;
 
-                receiver.seq_value_begin()
+                stream.seq_value_begin()
             }
             Position::MapEmpty => {
                 self.position = Position::MapKey;
 
-                receiver.map_key_begin()
+                stream.map_key_begin()
             }
-            Position::MapKey => receiver.map_key_begin(),
-            Position::MapValue => receiver.map_value_begin(),
+            Position::MapKey => stream.map_key_begin(),
+            Position::MapValue => stream.map_value_begin(),
             Position::Root => Ok(()),
         }
     }
 
-    fn value_begin<'b>(&mut self, mut receiver: impl sval::Receiver<'b>) -> sval::Result {
+    fn value_begin<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result {
         match self.position {
             Position::SeqEmpty | Position::SeqElem => {
                 self.position = Position::SeqElem;
 
-                receiver.seq_value_begin()
+                stream.seq_value_begin()
             }
-            Position::MapValue => receiver.map_value_begin(),
+            Position::MapValue => stream.map_value_begin(),
             Position::Root => Ok(()),
             _ => todo!(),
         }
     }
 
-    fn maybe_done<'b>(
-        &mut self,
-        mut receiver: impl sval::Receiver<'b>,
-    ) -> sval::Result<sval::Resume> {
+    fn maybe_done<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result<bool> {
         if self.head < self.src.len() {
-            Ok(sval::Resume::Continue)
+            Ok(true)
         } else {
             self.stack.finish()?;
 
-            receiver.dynamic_end()?;
+            stream.dynamic_end()?;
 
-            Ok(sval::Resume::Done)
+            Ok(false)
         }
     }
-}
 
-impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
-    fn stream_resume<'b, R: sval::Receiver<'b>>(
-        &mut self,
-        mut receiver: R,
-    ) -> sval::Result<sval::Resume>
+    fn stream_resume<'b, R: sval::Stream<'b>>(&mut self, mut stream: R) -> sval::Result<bool>
     where
         'a: 'b,
     {
         if self.head == 0 {
-            receiver.dynamic_begin()?;
+            stream.dynamic_begin()?;
         }
 
         if self.in_str {
@@ -202,16 +193,16 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
             self.head = head;
 
             return if !partial {
-                receiver.text_fragment(fragment)?;
-                receiver.text_end()?;
+                stream.text_fragment(fragment)?;
+                stream.text_end()?;
 
                 self.in_str = false;
 
-                self.maybe_done(receiver)
+                self.maybe_done(stream)
             } else {
-                receiver.text_fragment(fragment)?;
+                stream.text_fragment(fragment)?;
 
-                return Ok(sval::Resume::Continue);
+                return Ok(true);
             };
         }
 
@@ -221,7 +212,7 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                 b'"' => {
                     self.head += 1;
 
-                    self.str_begin(&mut receiver)?;
+                    self.str_begin(&mut stream)?;
 
                     let (fragment, partial, head) = str_fragment(self.src, self.head)?;
 
@@ -230,79 +221,79 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                     // If the string is complete (with no escapes)
                     // then we can yield it directly
                     return if !partial {
-                        receiver.text(fragment)?;
+                        stream.text(fragment)?;
 
-                        self.maybe_done(receiver)
+                        self.maybe_done(stream)
                     }
                     // If the string has escapes then yield this fragment
                     // The next time we loop through we'll grab the next one
                     else {
                         self.in_str = true;
 
-                        receiver.text_begin(None)?;
-                        receiver.text_fragment(fragment)?;
+                        stream.text_begin(None)?;
+                        stream.text_fragment(fragment)?;
 
-                        return Ok(sval::Resume::Continue);
+                        return Ok(true);
                     };
                 }
                 // Start a map
                 b'{' => {
                     self.head += 1;
 
-                    self.map_begin(receiver)?;
+                    self.map_begin(stream)?;
 
-                    return Ok(sval::Resume::Continue);
+                    return Ok(true);
                 }
                 // End a map
                 b'}' => {
                     self.head += 1;
 
-                    self.map_end(&mut receiver)?;
+                    self.map_end(&mut stream)?;
 
-                    return self.maybe_done(receiver);
+                    return self.maybe_done(stream);
                 }
                 // Begin a seq
                 b'[' => {
                     self.head += 1;
 
-                    self.seq_begin(receiver)?;
+                    self.seq_begin(stream)?;
 
-                    return Ok(sval::Resume::Continue);
+                    return Ok(true);
                 }
                 // End a seq
                 b']' => {
                     self.head += 1;
 
-                    self.seq_end(&mut receiver)?;
+                    self.seq_end(&mut stream)?;
 
-                    return self.maybe_done(receiver);
+                    return self.maybe_done(stream);
                 }
                 // End a map key
                 b':' => {
                     self.head += 1;
 
-                    self.map_key_end(receiver)?;
+                    self.map_key_end(stream)?;
 
-                    return Ok(sval::Resume::Continue);
+                    return Ok(true);
                 }
                 // End either a map value or seq elem
                 b',' => {
                     self.head += 1;
 
-                    self.map_value_seq_value_end(receiver)?;
+                    self.map_value_seq_value_end(stream)?;
 
-                    return Ok(sval::Resume::Continue);
+                    return Ok(true);
                 }
                 // The boolean value `true`
                 b't' => {
                     if let Some(b"true") = self.src.get(self.head..self.head + 4) {
                         self.head += 4;
 
-                        self.value_begin(&mut receiver)?;
+                        self.value_begin(&mut stream)?;
 
-                        receiver.bool(true)?;
+                        stream.bool(true)?;
 
-                        return self.maybe_done(receiver);
+                        return self.maybe_done(stream);
                     } else {
                         todo!()
                     }
@@ -312,11 +303,11 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                     if let Some(b"false") = self.src.get(self.head..self.head + 5) {
                         self.head += 5;
 
-                        self.value_begin(&mut receiver)?;
+                        self.value_begin(&mut stream)?;
 
-                        receiver.bool(false)?;
+                        stream.bool(false)?;
 
-                        return self.maybe_done(receiver);
+                        return self.maybe_done(stream);
                     } else {
                         todo!()
                     }
@@ -326,11 +317,11 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
                     if let Some(b"null") = self.src.get(self.head..self.head + 4) {
                         self.head += 4;
 
-                        self.value_begin(&mut receiver)?;
+                        self.value_begin(&mut stream)?;
 
-                        receiver.null()?;
+                        stream.null()?;
 
-                        return self.maybe_done(receiver);
+                        return self.maybe_done(stream);
                     } else {
                         todo!()
                     }
@@ -345,24 +336,24 @@ impl<'a> sval::Source<'a> for JsonSliceReader<'a> {
 
                     self.head = head;
 
-                    if !receiver.is_text_based() {
+                    if !stream.is_text_based() {
                         // Convert the number to a concrete value
                         todo!()
                     }
 
-                    self.value_begin(&mut receiver)?;
+                    self.value_begin(&mut stream)?;
 
-                    receiver.decfloat_begin()?;
-                    receiver.text(n)?;
-                    receiver.decfloat_end()?;
+                    stream.decfloat_begin()?;
+                    stream.text(n)?;
+                    stream.decfloat_end()?;
 
-                    return self.maybe_done(receiver);
+                    return self.maybe_done(stream);
                 }
                 _ => todo!(),
             }
         }
 
-        self.maybe_done(receiver)
+        self.maybe_done(stream)
     }
 }
 
@@ -396,22 +387,34 @@ impl Stack {
     }
 
     fn push_map(&mut self) -> sval::Result {
-        self.map = self.map.checked_add(1 + self.seq).ok_or(sval::Error)?;
+        self.map = self
+            .map
+            .checked_add(1 + self.seq)
+            .ok_or(sval::Error::unsupported())?;
         Ok(())
     }
 
     fn pop_map(&mut self) -> sval::Result {
-        self.map = self.map.checked_sub(1 + self.seq).ok_or(sval::Error)?;
+        self.map = self
+            .map
+            .checked_sub(1 + self.seq)
+            .ok_or(sval::Error::unsupported())?;
         Ok(())
     }
 
     fn push_seq(&mut self) -> sval::Result {
-        self.seq = self.seq.checked_add(1 + self.map).ok_or(sval::Error)?;
+        self.seq = self
+            .seq
+            .checked_add(1 + self.map)
+            .ok_or(sval::Error::unsupported())?;
         Ok(())
     }
 
     fn pop_seq(&mut self) -> sval::Result {
-        self.seq = self.seq.checked_sub(1 + self.map).ok_or(sval::Error)?;
+        self.seq = self
+            .seq
+            .checked_sub(1 + self.map)
+            .ok_or(sval::Error::unsupported())?;
         Ok(())
     }
 
@@ -427,7 +430,7 @@ impl Stack {
         if self.map == 0 && self.seq == 0 {
             Ok(())
         } else {
-            Err(sval::Error)
+            sval::result::unsupported()
         }
     }
 }

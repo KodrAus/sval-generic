@@ -1,28 +1,30 @@
-use crate::{source, Receiver, Source, Value};
+use crate::{Stream, Value};
 
 #[cfg(not(test))]
 macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
-            pub(crate) fn $fi<'a>(v: $i, mut receiver: impl Receiver<'a>) -> crate::Result {
-                receiver.int_begin()?;
+            pub(crate) fn $fi<'sval>(v: $i, mut stream: impl Stream<'sval>) -> crate::Result {
+                stream.int_begin()?;
 
-                if receiver.is_text_based() {
-                    crate::data::display(v).stream_to_end(&mut receiver)?;
+                if stream.is_text_based() {
+                    crate::data::text::display(v, &mut stream)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
+                    stream.binary_begin(Some(bytes.len()))?;
+                    stream.binary_fragment_computed(&bytes)?;
+                    stream.binary_end()?;
                 }
 
-                receiver.int_end()
+                stream.int_end()
             }
 
-            pub(crate) fn $fu<'a>(v: $u, mut receiver: impl Receiver<'a>) -> crate::Result {
-                receiver.int_begin()?;
+            pub(crate) fn $fu<'sval>(v: $u, mut stream: impl Stream<'sval>) -> crate::Result {
+                stream.int_begin()?;
 
-                if receiver.is_text_based() {
-                    crate::data::display(v).stream_to_end(crate::data::computed(&mut receiver))?;
+                if stream.is_text_based() {
+                    crate::data::text::display(v, &mut stream)?;
                 } else {
                     if v >= (<$i>::MAX as $u) {
                         let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
@@ -30,15 +32,19 @@ macro_rules! int {
 
                         bytes[..unsigned.len()].copy_from_slice(&unsigned);
 
-                        crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
+                        stream.binary_begin(Some(bytes.len()))?;
+                        stream.binary_fragment_computed(&bytes)?;
+                        stream.binary_end()?;
                     } else {
                         let bytes = v.to_le_bytes();
 
-                        crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
+                        stream.binary_begin(Some(bytes.len()))?;
+                        stream.binary_fragment_computed(&bytes)?;
+                        stream.binary_end()?;
                     }
                 }
 
-                receiver.int_end()
+                stream.int_end()
             }
         )*
     };
@@ -48,18 +54,20 @@ macro_rules! int {
 macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
-            pub(crate) fn $f<'a>(v: $n, mut receiver: impl Receiver<'a>) -> crate::Result {
-                receiver.binfloat_begin()?;
+            pub(crate) fn $f<'sval>(v: $n, mut stream: impl Stream<'sval>) -> crate::Result {
+                stream.binfloat_begin()?;
 
-                if receiver.is_text_based() {
-                    crate::data::display(v).stream_to_end(&mut receiver)?;
+                if stream.is_text_based() {
+                    crate::data::text::display(v, &mut stream)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
-                    crate::data::bytes(&bytes).stream_to_end(crate::data::computed(&mut receiver))?;
+                    stream.binary_begin(Some(bytes.len()))?;
+                    stream.binary_fragment_computed(&bytes)?;
+                    stream.binary_end()?;
                 }
 
-                receiver.binfloat_end()
+                stream.binfloat_end()
             }
         )*
     };
@@ -71,32 +79,12 @@ macro_rules! convert {
     )+) => {
         $(
             impl Value for $ty {
-                fn stream<'a, R: Receiver<'a>>(&'a self, mut receiver: R) -> crate::Result {
-                    receiver.$ty(*self)
+                fn stream<'sval, R: Stream<'sval>>(&'sval self, mut stream: R) -> crate::Result {
+                    stream.$ty(*self)
                 }
 
                 fn $convert(&self) -> Option<$ty> {
                     Some(*self)
-                }
-            }
-
-            impl<'a> Source<'a> for $ty {
-                fn stream_resume<'b, R: Receiver<'b>>(&mut self, receiver: R) -> crate::Result<source::Resume>
-                where
-                    'a: 'b,
-                {
-                    self.stream_to_end(receiver).map(|_| source::Resume::Done)
-                }
-
-                fn stream_to_end<'b, R: Receiver<'b>>(&mut self, mut receiver: R) -> crate::Result
-                where
-                    'a: 'b,
-                {
-                    receiver.$ty(*self)
-                }
-
-                fn maybe_dynamic(&self) -> Option<bool> {
-                    Some(false)
                 }
             }
         )+

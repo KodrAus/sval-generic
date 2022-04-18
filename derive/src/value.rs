@@ -40,7 +40,7 @@ fn derive_struct<'a>(ident: &Ident, generics: &Generics, fields: &FieldsNamed) -
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -65,7 +65,7 @@ fn derive_newtype<'a>(ident: &Ident, generics: &Generics) -> TokenStream {
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -90,7 +90,7 @@ fn derive_tuple<'a>(ident: &Ident, generics: &Generics, fields: &FieldsUnnamed) 
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -149,14 +149,14 @@ fn derive_enum<'a>(
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'a, R: sval::Receiver<'a>>(&'a self, mut receiver: R) -> sval::Result {
-                    receiver.enum_begin(sval::data::tag().with_label(#tag))?;
+                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+                    stream.enum_begin(sval::tag().with_label(#tag))?;
 
                     match self {
                         #(#variant_match_arms)*
                     }
 
-                    receiver.enum_end()
+                    stream.enum_end()
                 }
             }
         };
@@ -189,19 +189,19 @@ fn stream_struct(
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        receiver.struct_map_begin(sval::data::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
+        stream.struct_map_begin(sval::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
 
         #(
-            receiver.struct_map_key_begin(sval::data::tag().with_label(#field_lit).with_id(#field_id))?;
-            receiver.value(#field_lit)?;
-            receiver.struct_map_key_end()?;
+            stream.struct_map_key_begin(sval::tag().with_label(#field_lit).with_id(#field_id))?;
+            stream.value(#field_lit)?;
+            stream.struct_map_key_end()?;
 
-            receiver.struct_map_value_begin(sval::data::tag().with_label(#field_lit).with_id(#field_id))?;
-            receiver.value(#field_ident)?;
-            receiver.struct_map_value_end()?;
+            stream.struct_map_value_begin(sval::tag().with_label(#field_lit).with_id(#field_id))?;
+            stream.value(#field_ident)?;
+            stream.struct_map_value_end()?;
         )*
 
-        receiver.struct_map_end()?;
+        stream.struct_map_end()?;
     })
 }
 
@@ -217,9 +217,9 @@ fn stream_newtype(
     };
 
     quote!(#path(ref field0) => {
-        receiver.tagged_begin(sval::data::tag().with_label(#tag).with_id(#id))?;
-        receiver.value(field0)?;
-        receiver.tagged_end()?;
+        stream.tagged_begin(sval::tag().with_label(#tag).with_id(#id))?;
+        stream.value(field0)?;
+        stream.tagged_end()?;
     })
 }
 
@@ -246,15 +246,15 @@ fn stream_tuple(
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        receiver.struct_seq_begin(sval::data::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
+        stream.struct_seq_begin(sval::tag().with_label(#tag).with_id(#id), Some(#field_count))?;
 
         #(
-            receiver.struct_seq_value_begin(sval::data::tag().with_id(#field_id))?;
-            receiver.value(#field_ident)?;
-            receiver.struct_seq_value_end()?;
+            stream.struct_seq_value_begin(sval::tag().with_id(#field_id))?;
+            stream.value(#field_ident)?;
+            stream.struct_seq_value_end()?;
         )*
 
-        receiver.struct_seq_end()?;
+        stream.struct_seq_end()?;
     })
 }
 
@@ -270,8 +270,8 @@ fn stream_constant(
     };
 
     quote!(#path => {
-        receiver.constant_begin(sval::data::tag().with_label(#tag).with_id(#id))?;
-        receiver.value(#tag)?;
-        receiver.constant_end()?;
+        stream.constant_begin(sval::tag().with_label(#tag).with_id(#id))?;
+        stream.value(#tag)?;
+        stream.constant_end()?;
     })
 }
