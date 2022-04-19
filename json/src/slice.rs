@@ -218,10 +218,14 @@ impl<'a> JsonSliceReader<'a> {
 
                     self.head = head;
 
+                    stream.text_begin(None)?;
+
+                    stream.text_fragment(fragment)?;
+
                     // If the string is complete (with no escapes)
                     // then we can yield it directly
                     return if !partial {
-                        stream.text(fragment)?;
+                        stream.text_end()?;
 
                         self.maybe_done(stream)
                     }
@@ -229,9 +233,6 @@ impl<'a> JsonSliceReader<'a> {
                     // The next time we loop through we'll grab the next one
                     else {
                         self.in_str = true;
-
-                        stream.text_begin(None)?;
-                        stream.text_fragment(fragment)?;
 
                         return Ok(true);
                     };
@@ -344,7 +345,9 @@ impl<'a> JsonSliceReader<'a> {
                     self.value_begin(&mut stream)?;
 
                     stream.decfloat_begin()?;
-                    stream.text(n)?;
+                    stream.text_begin(Some(n.len()))?;
+                    stream.text_fragment(n)?;
+                    stream.text_end()?;
                     stream.decfloat_end()?;
 
                     return self.maybe_done(stream);

@@ -5,12 +5,10 @@ pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
 }
 
 pub struct Formatter<W> {
-    is_key: bool,
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
-    write_str_quotes: bool,
-    text_handler: Option<fn(&str, &mut u32, &mut dyn Write) -> sval::Result>,
-    text_handler_state: u32,
+    is_text_quoted: bool,
+    text_handler: Option<(u32, fn(&str, &mut u32, &mut dyn Write) -> sval::Result)>,
     out: W,
 }
 
@@ -20,12 +18,10 @@ where
 {
     pub fn new(out: W) -> Self {
         Formatter {
-            is_key: false,
             is_internally_tagged: false,
             is_current_depth_empty: true,
-            write_str_quotes: true,
+            is_text_quoted: true,
             text_handler: None,
-            text_handler_state: 0,
             out,
         }
     }
@@ -61,20 +57,8 @@ where
         Ok(())
     }
 
-    fn text(&mut self, v: &'a str) -> sval::Result {
-        if self.write_str_quotes {
-            self.out.write_char('"')?;
-            self.escape_str(v)?;
-            self.out.write_char('"')?;
-        } else {
-            self.escape_str(v)?;
-        }
-
-        Ok(())
-    }
-
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.write_str_quotes {
+        if self.is_text_quoted {
             self.out.write_char('"')?;
         }
 
@@ -82,8 +66,8 @@ where
     }
 
     fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
-        if let Some(text_handler) = self.text_handler {
-            text_handler(v, &mut self.text_handler_state, &mut self.out)?;
+        if let Some((ref mut state, text_handler)) = self.text_handler {
+            text_handler(v, state, &mut self.out)?;
         } else {
             self.escape_str(v)?;
         }
@@ -92,7 +76,7 @@ where
     }
 
     fn text_end(&mut self) -> sval::Result {
-        if self.write_str_quotes {
+        if self.is_text_quoted {
             self.out.write_char('"')?;
         }
 
@@ -198,7 +182,7 @@ where
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.is_key {
+        if !self.is_text_quoted {
             return sval::result::unsupported();
         }
 
@@ -209,8 +193,7 @@ where
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.is_key = true;
-        self.write_str_quotes = false;
+        self.is_text_quoted = false;
 
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
@@ -218,16 +201,13 @@ where
             self.out.write_char('"')?;
         }
 
-        self.is_current_depth_empty = false;
-
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
         self.out.write_str("\":")?;
 
-        self.is_key = false;
-        self.write_str_quotes = true;
+        self.is_text_quoted = true;
 
         Ok(())
     }
@@ -237,19 +217,19 @@ where
     }
 
     fn map_value_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
         Ok(())
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
         self.out.write_char('}')?;
 
         Ok(())
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
-        if self.is_key {
+        if !self.is_text_quoted {
             return sval::result::unsupported();
         }
 
@@ -265,18 +245,16 @@ where
             self.out.write_char(',')?;
         }
 
-        self.is_current_depth_empty = false;
-
         Ok(())
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
+        self.is_current_depth_empty = false;
+
         Ok(())
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        self.is_current_depth_empty = false;
-
         self.out.write_char(']')?;
 
         Ok(())
@@ -290,9 +268,9 @@ where
                 sval::Tag {
                     label: Some(label), ..
                 } => {
-                    self.map_key_begin()?;
-                    self.text(label)?;
-                    self.map_key_end()?;
+                    self.out.write_char('"')?;
+                    self.escape_str(label)?;
+                    self.out.write_char('"')?;
                 }
                 sval::Tag { id: Some(id), .. } => {
                     self.map_key_begin()?;
@@ -315,12 +293,12 @@ where
     }
 
     fn constant_begin(&mut self, _: sval::Tag) -> sval::Result {
-        self.is_internally_tagged = false;
-
         Ok(())
     }
 
     fn constant_end(&mut self) -> sval::Result {
+        self.is_internally_tagged = false;
+
         Ok(())
     }
 
@@ -342,45 +320,41 @@ where
     }
 
     fn int_begin(&mut self) -> sval::Result {
-        self.write_str_quotes = false;
+        self.is_text_quoted = false;
 
         Ok(())
     }
 
     fn int_end(&mut self) -> sval::Result {
-        self.write_str_quotes = true;
+        self.is_text_quoted = true;
 
         Ok(())
     }
 
     fn binfloat_begin(&mut self) -> sval::Result {
-        self.write_str_quotes = false;
-        self.text_handler = Some(float_text_handler);
-        self.text_handler_state = Default::default();
+        self.is_text_quoted = false;
+        self.text_handler = Some((Default::default(), float_text_handler));
 
         Ok(())
     }
 
     fn binfloat_end(&mut self) -> sval::Result {
-        self.write_str_quotes = false;
+        self.is_text_quoted = true;
         self.text_handler = None;
-        self.text_handler_state = Default::default();
 
         Ok(())
     }
 
     fn decfloat_begin(&mut self) -> sval::Result {
-        self.write_str_quotes = false;
-        self.text_handler = Some(float_text_handler);
-        self.text_handler_state = Default::default();
+        self.is_text_quoted = false;
+        self.text_handler = Some((Default::default(), float_text_handler));
 
         Ok(())
     }
 
     fn decfloat_end(&mut self) -> sval::Result {
-        self.write_str_quotes = false;
+        self.is_text_quoted = true;
         self.text_handler = None;
-        self.text_handler_state = Default::default();
 
         Ok(())
     }

@@ -36,8 +36,6 @@ mod private {
 
         fn dispatch_bool(&mut self, value: bool) -> sval::Result;
 
-        fn dispatch_text(&mut self, value: &'a str) -> sval::Result;
-
         fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
         fn dispatch_text_end(&mut self) -> sval::Result;
@@ -45,8 +43,6 @@ mod private {
         fn dispatch_text_fragment(&mut self, fragment: &'a str) -> sval::Result;
 
         fn dispatch_text_fragment_computed(&mut self, fragment: &str) -> sval::Result;
-
-        fn dispatch_binary(&mut self, value: &'a [u8]) -> sval::Result;
 
         fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result;
 
@@ -230,10 +226,6 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.bool(value)
     }
 
-    fn dispatch_text(&mut self, value: &'a str) -> sval::Result {
-        self.text(value)
-    }
-
     fn dispatch_text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
         self.text_begin(num_bytes_hint)
     }
@@ -248,10 +240,6 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
 
     fn dispatch_text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
         self.text_fragment_computed(fragment)
-    }
-
-    fn dispatch_binary(&mut self, value: &'a [u8]) -> sval::Result {
-        self.binary(value)
     }
 
     fn dispatch_binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
@@ -498,10 +486,6 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_bool(value)
             }
 
-            fn text(&mut self, value: &'a str) -> sval::Result {
-                self.erase_stream().0.dispatch_text(value)
-            }
-
             fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
                 self.erase_stream().0.dispatch_text_begin(num_bytes_hint)
             }
@@ -512,10 +496,6 @@ macro_rules! impl_stream {
 
             fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
                 self.erase_stream().0.dispatch_text_fragment_computed(&fragment)
-            }
-
-            fn binary(&mut self, value: &'a [u8]) -> sval::Result {
-                self.erase_stream().0.dispatch_binary(value)
             }
 
             fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {

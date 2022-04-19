@@ -4,6 +4,7 @@ use crate::std::{fmt, str};
 pub struct Error(());
 
 impl Error {
+    #[cold]
     pub fn unsupported() -> Self {
         Error(())
     }
@@ -58,6 +59,7 @@ mod std_support {
     }
 }
 
+#[cold]
 pub fn unsupported() -> crate::Result {
     Err(Error::unsupported())
 }

@@ -243,24 +243,20 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
-            fn text(&mut self, value: &'sval str) -> Result {
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                Ok(())
+            }
+
+            fn text_fragment(&mut self, fragment: &'sval str) -> Result {
                 // Allow either independent strings, or fragments of a single borrowed string
                 if !self.seen_fragment {
-                    self.extracted = Some(value);
+                    self.extracted = Some(fragment);
                     self.seen_fragment = true;
                 } else {
                     self.extracted = None;
                 }
 
                 Ok(())
-            }
-
-            fn text_begin(&mut self, _: Option<usize>) -> Result {
-                Ok(())
-            }
-
-            fn text_fragment(&mut self, fragment: &'sval str) -> Result {
-                self.text(fragment)
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
@@ -316,24 +312,20 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
-            fn binary(&mut self, value: &'sval [u8]) -> Result {
+            fn binary_begin(&mut self, _: Option<usize>) -> Result {
+                Ok(())
+            }
+
+            fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
                 // Allow either independent bytes, or fragments of a single borrowed byte stream
                 if !self.seen_fragment {
-                    self.extracted = Some(value);
+                    self.extracted = Some(fragment);
                     self.seen_fragment = true;
                 } else {
                     self.extracted = None;
                 }
 
                 Ok(())
-            }
-
-            fn binary_begin(&mut self, _: Option<usize>) -> Result {
-                Ok(())
-            }
-
-            fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
-                self.binary(fragment)
             }
 
             fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {

@@ -11,6 +11,7 @@ members = [
     "json",
     "dynamic",
     "json/benches/twitter",
+    "json/benches/profile",
     "json/tests",
     "json/tests/twitter",
 ]

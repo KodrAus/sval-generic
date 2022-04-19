@@ -16,7 +16,9 @@ impl Value for char {
 
 impl Value for str {
     fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
-        stream.text(self)
+        stream.text_begin(Some(self.len()))?;
+        stream.text_fragment(self)?;
+        stream.text_end()
     }
 
     fn to_text(&self) -> Option<&str> {
@@ -47,8 +49,8 @@ mod alloc_support {
     use crate::std::string::String;
 
     impl Value for String {
-        fn stream<'a, R: Stream<'a>>(&'a self, mut stream: R) -> Result {
-            stream.text(&**self)
+        fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
+            (&**self).stream(stream)
         }
 
         #[inline]

@@ -1,0 +1,18 @@
+[package]
+name = "sval-json-benches-profile"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[[bin]]
+name = "sval-json-benches-profile"
+path = "main.rs"
+
+[dependencies.sval-json]
+path = "../../"
+
+[dependencies.sval-json-tests-twitter]
+path = "../../tests/twitter"
+
+[dependencies.serde_json]
+version = "1"

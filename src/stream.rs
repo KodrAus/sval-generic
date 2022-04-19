@@ -374,42 +374,6 @@ pub trait Stream<'sval> {
     fn text_end(&mut self) -> Result;
 
     /**
-    Stream a text blob as a single, contiguous fragment borrowed for `'sval`.
-
-    See [`Stream::text_begin`] for details on text fragments.
-
-    # Examples
-
-    Stream a text blob using a single string:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.text("A blob of text")?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `str` type also streams as a single contiguous text blob:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    "A blob of text".stream(stream)?;
-    # Ok(())
-    # }
-    ```
-    */
-    #[cfg(not(test))]
-    fn text(&mut self, value: &'sval str) -> Result {
-        self.text_begin(Some(value.len()))?;
-        self.text_fragment(value)?;
-        self.text_end()
-    }
-
-    #[cfg(test)]
-    fn text(&mut self, value: &'sval str) -> Result;
-
-    /**
     Begin a binary blob.
 
     Binary blobs are one of the [basic data types](basic-data-types).
@@ -510,32 +474,6 @@ pub trait Stream<'sval> {
     See [`Stream::binary_begin`] for details on binary fragments.
     */
     fn binary_end(&mut self) -> Result;
-
-    /**
-    Stream a binary blob as a single, contiguous fragment borrowed for `'sval`.
-
-    See [`Stream::binary_begin`] for details on binary fragments.
-
-    # Examples
-
-    Stream a binary blob using a single string:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binary(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
-    # Ok(())
-    # }
-    ```
-    */
-    #[cfg(not(test))]
-    fn binary(&mut self, value: &'sval [u8]) -> Result {
-        self.binary_begin(Some(value.len()))?;
-        self.binary_fragment(value)?;
-        self.binary_end()
-    }
-
-    #[cfg(test)]
-    fn binary(&mut self, value: &'sval [u8]) -> Result;
 
     /**
     Stream an 8bit unsigned integer.
@@ -1145,19 +1083,27 @@ pub trait Stream<'sval> {
     stream.map_begin(Some(2))?;
 
     stream.map_key_begin()?;
-    stream.text("id")?;
+    stream.text_begin(Some(2))?;
+    stream.text_fragment("id")?;
+    stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
-    stream.text("An id")?;
+    stream.text_begin(Some(5))?;
+    stream.text_fragment("An id")?;
+    stream.text_end()?;
     stream.map_value_end()?;
 
     stream.map_key_begin()?;
-    stream.text("title")?;
+    stream.text_begin(Some(5))?;
+    stream.text_fragment("title")?;
+    stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
-    stream.text("A document")?;
+    stream.text_begin(Some(10))?;
+    stream.text_fragment("A document")?;
+    stream.text_end()?;
     stream.map_value_end()?;
 
     stream.map_end()?;
@@ -1174,7 +1120,9 @@ pub trait Stream<'sval> {
     stream.map_begin(Some(2))?;
 
     stream.map_key_begin()?;
-    stream.text("id")?;
+    stream.text_begin(Some(2))?;
+    stream.text_fragment("id")?;
+    stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
@@ -1184,12 +1132,16 @@ pub trait Stream<'sval> {
     stream.map_value_end()?;
 
     stream.map_key_begin()?;
-    stream.text("title")?;
+    stream.text_begin(Some(5))?;
+    stream.text_fragment("title")?;
+    stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
     stream.dynamic_begin()?;
-    stream.text("A document")?;
+    stream.text_begin(Some(10))?;
+    stream.text_fragment("A document")?;
+    stream.text_end()?;
     stream.dynamic_end()?;
     stream.map_value_end()?;
 
@@ -1315,7 +1267,9 @@ pub trait Stream<'sval> {
 
     stream.seq_value_begin()?;
     stream.dynamic_begin()?;
-    stream.text("A value")?;
+    stream.text_begin(Some(7))?;
+    stream.text_fragment("A value")?;
+    stream.text_end()?;
     stream.dynamic_end()?;
     stream.seq_value_end()?;
 
@@ -1563,9 +1517,13 @@ pub trait Stream<'sval> {
     stream.int_begin()?;
 
     if stream.is_text_based() {
-        stream.text("754")?;
+        stream.text_begin(Some(3))?;
+        stream.text_fragment("754")?;
+        stream.text_end()?;
     } else {
-        stream.binary(&[0b11110010, 0b00000010])?;
+        stream.binary_begin(Some(2))?;
+        stream.binary_fragment(&[0b11110010, 0b00000010])?;
+        stream.binary_end()?;
     }
 
     stream.int_end()?;
@@ -1632,9 +1590,13 @@ pub trait Stream<'sval> {
     stream.binfloat_begin()?;
 
     if stream.is_text_based() {
-        stream.text("1333.754")?;
+        stream.text_begin(Some(8))?;
+        stream.text_fragment("1333.754")?;
+        stream.text_end()?;
     } else {
-        stream.binary(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
+        stream.binary_begin(Some(4))?;
+        stream.binary_fragment(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
+        stream.binary_end()?;
     }
 
     stream.binfloat_end()?;
@@ -1704,9 +1666,13 @@ pub trait Stream<'sval> {
     stream.decfloat_begin()?;
 
     if stream.is_text_based() {
-        stream.text("1333.754")?;
+        stream.text_begin(Some(8))?;
+        stream.text_fragment("1333.754")?;
+        stream.text_end()?;
     } else {
-        stream.binary(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
+        stream.binary_begin(Some(4))?;
+        stream.binary_fragment(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
+        stream.binary_end()?;
     }
 
     stream.decfloat_end()?;
@@ -1853,11 +1819,6 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).bool(value)
             }
 
-            fn text(&mut self, value: &'sval str) -> Result {
-                let $bind = self;
-                ($($forward)*).text(value)
-            }
-
             fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).text_begin(num_bytes_hint)
@@ -1876,11 +1837,6 @@ macro_rules! impl_stream_forward {
             fn text_fragment_computed(&mut self, fragment: &str) -> Result {
                 let $bind = self;
                 ($($forward)*).text_fragment_computed(fragment)
-            }
-
-            fn binary(&mut self, value: &'sval [u8]) -> Result {
-                let $bind = self;
-                ($($forward)*).binary(value)
             }
 
             fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
@@ -2168,10 +2124,6 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn text(&mut self, _: &'sval str) -> Result {
-        crate::result::unsupported()
-    }
-
     fn text_begin(&mut self, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
@@ -2185,10 +2137,6 @@ pub(crate) trait DefaultUnsupported<'sval> {
     }
 
     fn text_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binary(&mut self, _: &'sval [u8]) -> Result {
         crate::result::unsupported()
     }
 
