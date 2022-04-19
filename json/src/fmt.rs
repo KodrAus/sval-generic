@@ -29,12 +29,6 @@ where
     pub fn into_inner(self) -> W {
         self.out
     }
-
-    fn escape_str(&mut self, v: &str) -> sval::Result {
-        escape_str(v, &mut self.out)?;
-
-        Ok(())
-    }
 }
 
 impl<'a, W> sval::Stream<'a> for Formatter<W>
@@ -69,7 +63,7 @@ where
         if let Some((ref mut state, text_handler)) = self.text_handler {
             text_handler(v, state, &mut self.out)?;
         } else {
-            self.escape_str(v)?;
+            escape_str(v, &mut self.out)?;
         }
 
         Ok(())
@@ -268,9 +262,9 @@ where
                 sval::Tag {
                     label: Some(label), ..
                 } => {
-                    self.out.write_char('"')?;
-                    self.escape_str(label)?;
-                    self.out.write_char('"')?;
+                    self.map_key_begin()?;
+                    escape_str(label, &mut self.out)?;
+                    self.map_key_end()?;
                 }
                 sval::Tag { id: Some(id), .. } => {
                     self.map_key_begin()?;
