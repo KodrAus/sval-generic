@@ -6,7 +6,7 @@ An observer of structured data emitted by some value.
 # Using streams
 
 Streams can be used to convert between structured data and a [text or binary format](text-and-binary-data).
-They can also be used to observe and transform data as it flows between values.
+They can also be used to observe and transform data as it's yielded by values.
 
 # Data model
 
@@ -18,25 +18,27 @@ Each stream expects either text-based or binary-based data.
 This decision is communicated by [`Stream::is_text_based`].
 Some [data types](#data-types) may be streamed differently depending on whether a stream is text-based or binary-based.
 
-Streams should only ever expect data encoded using either their text or binary representation.
-This means `sval` effectively has two in-memory representations of its data model: one for text and one for binary.
+Streams should only ever expect [values](#values) encoded using either the text or binary representation for their [data type](#data-types).
+Binary-based streams may still receive text and text-based streams may still receive binary though.
+This means `sval` effectively has two in-memory representations of its data model: one for text-based and one for binary-based streams.
 
 ## Data types
 
 Data types represent the distinct kinds of data that a stream may choose to interpret or encode in a particular way.
 If two values have the same data type then a stream is expected to handle them in compatible ways, even if their content is different.
 As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Stream` may rely on their size when encoding them.
+On the other hand, the data type of maps does not depend on their size, so a stream is expected to handle maps of any length equivalently.
 
 ### Basic data types
 
-The required methods on this trait represent the basic data model that all streams need to understand.
+The required methods on the `Stream` trait represent the basic data model that all streams need to understand.
 The basic data model includes:
 
 - **Unit**: the truthy value. See [`Stream::unit`].
 - **Null**: the falsey value. See [`Stream::null`].
 - **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
 - **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
-- **Maps**: homogeneous collection of key-value pairs, where keys and values are [values](#values). See [`Stream::map_begin`].
+- **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values). See [`Stream::map_begin`].
 - **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Stream::seq_begin`].
 
 All other data types map onto this basic model somehow.
@@ -46,15 +48,51 @@ All other data types map onto this basic model somehow.
 Streams may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
 The extended data model includes:
 
-- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
 - **Booleans**: the values `true` and `false`. See [`Stream::bool`].
 - **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
 - **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
 - **Decimal floating points**: These don't have a native Rust counterpart. See [`Stream::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
+- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
+- **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants. See [`Stream::enum_begin`].
+
+#### Wrapping
+
+Data types that wrap others, like dynamic, constant, and fixed size, are order-dependent.
+The following two values have different data-types:
+
+```
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.dynamic_begin()?;
+stream.constant_begin()?;
+
+stream.i32(42)?;
+
+stream.constant_end()?;
+stream.dynamic_end()?;
+# Ok(())
+# }
+```
+
+```
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.constant_begin()?;
+stream.dynamic_begin()?;
+
+stream.i32(42)?;
+
+stream.dynamic_end()?;
+stream.constant_end()?;
+# Ok(())
+# }
+```
+
+The first is a dynamic value that happens to contain a constant.
+The second is a constant that holds a dynamic value.
+This restriction isn't entirely necessary, but it aims to simplify stream encoding.
 
 ## Values
 
-A value is the sequence of calls that represent a complete [data type](#data-types).
+A value is the sequence of calls that represent a complete instance of a [data type](#data-types).
 The following are all examples of values.
 
 A single integer:
@@ -66,16 +104,7 @@ stream.i32(42)?;
 # }
 ```
 
-A text blob, streamed as a contiguous borrowed value:
-
-```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.text("A blob of text")?;
-# Ok(())
-# }
-```
-
-A text blob, streamed as a collection of fragments:
+A text blob, streamed as a list of fragments:
 
 ```
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
@@ -95,11 +124,25 @@ A map of text-integer key-value pairs:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.map_begin(Some(2))?;
 
-stream.map_key("a")?;
-stream.map_value(1)?;
+stream.map_key_begin()?;
+stream.text_begin(Some(1))?;
+stream.text_fragment("a")?;
+stream.text_end()?;
+stream.map_key_end()?;
 
-stream.map_key("b")?;
-stream.map_value(2)?;
+stream.map_value_begin()?;
+stream.i32(1)?;
+stream.map_value_end()?;
+
+stream.map_key_begin()?;
+stream.text_begin(Some(1))?;
+stream.text_fragment("b")?;
+stream.text_end()?;
+stream.map_key_end()?;
+
+stream.map_value_begin()?;
+stream.i32(2)?;
+stream.map_value_end()?;
 
 stream.map_end()?;
 # Ok(())
