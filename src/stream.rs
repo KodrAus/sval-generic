@@ -58,10 +58,12 @@ The extended data model includes:
 #### Wrapping
 
 Data types that wrap others, like dynamic, constant, and fixed size, are order-dependent.
-The following two values have different data-types:
+
+This value:
 
 ```
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+// This value...
 stream.dynamic_begin()?;
 stream.constant_begin()?;
 
@@ -73,8 +75,11 @@ stream.dynamic_end()?;
 # }
 ```
 
+does not have the same data type as this one:
+
 ```
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+// ...does not match this one
 stream.constant_begin()?;
 stream.dynamic_begin()?;
 
@@ -310,34 +315,8 @@ pub trait Stream<'sval> {
     Text blobs are one of the [basic data types](basic-data-types).
     Most other data types map to text blobs for [text-based streams](text-and-binary-data), but binary-based streams may also stream text.
 
-    The `num_bytes_hint` argument is a hint for how many bytes the text blob will contain.
+    The `num_bytes_hint` argument is a hint for how many bytes (not characters) the text blob will contain.
     If a hint is given it should be as accurate as possible.
-
-    Also see [`Stream::text`] as a simpler alternative that streams a borrowed string as a text blob.
-
-    # Structure
-
-    After beginning a text blob, the stream should only expect zero or more text fragments ([`Stream::text_fragment`] or [`Stream::text_fragment_computed`]) followed by a call to [`Stream::text_end`]:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.text_begin(num_bytes_hint)?;
-
-    // 0 or more calls to any combination of text_fragment and text_fragment_computed
-
-    stream.text_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Borrowing
-
-    Text blobs may contain data that's borrowed for the stream's `'sval` lifetime.
-    Fragments streamed using [`Stream::text_fragment`] will be borrowed for `'sval`.
-    Fragments streamed using [`Stream::text_fragment_computed`] will be arbitrarily short-lived.
-
-    Callers should use data borrowed for `'sval` wherever possible.
-    Borrowing is just an optimization though, so streams need to cater to both cases.
 
     # Examples
 
@@ -364,8 +343,31 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    Text may need to be computed instead of just being available.
-    The [`Stream::text_fragment_computed`] method can be used to stream text that doesn't satisfy the `'sval` lifetime:
+    # Structure
+
+    After beginning a text blob, the stream should only expect zero or more text fragments ([`Stream::text_fragment`] or [`Stream::text_fragment_computed`]) followed by a call to [`Stream::text_end`]:
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.text_begin(num_bytes_hint)?;
+
+    // 0 or more calls to any combination of text_fragment and text_fragment_computed
+
+    stream.text_end()?;
+    # Ok(())
+    # }
+    ```
+
+    # Borrowing
+
+    Text blobs may contain data that's borrowed for the stream's `'sval` lifetime.
+    Fragments streamed using [`Stream::text_fragment`] will be borrowed for `'sval`.
+    Fragments streamed using [`Stream::text_fragment_computed`] will be arbitrarily short-lived.
+
+    Callers should use data borrowed for `'sval` wherever possible.
+    Borrowing is just an optimization though, so streams need to cater to both cases.
+
+    The following example uses [`Stream::text_fragment_computed`] to stream a blob of computed text:
 
     ```
     # fn compute_text() -> String { Default::default() }
@@ -425,7 +427,20 @@ pub trait Stream<'sval> {
     The `num_bytes_hint` argument is a hint for how many bytes the binary blob will contain.
     If a hint is given it should be as accurate as possible.
 
-    Also see [`Stream::binary`] as a simpler alternative that streams a borrowed slice as a binary blob.
+    # Examples
+
+    Stream a binary blob using a single string:
+
+    ```
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.binary_begin(Some(5))?;
+
+    stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
+
+    stream.binary_end()?;
+    # Ok(())
+    # }
+    ```
 
     # Structure
 
@@ -451,23 +466,7 @@ pub trait Stream<'sval> {
     Callers should use data borrowed for `'sval` wherever possible.
     Borrowing is just an optimization though, so streams need to cater to both cases.
 
-    # Examples
-
-    Stream a binary blob using a single string:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binary_begin(Some(5))?;
-
-    stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
-
-    stream.binary_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Binary may need to be computed instead of just being available.
-    The [`Stream::binary_fragment_computed`] method can be used to stream binary that doesn't satisfy the `'sval` lifetime:
+    The following example uses [`Stream::binary_fragment_computed`] to stream a blob of computed binary:
 
     ```
     # fn compute_binary() -> Vec<u8> { Default::default() }
@@ -1083,11 +1082,53 @@ pub trait Stream<'sval> {
 
     Maps are one of the [basic data types](basic-data-types).
 
-    The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
-    Keys aren't required to be strings.
-
     The `num_entries_hint` parameter is an optional hint for the number of pairs the map will contain.
     If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
+
+    # Examples
+
+    Stream some key-value pairs as a map:
+
+    ```
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.map_begin(Some(2))?;
+
+    stream.map_key_begin()?;
+    stream.text_begin(Some(2))?;
+
+    stream.text_fragment("id")?;
+
+    stream.text_end()?;
+    stream.map_key_end()?;
+
+    stream.map_value_begin()?;
+    stream.text_begin(Some(5))?;
+
+    stream.text_fragment("An id")?;
+
+    stream.text_end()?;
+    stream.map_value_end()?;
+
+    stream.map_key_begin()?;
+    stream.text_begin(Some(5))?;
+
+    stream.text_fragment("title")?;
+
+    stream.text_end()?;
+    stream.map_key_end()?;
+
+    stream.map_value_begin()?;
+    stream.text_begin(Some(10))?;
+
+    stream.text_fragment("A document")?;
+
+    stream.text_end()?;
+    stream.map_value_end()?;
+
+    stream.map_end()?;
+    # Ok(())
+    # }
+    ```
 
     # Structure
 
@@ -1102,13 +1143,17 @@ pub trait Stream<'sval> {
     for (key, value) in key_values {
         // Keys are a value surrounded by `map_key_begin` and `map_key_end`
         stream.map_key_begin()?;
+
         stream.value(key)?;
+
         stream.map_key_end()?;
 
         // Values are a value surrounded by `map_value_begin` and `map_value_end`
         // Values must follow keys and all keys must be followed by a value
         stream.map_value_begin()?;
+
         stream.value(value)?;
+
         stream.map_value_end()?;
     }
 
@@ -1117,45 +1162,12 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Examples
+    # Maps are homogeneous
 
-    Stream some key-value pairs as a map:
+    The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
 
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.map_begin(Some(2))?;
-
-    stream.map_key_begin()?;
-    stream.text_begin(Some(2))?;
-    stream.text_fragment("id")?;
-    stream.text_end()?;
-    stream.map_key_end()?;
-
-    stream.map_value_begin()?;
-    stream.text_begin(Some(5))?;
-    stream.text_fragment("An id")?;
-    stream.text_end()?;
-    stream.map_value_end()?;
-
-    stream.map_key_begin()?;
-    stream.text_begin(Some(5))?;
-    stream.text_fragment("title")?;
-    stream.text_end()?;
-    stream.map_key_end()?;
-
-    stream.map_value_begin()?;
-    stream.text_begin(Some(10))?;
-    stream.text_fragment("A document")?;
-    stream.text_end()?;
-    stream.map_value_end()?;
-
-    stream.map_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Maps can contain heterogeneous data if keys and values are dynamic.
-    See [`Stream::dynamic_begin`] for more details.
+    Maps can contain heterogeneous data if keys and values are dynamic or enums.
+    See [`Stream::dynamic_begin`] and [`Stream::enum_begin`] for more details.
     The following example is a map with string keys and dynamic values:
 
     ```
@@ -1164,26 +1176,34 @@ pub trait Stream<'sval> {
 
     stream.map_key_begin()?;
     stream.text_begin(Some(2))?;
+
     stream.text_fragment("id")?;
+
     stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
     stream.dynamic_begin()?;
+
     stream.i32(42)?;
+
     stream.dynamic_end()?;
     stream.map_value_end()?;
 
     stream.map_key_begin()?;
     stream.text_begin(Some(5))?;
+
     stream.text_fragment("title")?;
+
     stream.text_end()?;
     stream.map_key_end()?;
 
     stream.map_value_begin()?;
     stream.dynamic_begin()?;
     stream.text_begin(Some(10))?;
+
     stream.text_fragment("A document")?;
+
     stream.text_end()?;
     stream.dynamic_end()?;
     stream.map_value_end()?;
@@ -1251,6 +1271,56 @@ pub trait Stream<'sval> {
     The `num_entries_hint` parameter is an optional hint for the number of values the sequence will contain.
     If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
 
+    # Examples
+
+    Stream some values as a sequence:
+
+    ```
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.seq_begin(Some(2))?;
+
+    stream.seq_value_begin()?;
+
+    stream.i32(1)?;
+
+    stream.seq_value_end()?;
+
+    stream.seq_value_begin()?;
+
+    stream.i32(2)?;
+
+    stream.seq_value_end()?;
+
+    stream.seq_end()?;
+    # Ok(())
+    # }
+    ```
+
+    Rust's unsized array (`[T]`) type is streamed as a sequence:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    let slice: &[i32] = &[1, 2, 3];
+    slice.stream(stream)?;
+    # Ok(())
+    # }
+    ```
+
+    Fixed-size arrays (`[T; N]`) are also streamed as sequences:
+
+    ```
+    # use sval::Value;
+    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+    let slice: [i32; 3] = &[1, 2, 3];
+    slice.stream(stream)?;
+    # Ok(())
+    # }
+    ```
+
+    The fact that the size of these arrays is fixed is retained.
+    See [`Stream::fixed_size_begin`] for details.
+
     # Structure
 
     Sequences must contain zero or more values, followed by a call to [`Stream::seq_end`].
@@ -1273,29 +1343,12 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Examples
+    # Sequences are homogeneous
 
-    Stream some values as a sequence:
+    The [data type](data-types) of all values must be the same.
 
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.seq_begin(Some(2))?;
-
-    stream.seq_value_begin()?;
-    stream.i32(1)?;
-    stream.seq_value_end()?;
-
-    stream.seq_value_begin()?;
-    stream.i32(2)?;
-    stream.seq_value_end()?;
-
-    stream.seq_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Maps can contain heterogeneous data if keys and values are dynamic.
-    See [`Stream::dynamic_begin`] for more details.
+    Sequences can contain heterogeneous data if values are dynamic or enums.
+    See [`Stream::dynamic_begin`] and [`Stream::enum_begin`] for more details.
     The following example is a sequence with dynamic values:
 
     ```
@@ -1304,14 +1357,18 @@ pub trait Stream<'sval> {
 
     stream.seq_value_begin()?;
     stream.dynamic_begin()?;
+
     stream.i32(1)?;
+
     stream.dynamic_end()?;
     stream.seq_value_end()?;
 
     stream.seq_value_begin()?;
     stream.dynamic_begin()?;
     stream.text_begin(Some(7))?;
+
     stream.text_fragment("A value")?;
+
     stream.text_end()?;
     stream.dynamic_end()?;
     stream.seq_value_end()?;
