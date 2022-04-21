@@ -12,10 +12,7 @@ pub struct Formatter<W> {
     out: W,
 }
 
-impl<W> Formatter<W>
-where
-    W: Write,
-{
+impl<W> Formatter<W> {
     pub fn new(out: W) -> Self {
         Formatter {
             is_internally_tagged: false,
@@ -31,7 +28,7 @@ where
     }
 }
 
-impl<'a, W> sval::Stream<'a> for Formatter<W>
+impl<'sval, W> sval::Stream<'sval> for Formatter<W>
 where
     W: Write,
 {

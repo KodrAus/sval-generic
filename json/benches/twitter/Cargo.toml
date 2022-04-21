@@ -19,6 +19,11 @@ path = "../../../"
 
 [dependencies.sval-json]
 path = "../../"
+features = ["alloc"]
+
+[dependencies.sval-fmt]
+path = "../../../fmt"
+features = ["alloc"]
 
 [dependencies.serde_json]
 version = "1"

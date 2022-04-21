@@ -48,9 +48,16 @@ fn sval_json_roundtrip() {
 
     let json = sval_json::to_string(&s).unwrap();
 
-    let roundtrip = sval_json::to_string(sval_json::JsonSliceReader::new(&json)).unwrap();
+    let roundtrip = sval_json::to_string(sval_json::slice(&json)).unwrap();
 
     assert_eq!(json, roundtrip);
+}
+
+#[test]
+fn sval_fmt_consistency() {
+    let s = input_struct();
+
+    assert_eq!(format!("{:?}", s), format!("{:?}", sval_fmt::debug(&s)));
 }
 
 #[derive(Debug, Serialize, Deserialize, MiniSerialize, Value, Valuable)]

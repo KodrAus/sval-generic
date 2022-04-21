@@ -14,7 +14,7 @@ impl JsonSlice {
 }
 
 impl sval::Value for JsonSlice {
-    fn stream<'a, R: sval::Stream<'a>>(&'a self, mut stream: R) -> sval::Result {
+    fn stream<'sval, R: sval::Stream<'sval>>(&'sval self, mut stream: R) -> sval::Result {
         let mut reader = JsonSliceReader::new(&self.0);
 
         while reader.stream_resume(&mut stream)? {}

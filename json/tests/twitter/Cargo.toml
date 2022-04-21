@@ -21,6 +21,9 @@ features = ["alloc"]
 [dependencies.sval-dynamic]
 path = "../../../dynamic"
 
+[dependencies.sval-fmt]
+path = "../../../fmt"
+
 [dependencies.serde]
 version = "1"
 features = ["derive"]

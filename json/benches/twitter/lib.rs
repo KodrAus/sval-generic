@@ -104,9 +104,23 @@ impl<T: std::fmt::Debug> std::fmt::Display for Fmt<T> {
 #[bench]
 fn twitter_std_fmt(b: &mut test::Bencher) {
     let s = input_struct();
-    let s = Fmt(&s);
+    let s = Fmt(s);
 
     b.iter(|| s.to_string());
+}
+
+#[bench]
+fn twitter_sval_std_fmt(b: &mut test::Bencher) {
+    let s = input_struct();
+    let s = Fmt(sval_fmt::debug(s));
+
+    b.iter(|| s.to_string());
+}
+
+#[bench]
+fn twitter_sval_fmt(b: &mut test::Bencher) {
+    let s = input_struct();
+    b.iter(|| sval_fmt::to_string(&s).unwrap());
 }
 
 #[bench]
