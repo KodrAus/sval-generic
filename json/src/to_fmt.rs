@@ -254,19 +254,17 @@ where
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         if self.is_internally_tagged {
             self.map_begin(Some(1))?;
 
             match tag {
-                sval::Tag {
-                    label: Some(label), ..
-                } => {
+                Some(sval::Tag::Labeled { label, .. }) => {
                     self.map_key_begin()?;
                     escape_str(label, &mut self.out)?;
                     self.map_key_end()?;
                 }
-                sval::Tag { id: Some(id), .. } => {
+                Some(sval::Tag::Unlabeled { id, .. }) => {
                     self.map_key_begin()?;
                     self.u64(id)?;
                     self.map_key_end()?;
@@ -286,7 +284,7 @@ where
         Ok(())
     }
 
-    fn constant_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn constant_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
         Ok(())
     }
 
@@ -296,7 +294,7 @@ where
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn enum_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.is_internally_tagged = true;
 
         Ok(())

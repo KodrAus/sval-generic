@@ -45,10 +45,10 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
-                    stream.struct_seq_begin(crate::tag(), Some($len))?;
+                    stream.struct_seq_begin(None, Some($len))?;
 
                     $(
-                        stream.struct_seq_value_begin(crate::tag().with_id($i))?;
+                        stream.struct_seq_value_begin(crate::Tag::Unlabeled { id: $i })?;
                         stream.value(&self.$i)?;
                         stream.struct_seq_value_end()?;
                     )+

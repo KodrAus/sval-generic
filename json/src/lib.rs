@@ -3,15 +3,15 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod fmt;
-mod slice;
+mod from_slice;
+mod to_fmt;
 pub use self::{
-    fmt::{to_fmt, Formatter},
-    slice::{slice, JsonSlice, JsonSliceReader},
+    from_slice::{slice, JsonSlice, JsonSliceReader},
+    to_fmt::{to_fmt, Formatter},
 };
 
 #[cfg(feature = "alloc")]
-mod alloc_support;
+mod to_string;
 
 #[cfg(feature = "alloc")]
-pub use self::alloc_support::to_string;
+pub use self::to_string::to_string;

@@ -72,17 +72,17 @@ mod private {
 
         fn dispatch_seq_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_tagged_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result;
 
         fn dispatch_tagged_end(&mut self) -> sval::Result;
 
-        fn dispatch_constant_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_constant_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result;
 
         fn dispatch_constant_end(&mut self) -> sval::Result;
 
         fn dispatch_struct_map_begin(
             &mut self,
-            tag: sval::Tag,
+            tag: Option<sval::Tag>,
             num_entries_hint: Option<usize>,
         ) -> sval::Result;
 
@@ -98,7 +98,7 @@ mod private {
 
         fn dispatch_struct_seq_begin(
             &mut self,
-            tag: sval::Tag,
+            tag: Option<sval::Tag>,
             num_entries_hint: Option<usize>,
         ) -> sval::Result;
 
@@ -108,7 +108,7 @@ mod private {
 
         fn dispatch_struct_seq_end(&mut self) -> sval::Result;
 
-        fn dispatch_enum_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result;
 
         fn dispatch_enum_end(&mut self) -> sval::Result;
 
@@ -298,7 +298,7 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.seq_value_end()
     }
 
-    fn dispatch_tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn dispatch_tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.tagged_begin(tag)
     }
 
@@ -306,7 +306,7 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.tagged_end()
     }
 
-    fn dispatch_constant_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn dispatch_constant_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.constant_begin(tag)
     }
 
@@ -316,7 +316,7 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
 
     fn dispatch_struct_map_begin(
         &mut self,
-        tag: sval::Tag,
+        tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         self.struct_map_begin(tag, num_entries_hint)
@@ -344,7 +344,7 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
 
     fn dispatch_struct_seq_begin(
         &mut self,
-        tag: sval::Tag,
+        tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         self.struct_seq_begin(tag, num_entries_hint)
@@ -362,7 +362,7 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.struct_seq_end()
     }
 
-    fn dispatch_enum_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn dispatch_enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.enum_begin(tag)
     }
 
@@ -494,6 +494,10 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_text_end()
             }
 
+            fn text_fragment(&mut self, fragment: &'sval str) -> sval::Result {
+                self.erase_stream().0.dispatch_text_fragment(&fragment)
+            }
+
             fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
                 self.erase_stream().0.dispatch_text_fragment_computed(&fragment)
             }
@@ -504,6 +508,10 @@ macro_rules! impl_stream {
 
             fn binary_end(&mut self) -> sval::Result {
                 self.erase_stream().0.dispatch_binary_end()
+            }
+
+            fn binary_fragment(&mut self, fragment: &'sval [u8]) -> sval::Result {
+                self.erase_stream().0.dispatch_binary_fragment(&fragment)
             }
 
             fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
@@ -550,7 +558,7 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_seq_value_end()
             }
 
-            fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
+            fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
                 self.erase_stream().0.dispatch_tagged_begin(tag)
             }
 
@@ -558,7 +566,7 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_tagged_end()
             }
 
-            fn constant_begin(&mut self, tag: sval::Tag) -> sval::Result {
+            fn constant_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
                 self.erase_stream().0.dispatch_constant_begin(tag)
             }
 
@@ -566,7 +574,7 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_constant_end()
             }
 
-            fn struct_map_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {
+            fn struct_map_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_stream().0.dispatch_struct_map_begin(tag, num_entries_hint)
             }
 
@@ -590,7 +598,7 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_struct_map_end()
             }
 
-            fn struct_seq_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {
+            fn struct_seq_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_stream().0.dispatch_struct_seq_begin(tag, num_entries_hint)
             }
 
@@ -606,7 +614,7 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_struct_seq_end()
             }
 
-            fn enum_begin(&mut self, tag: sval::Tag) -> sval::Result {
+            fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
                 self.erase_stream().0.dispatch_enum_begin(tag)
             }
 
@@ -657,6 +665,6 @@ macro_rules! impl_stream {
     }
 }
 
-impl_stream!(impl<'a, 'd> sval::Stream<'a> for dyn Stream<'a> + 'd);
-impl_stream!(impl<'a, 'd> sval::Stream<'a> for dyn Stream<'a> + Send + 'd);
-impl_stream!(impl<'a, 'd> sval::Stream<'a> for dyn Stream<'a> + Send + Sync + 'd);
+impl_stream!(impl<'sval, 'd> sval::Stream<'sval> for dyn Stream<'sval> + 'd);
+impl_stream!(impl<'sval, 'd> sval::Stream<'sval> for dyn Stream<'sval> + Send + 'd);
+impl_stream!(impl<'sval, 'd> sval::Stream<'sval> for dyn Stream<'sval> + Send + Sync + 'd);

@@ -1312,7 +1312,7 @@ pub trait Stream<'sval> {
     ```
     # use sval::Value;
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    let slice: [i32; 3] = &[1, 2, 3];
+    let slice: [i32; 3] = [1, 2, 3];
     slice.stream(stream)?;
     # Ok(())
     # }
@@ -1443,14 +1443,14 @@ pub trait Stream<'sval> {
     fn fixed_size_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn tagged_begin(&mut self, tag: Tag) -> Result {
+    fn tagged_begin(&mut self, tag: Option<Tag>) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
     #[cfg(test)]
-    fn tagged_begin(&mut self, tag: Tag) -> Result;
+    fn tagged_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn tagged_end(&mut self) -> Result {
@@ -1461,12 +1461,12 @@ pub trait Stream<'sval> {
     fn tagged_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn constant_begin(&mut self, tag: Tag) -> Result {
+    fn constant_begin(&mut self, tag: Option<Tag>) -> Result {
         self.tagged_begin(tag)
     }
 
     #[cfg(test)]
-    fn constant_begin(&mut self, tag: Tag) -> Result;
+    fn constant_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn constant_end(&mut self) -> Result {
@@ -1477,18 +1477,18 @@ pub trait Stream<'sval> {
     fn constant_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
+    fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result;
+    fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
     fn struct_map_key_begin(&mut self, tag: Tag) -> Result {
         self.map_key_begin()?;
-        self.constant_begin(tag)?;
+        self.constant_begin(Some(tag))?;
         self.dynamic_begin()
     }
 
@@ -1534,13 +1534,13 @@ pub trait Stream<'sval> {
     fn struct_map_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
+    fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result;
+    fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
     fn struct_seq_value_begin(&mut self, tag: Tag) -> Result {
@@ -1571,13 +1571,13 @@ pub trait Stream<'sval> {
     fn struct_seq_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn enum_begin(&mut self, tag: Tag) -> Result {
+    fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
         self.tagged_begin(tag)?;
         self.dynamic_begin()
     }
 
     #[cfg(test)]
-    fn enum_begin(&mut self, tag: Tag) -> Result;
+    fn enum_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn enum_end(&mut self) -> Result {
@@ -2009,7 +2009,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).seq_value_end()
             }
 
-            fn tagged_begin(&mut self, tag: Tag) -> Result {
+            fn tagged_begin(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_begin(tag)
             }
@@ -2019,7 +2019,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tagged_end()
             }
 
-            fn constant_begin(&mut self, tag: Tag) -> Result {
+            fn constant_begin(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
                 ($($forward)*).constant_begin(tag)
             }
@@ -2029,7 +2029,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).constant_end()
             }
 
-            fn struct_map_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
+            fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_map_begin(tag, num_entries_hint)
             }
@@ -2059,7 +2059,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).struct_map_end()
             }
 
-            fn struct_seq_begin(&mut self, tag: Tag, num_entries_hint: Option<usize>) -> Result {
+            fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).struct_seq_begin(tag, num_entries_hint)
             }
@@ -2079,7 +2079,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).struct_seq_end()
             }
 
-            fn enum_begin(&mut self, tag: Tag) -> Result {
+            fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_begin(tag)
             }
@@ -2296,7 +2296,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tagged_begin(&mut self, _: Tag) -> Result {
+    fn tagged_begin(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2304,7 +2304,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn constant_begin(&mut self, _: Tag) -> Result {
+    fn constant_begin(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2312,7 +2312,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn struct_map_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+    fn struct_map_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2336,7 +2336,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn struct_seq_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+    fn struct_seq_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2352,7 +2352,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn enum_begin(&mut self, _: Tag) -> Result {
+    fn enum_begin(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
