@@ -7,9 +7,11 @@ edition = "2021"
 members = [
     "derive",
     "derive/tests",
-    "test",
-    "json",
     "dynamic",
+    "test",
+    "fmt",
+    "fmt/tests",
+    "json",
     "json/benches/twitter",
     "json/benches/profile",
     "json/tests",

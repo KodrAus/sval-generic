@@ -112,9 +112,11 @@ mod private {
 
         fn dispatch_enum_end(&mut self) -> sval::Result;
 
-        fn dispatch_nullable_begin(&mut self) -> sval::Result;
+        fn dispatch_optional_some_begin(&mut self) -> sval::Result;
 
-        fn dispatch_nullable_end(&mut self) -> sval::Result;
+        fn dispatch_optional_some_end(&mut self) -> sval::Result;
+
+        fn dispatch_optional_none(&mut self) -> sval::Result;
 
         fn dispatch_fixed_size_begin(&mut self) -> sval::Result;
 
@@ -370,12 +372,16 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.enum_end()
     }
 
-    fn dispatch_nullable_begin(&mut self) -> sval::Result {
-        self.nullable_begin()
+    fn dispatch_optional_some_begin(&mut self) -> sval::Result {
+        self.optional_some_begin()
     }
 
-    fn dispatch_nullable_end(&mut self) -> sval::Result {
-        self.nullable_end()
+    fn dispatch_optional_some_end(&mut self) -> sval::Result {
+        self.optional_some_end()
+    }
+
+    fn dispatch_optional_none(&mut self) -> sval::Result {
+        self.optional_none()
     }
 
     fn dispatch_fixed_size_begin(&mut self) -> sval::Result {
@@ -622,12 +628,16 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_enum_end()
             }
 
-            fn nullable_begin(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_nullable_begin()
+            fn optional_some_begin(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_optional_some_begin()
             }
 
-            fn nullable_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_nullable_end()
+            fn optional_some_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_optional_some_end()
+            }
+
+            fn optional_none(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_optional_none()
             }
 
             fn fixed_size_begin(&mut self) -> sval::Result {

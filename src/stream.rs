@@ -255,7 +255,7 @@ pub trait Stream<'sval> {
     That means unit and null are not the same data type.
 
     Rust doesn't have a primitive type that maps to null.
-    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Stream::nullable_begin`]) so that it
+    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Stream::optional_some_begin`]) so that it
     has the same data type as its `Some` variant.
     That means that `Option::None` and null don't actually have the same data type.
     */
@@ -295,15 +295,19 @@ pub trait Stream<'sval> {
     # Boolean encoding
 
     Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Stream::unit`]) and `false` will become null (see [`Stream::null`]).
-    Also see [`Stream::nullable_begin`] for more details.
+    Also see [`Stream::optional_some_begin`] for more details.
     */
     #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
+        self.dynamic_begin()?;
+
         if value {
-            Some(()).stream(self)
+            self.unit()?;
         } else {
-            None::<()>.stream(self)
+            self.null()?;
         }
+
+        self.dynamic_end()
     }
 
     #[cfg(test)]
@@ -1589,20 +1593,48 @@ pub trait Stream<'sval> {
     fn enum_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn nullable_begin(&mut self) -> Result {
-        self.dynamic_begin()
+    fn optional_some_begin(&mut self) -> Result {
+        self.enum_begin(Some(crate::Tag::Labeled {
+            label: "Option",
+            id: 0,
+        }))?;
+        self.tagged_begin(Some(crate::Tag::Labeled {
+            label: "Some",
+            id: 1,
+        }))
     }
 
     #[cfg(test)]
-    fn nullable_begin(&mut self) -> Result;
+    fn optional_some_begin(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn nullable_end(&mut self) -> Result {
-        self.dynamic_end()
+    fn optional_some_end(&mut self) -> Result {
+        self.tagged_end()?;
+        self.enum_end()
     }
 
     #[cfg(test)]
-    fn nullable_end(&mut self) -> Result;
+    fn optional_some_end(&mut self) -> Result;
+
+    #[cfg(not(test))]
+    fn optional_none(&mut self) -> Result {
+        self.enum_begin(Some(crate::Tag::Labeled {
+            label: "Option",
+            id: 0,
+        }))?;
+
+        self.constant_begin(Some(crate::Tag::Labeled {
+            label: "None",
+            id: 0,
+        }))?;
+        self.null()?;
+        self.constant_end()?;
+
+        self.enum_end()
+    }
+
+    #[cfg(test)]
+    fn optional_none(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized integer.
@@ -2089,14 +2121,19 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).enum_end()
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).nullable_begin()
+                ($($forward)*).optional_some_begin()
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).nullable_end()
+                ($($forward)*).optional_some_end()
+            }
+
+            fn optional_none(&mut self) -> Result {
+                let $bind = self;
+                ($($forward)*).optional_none()
             }
 
             fn fixed_size_begin(&mut self) -> Result {
@@ -2360,11 +2397,15 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn nullable_begin(&mut self) -> Result {
+    fn optional_some_begin(&mut self) -> Result {
         crate::result::unsupported()
     }
 
-    fn nullable_end(&mut self) -> Result {
+    fn optional_some_end(&mut self) -> Result {
+        crate::result::unsupported()
+    }
+
+    fn optional_none(&mut self) -> Result {
         crate::result::unsupported()
     }
 

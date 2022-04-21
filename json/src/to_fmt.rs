@@ -1,4 +1,5 @@
 use core::fmt::{self, Write};
+use sval::{Tag, Value};
 
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(Formatter::new(fmt))
@@ -308,6 +309,18 @@ where
 
         self.is_internally_tagged = false;
 
+        Ok(())
+    }
+
+    fn optional_none(&mut self) -> sval::Result {
+        self.null()
+    }
+
+    fn optional_some_begin(&mut self) -> sval::Result {
+        Ok(())
+    }
+
+    fn optional_some_end(&mut self) -> sval::Result {
         Ok(())
     }
 
