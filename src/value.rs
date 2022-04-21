@@ -53,11 +53,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -85,11 +85,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -117,11 +117,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -169,11 +169,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -221,11 +221,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -278,11 +278,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
 
@@ -347,11 +347,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn nullable_begin(&mut self) -> Result {
+            fn optional_some_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn nullable_end(&mut self) -> Result {
+            fn optional_some_end(&mut self) -> Result {
                 Ok(())
             }
 

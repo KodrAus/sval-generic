@@ -34,12 +34,15 @@ On the other hand, the data type of maps does not depend on their size, so a str
 The required methods on the `Stream` trait represent the basic data model that all streams need to understand.
 The basic data model includes:
 
-- **Unit**: the truthy value. See [`Stream::unit`].
-- **Null**: the falsey value. See [`Stream::null`].
-- **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
-- **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
-- **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values). See [`Stream::map_begin`].
-- **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Stream::seq_begin`].
+- **Simple values**:
+    - **Unit**: the truthy value. See [`Stream::unit`].
+    - **Null**: the falsey value. See [`Stream::null`].
+- **Encoded data**:
+    - **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
+    - **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
+- **Complex values**:
+    - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values). See [`Stream::map_begin`].
+    - **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Stream::seq_begin`].
 
 All other data types map onto this basic model somehow.
 
@@ -48,12 +51,22 @@ All other data types map onto this basic model somehow.
 Streams may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
 The extended data model includes:
 
-- **Booleans**: the values `true` and `false`. See [`Stream::bool`].
-- **Integers**: `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
-- **Binary floating points**: `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
-- **Decimal floating points**: These don't have a native Rust counterpart. See [`Stream::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
-- **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
-- **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants. See [`Stream::enum_begin`].
+- **Simple values**:
+    - **Booleans**: the values `true` and `false`. See [`Stream::bool`].
+    - **Integers**: native integers. `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
+    - **Binary floating points**: native base2 fractional numbers. `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
+    - **Decimal floating points**: native base10 fractional numbers. Arbitrarily sized. These don't have a native Rust counterpart. See [`Stream::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
+    - **Optionals**: [values](#values) that may either have some data or have none. See [`Stream::optional_some_begin`] and [`Stream::optional_none`].
+- **Tagged complex values**:
+    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data. See [`Stream::tagged_begin`].
+    - **Struct maps**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances. See [`Stream::struct_map_begin`].
+    - **Struct sequences**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances. See [`Stream::struct_seq_begin`].
+- **Dynamic values**:
+    - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
+    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants. See [`Stream::enum_begin`].
+- **Constant values**:
+    - **Constants**: for [values](#values) that will always have the same data. See [`Stream::constant_begin`].
+    - **Fixed size**: for [values](#values) with a length where that length will always be the same. See [`Stream::fixed_size_begin`].
 
 #### Wrapping
 
@@ -65,11 +78,9 @@ This value:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // This value...
 stream.dynamic_begin()?;
-stream.constant_begin()?;
-
-stream.i32(42)?;
-
-stream.constant_end()?;
+    stream.constant_begin()?;
+        stream.i32(42)?;
+    stream.constant_end()?;
 stream.dynamic_end()?;
 # Ok(())
 # }
@@ -81,11 +92,9 @@ does not have the same data type as this one:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // ...does not match this one
 stream.constant_begin()?;
-stream.dynamic_begin()?;
-
-stream.i32(42)?;
-
-stream.dynamic_end()?;
+    stream.dynamic_begin()?;
+        stream.i32(42)?;
+    stream.dynamic_end()?;
 stream.constant_end()?;
 # Ok(())
 # }
@@ -114,10 +123,8 @@ A text blob, streamed as a list of fragments:
 ```
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.text_begin(Some(14))?;
-
-stream.text_fragment("A blob ")?;
-stream.text_fragment("of text")?;
-
+    stream.text_fragment("A blob ")?;
+    stream.text_fragment("of text")?;
 stream.text_end()?;
 # Ok(())
 # }
@@ -129,25 +136,25 @@ A map of text-integer key-value pairs:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.map_begin(Some(2))?;
 
-stream.map_key_begin()?;
-stream.text_begin(Some(1))?;
-stream.text_fragment("a")?;
-stream.text_end()?;
-stream.map_key_end()?;
+    stream.map_key_begin()?;
+        stream.text_begin(Some(1))?;
+            stream.text_fragment("a")?;
+        stream.text_end()?;
+    stream.map_key_end()?;
 
-stream.map_value_begin()?;
-stream.i32(1)?;
-stream.map_value_end()?;
+    stream.map_value_begin()?;
+        stream.i32(1)?;
+    stream.map_value_end()?;
 
-stream.map_key_begin()?;
-stream.text_begin(Some(1))?;
-stream.text_fragment("b")?;
-stream.text_end()?;
-stream.map_key_end()?;
+    stream.map_key_begin()?;
+        stream.text_begin(Some(1))?;
+            stream.text_fragment("b")?;
+        stream.text_end()?;
+    stream.map_key_end()?;
 
-stream.map_value_begin()?;
-stream.i32(2)?;
-stream.map_value_end()?;
+    stream.map_value_begin()?;
+        stream.i32(2)?;
+    stream.map_value_end()?;
 
 stream.map_end()?;
 # Ok(())
@@ -236,7 +243,9 @@ pub trait Stream<'sval> {
     A value that simply _isn't_.
 
     Null is one of the [basic data types](basic-data-types), but isn't commonly used directly.
-    Rust typically represents null through the `Option` type, which may also be the `Some` variant of another type.
+    In Rust, you'd usually use `Option` to represent nullable values.
+    `Option::None` doesn't map directly to null though, it maps to an optional.
+    See [`Stream::optional_none`] for details.
 
     # Examples
 
@@ -254,10 +263,7 @@ pub trait Stream<'sval> {
     Null is a distinct data type that only matches other nulls.
     That means unit and null are not the same data type.
 
-    Rust doesn't have a primitive type that maps to null.
-    The `Option` type will stream its `None` variant as null, but wrapped in a nullable (see [`Stream::optional_some_begin`]) so that it
-    has the same data type as its `Some` variant.
-    That means that `Option::None` and null don't actually have the same data type.
+    Rust doesn't have a primitive type that maps directly to null.
     */
     fn null(&mut self) -> Result;
 
@@ -294,8 +300,8 @@ pub trait Stream<'sval> {
 
     # Boolean encoding
 
-    Booleans map to the basic data model as an empty nullable, so `true` will become unit (see [`Stream::unit`]) and `false` will become null (see [`Stream::null`]).
-    Also see [`Stream::optional_some_begin`] for more details.
+    Booleans map to the basic data model as either unit for `true` and null for `false`.
+    See [`Stream::unit`] and [`Stream::null`] for more details.
     */
     #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
@@ -329,9 +335,7 @@ pub trait Stream<'sval> {
     ```
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.text_begin(Some(14))?;
-
-    stream.text_fragment("A blob of text")?;
-
+        stream.text_fragment("A blob of text")?;
     stream.text_end()?;
     # Ok(())
     # }
@@ -438,9 +442,7 @@ pub trait Stream<'sval> {
     ```
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.binary_begin(Some(5))?;
-
-    stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
-
+        stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
     stream.binary_end()?;
     # Ok(())
     # }
@@ -1097,37 +1099,29 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.map_begin(Some(2))?;
 
-    stream.map_key_begin()?;
-    stream.text_begin(Some(2))?;
+        stream.map_key_begin()?;
+            stream.text_begin(Some(2))?;
+                stream.text_fragment("id")?;
+            stream.text_end()?;
+        stream.map_key_end()?;
 
-    stream.text_fragment("id")?;
+        stream.map_value_begin()?;
+            stream.text_begin(Some(5))?;
+                stream.text_fragment("An id")?;
+            stream.text_end()?;
+        stream.map_value_end()?;
 
-    stream.text_end()?;
-    stream.map_key_end()?;
+        stream.map_key_begin()?;
+            stream.text_begin(Some(5))?;
+                stream.text_fragment("title")?;
+            stream.text_end()?;
+        stream.map_key_end()?;
 
-    stream.map_value_begin()?;
-    stream.text_begin(Some(5))?;
-
-    stream.text_fragment("An id")?;
-
-    stream.text_end()?;
-    stream.map_value_end()?;
-
-    stream.map_key_begin()?;
-    stream.text_begin(Some(5))?;
-
-    stream.text_fragment("title")?;
-
-    stream.text_end()?;
-    stream.map_key_end()?;
-
-    stream.map_value_begin()?;
-    stream.text_begin(Some(10))?;
-
-    stream.text_fragment("A document")?;
-
-    stream.text_end()?;
-    stream.map_value_end()?;
+        stream.map_value_begin()?;
+            stream.text_begin(Some(10))?;
+                stream.text_fragment("A document")?;
+            stream.text_end()?;
+        stream.map_value_end()?;
 
     stream.map_end()?;
     # Ok(())
@@ -1148,6 +1142,7 @@ pub trait Stream<'sval> {
         // Keys are a value surrounded by `map_key_begin` and `map_key_end`
         stream.map_key_begin()?;
 
+        // Keys must contain a single value
         stream.value(key)?;
 
         stream.map_key_end()?;
@@ -1156,6 +1151,7 @@ pub trait Stream<'sval> {
         // Values must follow keys and all keys must be followed by a value
         stream.map_value_begin()?;
 
+        // Values must contain a single value
         stream.value(value)?;
 
         stream.map_value_end()?;
@@ -1178,39 +1174,31 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.map_begin(Some(2))?;
 
-    stream.map_key_begin()?;
-    stream.text_begin(Some(2))?;
+        stream.map_key_begin()?;
+            stream.text_begin(Some(2))?;
+                stream.text_fragment("id")?;
+            stream.text_end()?;
+        stream.map_key_end()?;
 
-    stream.text_fragment("id")?;
+        stream.map_value_begin()?;
+            stream.dynamic_begin()?;
+                stream.i32(42)?;
+            stream.dynamic_end()?;
+        stream.map_value_end()?;
 
-    stream.text_end()?;
-    stream.map_key_end()?;
+        stream.map_key_begin()?;
+            stream.text_begin(Some(5))?;
+                stream.text_fragment("title")?;
+            stream.text_end()?;
+        stream.map_key_end()?;
 
-    stream.map_value_begin()?;
-    stream.dynamic_begin()?;
-
-    stream.i32(42)?;
-
-    stream.dynamic_end()?;
-    stream.map_value_end()?;
-
-    stream.map_key_begin()?;
-    stream.text_begin(Some(5))?;
-
-    stream.text_fragment("title")?;
-
-    stream.text_end()?;
-    stream.map_key_end()?;
-
-    stream.map_value_begin()?;
-    stream.dynamic_begin()?;
-    stream.text_begin(Some(10))?;
-
-    stream.text_fragment("A document")?;
-
-    stream.text_end()?;
-    stream.dynamic_end()?;
-    stream.map_value_end()?;
+        stream.map_value_begin()?;
+            stream.dynamic_begin()?;
+                stream.text_begin(Some(10))?;
+                    stream.text_fragment("A document")?;
+                stream.text_end()?;
+            stream.dynamic_end()?;
+        stream.map_value_end()?;
 
     stream.map_end()?;
     # Ok(())
@@ -1283,17 +1271,13 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.seq_begin(Some(2))?;
 
-    stream.seq_value_begin()?;
+        stream.seq_value_begin()?;
+            stream.i32(1)?;
+        stream.seq_value_end()?;
 
-    stream.i32(1)?;
-
-    stream.seq_value_end()?;
-
-    stream.seq_value_begin()?;
-
-    stream.i32(2)?;
-
-    stream.seq_value_end()?;
+        stream.seq_value_begin()?;
+            stream.i32(2)?;
+        stream.seq_value_end()?;
 
     stream.seq_end()?;
     # Ok(())
@@ -1338,7 +1322,10 @@ pub trait Stream<'sval> {
     for value in values {
         // Values are a value surrounded by `seq_value_begin` and `seq_value_end`
         stream.seq_value_begin()?;
+
+        // Values must contain a single value
         stream.value(value)?;
+
         stream.seq_value_end()?;
     }
 
@@ -1359,23 +1346,19 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.seq_begin(Some(2))?;
 
-    stream.seq_value_begin()?;
-    stream.dynamic_begin()?;
+        stream.seq_value_begin()?;
+            stream.dynamic_begin()?;
+                stream.i32(1)?;
+            stream.dynamic_end()?;
+        stream.seq_value_end()?;
 
-    stream.i32(1)?;
-
-    stream.dynamic_end()?;
-    stream.seq_value_end()?;
-
-    stream.seq_value_begin()?;
-    stream.dynamic_begin()?;
-    stream.text_begin(Some(7))?;
-
-    stream.text_fragment("A value")?;
-
-    stream.text_end()?;
-    stream.dynamic_end()?;
-    stream.seq_value_end()?;
+        stream.seq_value_begin()?;
+            stream.dynamic_begin()?;
+                stream.text_begin(Some(7))?;
+                    stream.text_fragment("A value")?;
+                stream.text_end()?;
+            stream.dynamic_end()?;
+        stream.seq_value_end()?;
 
     stream.seq_end()?;
     # Ok(())
@@ -1648,11 +1631,14 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.int_begin()?;
 
+    // Integers must contain a single text or binary blob
     if stream.is_text_based() {
+        // Text-based streams require a single text blob
         stream.text_begin(Some(3))?;
         stream.text_fragment("754")?;
         stream.text_end()?;
     } else {
+        // Binary-based streams require a single binary blob
         stream.binary_begin(Some(2))?;
         stream.binary_fragment(&[0b11110010, 0b00000010])?;
         stream.binary_end()?;
@@ -1721,11 +1707,14 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.binfloat_begin()?;
 
+    // Floating points must contain a single text or binary blob
     if stream.is_text_based() {
+        // Text-based streams require a single text blob
         stream.text_begin(Some(8))?;
         stream.text_fragment("1333.754")?;
         stream.text_end()?;
     } else {
+        // Binary-based streams require a single binary blob
         stream.binary_begin(Some(4))?;
         stream.binary_fragment(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
         stream.binary_end()?;
@@ -1797,11 +1786,14 @@ pub trait Stream<'sval> {
     # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.decfloat_begin()?;
 
+    // Floating points must contain a single text or binary blob
     if stream.is_text_based() {
+        // Text-based streams require a single text blob
         stream.text_begin(Some(8))?;
         stream.text_fragment("1333.754")?;
         stream.text_end()?;
     } else {
+        // Binary-based streams require a single binary blob
         stream.binary_begin(Some(4))?;
         stream.binary_fragment(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
         stream.binary_end()?;

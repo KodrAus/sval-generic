@@ -256,7 +256,7 @@ fn stream_tuple(
         stream.struct_seq_begin(Some(#tag), Some(#field_count))?;
 
         #(
-            stream.struct_seq_value_begin(sval::Tag::Unlabled { id: #field_id })?;
+            stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: #field_id })?;
             stream.value(#field_ident)?;
             stream.struct_seq_value_end()?;
         )*
@@ -270,13 +270,13 @@ fn stream_constant(
     label: &Ident,
     id: Option<u64>,
 ) -> proc_macro2::TokenStream {
-    let tag = label.to_string();
+    let constant = label.to_string();
     let id = id.unwrap_or_default();
-    let tag = quote!(sval::Tag::Labeled { label: #tag, id: #id });
+    let tag = quote!(sval::Tag::Labeled { label: #constant, id: #id });
 
     quote!(#path => {
-        stream.constant_begin(#tag)?;
-        stream.value(#tag)?;
+        stream.constant_begin(Some(#tag))?;
+        stream.value(#constant)?;
         stream.constant_end()?;
     })
 }
