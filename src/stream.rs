@@ -1514,7 +1514,8 @@ pub trait Stream<'sval> {
 
     #[cfg(not(test))]
     fn struct_map_end(&mut self) -> Result {
-        self.map_end()
+        self.map_end()?;
+        self.tagged_end()
     }
 
     #[cfg(test)]
@@ -1551,7 +1552,8 @@ pub trait Stream<'sval> {
 
     #[cfg(not(test))]
     fn struct_seq_end(&mut self) -> Result {
-        self.seq_end()
+        self.seq_end()?;
+        self.tagged_end()
     }
 
     #[cfg(test)]

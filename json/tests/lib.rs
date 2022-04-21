@@ -87,6 +87,15 @@ fn tuple_roundtrip() {
 }
 
 #[test]
+fn option_roundtrip() {
+    let json = sval_json::to_string(&Some(42)).unwrap();
+
+    let roundtrip = sval_json::to_string(&sval_json::slice(&json)).unwrap();
+
+    assert_eq!(json, roundtrip);
+}
+
+#[test]
 fn slice_convert() {
     use sval::Value;
 
@@ -97,16 +106,16 @@ fn slice_convert() {
 struct BinFloat<'a>(&'a [&'a str]);
 
 impl<'a> sval::Value for BinFloat<'a> {
-    fn stream<'b, R: sval::Receiver<'b>>(&'b self, mut receiver: R) -> sval::Result {
-        receiver.binfloat_begin()?;
-        receiver.text_begin(None)?;
+    fn stream<'b, S: sval::Stream<'b>>(&'b self, mut stream: S) -> sval::Result {
+        stream.binfloat_begin()?;
+        stream.text_begin(None)?;
 
         for fragment in self.0 {
-            receiver.text_fragment(fragment)?;
+            stream.text_fragment(fragment)?;
         }
 
-        receiver.text_end()?;
-        receiver.binfloat_end()
+        stream.text_end()?;
+        stream.binfloat_end()
     }
 }
 

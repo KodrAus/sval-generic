@@ -1,5 +1,4 @@
 use core::fmt::{self, Write};
-use sval::{Tag, Value};
 
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(Formatter::new(fmt))
