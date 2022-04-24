@@ -2,6 +2,9 @@ fn main() -> sval::Result {
     stream(42);
     stream(true);
 
+    stream(Some(42));
+    stream(None::<i32>);
+
     stream({
         use std::collections::BTreeMap;
 
