@@ -29,3 +29,12 @@ impl Value for bool {
         Some(*self)
     }
 }
+
+#[cfg(not(test))]
+pub(crate) fn bool_basic<'sval>(v: bool, stream: impl Stream<'sval>) -> crate::Result {
+    if stream.is_text_based() {
+        if v { "true" } else { "false" }.stream(stream)
+    } else {
+        if v { &1u8 } else { &0u8 }.stream(stream)
+    }
+}

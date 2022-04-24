@@ -1,11 +1,11 @@
-use crate::{Result, Tag, Value};
+use crate::{data, Result, Tag, Value};
 
 /**
 An observer of structured data emitted by some value.
 
 # Using streams
 
-Streams can be used to convert between structured data and a [text or binary format](text-and-binary-data).
+Streams can be used to convert between structured data and a [text or binary format](#text-and-binary-data).
 They can also be used to observe and transform data as it's yielded by values.
 
 # Data model
@@ -35,8 +35,7 @@ The required methods on the `Stream` trait represent the basic data model that a
 The basic data model includes:
 
 - **Simple values**:
-    - **Unit**: the truthy value. See [`Stream::unit`].
-    - **Null**: the falsey value. See [`Stream::null`].
+    - **Null**: the absence of a value. See [`Stream::null`].
 - **Encoded data**:
     - **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
     - **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
@@ -52,6 +51,7 @@ Streams may opt-in to direct support for data types in the extended data model e
 The extended data model includes:
 
 - **Simple values**:
+    - **Unit**: a value with no other meaningful data. See [`Stream::unit`].
     - **Booleans**: the values `true` and `false`. See [`Stream::bool`].
     - **Integers**: native integers. `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
     - **Binary floating points**: native base2 fractional numbers. `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
@@ -209,7 +209,7 @@ pub trait Stream<'sval> {
     /**
     A value that simply _is_.
 
-    Unit is one of the [basic data types](basic-data-types), but isn't commonly used directly.
+    Unit is one of the [extended data types](extended-data-types).
 
     # Examples
 
@@ -236,8 +236,14 @@ pub trait Stream<'sval> {
 
     Unit is a distinct data type that only matches other units.
     That means unit and null are not the same data type, and unit and other values like `i32` are not the same data type.
+
+    # Unit encoding
+
+    For both text-based and binary-based streams unit maps to `null`.
     */
-    fn unit(&mut self) -> Result;
+    fn unit(&mut self) -> Result {
+        self.null()
+    }
 
     /**
     A value that simply _isn't_.
@@ -300,20 +306,13 @@ pub trait Stream<'sval> {
 
     # Boolean encoding
 
-    Booleans map to the basic data model as either unit for `true` and null for `false`.
-    See [`Stream::unit`] and [`Stream::null`] for more details.
+    For [text-based streams](#text-and-binary-data), booleans map to the case insensitive text blob `true` or `false`.
+
+    For [binary-based streams](#binary-based-streams), booleans map to a single byte `1` for `true` and `0` for `false`.
     */
     #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
-        self.dynamic_begin()?;
-
-        if value {
-            self.unit()?;
-        } else {
-            self.null()?;
-        }
-
-        self.dynamic_end()
+        data::bool_basic(value, self)
     }
 
     #[cfg(test)]
@@ -561,7 +560,7 @@ pub trait Stream<'sval> {
     */
     #[cfg(not(test))]
     fn u8(&mut self, value: u8) -> Result {
-        crate::data::number::u8_int(value, self)
+        data::number::u8_int(value, self)
     }
 
     #[cfg(test)]
@@ -608,7 +607,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.u8(value)
         } else {
-            crate::data::number::u16_int(value, self)
+            data::number::u16_int(value, self)
         }
     }
 
@@ -656,7 +655,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.u16(value)
         } else {
-            crate::data::number::u32_int(value, self)
+            data::number::u32_int(value, self)
         }
     }
 
@@ -704,7 +703,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.u32(value)
         } else {
-            crate::data::number::u64_int(value, self)
+            data::number::u64_int(value, self)
         }
     }
 
@@ -752,7 +751,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.u64(value)
         } else {
-            crate::data::number::u128_int(value, self)
+            data::number::u128_int(value, self)
         }
     }
 
@@ -797,7 +796,7 @@ pub trait Stream<'sval> {
     */
     #[cfg(not(test))]
     fn i8(&mut self, value: i8) -> Result {
-        crate::data::number::i8_int(value, self)
+        data::number::i8_int(value, self)
     }
 
     #[cfg(test)]
@@ -844,7 +843,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i8(value)
         } else {
-            crate::data::number::i16_int(value, self)
+            data::number::i16_int(value, self)
         }
     }
 
@@ -892,7 +891,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i16(value)
         } else {
-            crate::data::number::i32_int(value, self)
+            data::number::i32_int(value, self)
         }
     }
 
@@ -940,7 +939,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i32(value)
         } else {
-            crate::data::number::i64_int(value, self)
+            data::number::i64_int(value, self)
         }
     }
 
@@ -988,7 +987,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i64(value)
         } else {
-            crate::data::number::i128_int(value, self)
+            data::number::i128_int(value, self)
         }
     }
 
@@ -1033,7 +1032,7 @@ pub trait Stream<'sval> {
     */
     #[cfg(not(test))]
     fn f32(&mut self, value: f32) -> Result {
-        crate::data::number::f32_number(value, self)
+        data::number::f32_number(value, self)
     }
 
     #[cfg(test)]
@@ -1077,7 +1076,7 @@ pub trait Stream<'sval> {
     */
     #[cfg(not(test))]
     fn f64(&mut self, value: f64) -> Result {
-        crate::data::number::f64_number(value, self)
+        data::number::f64_number(value, self)
     }
 
     #[cfg(test)]
