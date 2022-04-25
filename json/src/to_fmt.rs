@@ -263,7 +263,7 @@ where
                 }
                 Some(sval::Tag::Unlabeled { id, .. }) => {
                     self.map_key_begin()?;
-                    self.u64(id)?;
+                    self.u128(id)?;
                     self.map_key_end()?;
                 }
                 _ => sval::result::unsupported()?,

@@ -203,6 +203,31 @@ type Record = { a: i32, b: bool };
 type Enum = (i32 | bool);
 ```
 
+```
+# #![allow(non_camel_case_types)]
+# enum Enum { i32(i32), bool(bool) }
+# fn wrap<'a>(value: &'a Enum, mut stream: impl sval::Stream<'a>) -> sval::Result {
+# use Enum::*;
+stream.enum_begin(None)?;
+
+    match value {
+        i32(i) => {
+            stream.tagged_begin(Some(sval::Tag::Unlabeled { id: 0 }))?;
+            stream.value(i)?;
+            stream.tagged_end()?;
+        }
+        bool(b) => {
+            stream.tagged_begin(Some(sval::Tag::Unlabeled { id: 1 }))?;
+            stream.value(b)?;
+            stream.tagged_end()?;
+        }
+    }
+
+stream.enum_end()?;
+# Ok(())
+# }
+```
+
 #### Nested enums
 
 ```rust,ignore
@@ -1692,11 +1717,11 @@ pub trait Stream<'sval> {
     fn optional_some_begin(&mut self) -> Result {
         self.enum_begin(Some(crate::Tag::Labeled {
             label: "Option",
-            id: 0,
+            id: None,
         }))?;
         self.tagged_begin(Some(crate::Tag::Labeled {
             label: "Some",
-            id: 1,
+            id: Some(1),
         }))
     }
 
@@ -1716,12 +1741,12 @@ pub trait Stream<'sval> {
     fn optional_none(&mut self) -> Result {
         self.enum_begin(Some(crate::Tag::Labeled {
             label: "Option",
-            id: 0,
+            id: None,
         }))?;
 
         self.constant_begin(Some(crate::Tag::Labeled {
             label: "None",
-            id: 0,
+            id: Some(0),
         }))?;
         self.null()?;
         self.constant_end()?;
