@@ -104,6 +104,118 @@ The first is a dynamic value that happens to contain a constant.
 The second is a constant that holds a dynamic value.
 This restriction isn't entirely necessary, but it aims to simplify stream encoding.
 
+### Rust types and `sval` types
+
+Each Rust type must correspond to a single `sval` data type.
+`sval` can represent the basic building blocks of Rust datastructures.
+
+#### Structs with named fields
+
+The struct:
+
+```
+struct Struct {
+    a: i32,
+    b: bool,
+}
+```
+
+is streamed as a struct map:
+
+```
+# struct Struct { a: i32, b: bool }
+# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.struct_map_begin(Some(sval::Tag::Labeled { label: "Struct", id: 0 }), Some(2))?;
+
+    stream.struct_map_key_begin(sval::Tag::Labeled { label: "a", id: 0 })?;
+    stream.value("a")?;
+    stream.struct_map_key_end()?;
+
+    stream.struct_map_value_begin(sval::Tag::Labeled { label: "a", id: 0 })?;
+    stream.value(&value.a)?;
+    stream.struct_map_value_end()?;
+
+    stream.struct_map_key_begin(sval::Tag::Labeled { label: "b", id: 1 })?;
+    stream.value("b")?;
+    stream.struct_map_key_end()?;
+
+    stream.struct_map_value_begin(sval::Tag::Labeled { label: "b", id: 1 })?;
+    stream.value(&value.b)?;
+    stream.struct_map_value_end()?;
+
+stream.struct_map_end()?;
+# Ok(())
+# }
+```
+
+See [`Stream::struct_map_begin`].
+
+### Structs with unnamed fields
+
+The struct:
+
+```
+struct Struct(i32, bool);
+```
+
+is streamed as a struct sequence:
+
+```
+# struct Struct(i32, bool);
+# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.struct_seq_begin(Some(sval::Tag::Labeled { label: "Struct", id: 0 }), Some(2))?;
+
+    stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: 0 })?;
+    stream.value(&value.0)?;
+    stream.struct_seq_value_end()?;
+
+    stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: 1 })?;
+    stream.value(&value.1)?;
+    stream.struct_seq_value_end()?;
+
+stream.struct_seq_end()?;
+# Ok(())
+# }
+```
+
+See [`Stream::struct_seq_begin`].
+
+#### Tuples
+
+```
+type Tuple = (i32, bool);
+```
+
+### Exotic data types
+
+`sval` can represent some data types that Rust can't natively (yet).
+These examples just use a strawman Rust syntax to illustrate the shape of the data type in a familiar setting.
+
+#### Anonymous structs with named fields (records)
+
+```rust,ignore
+type Record = { a: i32, b: bool };
+```
+
+#### Anonymous enums
+
+```rust,ignore
+type Enum = (i32 | bool);
+```
+
+#### Nested enums
+
+```rust,ignore
+enum Enum {
+    A(i32),
+    B(bool),
+    enum Nested {
+        A(i32),
+        B(bool),
+    },
+}
+```
+
 ## Values
 
 A value is the sequence of calls that represent a complete instance of a [data type](#data-types).
