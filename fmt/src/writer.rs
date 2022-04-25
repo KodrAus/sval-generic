@@ -1,4 +1,4 @@
-use core::fmt::{self, Write};
+use core::fmt::{self, Debug, Write};
 
 pub(crate) struct Writer<W> {
     is_current_depth_empty: bool,
@@ -7,18 +7,73 @@ pub(crate) struct Writer<W> {
 }
 
 pub(crate) trait Fmt: fmt::Write {
-    fn write_debug<D: fmt::Debug>(&mut self, value: D) -> fmt::Result;
+    fn write_u8(&mut self, value: u8) -> fmt::Result;
+    fn write_u16(&mut self, value: u16) -> fmt::Result;
+    fn write_u32(&mut self, value: u32) -> fmt::Result;
+    fn write_u64(&mut self, value: u64) -> fmt::Result;
+    fn write_u128(&mut self, value: u128) -> fmt::Result;
+    fn write_i8(&mut self, value: i8) -> fmt::Result;
+    fn write_i16(&mut self, value: i16) -> fmt::Result;
+    fn write_i32(&mut self, value: i32) -> fmt::Result;
+    fn write_i64(&mut self, value: i64) -> fmt::Result;
+    fn write_i128(&mut self, value: i128) -> fmt::Result;
+    fn write_f32(&mut self, value: f32) -> fmt::Result;
+    fn write_f64(&mut self, value: f64) -> fmt::Result;
 }
 
 impl<'a, 'b> Fmt for &'a mut fmt::Formatter<'b> {
-    fn write_debug<D: fmt::Debug>(&mut self, value: D) -> fmt::Result {
+    fn write_u8(&mut self, value: u8) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_u16(&mut self, value: u16) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_u32(&mut self, value: u32) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_u64(&mut self, value: u64) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_u128(&mut self, value: u128) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_i8(&mut self, value: i8) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_i16(&mut self, value: i16) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_i32(&mut self, value: i32) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_i64(&mut self, value: i64) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_i128(&mut self, value: i128) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_f32(&mut self, value: f32) -> fmt::Result {
+        value.fmt(self)
+    }
+
+    fn write_f64(&mut self, value: f64) -> fmt::Result {
         value.fmt(self)
     }
 }
 
-pub(crate) struct WriteDebugAsFormatArgs<W>(pub W);
+pub(crate) struct StdFree<W>(pub W);
 
-impl<W: fmt::Write> Write for WriteDebugAsFormatArgs<W> {
+impl<W: fmt::Write> Write for StdFree<W> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.write_str(s)
     }
@@ -32,9 +87,53 @@ impl<W: fmt::Write> Write for WriteDebugAsFormatArgs<W> {
     }
 }
 
-impl<W: fmt::Write> Fmt for WriteDebugAsFormatArgs<W> {
-    fn write_debug<D: fmt::Debug>(&mut self, value: D) -> fmt::Result {
-        self.0.write_fmt(format_args!("{:?}", value))
+impl<W: fmt::Write> Fmt for StdFree<W> {
+    fn write_u8(&mut self, value: u8) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_u16(&mut self, value: u16) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_u32(&mut self, value: u32) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_u64(&mut self, value: u64) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_u128(&mut self, value: u128) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_i8(&mut self, value: i8) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_i16(&mut self, value: i16) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_i32(&mut self, value: i32) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_i64(&mut self, value: i64) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_i128(&mut self, value: i128) -> fmt::Result {
+        self.write_str(itoa::Buffer::new().format(value))
+    }
+
+    fn write_f32(&mut self, value: f32) -> fmt::Result {
+        self.write_str(ryu::Buffer::new().format(value))
+    }
+
+    fn write_f64(&mut self, value: f64) -> fmt::Result {
+        self.write_str(ryu::Buffer::new().format(value))
     }
 }
 
@@ -49,14 +148,6 @@ impl<W> Writer<W> {
 
     pub fn into_inner(self) -> W {
         self.out
-    }
-}
-
-impl<W: Fmt> Writer<W> {
-    fn write_value(&mut self, v: impl fmt::Debug) -> sval::Result {
-        self.out.write_debug(v)?;
-
-        Ok(())
     }
 }
 
@@ -76,7 +167,9 @@ impl<W: fmt::Write> Write for Writer<W> {
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn unit(&mut self) -> sval::Result {
-        self.write_value(())
+        self.out.write_str("()")?;
+
+        Ok(())
     }
 
     fn null(&mut self) -> sval::Result {
@@ -86,7 +179,9 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        self.write_value(value)
+        self.out.write_str(if value { "true" } else { "false" })?;
+
+        Ok(())
     }
 
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
@@ -98,34 +193,26 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
-        struct Escape<'a>(&'a str);
-
-        impl<'a> fmt::Debug for Escape<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                // Inlined from `impl Debug for str`
-                // This avoids writing the outer quotes for the string
-                // and handles the `'` case
-                let mut from = 0;
-
-                for (i, c) in self.0.char_indices() {
-                    let esc = c.escape_debug();
-
-                    // If char needs escaping, flush backlog so far and write, else skip
-                    if c != '\'' && esc.len() != 1 {
-                        f.write_str(&self.0[from..i])?;
-                        for c in esc {
-                            f.write_char(c)?;
-                        }
-                        from = i + c.len_utf8();
-                    }
-                }
-
-                f.write_str(&self.0[from..])
-            }
-        }
-
         if self.is_text_quoted {
-            self.write_value(Escape(fragment))?;
+            // Inlined from `impl Debug for str`
+            // This avoids writing the outer quotes for the string
+            // and handles the `'` case
+            let mut from = 0;
+
+            for (i, c) in fragment.char_indices() {
+                let esc = c.escape_debug();
+
+                // If char needs escaping, flush backlog so far and write, else skip
+                if c != '\'' && esc.len() != 1 {
+                    self.out.write_str(&fragment[from..i])?;
+                    for c in esc {
+                        self.out.write_char(c)?;
+                    }
+                    from = i + c.len_utf8();
+                }
+            }
+
+            self.out.write_str(&fragment[from..])?;
         } else {
             self.write_str(fragment)?;
         }
@@ -160,51 +247,75 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn u8(&mut self, value: u8) -> sval::Result {
-        self.write_value(value)
+        self.out.write_u8(value)?;
+
+        Ok(())
     }
 
     fn u16(&mut self, value: u16) -> sval::Result {
-        self.write_value(value)
+        self.out.write_u16(value)?;
+
+        Ok(())
     }
 
     fn u32(&mut self, value: u32) -> sval::Result {
-        self.write_value(value)
+        self.out.write_u32(value)?;
+
+        Ok(())
     }
 
     fn u64(&mut self, value: u64) -> sval::Result {
-        self.write_value(value)
+        self.out.write_u64(value)?;
+
+        Ok(())
     }
 
     fn u128(&mut self, value: u128) -> sval::Result {
-        self.write_value(value)
+        self.out.write_u128(value)?;
+
+        Ok(())
     }
 
     fn i8(&mut self, value: i8) -> sval::Result {
-        self.write_value(value)
+        self.out.write_i8(value)?;
+
+        Ok(())
     }
 
     fn i16(&mut self, value: i16) -> sval::Result {
-        self.write_value(value)
+        self.out.write_i16(value)?;
+
+        Ok(())
     }
 
     fn i32(&mut self, value: i32) -> sval::Result {
-        self.write_value(value)
+        self.out.write_i32(value)?;
+
+        Ok(())
     }
 
     fn i64(&mut self, value: i64) -> sval::Result {
-        self.write_value(value)
+        self.out.write_i64(value)?;
+
+        Ok(())
     }
 
     fn i128(&mut self, value: i128) -> sval::Result {
-        self.write_value(value)
+        self.out.write_i128(value)?;
+
+        Ok(())
     }
 
     fn f32(&mut self, value: f32) -> sval::Result {
-        self.write_value(value)
+        self.out.write_f32(value)?;
+
+        Ok(())
     }
 
     fn f64(&mut self, value: f64) -> sval::Result {
-        self.write_value(value)
+        self.out.write_f64(value)?;
+
+        Ok(())
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {

@@ -1,15 +1,15 @@
-use crate::writer::{WriteDebugAsFormatArgs, Writer};
+use crate::writer::{StdFree, Writer};
 use core::fmt::Write;
 
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(Formatter::new(fmt))
 }
 
-pub struct Formatter<W>(Writer<WriteDebugAsFormatArgs<W>>);
+pub struct Formatter<W>(Writer<StdFree<W>>);
 
 impl<W> Formatter<W> {
     pub fn new(out: W) -> Self {
-        Formatter(Writer::new(WriteDebugAsFormatArgs(out)))
+        Formatter(Writer::new(StdFree(out)))
     }
 
     pub fn into_inner(self) -> W {
