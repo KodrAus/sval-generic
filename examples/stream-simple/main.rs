@@ -115,6 +115,3 @@ impl<'sval> sval::Stream<'sval> for MyStream {
         Ok(())
     }
 }
-
-#[cfg(not(feature = "alloc"))]
-compile_error!("this sample requires the `alloc` feature to be enabled");

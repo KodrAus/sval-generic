@@ -1,6 +1,5 @@
 use crate::{Stream, Value};
 
-#[cfg(not(test))]
 macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
@@ -50,7 +49,6 @@ macro_rules! int {
     };
 }
 
-#[cfg(not(test))]
 macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
@@ -91,7 +89,6 @@ macro_rules! convert {
     };
 }
 
-#[cfg(not(test))]
 int!(
     i8_int => i8,
     u8_int => u8,
@@ -105,7 +102,6 @@ int!(
     u128_int => u128,
 );
 
-#[cfg(not(test))]
 float!(
     f32_number => f32,
     f64_number => f64,

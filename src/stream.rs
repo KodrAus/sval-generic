@@ -313,13 +313,9 @@ pub trait Stream<'sval> {
     This choice is expected to be constant over a single complete value.
     Callers are expected to check this method before choosing between the text or binary encoding for a particular [data type](#data-type).
     */
-    #[cfg(not(test))]
     fn is_text_based(&self) -> bool {
         true
     }
-
-    #[cfg(test)]
-    fn is_text_based(&self) -> bool;
 
     /**
     A borrowed value.
@@ -327,13 +323,9 @@ pub trait Stream<'sval> {
     This is a niche method that simply calls back into the stream, so shouldn't be called from [`Value::stream`].
     It can be useful for separating borrowed data out to avoid needing to buffer it.
     */
-    #[cfg(not(test))]
     fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result {
         value.stream(self)
     }
-
-    #[cfg(test)]
-    fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result;
 
     /**
     A value that simply _is_.
@@ -439,13 +431,9 @@ pub trait Stream<'sval> {
 
     For [binary-based streams](#binary-based-streams), booleans map to a single byte `1` for `true` and `0` for `false`.
     */
-    #[cfg(not(test))]
     fn bool(&mut self, value: bool) -> Result {
         data::bool_basic(value, self)
     }
-
-    #[cfg(test)]
-    fn bool(&mut self, value: bool) -> Result;
 
     /**
     Begin a UTF8 text blob.
@@ -531,13 +519,9 @@ pub trait Stream<'sval> {
     See [`Stream::text_begin`] for details on text fragments.
     The [`Stream::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
     */
-    #[cfg(not(test))]
     fn text_fragment(&mut self, fragment: &'sval str) -> Result {
         self.text_fragment_computed(fragment)
     }
-
-    #[cfg(test)]
-    fn text_fragment(&mut self, fragment: &'sval str) -> Result;
 
     /**
     A UTF8 text fragment that's borrowed for some arbitrarily short lifetime.
@@ -628,13 +612,9 @@ pub trait Stream<'sval> {
     See [`Stream::binary_begin`] for details on binary fragments.
     The [`Stream::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
     */
-    #[cfg(not(test))]
     fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
-
-    #[cfg(test)]
-    fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result;
 
     /**
     A binary fragment that's borrowed for some arbitrarily short lifetime.
@@ -687,13 +667,9 @@ pub trait Stream<'sval> {
     `u8`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn u8(&mut self, value: u8) -> Result {
         data::number::u8_int(value, self)
     }
-
-    #[cfg(test)]
-    fn u8(&mut self, value: u8) -> Result;
 
     /**
     Stream a 16bit unsigned integer.
@@ -731,7 +707,6 @@ pub trait Stream<'sval> {
     `u16`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn u16(&mut self, value: u16) -> Result {
         if let Ok(value) = value.try_into() {
             self.u8(value)
@@ -739,9 +714,6 @@ pub trait Stream<'sval> {
             data::number::u16_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn u16(&mut self, value: u16) -> Result;
 
     /**
     Stream a 32bit unsigned integer.
@@ -779,7 +751,6 @@ pub trait Stream<'sval> {
     `u32`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn u32(&mut self, value: u32) -> Result {
         if let Ok(value) = value.try_into() {
             self.u16(value)
@@ -787,9 +758,6 @@ pub trait Stream<'sval> {
             data::number::u32_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn u32(&mut self, value: u32) -> Result;
 
     /**
     Stream a 64bit unsigned integer.
@@ -827,7 +795,6 @@ pub trait Stream<'sval> {
     `u64`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn u64(&mut self, value: u64) -> Result {
         if let Ok(value) = value.try_into() {
             self.u32(value)
@@ -835,9 +802,6 @@ pub trait Stream<'sval> {
             data::number::u64_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn u64(&mut self, value: u64) -> Result;
 
     /**
     Stream a 128bit unsigned integer.
@@ -875,7 +839,6 @@ pub trait Stream<'sval> {
     `u128`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
             self.u64(value)
@@ -883,9 +846,6 @@ pub trait Stream<'sval> {
             data::number::u128_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn u128(&mut self, value: u128) -> Result;
 
     /**
     Stream an 8bit signed integer.
@@ -923,13 +883,9 @@ pub trait Stream<'sval> {
     `i8`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn i8(&mut self, value: i8) -> Result {
         data::number::i8_int(value, self)
     }
-
-    #[cfg(test)]
-    fn i8(&mut self, value: i8) -> Result;
 
     /**
     Stream a 16bit signed integer.
@@ -967,7 +923,6 @@ pub trait Stream<'sval> {
     `i16`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn i16(&mut self, value: i16) -> Result {
         if let Ok(value) = value.try_into() {
             self.i8(value)
@@ -975,9 +930,6 @@ pub trait Stream<'sval> {
             data::number::i16_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn i16(&mut self, value: i16) -> Result;
 
     /**
     Stream a 32bit signed integer.
@@ -1015,7 +967,6 @@ pub trait Stream<'sval> {
     `i32`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn i32(&mut self, value: i32) -> Result {
         if let Ok(value) = value.try_into() {
             self.i16(value)
@@ -1023,9 +974,6 @@ pub trait Stream<'sval> {
             data::number::i32_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn i32(&mut self, value: i32) -> Result;
 
     /**
     Stream a 64bit signed integer.
@@ -1063,7 +1011,6 @@ pub trait Stream<'sval> {
     `i64`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn i64(&mut self, value: i64) -> Result {
         if let Ok(value) = value.try_into() {
             self.i32(value)
@@ -1071,9 +1018,6 @@ pub trait Stream<'sval> {
             data::number::i64_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn i64(&mut self, value: i64) -> Result;
 
     /**
     Stream a 128bit signed integer.
@@ -1111,7 +1055,6 @@ pub trait Stream<'sval> {
     `i128`s map to the basic data model as a text or binary blob containing an integer.
     See [`Stream::int_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
             self.i64(value)
@@ -1119,9 +1062,6 @@ pub trait Stream<'sval> {
             data::number::i128_int(value, self)
         }
     }
-
-    #[cfg(test)]
-    fn i128(&mut self, value: i128) -> Result;
 
     /**
     Stream a 32bit binary floating number.
@@ -1159,13 +1099,9 @@ pub trait Stream<'sval> {
     `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
     See [`Stream::binfloat_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn f32(&mut self, value: f32) -> Result {
         data::number::f32_number(value, self)
     }
-
-    #[cfg(test)]
-    fn f32(&mut self, value: f32) -> Result;
 
     /**
     Stream a 64bit binary floating number.
@@ -1203,13 +1139,9 @@ pub trait Stream<'sval> {
     `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
     See [`Stream::binfloat_begin`] for more details.
     */
-    #[cfg(not(test))]
     fn f64(&mut self, value: f64) -> Result {
         data::number::f64_number(value, self)
     }
-
-    #[cfg(test)]
-    fn f64(&mut self, value: f64) -> Result;
 
     /**
     Begin a homogeneous map of key-value pairs.
@@ -1525,86 +1457,49 @@ pub trait Stream<'sval> {
     */
     fn seq_end(&mut self) -> Result;
 
-    #[cfg(not(test))]
     fn dynamic_begin(&mut self) -> Result {
         Ok(())
     }
 
-    #[cfg(test)]
-    fn dynamic_begin(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn dynamic_end(&mut self) -> Result {
         Ok(())
     }
 
-    #[cfg(test)]
-    fn dynamic_end(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
         self.tagged_begin(tag)?;
         self.dynamic_begin()
     }
 
-    #[cfg(test)]
-    fn enum_begin(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn enum_end(&mut self, tag: Option<Tag>) -> Result {
         self.dynamic_end()?;
         self.tagged_end(tag)
     }
 
-    #[cfg(test)]
-    fn enum_end(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn tagged_begin(&mut self, tag: Option<Tag>) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
-    #[cfg(test)]
-    fn tagged_begin(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn tagged_end(&mut self, tag: Option<Tag>) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
-    #[cfg(test)]
-    fn tagged_end(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn constant_begin(&mut self, tag: Option<Tag>) -> Result {
         self.tagged_begin(tag)
     }
 
-    #[cfg(test)]
-    fn constant_begin(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn constant_end(&mut self, tag: Option<Tag>) -> Result {
         self.tagged_end(tag)
     }
 
-    #[cfg(test)]
-    fn constant_end(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(num_entries_hint)
     }
 
-    #[cfg(test)]
-    fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
-
-    #[cfg(not(test))]
     fn record_value_begin(&mut self, tag: TagNamed) -> Result {
         self.map_key_begin()?;
         self.value(tag.name)?;
@@ -1614,10 +1509,6 @@ pub trait Stream<'sval> {
         self.dynamic_begin()
     }
 
-    #[cfg(test)]
-    fn record_value_begin(&mut self, tag: TagNamed) -> Result;
-
-    #[cfg(not(test))]
     fn record_value_end(&mut self, tag: TagNamed) -> Result {
         let _ = tag;
 
@@ -1625,28 +1516,16 @@ pub trait Stream<'sval> {
         self.map_value_end()
     }
 
-    #[cfg(test)]
-    fn record_value_end(&mut self, tag: TagNamed) -> Result;
-
-    #[cfg(not(test))]
     fn record_end(&mut self, tag: Option<Tag>) -> Result {
         self.map_end()?;
         self.tagged_end(tag)
     }
 
-    #[cfg(test)]
-    fn record_end(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
     }
 
-    #[cfg(test)]
-    fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
-
-    #[cfg(not(test))]
     fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result {
         let _ = tag;
 
@@ -1654,10 +1533,6 @@ pub trait Stream<'sval> {
         self.dynamic_begin()
     }
 
-    #[cfg(test)]
-    fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result;
-
-    #[cfg(not(test))]
     fn tuple_value_end(&mut self, tag: TagUnnamed) -> Result {
         let _ = tag;
 
@@ -1665,19 +1540,11 @@ pub trait Stream<'sval> {
         self.seq_value_end()
     }
 
-    #[cfg(test)]
-    fn tuple_value_end(&mut self, tag: TagUnnamed) -> Result;
-
-    #[cfg(not(test))]
     fn tuple_end(&mut self, tag: Option<Tag>) -> Result {
         self.seq_end()?;
         self.tagged_end(tag)
     }
 
-    #[cfg(test)]
-    fn tuple_end(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
     fn optional_some_begin(&mut self) -> Result {
         self.enum_begin(Some(crate::Tag::Named {
             name: "Option",
@@ -1689,10 +1556,6 @@ pub trait Stream<'sval> {
         }))
     }
 
-    #[cfg(test)]
-    fn optional_some_begin(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn optional_some_end(&mut self) -> Result {
         self.tagged_end(Some(crate::Tag::Named {
             name: "Some",
@@ -1704,10 +1567,6 @@ pub trait Stream<'sval> {
         }))
     }
 
-    #[cfg(test)]
-    fn optional_some_end(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn optional_none(&mut self) -> Result {
         self.enum_begin(Some(crate::Tag::Named {
             name: "Option",
@@ -1732,24 +1591,13 @@ pub trait Stream<'sval> {
         }))
     }
 
-    #[cfg(test)]
-    fn optional_none(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn fixed_size_begin(&mut self) -> Result {
         Ok(())
     }
 
-    #[cfg(test)]
-    fn fixed_size_begin(&mut self) -> Result;
-
-    #[cfg(not(test))]
     fn fixed_size_end(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn fixed_size_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized integer.
@@ -1806,26 +1654,18 @@ pub trait Stream<'sval> {
     | 754     | `754`         | `11110010_00000010` |
     | -754    | `-754`        | `00001110_11111101` |
     */
-    #[cfg(not(test))]
     fn int_begin(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn int_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized integer.
 
     See [`Stream::int_begin`] for details on arbitrary sized integers.
     */
-    #[cfg(not(test))]
     fn int_end(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn int_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized binary floating point number.
@@ -1885,26 +1725,18 @@ pub trait Stream<'sval> {
     | 0                 | `0`           | `00000000_00000000`                   |
     | -0                | `-0`          | `00000000_10000000`                   |
     */
-    #[cfg(not(test))]
     fn binfloat_begin(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn binfloat_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized binary floating point number.
 
     See [`Stream::binfloat_begin`] for details on arbitrary sized binary floating points.
     */
-    #[cfg(not(test))]
     fn binfloat_end(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn binfloat_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized decimal floating point number.
@@ -1955,26 +1787,18 @@ pub trait Stream<'sval> {
     | 0                 | `0`           | `00000000_00000000_01010000_00100010` |
     | -0                | `-0`          | `00000000_00000000_01010000_10100010` |
     */
-    #[cfg(not(test))]
     fn decfloat_begin(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn decfloat_begin(&mut self) -> Result;
 
     /**
     End an arbitrary sized decimal floating point number.
 
     See [`Stream::decfloat_begin`] for details on arbitrary sized decimal floating points.
      */
-    #[cfg(not(test))]
     fn decfloat_end(&mut self) -> Result {
         Ok(())
     }
-
-    #[cfg(test)]
-    fn decfloat_end(&mut self) -> Result;
 }
 
 macro_rules! impl_stream_forward {

@@ -1,0 +1,15 @@
+[package]
+name = "sval-example-stream-simple"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[[bin]]
+name = "stream-simple"
+path = "main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.sval]
+path = "../../"
+features = ["std"]
