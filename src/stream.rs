@@ -1,4 +1,4 @@
-use crate::{data, Result, Tag, Value};
+use crate::{data, Result, Tag, TagNamed, TagUnnamed, Value};
 
 /**
 An observer of structured data emitted by some value.
@@ -59,8 +59,8 @@ The extended data model includes:
     - **Optionals**: [values](#values) that may either have some data or have none. See [`Stream::optional_some_begin`] and [`Stream::optional_none`].
 - **Tagged complex values**:
     - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data. See [`Stream::tagged_begin`].
-    - **Struct maps**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances. See [`Stream::struct_map_begin`].
-    - **Struct sequences**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances. See [`Stream::struct_seq_begin`].
+    - **Records**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances. See [`Stream::record_begin`].
+    - **Tuples**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances. See [`Stream::tuple_begin`].
 - **Dynamic values**:
     - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
     - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants. See [`Stream::enum_begin`].
@@ -120,35 +120,27 @@ struct Struct {
 }
 ```
 
-is streamed as a struct map:
+is streamed as a record:
 
 ```
 # struct Struct { a: i32, b: bool }
 # fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.struct_map_begin(Some(sval::Tag::Labeled { label: "Struct", id: 0 }), Some(2))?;
+stream.record_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
-    stream.struct_map_key_begin(sval::Tag::Labeled { label: "a", id: 0 })?;
-    stream.value("a")?;
-    stream.struct_map_key_end()?;
-
-    stream.struct_map_value_begin(sval::Tag::Labeled { label: "a", id: 0 })?;
+    stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
     stream.value(&value.a)?;
-    stream.struct_map_value_end()?;
+    stream.record_value_end()?;
 
-    stream.struct_map_key_begin(sval::Tag::Labeled { label: "b", id: 1 })?;
-    stream.value("b")?;
-    stream.struct_map_key_end()?;
-
-    stream.struct_map_value_begin(sval::Tag::Labeled { label: "b", id: 1 })?;
+    stream.record_value_begin(sval::TagNamed { name: "b", id: Some(1) })?;
     stream.value(&value.b)?;
-    stream.struct_map_value_end()?;
+    stream.record_value_end()?;
 
-stream.struct_map_end()?;
+stream.record_end()?;
 # Ok(())
 # }
 ```
 
-See [`Stream::struct_map_begin`].
+See [`Stream::record_begin`].
 
 ### Structs with unnamed fields
 
@@ -158,27 +150,27 @@ The struct:
 struct Struct(i32, bool);
 ```
 
-is streamed as a struct sequence:
+is streamed as a tuple:
 
 ```
 # struct Struct(i32, bool);
 # fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.struct_seq_begin(Some(sval::Tag::Labeled { label: "Struct", id: 0 }), Some(2))?;
+stream.tuple_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
-    stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: 0 })?;
+    stream.tuple_value_begin(sval::TagUnnamed { id: 0 })?;
     stream.value(&value.0)?;
-    stream.struct_seq_value_end()?;
+    stream.tuple_value_end()?;
 
-    stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: 1 })?;
+    stream.tuple_value_begin(sval::TagUnnamed { id: 1 })?;
     stream.value(&value.1)?;
-    stream.struct_seq_value_end()?;
+    stream.tuple_value_end()?;
 
-stream.struct_seq_end()?;
+stream.tuple_end()?;
 # Ok(())
 # }
-```
+* ```
 
-See [`Stream::struct_seq_begin`].
+See [`Stream::tuple_begin`].
 
 #### Tuples
 
@@ -191,7 +183,7 @@ type Tuple = (i32, bool);
 `sval` can represent some data types that Rust can't natively (yet).
 These examples just use a strawman Rust syntax to illustrate the shape of the data type in a familiar setting.
 
-#### Anonymous structs with named fields (records)
+#### Anonymous structs with named fields
 
 ```rust,ignore
 type Record = { a: i32, b: bool };
@@ -212,12 +204,12 @@ stream.enum_begin(None)?;
 
     match value {
         i32(i) => {
-            stream.tagged_begin(Some(sval::Tag::Unlabeled { id: 0 }))?;
+            stream.tagged_begin(Some(sval::Tag::Unnamed { id: 0 }))?;
             stream.value(i)?;
             stream.tagged_end()?;
         }
         bool(b) => {
-            stream.tagged_begin(Some(sval::Tag::Unlabeled { id: 1 }))?;
+            stream.tagged_begin(Some(sval::Tag::Unnamed { id: 1 }))?;
             stream.value(b)?;
             stream.tagged_end()?;
         }
@@ -1348,7 +1340,7 @@ pub trait Stream<'sval> {
     # Maps and structs
 
     Types defined as Rust `struct`s with named fields can be more semantically represented as "struct maps".
-    See the [`Stream::struct_map_begin`] method for details.
+    See the [`Stream::record_begin`] method for details.
     */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
@@ -1508,7 +1500,7 @@ pub trait Stream<'sval> {
     # Sequences and structs
 
     Types defined as Rust `struct`s with unnamed fields can be more semantically represented as "struct sequences".
-    See the [`Stream::struct_seq_begin`] method for details.
+    See the [`Stream::tuple_begin`] method for details.
     */
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
@@ -1600,74 +1592,56 @@ pub trait Stream<'sval> {
     fn constant_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
+    fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.map_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
+    fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_key_begin(&mut self, tag: Tag) -> Result {
+    fn record_value_begin(&mut self, tag: TagNamed) -> Result {
         self.map_key_begin()?;
-        self.constant_begin(Some(tag))?;
-        self.dynamic_begin()
-    }
-
-    #[cfg(test)]
-    fn struct_map_key_begin(&mut self, tag: Tag) -> Result;
-
-    #[cfg(not(test))]
-    fn struct_map_key_end(&mut self) -> Result {
-        self.dynamic_end()?;
-        self.constant_end()?;
-        self.map_key_end()
-    }
-
-    #[cfg(test)]
-    fn struct_map_key_end(&mut self) -> Result;
-
-    #[cfg(not(test))]
-    fn struct_map_value_begin(&mut self, tag: Tag) -> Result {
-        let _ = tag;
+        self.value(tag.name)?;
+        self.map_key_end()?;
 
         self.map_value_begin()?;
         self.dynamic_begin()
     }
 
     #[cfg(test)]
-    fn struct_map_value_begin(&mut self, tag: Tag) -> Result;
+    fn record_value_begin(&mut self, tag: TagNamed) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_value_end(&mut self) -> Result {
+    fn record_value_end(&mut self) -> Result {
         self.dynamic_end()?;
         self.map_value_end()
     }
 
     #[cfg(test)]
-    fn struct_map_value_end(&mut self) -> Result;
+    fn record_value_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_map_end(&mut self) -> Result {
+    fn record_end(&mut self) -> Result {
         self.map_end()?;
         self.tagged_end()
     }
 
     #[cfg(test)]
-    fn struct_map_end(&mut self) -> Result;
+    fn record_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
+    fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
         self.tagged_begin(tag)?;
         self.seq_begin(num_entries_hint)
     }
 
     #[cfg(test)]
-    fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
+    fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_value_begin(&mut self, tag: Tag) -> Result {
+    fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result {
         let _ = tag;
 
         self.seq_value_begin()?;
@@ -1675,25 +1649,25 @@ pub trait Stream<'sval> {
     }
 
     #[cfg(test)]
-    fn struct_seq_value_begin(&mut self, tag: Tag) -> Result;
+    fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_value_end(&mut self) -> Result {
+    fn tuple_value_end(&mut self) -> Result {
         self.dynamic_end()?;
         self.seq_value_end()
     }
 
     #[cfg(test)]
-    fn struct_seq_value_end(&mut self) -> Result;
+    fn tuple_value_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn struct_seq_end(&mut self) -> Result {
+    fn tuple_end(&mut self) -> Result {
         self.seq_end()?;
         self.tagged_end()
     }
 
     #[cfg(test)]
-    fn struct_seq_end(&mut self) -> Result;
+    fn tuple_end(&mut self) -> Result;
 
     #[cfg(not(test))]
     fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -1715,12 +1689,12 @@ pub trait Stream<'sval> {
 
     #[cfg(not(test))]
     fn optional_some_begin(&mut self) -> Result {
-        self.enum_begin(Some(crate::Tag::Labeled {
-            label: "Option",
+        self.enum_begin(Some(crate::Tag::Named {
+            name: "Option",
             id: None,
         }))?;
-        self.tagged_begin(Some(crate::Tag::Labeled {
-            label: "Some",
+        self.tagged_begin(Some(crate::Tag::Named {
+            name: "Some",
             id: Some(1),
         }))
     }
@@ -1739,13 +1713,13 @@ pub trait Stream<'sval> {
 
     #[cfg(not(test))]
     fn optional_none(&mut self) -> Result {
-        self.enum_begin(Some(crate::Tag::Labeled {
-            label: "Option",
+        self.enum_begin(Some(crate::Tag::Named {
+            name: "Option",
             id: None,
         }))?;
 
-        self.constant_begin(Some(crate::Tag::Labeled {
-            label: "None",
+        self.constant_begin(Some(crate::Tag::Named {
+            name: "None",
             id: Some(0),
         }))?;
         self.null()?;
@@ -2191,54 +2165,44 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).constant_end()
             }
 
-            fn struct_map_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
+            fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_begin(tag, num_entries_hint)
+                ($($forward)*).record_begin(tag, num_entries_hint)
             }
 
-            fn struct_map_key_begin(&mut self, tag: Tag) -> Result {
+            fn record_value_begin(&mut self, tag: TagNamed) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_key_begin(tag)
+                ($($forward)*).record_value_begin(tag)
             }
 
-            fn struct_map_key_end(&mut self) -> Result {
+            fn record_value_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_key_end()
+                ($($forward)*).record_value_end()
             }
 
-            fn struct_map_value_begin(&mut self, tag: Tag) -> Result {
+            fn record_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_value_begin(tag)
+                ($($forward)*).record_end()
             }
 
-            fn struct_map_value_end(&mut self) -> Result {
+            fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_value_end()
+                ($($forward)*).tuple_begin(tag, num_entries_hint)
             }
 
-            fn struct_map_end(&mut self) -> Result {
+            fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_map_end()
+                ($($forward)*).tuple_value_begin(tag)
             }
 
-            fn struct_seq_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
+            fn tuple_value_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_seq_begin(tag, num_entries_hint)
+                ($($forward)*).tuple_value_end()
             }
 
-            fn struct_seq_value_begin(&mut self, tag: Tag) -> Result {
+            fn tuple_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).struct_seq_value_begin(tag)
-            }
-
-            fn struct_seq_value_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_seq_value_end()
-            }
-
-            fn struct_seq_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).struct_seq_end()
+                ($($forward)*).tuple_end()
             }
 
             fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -2479,43 +2443,35 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn struct_map_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
+    fn record_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_map_key_begin(&mut self, _: Tag) -> Result {
+    fn record_value_begin(&mut self, _: TagNamed) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_map_key_end(&mut self) -> Result {
+    fn record_value_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_map_value_begin(&mut self, _: Tag) -> Result {
+    fn record_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_map_value_end(&mut self) -> Result {
+    fn tuple_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_map_end(&mut self) -> Result {
+    fn tuple_value_begin(&mut self, _: TagUnnamed) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_seq_begin(&mut self, _: Option<Tag>, _: Option<usize>) -> Result {
+    fn tuple_value_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 
-    fn struct_seq_value_begin(&mut self, _: Tag) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn struct_seq_value_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn struct_seq_end(&mut self) -> Result {
+    fn tuple_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 

@@ -45,15 +45,15 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
-                    stream.struct_seq_begin(None, Some($len))?;
+                    stream.tuple_begin(None, Some($len))?;
 
                     $(
-                        stream.struct_seq_value_begin(crate::Tag::Unlabeled { id: $i })?;
+                        stream.tuple_value_begin(crate::TagUnnamed { id: $i })?;
                         stream.value(&self.$i)?;
-                        stream.struct_seq_value_end()?;
+                        stream.tuple_value_end()?;
                     )+
 
-                    stream.struct_seq_end()
+                    stream.tuple_end()
                 }
 
                 fn is_dynamic(&self) -> bool {

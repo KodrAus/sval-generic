@@ -115,7 +115,7 @@ fn derive_enum<'a>(
     variants: impl Iterator<Item = &'a Variant> + 'a,
 ) -> TokenStream {
     let tag = ident.to_string();
-    let tag = quote!(sval::Tag::Labeled { label: #tag, id: None });
+    let tag = quote!(sval::Tag::Named { name: #tag, id: None });
 
     let (impl_generics, ty_generics, _) = generics.split_for_impl();
 
@@ -187,7 +187,7 @@ fn stream_struct(
         Some(id) => quote!(Some(#id)),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Labeled { label: #tag, id: #id });
+    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     let mut field_ident = Vec::new();
     let mut field_lit = Vec::new();
@@ -203,19 +203,15 @@ fn stream_struct(
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        stream.struct_map_begin(Some(#tag), Some(#field_count))?;
+        stream.record_begin(Some(#tag), Some(#field_count))?;
 
         #(
-            stream.struct_map_key_begin(sval::Tag::Labeled { label: #field_lit, id: Some(#field_id) })?;
-            stream.value(#field_lit)?;
-            stream.struct_map_key_end()?;
-
-            stream.struct_map_value_begin(sval::Tag::Labeled { label: #field_lit, id: Some(#field_id) })?;
+            stream.record_value_begin(sval::TagNamed { name: #field_lit, id: Some(#field_id) })?;
             stream.value(#field_ident)?;
-            stream.struct_map_value_end()?;
+            stream.record_value_end()?;
         )*
 
-        stream.struct_map_end()?;
+        stream.record_end()?;
     })
 }
 
@@ -229,7 +225,7 @@ fn stream_newtype(
         Some(id) => quote!(Some(#id)),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Labeled { label: #tag, id: #id });
+    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     quote!(#path(ref field0) => {
         stream.tagged_begin(Some(#tag))?;
@@ -249,7 +245,7 @@ fn stream_tuple(
         Some(id) => quote!(Some(#id)),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Labeled { label: #tag, id: #id });
+    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     let mut field_ident = Vec::new();
     let mut field_id = Vec::new();
@@ -257,20 +253,20 @@ fn stream_tuple(
 
     for field in &fields.unnamed {
         field_ident.push(Ident::new(&format!("field{}", field_count), field.span()));
-        field_id.push(field_count as u64);
+        field_id.push(field_count as u128);
         field_count += 1;
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        stream.struct_seq_begin(Some(#tag), Some(#field_count))?;
+        stream.tuple_begin(Some(#tag), Some(#field_count))?;
 
         #(
-            stream.struct_seq_value_begin(sval::Tag::Unlabeled { id: Some(#field_id) })?;
+            stream.tuple_value_begin(sval::TagUnnamed { id: #field_id })?;
             stream.value(#field_ident)?;
-            stream.struct_seq_value_end()?;
+            stream.tuple_value_end()?;
         )*
 
-        stream.struct_seq_end()?;
+        stream.tuple_end()?;
     })
 }
 
@@ -284,7 +280,7 @@ fn stream_constant(
         Some(id) => quote!(Some(#id)),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Labeled { label: #constant, id: #id });
+    let tag = quote!(sval::Tag::Named { name: #constant, id: #id });
 
     quote!(#path => {
         stream.constant_begin(Some(#tag))?;

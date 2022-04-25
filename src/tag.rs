@@ -12,17 +12,15 @@ The canonical id field is large enough to fit a UUID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tag {
     /**
-    A tag that carries a label and optional canonical id.
+    A tag that carries a name and optional canonical id.
     */
-    Labeled {
+    Named {
         /**
-        A label for the tagged data.
+        The name of the tagged data.
 
-        Labels are not canonical.
-        Logically different types may use the same label.
-        An empty label doesn't have any special meaning.
+        Names are not canonical.
         */
-        label: &'static str,
+        name: &'static str,
         /**
         A canonical id for the tagged data.
 
@@ -34,7 +32,7 @@ pub enum Tag {
     /**
     A tag that carries a canonical id.
     */
-    Unlabeled {
+    Unnamed {
         /**
         A canonical id for the tagged data.
 
@@ -42,6 +40,17 @@ pub enum Tag {
         */
         id: u128,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TagNamed {
+    pub name: &'static str,
+    pub id: Option<u128>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TagUnnamed {
+    pub id: u128,
 }
 
 // NOTE: `Tag` doesn't implement `Value` because it's not expected

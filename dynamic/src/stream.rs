@@ -80,33 +80,29 @@ mod private {
 
         fn dispatch_constant_end(&mut self) -> sval::Result;
 
-        fn dispatch_struct_map_begin(
+        fn dispatch_record_begin(
             &mut self,
             tag: Option<sval::Tag>,
             num_entries_hint: Option<usize>,
         ) -> sval::Result;
 
-        fn dispatch_struct_map_key_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result;
 
-        fn dispatch_struct_map_key_end(&mut self) -> sval::Result;
+        fn dispatch_record_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_struct_map_value_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_record_end(&mut self) -> sval::Result;
 
-        fn dispatch_struct_map_value_end(&mut self) -> sval::Result;
-
-        fn dispatch_struct_map_end(&mut self) -> sval::Result;
-
-        fn dispatch_struct_seq_begin(
+        fn dispatch_tuple_begin(
             &mut self,
             tag: Option<sval::Tag>,
             num_entries_hint: Option<usize>,
         ) -> sval::Result;
 
-        fn dispatch_struct_seq_value_begin(&mut self, tag: sval::Tag) -> sval::Result;
+        fn dispatch_tuple_value_begin(&mut self, tag: sval::TagUnnamed) -> sval::Result;
 
-        fn dispatch_struct_seq_value_end(&mut self) -> sval::Result;
+        fn dispatch_tuple_value_end(&mut self) -> sval::Result;
 
-        fn dispatch_struct_seq_end(&mut self) -> sval::Result;
+        fn dispatch_tuple_end(&mut self) -> sval::Result;
 
         fn dispatch_enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result;
 
@@ -316,52 +312,44 @@ impl<'a, R: sval::Stream<'a>> private::DispatchStream<'a> for R {
         self.constant_end()
     }
 
-    fn dispatch_struct_map_begin(
+    fn dispatch_record_begin(
         &mut self,
         tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.struct_map_begin(tag, num_entries_hint)
+        self.record_begin(tag, num_entries_hint)
     }
 
-    fn dispatch_struct_map_key_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.struct_map_key_begin(tag)
+    fn dispatch_record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
+        self.record_value_begin(tag)
     }
 
-    fn dispatch_struct_map_key_end(&mut self) -> sval::Result {
-        self.struct_map_key_end()
+    fn dispatch_record_value_end(&mut self) -> sval::Result {
+        self.record_value_end()
     }
 
-    fn dispatch_struct_map_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.struct_map_value_begin(tag)
+    fn dispatch_record_end(&mut self) -> sval::Result {
+        self.record_end()
     }
 
-    fn dispatch_struct_map_value_end(&mut self) -> sval::Result {
-        self.struct_map_value_end()
-    }
-
-    fn dispatch_struct_map_end(&mut self) -> sval::Result {
-        self.struct_map_end()
-    }
-
-    fn dispatch_struct_seq_begin(
+    fn dispatch_tuple_begin(
         &mut self,
         tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.struct_seq_begin(tag, num_entries_hint)
+        self.tuple_begin(tag, num_entries_hint)
     }
 
-    fn dispatch_struct_seq_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.struct_seq_value_begin(tag)
+    fn dispatch_tuple_value_begin(&mut self, tag: sval::TagUnnamed) -> sval::Result {
+        self.tuple_value_begin(tag)
     }
 
-    fn dispatch_struct_seq_value_end(&mut self) -> sval::Result {
-        self.struct_seq_value_end()
+    fn dispatch_tuple_value_end(&mut self) -> sval::Result {
+        self.tuple_value_end()
     }
 
-    fn dispatch_struct_seq_end(&mut self) -> sval::Result {
-        self.struct_seq_end()
+    fn dispatch_tuple_end(&mut self) -> sval::Result {
+        self.tuple_end()
     }
 
     fn dispatch_enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
@@ -580,44 +568,36 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_constant_end()
             }
 
-            fn struct_map_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_begin(tag, num_entries_hint)
+            fn record_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
+                self.erase_stream().0.dispatch_record_begin(tag, num_entries_hint)
             }
 
-            fn struct_map_key_begin(&mut self, tag: sval::Tag) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_key_begin(tag)
+            fn record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
+                self.erase_stream().0.dispatch_record_value_begin(tag)
             }
 
-            fn struct_map_key_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_key_end()
+            fn record_value_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_record_value_end()
             }
 
-            fn struct_map_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_value_begin(tag)
+            fn record_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_record_end()
             }
 
-            fn struct_map_value_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_value_end()
+            fn tuple_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_begin(tag, num_entries_hint)
             }
 
-            fn struct_map_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_map_end()
+            fn tuple_value_begin(&mut self, tag: sval::TagUnnamed) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_value_begin(tag)
             }
 
-            fn struct_seq_begin(&mut self, tag: Option<sval::Tag>, num_entries_hint: Option<usize>) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_seq_begin(tag, num_entries_hint)
+            fn tuple_value_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_value_end()
             }
 
-            fn struct_seq_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_seq_value_begin(tag)
-            }
-
-            fn struct_seq_value_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_seq_value_end()
-            }
-
-            fn struct_seq_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_struct_seq_end()
+            fn tuple_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_end()
             }
 
             fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {

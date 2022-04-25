@@ -185,6 +185,7 @@ where
 
     fn map_key_begin(&mut self) -> sval::Result {
         self.is_text_quoted = false;
+        self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
             self.out.write_str(",\"")?;
@@ -240,6 +241,7 @@ where
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
+        self.is_internally_tagged = false;
         self.is_current_depth_empty = false;
 
         Ok(())
@@ -256,12 +258,12 @@ where
             self.map_begin(Some(1))?;
 
             match tag {
-                Some(sval::Tag::Labeled { label, .. }) => {
+                Some(sval::Tag::Named { name: label, .. }) => {
                     self.map_key_begin()?;
                     escape_str(label, &mut self.out)?;
                     self.map_key_end()?;
                 }
-                Some(sval::Tag::Unlabeled { id, .. }) => {
+                Some(sval::Tag::Unnamed { id }) => {
                     self.map_key_begin()?;
                     self.u128(id)?;
                     self.map_key_end()?;
@@ -306,6 +308,22 @@ where
         self.is_internally_tagged = false;
 
         Ok(())
+    }
+
+    fn record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
+        self.is_internally_tagged = false;
+
+        if !self.is_current_depth_empty {
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
+        }
+
+        escape_str(tag.name, &mut self.out)?;
+
+        self.out.write_str("\":")?;
+
+        self.map_value_begin()
     }
 
     fn optional_none(&mut self) -> sval::Result {

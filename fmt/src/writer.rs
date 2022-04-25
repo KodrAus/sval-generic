@@ -284,7 +284,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.is_text_quoted = true;
 
-        if let Some(sval::Tag::Labeled { label, .. }) = tag {
+        if let Some(sval::Tag::Named { name: label, .. }) = tag {
             self.write_str(label)?;
         }
 
@@ -319,12 +319,12 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn struct_map_begin(
+    fn record_begin(
         &mut self,
         tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        if let Some(sval::Tag::Labeled { label, .. }) = tag {
+        if let Some(sval::Tag::Named { name: label, .. }) = tag {
             self.write_str(label)?;
             self.write_char(' ')?;
         }
@@ -332,37 +332,29 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_begin(num_entries_hint)
     }
 
-    fn struct_map_key_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
         self.is_text_quoted = false;
-
         self.map_key_begin()?;
-
-        Ok(())
-    }
-
-    fn struct_map_key_end(&mut self) -> sval::Result {
+        self.value(tag.name)?;
+        self.map_key_end()?;
         self.is_text_quoted = true;
 
-        self.map_key_end()
-    }
-
-    fn struct_map_value_begin(&mut self, _: sval::Tag) -> sval::Result {
         self.map_value_begin()
     }
 
-    fn struct_map_value_end(&mut self) -> sval::Result {
+    fn record_value_end(&mut self) -> sval::Result {
         self.map_value_end()
     }
 
-    fn struct_map_end(&mut self) -> sval::Result {
+    fn record_end(&mut self) -> sval::Result {
         self.map_end()
     }
 
-    fn struct_seq_begin(&mut self, tag: Option<sval::Tag>, _: Option<usize>) -> sval::Result {
+    fn tuple_begin(&mut self, tag: Option<sval::Tag>, _: Option<usize>) -> sval::Result {
         self.is_text_quoted = true;
         self.is_current_depth_empty = true;
 
-        if let Some(sval::Tag::Labeled { label, .. }) = tag {
+        if let Some(sval::Tag::Named { name: label, .. }) = tag {
             self.write_str(label)?;
         }
 
@@ -371,15 +363,15 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn struct_seq_value_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn tuple_value_begin(&mut self, _: sval::TagUnnamed) -> sval::Result {
         self.seq_value_begin()
     }
 
-    fn struct_seq_value_end(&mut self) -> sval::Result {
+    fn tuple_value_end(&mut self) -> sval::Result {
         self.seq_value_end()
     }
 
-    fn struct_seq_end(&mut self) -> sval::Result {
+    fn tuple_end(&mut self) -> sval::Result {
         self.write_char(')')?;
 
         Ok(())

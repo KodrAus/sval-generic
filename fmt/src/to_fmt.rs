@@ -190,52 +190,44 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.constant_end()
     }
 
-    fn struct_map_begin(
+    fn record_begin(
         &mut self,
         tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.0.struct_map_begin(tag, num_entries_hint)
+        self.0.record_begin(tag, num_entries_hint)
     }
 
-    fn struct_map_key_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.0.struct_map_key_begin(tag)
+    fn record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
+        self.0.record_value_begin(tag)
     }
 
-    fn struct_map_key_end(&mut self) -> sval::Result {
-        self.0.struct_map_key_end()
+    fn record_value_end(&mut self) -> sval::Result {
+        self.0.record_value_end()
     }
 
-    fn struct_map_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.0.struct_map_value_begin(tag)
+    fn record_end(&mut self) -> sval::Result {
+        self.0.record_end()
     }
 
-    fn struct_map_value_end(&mut self) -> sval::Result {
-        self.0.struct_map_value_end()
-    }
-
-    fn struct_map_end(&mut self) -> sval::Result {
-        self.0.struct_map_end()
-    }
-
-    fn struct_seq_begin(
+    fn tuple_begin(
         &mut self,
         tag: Option<sval::Tag>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.0.struct_seq_begin(tag, num_entries_hint)
+        self.0.tuple_begin(tag, num_entries_hint)
     }
 
-    fn struct_seq_value_begin(&mut self, tag: sval::Tag) -> sval::Result {
-        self.0.struct_seq_value_begin(tag)
+    fn tuple_value_begin(&mut self, tag: sval::TagUnnamed) -> sval::Result {
+        self.0.tuple_value_begin(tag)
     }
 
-    fn struct_seq_value_end(&mut self) -> sval::Result {
-        self.0.struct_seq_value_end()
+    fn tuple_value_end(&mut self) -> sval::Result {
+        self.0.tuple_value_end()
     }
 
-    fn struct_seq_end(&mut self) -> sval::Result {
-        self.0.struct_seq_end()
+    fn tuple_end(&mut self) -> sval::Result {
+        self.0.tuple_end()
     }
 
     fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
