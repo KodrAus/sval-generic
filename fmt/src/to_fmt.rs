@@ -178,16 +178,16 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.tagged_begin(tag)
     }
 
-    fn tagged_end(&mut self) -> sval::Result {
-        self.0.tagged_end()
+    fn tagged_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.tagged_end(tag)
     }
 
     fn constant_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.0.constant_begin(tag)
     }
 
-    fn constant_end(&mut self) -> sval::Result {
-        self.0.constant_end()
+    fn constant_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.constant_end(tag)
     }
 
     fn record_begin(
@@ -202,12 +202,12 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.record_value_begin(tag)
     }
 
-    fn record_value_end(&mut self) -> sval::Result {
-        self.0.record_value_end()
+    fn record_value_end(&mut self, tag: sval::TagNamed) -> sval::Result {
+        self.0.record_value_end(tag)
     }
 
-    fn record_end(&mut self) -> sval::Result {
-        self.0.record_end()
+    fn record_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.record_end(tag)
     }
 
     fn tuple_begin(
@@ -222,20 +222,20 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.tuple_value_begin(tag)
     }
 
-    fn tuple_value_end(&mut self) -> sval::Result {
-        self.0.tuple_value_end()
+    fn tuple_value_end(&mut self, tag: sval::TagUnnamed) -> sval::Result {
+        self.0.tuple_value_end(tag)
     }
 
-    fn tuple_end(&mut self) -> sval::Result {
-        self.0.tuple_end()
+    fn tuple_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.tuple_end(tag)
     }
 
     fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.0.enum_begin(tag)
     }
 
-    fn enum_end(&mut self) -> sval::Result {
-        self.0.enum_end()
+    fn enum_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.enum_end(tag)
     }
 
     fn optional_some_begin(&mut self) -> sval::Result {

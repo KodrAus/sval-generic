@@ -233,6 +233,8 @@ where
     }
 
     fn seq_value_begin(&mut self) -> sval::Result {
+        self.is_internally_tagged = false;
+
         if !self.is_current_depth_empty {
             self.out.write_char(',')?;
         }
@@ -241,7 +243,6 @@ where
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
-        self.is_internally_tagged = false;
         self.is_current_depth_empty = false;
 
         Ok(())
@@ -255,30 +256,33 @@ where
 
     fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         if self.is_internally_tagged {
-            self.map_begin(Some(1))?;
+            if let Some(tag) = tag {
+                self.map_begin(Some(1))?;
 
-            match tag {
-                Some(sval::Tag::Named { name: label, .. }) => {
-                    self.map_key_begin()?;
-                    escape_str(label, &mut self.out)?;
-                    self.map_key_end()?;
+                match tag {
+                    sval::Tag::Named { name: label, .. } => {
+                        self.map_key_begin()?;
+                        escape_str(label, &mut self.out)?;
+                        self.map_key_end()?;
+                    }
+                    sval::Tag::Unnamed { id } => {
+                        self.map_key_begin()?;
+                        self.u128(id)?;
+                        self.map_key_end()?;
+                    }
                 }
-                Some(sval::Tag::Unnamed { id }) => {
-                    self.map_key_begin()?;
-                    self.u128(id)?;
-                    self.map_key_end()?;
-                }
-                _ => sval::result::unsupported()?,
+
+                self.map_value_begin()?;
             }
-
-            self.map_value_begin()?;
         }
 
         Ok(())
     }
 
-    fn tagged_end(&mut self) -> sval::Result {
-        self.is_internally_tagged = true;
+    fn tagged_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        if tag.is_some() {
+            self.is_internally_tagged = true;
+        }
 
         Ok(())
     }
@@ -287,7 +291,7 @@ where
         Ok(())
     }
 
-    fn constant_end(&mut self) -> sval::Result {
+    fn constant_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.is_internally_tagged = false;
 
         Ok(())
@@ -299,7 +303,7 @@ where
         Ok(())
     }
 
-    fn enum_end(&mut self) -> sval::Result {
+    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         if self.is_internally_tagged {
             self.map_value_end()?;
             self.map_end()?;

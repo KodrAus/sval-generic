@@ -46,6 +46,10 @@ fn derive_struct<'a>(ident: &Ident, generics: &Generics, fields: &FieldsNamed) -
 
                     Ok(())
                 }
+
+                fn is_dynamic(&self) -> bool {
+                    false
+                }
             }
         };
     })
@@ -165,7 +169,7 @@ fn derive_enum<'a>(
                         #(#variant_match_arms)*
                     }
 
-                    stream.enum_end()
+                    stream.enum_end(Some(#tag))
                 }
 
                 fn is_dynamic(&self) -> bool {
@@ -208,10 +212,10 @@ fn stream_struct(
         #(
             stream.record_value_begin(sval::TagNamed { name: #field_lit, id: Some(#field_id) })?;
             stream.value(#field_ident)?;
-            stream.record_value_end()?;
+            stream.record_value_end(sval::TagNamed { name: #field_lit, id: Some(#field_id) })?;
         )*
 
-        stream.record_end()?;
+        stream.record_end(Some(#tag))?;
     })
 }
 
@@ -230,7 +234,7 @@ fn stream_newtype(
     quote!(#path(ref field0) => {
         stream.tagged_begin(Some(#tag))?;
         stream.value(field0)?;
-        stream.tagged_end()?;
+        stream.tagged_end(Some(#tag))?;
     })
 }
 
@@ -263,10 +267,10 @@ fn stream_tuple(
         #(
             stream.tuple_value_begin(sval::TagUnnamed { id: #field_id })?;
             stream.value(#field_ident)?;
-            stream.tuple_value_end()?;
+            stream.tuple_value_end(sval::TagUnnamed { id: #field_id })?;
         )*
 
-        stream.tuple_end()?;
+        stream.tuple_end(Some(#tag))?;
     })
 }
 
@@ -285,6 +289,6 @@ fn stream_constant(
     quote!(#path => {
         stream.constant_begin(Some(#tag))?;
         stream.value(#constant)?;
-        stream.constant_end()?;
+        stream.constant_end(Some(#tag))?;
     })
 }

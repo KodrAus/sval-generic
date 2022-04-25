@@ -50,10 +50,10 @@ macro_rules! tuple {
                     $(
                         stream.tuple_value_begin(crate::TagUnnamed { id: $i })?;
                         stream.value(&self.$i)?;
-                        stream.tuple_value_end()?;
+                        stream.tuple_value_end(crate::TagUnnamed { id: $i })?;
                     )+
 
-                    stream.tuple_end()
+                    stream.tuple_end(None)
                 }
 
                 fn is_dynamic(&self) -> bool {

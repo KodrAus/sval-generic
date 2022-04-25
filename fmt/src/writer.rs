@@ -53,7 +53,7 @@ impl<W> Writer<W> {
 }
 
 impl<W: Fmt> Writer<W> {
-    fn value(&mut self, v: impl fmt::Debug) -> sval::Result {
+    fn write_value(&mut self, v: impl fmt::Debug) -> sval::Result {
         self.out.write_debug(v)?;
 
         Ok(())
@@ -76,7 +76,7 @@ impl<W: fmt::Write> Write for Writer<W> {
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn unit(&mut self) -> sval::Result {
-        self.value(())
+        self.write_value(())
     }
 
     fn null(&mut self) -> sval::Result {
@@ -86,7 +86,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
@@ -125,7 +125,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         }
 
         if self.is_text_quoted {
-            self.value(Escape(fragment))?;
+            self.write_value(Escape(fragment))?;
         } else {
             self.write_str(fragment)?;
         }
@@ -160,51 +160,51 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn u8(&mut self, value: u8) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn u16(&mut self, value: u16) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn u32(&mut self, value: u32) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn u64(&mut self, value: u64) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn u128(&mut self, value: u128) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn i8(&mut self, value: i8) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn i16(&mut self, value: i16) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn i32(&mut self, value: i32) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn i64(&mut self, value: i64) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn i128(&mut self, value: i128) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn f32(&mut self, value: f32) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn f64(&mut self, value: f64) -> sval::Result {
-        self.value(value)
+        self.write_value(value)
     }
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
@@ -293,7 +293,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn tagged_end(&mut self) -> sval::Result {
+    fn tagged_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.write_char(')')?;
 
         Ok(())
@@ -305,7 +305,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn constant_end(&mut self) -> sval::Result {
+    fn constant_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.is_text_quoted = true;
 
         Ok(())
@@ -315,7 +315,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn enum_end(&mut self) -> sval::Result {
+    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         Ok(())
     }
 
@@ -342,11 +342,11 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_value_begin()
     }
 
-    fn record_value_end(&mut self) -> sval::Result {
+    fn record_value_end(&mut self, _: sval::TagNamed) -> sval::Result {
         self.map_value_end()
     }
 
-    fn record_end(&mut self) -> sval::Result {
+    fn record_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.map_end()
     }
 
@@ -367,11 +367,11 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.seq_value_begin()
     }
 
-    fn tuple_value_end(&mut self) -> sval::Result {
+    fn tuple_value_end(&mut self, _: sval::TagUnnamed) -> sval::Result {
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self) -> sval::Result {
+    fn tuple_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.write_char(')')?;
 
         Ok(())

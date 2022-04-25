@@ -1542,20 +1542,22 @@ pub trait Stream<'sval> {
     fn dynamic_end(&mut self) -> Result;
 
     #[cfg(not(test))]
-    fn fixed_size_begin(&mut self) -> Result {
-        Ok(())
+    fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
+        self.tagged_begin(tag)?;
+        self.dynamic_begin()
     }
 
     #[cfg(test)]
-    fn fixed_size_begin(&mut self) -> Result;
+    fn enum_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
-    fn fixed_size_end(&mut self) -> Result {
-        Ok(())
+    fn enum_end(&mut self, tag: Option<Tag>) -> Result {
+        self.dynamic_end()?;
+        self.tagged_end(tag)
     }
 
     #[cfg(test)]
-    fn fixed_size_end(&mut self) -> Result;
+    fn enum_end(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn tagged_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -1568,12 +1570,14 @@ pub trait Stream<'sval> {
     fn tagged_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
-    fn tagged_end(&mut self) -> Result {
+    fn tagged_end(&mut self, tag: Option<Tag>) -> Result {
+        let _ = tag;
+
         Ok(())
     }
 
     #[cfg(test)]
-    fn tagged_end(&mut self) -> Result;
+    fn tagged_end(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn constant_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -1584,12 +1588,12 @@ pub trait Stream<'sval> {
     fn constant_begin(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
-    fn constant_end(&mut self) -> Result {
-        self.tagged_end()
+    fn constant_end(&mut self, tag: Option<Tag>) -> Result {
+        self.tagged_end(tag)
     }
 
     #[cfg(test)]
-    fn constant_end(&mut self) -> Result;
+    fn constant_end(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
@@ -1614,22 +1618,24 @@ pub trait Stream<'sval> {
     fn record_value_begin(&mut self, tag: TagNamed) -> Result;
 
     #[cfg(not(test))]
-    fn record_value_end(&mut self) -> Result {
+    fn record_value_end(&mut self, tag: TagNamed) -> Result {
+        let _ = tag;
+
         self.dynamic_end()?;
         self.map_value_end()
     }
 
     #[cfg(test)]
-    fn record_value_end(&mut self) -> Result;
+    fn record_value_end(&mut self, tag: TagNamed) -> Result;
 
     #[cfg(not(test))]
-    fn record_end(&mut self) -> Result {
+    fn record_end(&mut self, tag: Option<Tag>) -> Result {
         self.map_end()?;
-        self.tagged_end()
+        self.tagged_end(tag)
     }
 
     #[cfg(test)]
-    fn record_end(&mut self) -> Result;
+    fn record_end(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
@@ -1652,40 +1658,24 @@ pub trait Stream<'sval> {
     fn tuple_value_begin(&mut self, tag: TagUnnamed) -> Result;
 
     #[cfg(not(test))]
-    fn tuple_value_end(&mut self) -> Result {
+    fn tuple_value_end(&mut self, tag: TagUnnamed) -> Result {
+        let _ = tag;
+
         self.dynamic_end()?;
         self.seq_value_end()
     }
 
     #[cfg(test)]
-    fn tuple_value_end(&mut self) -> Result;
+    fn tuple_value_end(&mut self, tag: TagUnnamed) -> Result;
 
     #[cfg(not(test))]
-    fn tuple_end(&mut self) -> Result {
+    fn tuple_end(&mut self, tag: Option<Tag>) -> Result {
         self.seq_end()?;
-        self.tagged_end()
+        self.tagged_end(tag)
     }
 
     #[cfg(test)]
-    fn tuple_end(&mut self) -> Result;
-
-    #[cfg(not(test))]
-    fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
-        self.tagged_begin(tag)?;
-        self.dynamic_begin()
-    }
-
-    #[cfg(test)]
-    fn enum_begin(&mut self, tag: Option<Tag>) -> Result;
-
-    #[cfg(not(test))]
-    fn enum_end(&mut self) -> Result {
-        self.dynamic_end()?;
-        self.tagged_end()
-    }
-
-    #[cfg(test)]
-    fn enum_end(&mut self) -> Result;
+    fn tuple_end(&mut self, tag: Option<Tag>) -> Result;
 
     #[cfg(not(test))]
     fn optional_some_begin(&mut self) -> Result {
@@ -1704,8 +1694,14 @@ pub trait Stream<'sval> {
 
     #[cfg(not(test))]
     fn optional_some_end(&mut self) -> Result {
-        self.tagged_end()?;
-        self.enum_end()
+        self.tagged_end(Some(crate::Tag::Named {
+            name: "Some",
+            id: Some(1),
+        }))?;
+        self.enum_end(Some(crate::Tag::Named {
+            name: "Option",
+            id: None,
+        }))
     }
 
     #[cfg(test)]
@@ -1722,14 +1718,38 @@ pub trait Stream<'sval> {
             name: "None",
             id: Some(0),
         }))?;
-        self.null()?;
-        self.constant_end()?;
 
-        self.enum_end()
+        self.null()?;
+
+        self.constant_end(Some(crate::Tag::Named {
+            name: "None",
+            id: Some(0),
+        }))?;
+
+        self.enum_end(Some(crate::Tag::Named {
+            name: "Option",
+            id: None,
+        }))
     }
 
     #[cfg(test)]
     fn optional_none(&mut self) -> Result;
+
+    #[cfg(not(test))]
+    fn fixed_size_begin(&mut self) -> Result {
+        Ok(())
+    }
+
+    #[cfg(test)]
+    fn fixed_size_begin(&mut self) -> Result;
+
+    #[cfg(not(test))]
+    fn fixed_size_end(&mut self) -> Result {
+        Ok(())
+    }
+
+    #[cfg(test)]
+    fn fixed_size_end(&mut self) -> Result;
 
     /**
     Begin an arbitrarily sized integer.
@@ -2150,9 +2170,9 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tagged_begin(tag)
             }
 
-            fn tagged_end(&mut self) -> Result {
+            fn tagged_end(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
-                ($($forward)*).tagged_end()
+                ($($forward)*).tagged_end(tag)
             }
 
             fn constant_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -2160,9 +2180,9 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).constant_begin(tag)
             }
 
-            fn constant_end(&mut self) -> Result {
+            fn constant_end(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
-                ($($forward)*).constant_end()
+                ($($forward)*).constant_end(tag)
             }
 
             fn record_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
@@ -2175,14 +2195,14 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).record_value_begin(tag)
             }
 
-            fn record_value_end(&mut self) -> Result {
+            fn record_value_end(&mut self, tag: TagNamed) -> Result {
                 let $bind = self;
-                ($($forward)*).record_value_end()
+                ($($forward)*).record_value_end(tag)
             }
 
-            fn record_end(&mut self) -> Result {
+            fn record_end(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
-                ($($forward)*).record_end()
+                ($($forward)*).record_end(tag)
             }
 
             fn tuple_begin(&mut self, tag: Option<Tag>, num_entries_hint: Option<usize>) -> Result {
@@ -2195,14 +2215,14 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tuple_value_begin(tag)
             }
 
-            fn tuple_value_end(&mut self) -> Result {
+            fn tuple_value_end(&mut self, tag: TagUnnamed) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_value_end()
+                ($($forward)*).tuple_value_end(tag)
             }
 
-            fn tuple_end(&mut self) -> Result {
+            fn tuple_end(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_end()
+                ($($forward)*).tuple_end(tag)
             }
 
             fn enum_begin(&mut self, tag: Option<Tag>) -> Result {
@@ -2210,9 +2230,9 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).enum_begin(tag)
             }
 
-            fn enum_end(&mut self) -> Result {
+            fn enum_end(&mut self, tag: Option<Tag>) -> Result {
                 let $bind = self;
-                ($($forward)*).enum_end()
+                ($($forward)*).enum_end(tag)
             }
 
             fn optional_some_begin(&mut self) -> Result {
@@ -2431,7 +2451,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tagged_end(&mut self) -> Result {
+    fn tagged_end(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2439,7 +2459,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn constant_end(&mut self) -> Result {
+    fn constant_end(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2451,11 +2471,11 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn record_value_end(&mut self) -> Result {
+    fn record_value_end(&mut self, _: TagNamed) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_end(&mut self) -> Result {
+    fn record_end(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2467,11 +2487,11 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tuple_value_end(&mut self) -> Result {
+    fn tuple_value_end(&mut self, _: TagUnnamed) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_end(&mut self) -> Result {
+    fn tuple_end(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2479,7 +2499,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn enum_end(&mut self) -> Result {
+    fn enum_end(&mut self, _: Option<Tag>) -> Result {
         crate::result::unsupported()
     }
 
