@@ -168,7 +168,7 @@ stream.tuple_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))
 stream.tuple_end()?;
 # Ok(())
 # }
-* ```
+```
 
 See [`Stream::tuple_begin`].
 
