@@ -166,12 +166,12 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.dynamic_end()
     }
 
-    fn fixed_size_begin(&mut self) -> sval::Result {
-        self.0.fixed_size_begin()
+    fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.enum_begin(tag)
     }
 
-    fn fixed_size_end(&mut self) -> sval::Result {
-        self.0.fixed_size_end()
+    fn enum_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
+        self.0.enum_end(tag)
     }
 
     fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
@@ -230,14 +230,6 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.tuple_end(tag)
     }
 
-    fn enum_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
-        self.0.enum_begin(tag)
-    }
-
-    fn enum_end(&mut self, tag: Option<sval::Tag>) -> sval::Result {
-        self.0.enum_end(tag)
-    }
-
     fn optional_some_begin(&mut self) -> sval::Result {
         self.0.optional_some_begin()
     }
@@ -248,6 +240,14 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
 
     fn optional_none(&mut self) -> sval::Result {
         self.0.optional_none()
+    }
+
+    fn fixed_size_begin(&mut self) -> sval::Result {
+        self.0.fixed_size_begin()
+    }
+
+    fn fixed_size_end(&mut self) -> sval::Result {
+        self.0.fixed_size_end()
     }
 
     fn int_begin(&mut self) -> sval::Result {

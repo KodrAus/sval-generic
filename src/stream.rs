@@ -202,20 +202,14 @@ type Enum = (i32 | bool);
 # use Enum::*;
 stream.enum_begin(None)?;
 
+    stream.tagged_begin(None)?;
     match value {
-        i32(i) => {
-            stream.tagged_begin(Some(sval::Tag::Unnamed { id: 0 }))?;
-            stream.value(i)?;
-            stream.tagged_end()?;
-        }
-        bool(b) => {
-            stream.tagged_begin(Some(sval::Tag::Unnamed { id: 1 }))?;
-            stream.value(b)?;
-            stream.tagged_end()?;
-        }
+        i32(i) => stream.value(i)?,
+        bool(b) => stream.value(b)?,
     }
+    stream.tagged_end(None)?;
 
-stream.enum_end()?;
+stream.enum_end(None)?;
 # Ok(())
 # }
 ```
@@ -1194,7 +1188,7 @@ pub trait Stream<'sval> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(key_values: &'a [(impl sval::Value, impl sval::Value)], mut stream: impl sval::Stream<'a>) -> sval::Result {
+    # fn wrap<'a>(key_values: &'a [(impl Value, impl Value)], mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.map_begin(None)?;
 
     // Maps contain 0 or more key-value pairs
@@ -1375,7 +1369,7 @@ pub trait Stream<'sval> {
 
     ```
     # use sval::Value;
-    # fn wrap<'a>(values: &'a [impl sval::Value], mut stream: impl sval::Stream<'a>) -> sval::Result {
+    # fn wrap<'a>(values: &'a [impl Value], mut stream: impl sval::Stream<'a>) -> sval::Result {
     stream.seq_begin(None)?;
 
     // Maps contain 0 or more key-value pairs
@@ -1546,46 +1540,46 @@ pub trait Stream<'sval> {
     }
 
     fn optional_some_begin(&mut self) -> Result {
-        self.enum_begin(Some(crate::Tag::Named {
+        self.enum_begin(Some(Tag::Named {
             name: "Option",
             id: None,
         }))?;
-        self.tagged_begin(Some(crate::Tag::Named {
+        self.tagged_begin(Some(Tag::Named {
             name: "Some",
             id: Some(1),
         }))
     }
 
     fn optional_some_end(&mut self) -> Result {
-        self.tagged_end(Some(crate::Tag::Named {
+        self.tagged_end(Some(Tag::Named {
             name: "Some",
             id: Some(1),
         }))?;
-        self.enum_end(Some(crate::Tag::Named {
+        self.enum_end(Some(Tag::Named {
             name: "Option",
             id: None,
         }))
     }
 
     fn optional_none(&mut self) -> Result {
-        self.enum_begin(Some(crate::Tag::Named {
+        self.enum_begin(Some(Tag::Named {
             name: "Option",
             id: None,
         }))?;
 
-        self.constant_begin(Some(crate::Tag::Named {
+        self.constant_begin(Some(Tag::Named {
             name: "None",
             id: Some(0),
         }))?;
 
         self.null()?;
 
-        self.constant_end(Some(crate::Tag::Named {
+        self.constant_end(Some(Tag::Named {
             name: "None",
             id: Some(0),
         }))?;
 
-        self.enum_end(Some(crate::Tag::Named {
+        self.enum_end(Some(Tag::Named {
             name: "Option",
             id: None,
         }))

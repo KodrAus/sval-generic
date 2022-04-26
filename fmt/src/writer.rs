@@ -6,7 +6,7 @@ pub(crate) struct Writer<W> {
     out: W,
 }
 
-pub(crate) trait Fmt: fmt::Write {
+pub(crate) trait Fmt: Write {
     fn write_u8(&mut self, value: u8) -> fmt::Result;
     fn write_u16(&mut self, value: u16) -> fmt::Result;
     fn write_u32(&mut self, value: u32) -> fmt::Result;
@@ -73,7 +73,7 @@ impl<'a, 'b> Fmt for &'a mut fmt::Formatter<'b> {
 
 pub(crate) struct StdFree<W>(pub W);
 
-impl<W: fmt::Write> Write for StdFree<W> {
+impl<W: Write> Write for StdFree<W> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.write_str(s)
     }
@@ -87,7 +87,7 @@ impl<W: fmt::Write> Write for StdFree<W> {
     }
 }
 
-impl<W: fmt::Write> Fmt for StdFree<W> {
+impl<W: Write> Fmt for StdFree<W> {
     fn write_u8(&mut self, value: u8) -> fmt::Result {
         self.write_str(itoa::Buffer::new().format(value))
     }
@@ -392,6 +392,14 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
+    fn enum_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
+        Ok(())
+    }
+
+    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
+        Ok(())
+    }
+
     fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         self.is_text_quoted = true;
 
@@ -419,14 +427,6 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn constant_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         self.is_text_quoted = true;
 
-        Ok(())
-    }
-
-    fn enum_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
-        Ok(())
-    }
-
-    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
         Ok(())
     }
 

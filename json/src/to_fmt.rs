@@ -254,6 +254,23 @@ where
         Ok(())
     }
 
+    fn enum_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
+        self.is_internally_tagged = true;
+
+        Ok(())
+    }
+
+    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
+        if self.is_internally_tagged {
+            self.map_value_end()?;
+            self.map_end()?;
+        }
+
+        self.is_internally_tagged = false;
+
+        Ok(())
+    }
+
     fn tagged_begin(&mut self, tag: Option<sval::Tag>) -> sval::Result {
         if self.is_internally_tagged {
             if let Some(tag) = tag {
@@ -276,6 +293,8 @@ where
             }
         }
 
+        self.is_internally_tagged = false;
+
         Ok(())
     }
 
@@ -297,23 +316,6 @@ where
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: Option<sval::Tag>) -> sval::Result {
-        self.is_internally_tagged = true;
-
-        Ok(())
-    }
-
-    fn enum_end(&mut self, _: Option<sval::Tag>) -> sval::Result {
-        if self.is_internally_tagged {
-            self.map_value_end()?;
-            self.map_end()?;
-        }
-
-        self.is_internally_tagged = false;
-
-        Ok(())
-    }
-
     fn record_value_begin(&mut self, tag: sval::TagNamed) -> sval::Result {
         self.is_internally_tagged = false;
 
@@ -330,16 +332,16 @@ where
         self.map_value_begin()
     }
 
-    fn optional_none(&mut self) -> sval::Result {
-        self.null()
-    }
-
     fn optional_some_begin(&mut self) -> sval::Result {
         Ok(())
     }
 
     fn optional_some_end(&mut self) -> sval::Result {
         Ok(())
+    }
+
+    fn optional_none(&mut self) -> sval::Result {
+        self.null()
     }
 
     fn int_begin(&mut self) -> sval::Result {
@@ -483,14 +485,14 @@ fn escape_str(value: &str, mut out: impl Write) -> Result<(), fmt::Error> {
         }
 
         match escape {
-            self::BB => out.write_str("\\b")?,
-            self::TT => out.write_str("\\t")?,
-            self::NN => out.write_str("\\n")?,
-            self::FF => out.write_str("\\f")?,
-            self::RR => out.write_str("\\r")?,
-            self::QU => out.write_str("\\\"")?,
-            self::BS => out.write_str("\\\\")?,
-            self::U => {
+            BB => out.write_str("\\b")?,
+            TT => out.write_str("\\t")?,
+            NN => out.write_str("\\n")?,
+            FF => out.write_str("\\f")?,
+            RR => out.write_str("\\r")?,
+            QU => out.write_str("\\\"")?,
+            BS => out.write_str("\\\\")?,
+            U => {
                 static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
                 out.write_str("\\u00")?;
                 out.write_char(HEX_DIGITS[(byte >> 4) as usize] as char)?;

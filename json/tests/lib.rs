@@ -96,6 +96,35 @@ fn option_roundtrip() {
 }
 
 #[test]
+fn anonymous_enum() {
+    pub enum AnonymousEnum {
+        I32(i32),
+        Bool(bool),
+    }
+
+    impl sval::Value for AnonymousEnum {
+        fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+            stream.enum_begin(None)?;
+            stream.tagged_begin(None)?;
+
+            match self {
+                AnonymousEnum::I32(v) => stream.value(v)?,
+                AnonymousEnum::Bool(v) => stream.value(v)?,
+            }
+
+            stream.tagged_end(None)?;
+            stream.enum_end(None)
+        }
+    }
+
+    assert_eq!(
+        "true",
+        sval_json::to_string(&AnonymousEnum::Bool(true)).unwrap(),
+    );
+    assert_eq!("42", sval_json::to_string(&AnonymousEnum::I32(42)).unwrap());
+}
+
+#[test]
 fn slice_convert() {
     use sval::Value;
 

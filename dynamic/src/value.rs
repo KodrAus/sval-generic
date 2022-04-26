@@ -1,5 +1,4 @@
 use crate::stream::Stream;
-use crate::value::private::DispatchValue;
 
 mod private {
     use crate::stream::Stream;
@@ -34,7 +33,7 @@ pub trait Value: private::EraseValue {}
 impl<T: sval::Value> Value for T {}
 
 impl<T: sval::Value> private::EraseValue for T {
-    fn erase_value(&self) -> crate::private::Erased<&dyn DispatchValue> {
+    fn erase_value(&self) -> crate::private::Erased<&dyn private::DispatchValue> {
         crate::private::Erased(self)
     }
 }
