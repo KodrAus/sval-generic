@@ -35,6 +35,9 @@ Values are:
 - **borrowed**: values are always streamed through a `&'sval` reference.
 - **just one approach**: streams don't have to be driven by the `Value` trait.
 The `Stream` trait makes very few demands so can be held in other ways, such as by async/await or coroutines.
+
+`sval`'s data model encompasses more than what Rust can natively represent.
+It's designed for cases where the consumer of structured data may be for a different language altogether so gives formats more tools for retaining the semantics of streamed data.
 */
 
 #![cfg_attr(not(test), no_std)]

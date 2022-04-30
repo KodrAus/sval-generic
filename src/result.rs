@@ -58,6 +58,6 @@ mod std_support {
     }
 }
 
-pub fn unsupported() -> crate::Result {
+pub fn unsupported<T>() -> crate::Result<T> {
     Err(Error::unsupported())
 }

@@ -18,7 +18,7 @@ pub enum Tag {
         /**
         The name of the tagged data.
 
-        Names are not canonical.
+        Names on types are not expected to be canonical.
         */
         name: &'static str,
         /**

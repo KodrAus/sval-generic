@@ -8,9 +8,59 @@ An observer of structured data emitted by some value.
 Streams can be used to convert between structured data and a [text or binary format](#text-and-binary-data).
 They can also be used to observe and transform data as it's yielded by values.
 
+## Borrowing
+
+Streams may accept text and binary data that's borrowed for a particular lifetime (`'sval`).
+Borrowing is just an optimization though, and streams also need to expect data that's short-lived.
+
+## Picking a representation
+
+Callers need to check whether a stream is [text-based or binary-based](#text-and-binary-data) before streaming encoded data.
+The following example streams an encoded integer as either text or binary depending on the stream:
+
+```
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+stream.int_begin()?;
+
+    if stream.is_text_based() {
+        // The stream is text-based
+        // Stream the integer as text
+        stream.text_begin(Some(3))?;
+        stream.text_fragment("123")?;
+        stream.text_end()?;
+    } else {
+        // The stream is binary-based
+        // Stream the integer as binary
+        stream.binary_begin(Some(1))?;
+        stream.binary_fragment(&[0b01111011])?;
+        stream.binary_end()?;
+    }
+
+stream.int_end()?;
+# Ok(())
+# }
+```
+
+# Building streams
+
+## Streams are flat
+
+This trait doesn't directly support recursion for streaming nested data like maps and sequences.
+Instead, it surrounds nested data with `begin`/`end` calls that remind a stream what context it's in.
+
+## Streams don't validate
+
+Streams aren't responsible for validating the correctness of the data they're given.
+That's up to the caller (usually an implementation of [`Value`]) to do.
+
+## Streams preserve semantics when forwarding
+
+If a stream is forwarding to another it should make an effort to forward all methods accurately, unless it's specifically transforming the data in some way.
+
 # Data model
 
 Streams encode `sval`'s data model.
+For more details on specific [data types](#data-types) in the model, see the methods on this trait.
 
 ## Text and binary data
 
@@ -35,13 +85,13 @@ The required methods on the `Stream` trait represent the basic data model that a
 The basic data model includes:
 
 - **Simple values**:
-    - **Null**: the absence of a value. See [`Stream::null`].
+    - **Null**: the absence of a value.
 - **Encoded data**:
-    - **Text blobs**: UTF8 strings. See [`Stream::text_begin`].
-    - **Binary blobs**: arbitrary byte strings. See [`Stream::binary_begin`].
+    - **Text blobs**: UTF8 strings.
+    - **Binary blobs**: arbitrary byte strings.
 - **Complex values**:
-    - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values). See [`Stream::map_begin`].
-    - **Sequences**: homogeneous collection of values, where elements are [values](#values). See [`Stream::seq_begin`].
+    - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
+    - **Sequences**: homogeneous collection of values, where elements are [values](#values).
 
 All other data types map onto this basic model somehow.
 
@@ -51,185 +101,26 @@ Streams may opt-in to direct support for data types in the extended data model e
 The extended data model includes:
 
 - **Simple values**:
-    - **Unit**: a value with no other meaningful data. See [`Stream::unit`].
-    - **Booleans**: the values `true` and `false`. See [`Stream::bool`].
-    - **Integers**: native integers. `i8`-`i128`, `u8`-`u128` and arbitrarily sized. See [`Stream::int_begin`] and [integer encoding](#integer-encoding).
-    - **Binary floating points**: native base2 fractional numbers. `f32`-`f64` and arbitrarily sized. See [`Stream::binfloat_begin`] and [binary floating point encoding](#binary-floating-point-encoding).
-    - **Decimal floating points**: native base10 fractional numbers. Arbitrarily sized. These don't have a native Rust counterpart. See [`Stream::decfloat_begin`] and [decimal floating point encoding](#decimal-floating-point-encoding).
-    - **Optionals**: [values](#values) that may either have some data or have none. See [`Stream::optional_some_begin`] and [`Stream::optional_none`].
+    - **Unit**: a value with no other meaningful data.
+    - **Booleans**: the values `true` and `false`.
+    - **Integers**: native integers. `i8`-`i128`, `u8`-`u128` and arbitrarily sized.
+    - **Binary floating points**: native base2 fractional numbers. `f32`-`f64` and arbitrarily sized.
+    - **Decimal floating points**: native base10 fractional numbers. Arbitrarily sized. These don't have a native Rust counterpart.
+    - **Optionals**: [values](#values) that may either have some data or have none.
 - **Tagged complex values**:
-    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data. See [`Stream::tagged_begin`].
-    - **Records**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances. See [`Stream::record_begin`].
-    - **Tuples**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances. See [`Stream::tuple_begin`].
+    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data.
+    - **Records**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances.
+    - **Tuples**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances.
 - **Dynamic values**:
-    - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types. See [`Stream::dynamic_begin`].
-    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants. See [`Stream::enum_begin`].
+    - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types.
+    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants.
 - **Constant values**:
-    - **Constants**: for [values](#values) that will always have the same data. See [`Stream::constant_begin`].
-    - **Fixed size**: for [values](#values) with a length where that length will always be the same. See [`Stream::fixed_size_begin`].
-
-#### Wrapping
-
-Data types that wrap others, like dynamic, constant, and fixed size, are order-dependent.
-
-This value:
-
-```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-// This value...
-stream.dynamic_begin()?;
-    stream.constant_begin()?;
-        stream.i32(42)?;
-    stream.constant_end()?;
-stream.dynamic_end()?;
-# Ok(())
-# }
-```
-
-does not have the same data type as this one:
-
-```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-// ...does not match this one
-stream.constant_begin()?;
-    stream.dynamic_begin()?;
-        stream.i32(42)?;
-    stream.dynamic_end()?;
-stream.constant_end()?;
-# Ok(())
-# }
-```
-
-The first is a dynamic value that happens to contain a constant.
-The second is a constant that holds a dynamic value.
-This restriction isn't entirely necessary, but it aims to simplify stream encoding.
-
-### Rust types and `sval` types
-
-Each Rust type must correspond to a single `sval` data type.
-`sval` can represent the basic building blocks of Rust datastructures.
-
-#### Structs with named fields
-
-The struct:
-
-```
-struct Struct {
-    a: i32,
-    b: bool,
-}
-```
-
-is streamed as a record:
-
-```
-# struct Struct { a: i32, b: bool }
-# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.record_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
-
-    stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
-    stream.value(&value.a)?;
-    stream.record_value_end()?;
-
-    stream.record_value_begin(sval::TagNamed { name: "b", id: Some(1) })?;
-    stream.value(&value.b)?;
-    stream.record_value_end()?;
-
-stream.record_end()?;
-# Ok(())
-# }
-```
-
-See [`Stream::record_begin`].
-
-### Structs with unnamed fields
-
-The struct:
-
-```
-struct Struct(i32, bool);
-```
-
-is streamed as a tuple:
-
-```
-# struct Struct(i32, bool);
-# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.tuple_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
-
-    stream.tuple_value_begin(sval::TagUnnamed { id: 0 })?;
-    stream.value(&value.0)?;
-    stream.tuple_value_end()?;
-
-    stream.tuple_value_begin(sval::TagUnnamed { id: 1 })?;
-    stream.value(&value.1)?;
-    stream.tuple_value_end()?;
-
-stream.tuple_end()?;
-# Ok(())
-# }
-```
-
-See [`Stream::tuple_begin`].
-
-#### Tuples
-
-```
-type Tuple = (i32, bool);
-```
-
-### Exotic data types
-
-`sval` can represent some data types that Rust can't natively (yet).
-These examples just use a strawman Rust syntax to illustrate the shape of the data type in a familiar setting.
-
-#### Anonymous structs with named fields
-
-```rust,ignore
-type Record = { a: i32, b: bool };
-```
-
-#### Anonymous enums
-
-```rust,ignore
-type Enum = (i32 | bool);
-```
-
-```
-# #![allow(non_camel_case_types)]
-# enum Enum { i32(i32), bool(bool) }
-# fn wrap<'a>(value: &'a Enum, mut stream: impl sval::Stream<'a>) -> sval::Result {
-# use Enum::*;
-stream.enum_begin(None)?;
-
-    stream.tagged_begin(None)?;
-    match value {
-        i32(i) => stream.value(i)?,
-        bool(b) => stream.value(b)?,
-    }
-    stream.tagged_end(None)?;
-
-stream.enum_end(None)?;
-# Ok(())
-# }
-```
-
-#### Nested enums
-
-```rust,ignore
-enum Enum {
-    A(i32),
-    B(bool),
-    enum Nested {
-        A(i32),
-        B(bool),
-    },
-}
-```
+    - **Constants**: for [values](#values) that will always have the same data.
+    - **Fixed size**: for [values](#values) with a length where that length will always be the same.
 
 ## Values
 
-A value is the sequence of calls that represent a complete instance of a [data type](#data-types).
+A value is the sequence of calls on a stream that represent a single instance of a [data type](trait.Stream.html#data-types).
 The following are all examples of values.
 
 A single integer:
@@ -283,22 +174,6 @@ stream.map_end()?;
 # Ok(())
 # }
 ```
-
-A stream should expect just one value over its lifetime.
-
-## Validation
-
-Streams aren't responsible for validating the correctness of the data they're given.
-That's up to the caller to do.
-
-## Forwarding
-
-If a stream is forwarding to another it should make an effort to forward all methods accurately, unless it's specifically transforming the data in some way.
-
-# Borrowing
-
-Streams may accept text and binary data that's borrowed for a particular lifetime (`'sval`).
-Borrowing is just an optimization though, and streams also need to expect data that's short-lived.
 */
 pub trait Stream<'sval> {
     /**
@@ -476,6 +351,10 @@ pub trait Stream<'sval> {
     # }
     ```
 
+    # Data type
+
+    All text blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
+
     # Borrowing
 
     Text blobs may contain data that's borrowed for the stream's `'sval` lifetime.
@@ -568,6 +447,10 @@ pub trait Stream<'sval> {
     # Ok(())
     # }
     ```
+
+    # Data type
+
+    All binary blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
 
     # Borrowing
 

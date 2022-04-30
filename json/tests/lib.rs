@@ -132,6 +132,106 @@ fn slice_convert() {
     assert_eq!(Some("a string"), sval_json::slice("\"a string\"").to_text());
 }
 
+struct Printer;
+
+impl<'a> sval::Stream<'a> for Printer {
+    fn null(&mut self) -> sval::Result {
+        println!("null");
+        Ok(())
+    }
+
+    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
+        println!("text_begin");
+        Ok(())
+    }
+
+    fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
+        println!("text_fragment_computed: {:?}", fragment);
+        Ok(())
+    }
+
+    fn text_end(&mut self) -> sval::Result {
+        println!("text_end");
+        Ok(())
+    }
+
+    fn binary_begin(&mut self, _: Option<usize>) -> sval::Result {
+        println!("binary_begin");
+        Ok(())
+    }
+
+    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
+        println!("binary_fragment_computed: {:?}", fragment);
+        Ok(())
+    }
+
+    fn binary_end(&mut self) -> sval::Result {
+        println!("binary_end");
+        Ok(())
+    }
+
+    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
+        println!("map_begin");
+        Ok(())
+    }
+
+    fn map_key_begin(&mut self) -> sval::Result {
+        println!("map_key_begin");
+        Ok(())
+    }
+
+    fn map_key_end(&mut self) -> sval::Result {
+        println!("map_key_end");
+        Ok(())
+    }
+
+    fn map_value_begin(&mut self) -> sval::Result {
+        println!("map_value_begin");
+        Ok(())
+    }
+
+    fn map_value_end(&mut self) -> sval::Result {
+        println!("map_value_end");
+        Ok(())
+    }
+
+    fn map_end(&mut self) -> sval::Result {
+        println!("map_end");
+        Ok(())
+    }
+
+    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
+        println!("seq_begin");
+        Ok(())
+    }
+
+    fn seq_value_begin(&mut self) -> sval::Result {
+        println!("seq_value_begin");
+        Ok(())
+    }
+
+    fn seq_value_end(&mut self) -> sval::Result {
+        println!("seq_value_end");
+        Ok(())
+    }
+
+    fn seq_end(&mut self) -> sval::Result {
+        println!("seq_end");
+        Ok(())
+    }
+}
+
+#[test]
+fn co() {
+    let json = "\"Hello\\nWorld\"";
+
+    let mut reader = sval_json::JsonSliceCoReader::begin(json.as_bytes(), Printer);
+
+    while reader.resume().unwrap() {
+        println!("suspending");
+    }
+}
+
 struct BinFloat<'a>(&'a [&'a str]);
 
 impl<'a> sval::Value for BinFloat<'a> {
