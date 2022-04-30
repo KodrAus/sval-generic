@@ -7,7 +7,7 @@ The source of that data could be some Rust object or some text or binary format.
 Here's an example of how to stream a blob of text (a `str`) using `sval`:
 
 ```
-# fn wrap<MyStream: sval::Stream<'a>>(my_stream: impl FnOnce() -> MyStream) -> sval::Result {
+# fn wrap<'sval, MyStream: sval::Stream<'sval>>(my_stream: impl FnOnce() -> MyStream) -> sval::Result {
 let mut stream: MyStream = my_stream();
 
 stream.text_begin(Some(11))?;
@@ -63,12 +63,11 @@ extern crate core as std;
 
 mod data;
 mod stream;
-mod tag;
 mod value;
 
 pub mod result;
 
 #[doc(inline)]
-pub use self::{result::Error, stream::*, tag::*, value::*};
+pub use self::{data::*, result::Error, stream::*, value::*};
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
