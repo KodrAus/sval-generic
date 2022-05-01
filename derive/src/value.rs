@@ -118,8 +118,9 @@ fn derive_enum<'a>(
     generics: &Generics,
     variants: impl Iterator<Item = &'a Variant> + 'a,
 ) -> TokenStream {
-    let tag = ident.to_string();
-    let tag = quote!(sval::Tag::Named { name: #tag, id: None });
+    let label = ident.to_string();
+    let label = quote!(Some(sval::Label::new(#label)));
+    let id = quote!(None);
 
     let (impl_generics, ty_generics, _) = generics.split_for_impl();
 
@@ -163,13 +164,13 @@ fn derive_enum<'a>(
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
                 fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
-                    stream.enum_begin(Some(#tag))?;
+                    stream.enum_begin(#label, #id)?;
 
                     match self {
                         #(#variant_match_arms)*
                     }
 
-                    stream.enum_end(Some(#tag))
+                    stream.enum_end(#label, #id)
                 }
 
                 fn is_dynamic(&self) -> bool {
@@ -186,12 +187,13 @@ fn stream_struct(
     id: Option<u128>,
     fields: &FieldsNamed,
 ) -> proc_macro2::TokenStream {
-    let tag = label.to_string();
+    let label = label.to_string();
+    let label = quote!(Some(sval::Label::new(#label)));
+
     let id = match id {
-        Some(id) => quote!(Some(#id)),
+        Some(id) => quote!(Some(sval::Id::new(#id))),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     let mut field_ident = Vec::new();
     let mut field_lit = Vec::new();
@@ -199,23 +201,29 @@ fn stream_struct(
     let mut field_count = 0usize;
 
     for field in &fields.named {
+        let label = attr::name_of_field(field);
+        let label = quote!(sval::Label::new(#label));
+
+        let id = field_count as u128;
+        let id = quote!(sval::Id::new(#id));
+
         field_ident.push(&field.ident);
-        field_lit.push(attr::name_of_field(field));
-        field_id.push(field_count as u128);
+        field_lit.push(label);
+        field_id.push(id);
 
         field_count += 1;
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        stream.record_begin(Some(#tag), Some(#field_count))?;
+        stream.record_begin(#label, #id, Some(#field_count))?;
 
         #(
-            stream.record_value_begin(sval::TagNamed { name: #field_lit, id: Some(#field_id) })?;
+            stream.record_value_begin(#field_lit, #field_id)?;
             stream.value(#field_ident)?;
-            stream.record_value_end(sval::TagNamed { name: #field_lit, id: Some(#field_id) })?;
+            stream.record_value_end(#field_lit, #field_id)?;
         )*
 
-        stream.record_end(Some(#tag))?;
+        stream.record_end(#label, #id)?;
     })
 }
 
@@ -224,17 +232,18 @@ fn stream_newtype(
     label: &Ident,
     id: Option<u128>,
 ) -> proc_macro2::TokenStream {
-    let tag = label.to_string();
+    let label = label.to_string();
+    let label = quote!(Some(sval::Label::new(#label)));
+
     let id = match id {
-        Some(id) => quote!(Some(#id)),
+        Some(id) => quote!(Some(sval::Id::new(#id))),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     quote!(#path(ref field0) => {
-        stream.tagged_begin(Some(#tag))?;
+        stream.tagged_begin(#label, #id)?;
         stream.value(field0)?;
-        stream.tagged_end(Some(#tag))?;
+        stream.tagged_end(#label, #id)?;
     })
 }
 
@@ -244,33 +253,36 @@ fn stream_tuple(
     id: Option<u128>,
     fields: &FieldsUnnamed,
 ) -> proc_macro2::TokenStream {
-    let tag = label.to_string();
+    let label = label.to_string();
+    let label = quote!(Some(sval::Label::new(#label)));
     let id = match id {
-        Some(id) => quote!(Some(#id)),
+        Some(id) => quote!(Some(sval::Id::new(#id))),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Named { name: #tag, id: #id });
 
     let mut field_ident = Vec::new();
     let mut field_id = Vec::new();
     let mut field_count = 0usize;
 
     for field in &fields.unnamed {
+        let id = field_count as u128;
+        let id = quote!(sval::Id::new(#id));
+
         field_ident.push(Ident::new(&format!("field{}", field_count), field.span()));
-        field_id.push(field_count as u128);
+        field_id.push(id);
         field_count += 1;
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        stream.tuple_begin(Some(#tag), Some(#field_count))?;
+        stream.tuple_begin(#label, #id, Some(#field_count))?;
 
         #(
-            stream.tuple_value_begin(sval::TagUnnamed { id: #field_id })?;
+            stream.tuple_value_begin(#field_id)?;
             stream.value(#field_ident)?;
-            stream.tuple_value_end(sval::TagUnnamed { id: #field_id })?;
+            stream.tuple_value_end(#field_id)?;
         )*
 
-        stream.tuple_end(Some(#tag))?;
+        stream.tuple_end(#label, #id)?;
     })
 }
 
@@ -280,15 +292,16 @@ fn stream_constant(
     id: Option<u128>,
 ) -> proc_macro2::TokenStream {
     let constant = label.to_string();
+    let label = quote!(Some(#constant));
+
     let id = match id {
-        Some(id) => quote!(Some(#id)),
+        Some(id) => quote!(Some(sval::Id::new(#id))),
         None => quote!(None),
     };
-    let tag = quote!(sval::Tag::Named { name: #constant, id: #id });
 
     quote!(#path => {
-        stream.constant_begin(Some(#tag))?;
+        stream.constant_begin(#label, #id)?;
         stream.value(#constant)?;
-        stream.constant_end(Some(#tag))?;
+        stream.constant_end(#label, #id)?;
     })
 }
