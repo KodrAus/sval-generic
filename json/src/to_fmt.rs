@@ -254,13 +254,13 @@ where
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: Option<sval::Label>, _: Option<u128>) -> sval::Result {
+    fn enum_begin(&mut self, _: Option<sval::Label>, _: Option<sval::Id>) -> sval::Result {
         self.is_internally_tagged = true;
 
         Ok(())
     }
 
-    fn enum_end(&mut self, _: Option<sval::Label>, _: Option<u128>) -> sval::Result {
+    fn enum_end(&mut self, _: Option<sval::Label>, _: Option<sval::Id>) -> sval::Result {
         if self.is_internally_tagged {
             self.map_value_end()?;
             self.map_end()?;
@@ -271,13 +271,13 @@ where
         Ok(())
     }
 
-    fn tagged_begin(&mut self, label: Option<sval::Label>, id: Option<u128>) -> sval::Result {
+    fn tagged_begin(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
         if self.is_internally_tagged {
             if let Some(label) = label {
                 self.map_begin(Some(1))?;
 
                 self.map_key_begin()?;
-                escape_str(&*label, &mut self.out)?;
+                escape_str(label.get(), &mut self.out)?;
                 self.map_key_end()?;
 
                 self.map_value_begin()?;
@@ -285,7 +285,7 @@ where
                 self.map_begin(Some(1))?;
 
                 self.map_key_begin()?;
-                self.u128(id)?;
+                self.u128(id.get())?;
                 self.map_key_end()?;
 
                 self.map_value_begin()?;
@@ -297,7 +297,7 @@ where
         Ok(())
     }
 
-    fn tagged_end(&mut self, label: Option<sval::Label>, id: Option<u128>) -> sval::Result {
+    fn tagged_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
         if label.is_some() || id.is_some() {
             self.is_internally_tagged = true;
         }
@@ -305,17 +305,17 @@ where
         Ok(())
     }
 
-    fn constant_begin(&mut self, _: Option<sval::Label>, _: Option<u128>) -> sval::Result {
+    fn constant_begin(&mut self, _: Option<sval::Label>, _: Option<sval::Id>) -> sval::Result {
         Ok(())
     }
 
-    fn constant_end(&mut self, _: Option<sval::Label>, _: Option<u128>) -> sval::Result {
+    fn constant_end(&mut self, _: Option<sval::Label>, _: Option<sval::Id>) -> sval::Result {
         self.is_internally_tagged = false;
 
         Ok(())
     }
 
-    fn record_value_begin(&mut self, label: sval::Label, _: u128) -> sval::Result {
+    fn record_value_begin(&mut self, label: sval::Label, _: sval::Id) -> sval::Result {
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
@@ -324,7 +324,7 @@ where
             self.out.write_char('"')?;
         }
 
-        escape_str(&*label, &mut self.out)?;
+        escape_str(label.get(), &mut self.out)?;
 
         self.out.write_str("\":")?;
 

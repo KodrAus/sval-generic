@@ -4,8 +4,11 @@ pub(crate) mod optional;
 pub(crate) mod seq;
 pub(crate) mod text;
 
-use crate::{std::ops::Deref, Result, Stream, Value};
+use crate::{Result, Stream, Value};
 
+/**
+An informational label for some value.
+*/
 #[derive(Clone, Copy)]
 pub struct Label<'a> {
     computed: &'a str,
@@ -13,34 +16,42 @@ pub struct Label<'a> {
 }
 
 impl<'a> Label<'a> {
-    pub fn new(label: &'static str) -> Self {
+    pub const fn new(label: &'static str) -> Self {
         Label {
             computed: label,
             value: Some(label),
         }
     }
 
-    pub fn computed(label: &'a str) -> Self {
+    pub const fn computed(label: &'a str) -> Self {
         Label {
             computed: label,
             value: None,
         }
     }
 
-    pub fn get(&self) -> &'a str {
+    pub const fn get(&self) -> &'a str {
         self.computed
     }
 
-    pub fn get_static(&self) -> Option<&'static str> {
+    pub const fn try_get_static(&self) -> Option<&'static str> {
         self.value
     }
 }
 
-impl<'a> Deref for Label<'a> {
-    type Target = str;
+/**
+A canonical identifier for some value.
+*/
+#[derive(Clone, Copy)]
+pub struct Id(u128);
 
-    fn deref(&self) -> &str {
-        self.get()
+impl Id {
+    pub const fn new(id: u128) -> Self {
+        Id(id)
+    }
+
+    pub const fn get(&self) -> u128 {
+        self.0
     }
 }
 

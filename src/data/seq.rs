@@ -1,4 +1,4 @@
-use crate::{Result, Stream, Value};
+use crate::{Id, Result, Stream, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
@@ -48,9 +48,9 @@ macro_rules! tuple {
                     stream.tuple_begin(None, None, Some($len))?;
 
                     $(
-                        stream.tuple_value_begin($i)?;
+                        stream.tuple_value_begin(Id::new($i))?;
                         stream.value(&self.$i)?;
-                        stream.tuple_value_end($i)?;
+                        stream.tuple_value_end(Id::new($i))?;
                     )+
 
                     stream.tuple_end(None, None)

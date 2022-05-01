@@ -1,4 +1,4 @@
-use crate::{data, Label, Result, Value};
+use crate::{data, Id, Label, Result, Value};
 
 /**
 An observer of structured data emitted by some value.
@@ -1342,56 +1342,58 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
-    fn enum_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn enum_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.tagged_begin(label, id)?;
         self.dynamic_begin()
     }
 
-    fn enum_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn enum_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.dynamic_end()?;
         self.tagged_end(label, id)
     }
 
-    fn tagged_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn tagged_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         let _ = label;
         let _ = id;
 
         Ok(())
     }
 
-    fn tagged_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn tagged_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         let _ = label;
         let _ = id;
 
         Ok(())
     }
 
-    fn constant_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn constant_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.tagged_begin(label, id)
     }
 
-    fn constant_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn constant_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.tagged_end(label, id)
     }
 
     fn record_begin(
         &mut self,
         label: Option<Label>,
-        id: Option<u128>,
+        id: Option<Id>,
         num_entries_hint: Option<usize>,
     ) -> Result {
         self.tagged_begin(label, id)?;
         self.map_begin(num_entries_hint)
     }
 
-    fn record_value_begin(&mut self, label: Label, id: u128) -> Result {
+    fn record_value_begin(&mut self, label: Label, id: Id) -> Result {
         let _ = id;
 
         self.map_key_begin()?;
 
-        if let Some(label) = label.get_static() {
+        if let Some(label) = label.try_get_static() {
             self.value(label)?;
         } else {
+            let label = label.get();
+
             self.text_begin(Some(label.len()))?;
             self.text_fragment_computed(&label)?;
             self.text_end()?;
@@ -1403,7 +1405,7 @@ pub trait Stream<'sval> {
         self.dynamic_begin()
     }
 
-    fn record_value_end(&mut self, label: Label, id: u128) -> Result {
+    fn record_value_end(&mut self, label: Label, id: Id) -> Result {
         let _ = label;
         let _ = id;
 
@@ -1411,7 +1413,7 @@ pub trait Stream<'sval> {
         self.map_value_end()
     }
 
-    fn record_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn record_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.map_end()?;
         self.tagged_end(label, id)
     }
@@ -1419,49 +1421,49 @@ pub trait Stream<'sval> {
     fn tuple_begin(
         &mut self,
         label: Option<Label>,
-        id: Option<u128>,
+        id: Option<Id>,
         num_entries_hint: Option<usize>,
     ) -> Result {
         self.tagged_begin(label, id)?;
         self.seq_begin(num_entries_hint)
     }
 
-    fn tuple_value_begin(&mut self, id: u128) -> Result {
+    fn tuple_value_begin(&mut self, id: Id) -> Result {
         let _ = id;
 
         self.seq_value_begin()?;
         self.dynamic_begin()
     }
 
-    fn tuple_value_end(&mut self, id: u128) -> Result {
+    fn tuple_value_end(&mut self, id: Id) -> Result {
         let _ = id;
 
         self.dynamic_end()?;
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+    fn tuple_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
         self.seq_end()?;
         self.tagged_end(label, id)
     }
 
     fn optional_some_begin(&mut self) -> Result {
         self.enum_begin(Some(Label::new("Option")), None)?;
-        self.tagged_begin(Some(Label::new("Some")), Some(1))
+        self.tagged_begin(Some(Label::new("Some")), Some(Id::new(1)))
     }
 
     fn optional_some_end(&mut self) -> Result {
-        self.tagged_end(Some(Label::new("Some")), Some(1))?;
+        self.tagged_end(Some(Label::new("Some")), Some(Id::new(1)))?;
         self.enum_end(Some(Label::new("Option")), None)
     }
 
     fn optional_none(&mut self) -> Result {
         self.enum_begin(Some(Label::new("Option")), None)?;
-        self.constant_begin(Some(Label::new("None")), Some(0))?;
+        self.constant_begin(Some(Label::new("None")), Some(Id::new(0)))?;
 
         self.null()?;
 
-        self.constant_end(Some(Label::new("None")), Some(0))?;
+        self.constant_end(Some(Label::new("None")), Some(Id::new(0)))?;
         self.enum_end(Some(Label::new("Option")), None)
     }
 
@@ -1863,72 +1865,72 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).seq_value_end()
             }
 
-            fn tagged_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn tagged_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_begin(label, id)
             }
 
-            fn tagged_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn tagged_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_end(label, id)
             }
 
-            fn constant_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn constant_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).constant_begin(label, id)
             }
 
-            fn constant_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn constant_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).constant_end(label, id)
             }
 
-            fn record_begin(&mut self, label: Option<Label>, id: Option<u128>, num_entries_hint: Option<usize>) -> Result {
+            fn record_begin(&mut self, label: Option<Label>, id: Option<Id>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).record_begin(label, id, num_entries_hint)
             }
 
-            fn record_value_begin(&mut self, label: Label, id: u128) -> Result {
+            fn record_value_begin(&mut self, label: Label, id: Id) -> Result {
                 let $bind = self;
                 ($($forward)*).record_value_begin(label, id)
             }
 
-            fn record_value_end(&mut self, label: Label, id: u128) -> Result {
+            fn record_value_end(&mut self, label: Label, id: Id) -> Result {
                 let $bind = self;
                 ($($forward)*).record_value_end(label, id)
             }
 
-            fn record_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn record_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).record_end(label, id)
             }
 
-            fn tuple_begin(&mut self, label: Option<Label>, id: Option<u128>, num_entries_hint: Option<usize>) -> Result {
+            fn tuple_begin(&mut self, label: Option<Label>, id: Option<Id>, num_entries_hint: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_begin(label, id, num_entries_hint)
             }
 
-            fn tuple_value_begin(&mut self, id: u128) -> Result {
+            fn tuple_value_begin(&mut self, id: Id) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_value_begin(id)
             }
 
-            fn tuple_value_end(&mut self, id: u128) -> Result {
+            fn tuple_value_end(&mut self, id: Id) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_value_end(id)
             }
 
-            fn tuple_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn tuple_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_end(label, id)
             }
 
-            fn enum_begin(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn enum_begin(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_begin(label, id)
             }
 
-            fn enum_end(&mut self, label: Option<Label>, id: Option<u128>) -> Result {
+            fn enum_end(&mut self, label: Option<Label>, id: Option<Id>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_end(label, id)
             }
@@ -2145,59 +2147,59 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tagged_begin(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn tagged_begin(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tagged_end(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn tagged_end(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn constant_begin(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn constant_begin(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn constant_end(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn constant_end(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_begin(&mut self, _: Option<Label>, _: Option<u128>, _: Option<usize>) -> Result {
+    fn record_begin(&mut self, _: Option<Label>, _: Option<Id>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_value_begin(&mut self, _: Label, _: u128) -> Result {
+    fn record_value_begin(&mut self, _: Label, _: Id) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_value_end(&mut self, _: Label, _: u128) -> Result {
+    fn record_value_end(&mut self, _: Label, _: Id) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_end(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn record_end(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_begin(&mut self, _: Option<Label>, _: Option<u128>, _: Option<usize>) -> Result {
+    fn tuple_begin(&mut self, _: Option<Label>, _: Option<Id>, _: Option<usize>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_begin(&mut self, _: u128) -> Result {
+    fn tuple_value_begin(&mut self, _: Id) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_end(&mut self, _: u128) -> Result {
+    fn tuple_value_end(&mut self, _: Id) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_end(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn tuple_end(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn enum_begin(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn enum_begin(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
-    fn enum_end(&mut self, _: Option<Label>, _: Option<u128>) -> Result {
+    fn enum_end(&mut self, _: Option<Label>, _: Option<Id>) -> Result {
         crate::result::unsupported()
     }
 
