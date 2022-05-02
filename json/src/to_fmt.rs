@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
-    v.stream(Formatter::new(fmt))
+    v.stream(&mut Formatter::new(fmt))
 }
 
 pub struct Formatter<W> {

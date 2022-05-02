@@ -103,13 +103,16 @@ fn anonymous_enum() {
     }
 
     impl sval::Value for AnonymousEnum {
-        fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+        fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(
+            &'sval self,
+            stream: &mut S,
+        ) -> sval::Result {
             stream.enum_begin(None)?;
             stream.tagged_begin(None)?;
 
             match self {
-                AnonymousEnum::I32(v) => stream.value(v)?,
-                AnonymousEnum::Bool(v) => stream.value(v)?,
+                AnonymousEnum::I32(v) => sval::stream(&mut *stream, v)?,
+                AnonymousEnum::Bool(v) => sval::stream(&mut *stream, v)?,
             }
 
             stream.tagged_end(None)?;

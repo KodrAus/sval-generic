@@ -132,7 +132,7 @@ fn twitter_scan_sval(b: &mut test::Bencher) {
 
         let json = sval_json::JsonSlice::new(&json);
 
-        json.stream(EmptyStream).unwrap()
+        json.stream(&mut EmptyStream).unwrap()
     });
 }
 

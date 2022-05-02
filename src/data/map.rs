@@ -3,16 +3,16 @@ mod alloc_support {
     use crate::{std::collections::BTreeMap, Result, Stream, Value};
 
     impl<K: Value, V: Value> Value for BTreeMap<K, V> {
-        fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+        fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
             stream.map_begin(Some(self.len()))?;
 
             for (k, v) in self {
                 stream.map_key_begin()?;
-                stream.value(k)?;
+                k.stream(stream)?;
                 stream.map_key_end()?;
 
                 stream.map_value_begin()?;
-                stream.value(v)?;
+                v.stream(stream)?;
                 stream.map_value_end()?;
             }
 
@@ -33,16 +33,16 @@ mod std_support {
     };
 
     impl<K: Value, V: Value, H: BuildHasher> Value for HashMap<K, V, H> {
-        fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+        fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
             stream.map_begin(Some(self.len()))?;
 
             for (k, v) in self {
                 stream.map_key_begin()?;
-                stream.value(k)?;
+                k.stream(stream)?;
                 stream.map_key_end()?;
 
                 stream.map_value_begin()?;
-                stream.value(v)?;
+                v.stream(stream)?;
                 stream.map_value_end()?;
             }
 

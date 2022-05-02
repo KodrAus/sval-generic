@@ -14,7 +14,7 @@ use sval::Value;
 
 let value: &'sval V = some_value();
 
-let stream: S = some_stream();
+let stream: &mut S = some_stream();
 
 // The `stream` method on `Value` accepts a `Stream`
 value.stream(stream)?;
@@ -49,7 +49,7 @@ The following is an example of a Rust type that always produces complete and val
 struct MyMap<'a>(&'a str, i32);
 
 impl<'a> sval::Value for MyMap<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces a complete map
         stream.map_begin(Some(1))?;
 
@@ -72,7 +72,7 @@ The following is an example of a Rust type that _doesn't_ always produce complet
 struct MyMap<'a>(&'a str);
 
 impl<'a> sval::Value for MyMap<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // INVALID: `MyData` produces a partial map
         stream.map_begin(Some(1))?;
 
@@ -91,7 +91,7 @@ The following is an example of a Rust type that _doesn't_ always produce data th
 struct MyKey<'a>(&'a str);
 
 impl<'a> sval::Value for MyKey<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // INVALID: a map key isn't valid in all contexts
         stream.map_key_begin()?;
         stream.value(&self.0)?;
@@ -110,7 +110,7 @@ The following is an example of a Rust type that always produces the same `sval` 
 struct MyData(bool);
 
 impl sval::Value for MyData {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces `bool`
         stream.bool(self.0)
     }
@@ -123,7 +123,7 @@ The following is an example of a Rust type that _doesn't_ always produce the sam
 struct MyData<'a>(&'a str);
 
 impl<'a> sval::Value for MyData<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // INVALID: `MyData` might produce `bool` or `i64`
         match self.0 {
             "true" => stream.bool(true),
@@ -140,7 +140,7 @@ It can be fixed by wrapping the `stream` implementation in dynamic:
 ```
 # struct MyData<'a>(&'a str);
 impl<'a> sval::Value for MyData<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces `dynamic`
         stream.dynamic_begin()?;
 
@@ -160,7 +160,7 @@ Wrapping in an enum is also valid:
 ```
 # struct MyData<'a>(&'a str);
 impl<'a> sval::Value for MyData<'a> {
-    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces an enum with structural variants
         stream.enum_begin(None)?;
         stream.tagged_begin(None)?;
@@ -182,7 +182,7 @@ Data types that wrap others, like dynamic, constant, and fixed size, are order-d
 This value:
 
 ```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(stream: impl sval::Stream<'a>) -> sval::Result {
 // This value...
 stream.dynamic_begin()?;
     stream.constant_begin()?;
@@ -196,7 +196,7 @@ stream.dynamic_end()?;
 does not have the same data type as this one:
 
 ```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(stream: impl sval::Stream<'a>) -> sval::Result {
 // ...does not match this one
 stream.constant_begin()?;
     stream.dynamic_begin()?;
@@ -230,7 +230,7 @@ is streamed as a record:
 
 ```
 # struct Struct { a: i32, b: bool }
-# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(value: &'a Struct, stream: impl sval::Stream<'a>) -> sval::Result {
 stream.record_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
     stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
@@ -260,7 +260,7 @@ is streamed as a tuple:
 
 ```
 # struct Struct(i32, bool);
-# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(value: &'a Struct, stream: impl sval::Stream<'a>) -> sval::Result {
 stream.tuple_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
     stream.tuple_value_begin(sval::TagUnnamed { id: 0 })?;
@@ -304,7 +304,7 @@ type Enum = (i32 | bool);
 ```
 # #![allow(non_camel_case_types)]
 # enum Enum { i32(i32), bool(bool) }
-# fn wrap<'a>(value: &'a Enum, mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(value: &'a Enum, stream: impl sval::Stream<'a>) -> sval::Result {
 # use Enum::*;
 stream.enum_begin(None)?;
 
@@ -334,7 +334,7 @@ enum Enum {
 ```
 */
 pub trait Value {
-    fn stream<'sval, S: Stream<'sval>>(&'sval self, stream: S) -> Result;
+    fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result;
 
     #[inline]
     fn is_dynamic(&self) -> bool {
@@ -351,9 +351,9 @@ pub trait Value {
             }
         }
 
-        let mut check = Check(false);
-        if let Ok(()) = self.stream(check.as_stream()) {
-            check.0
+        let mut check = Check(false).into_stream();
+        if let Ok(()) = self.stream(&mut check) {
+            (check.0).0
         } else {
             false
         }
@@ -386,9 +386,9 @@ pub trait Value {
             }
         }
 
-        let mut extract = Extract(None);
-        self.stream(extract.as_stream()).ok()?;
-        extract.0
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
     }
 
     #[inline]
@@ -418,9 +418,9 @@ pub trait Value {
             }
         }
 
-        let mut extract = Extract(None);
-        self.stream(extract.as_stream()).ok()?;
-        extract.0
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
     }
 
     #[inline]
@@ -450,9 +450,9 @@ pub trait Value {
             }
         }
 
-        let mut extract = Extract(None);
-        self.stream(extract.as_stream()).ok()?;
-        extract.0
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
     }
 
     #[inline]
@@ -502,9 +502,9 @@ pub trait Value {
             }
         }
 
-        let mut extract = Extract(None);
-        self.stream(extract.as_stream()).ok()?;
-        extract.0
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
     }
 
     #[inline]
@@ -554,9 +554,9 @@ pub trait Value {
             }
         }
 
-        let mut extract = Extract(None);
-        self.stream(extract.as_stream()).ok()?;
-        extract.0
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
     }
 
     #[inline]
@@ -622,10 +622,11 @@ pub trait Value {
         let mut extract = Extract {
             extracted: None,
             seen_fragment: false,
-        };
+        }
+        .into_stream();
 
-        self.stream(extract.as_stream()).ok()?;
-        extract.extracted
+        self.stream(&mut extract).ok()?;
+        extract.0.extracted
     }
 
     #[inline]
@@ -691,17 +692,18 @@ pub trait Value {
         let mut extract = Extract {
             extracted: None,
             seen_fragment: false,
-        };
+        }
+        .into_stream();
 
-        self.stream(extract.as_stream()).ok()?;
-        extract.extracted
+        self.stream(&mut extract).ok()?;
+        extract.0.extracted
     }
 }
 
 macro_rules! impl_value_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn stream<'sval, R: Stream<'sval>>(&'sval self, stream: R) -> Result {
+            fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
                 let $bind = self;
                 ($($forward)*).stream(stream)
             }

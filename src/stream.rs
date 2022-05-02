@@ -187,16 +187,6 @@ pub trait Stream<'sval> {
     }
 
     /**
-    A borrowed value.
-
-    This is a niche method that simply calls back into the stream, so shouldn't be called from [`Value::stream`].
-    It can be useful for separating borrowed data out to avoid needing to buffer it.
-    */
-    fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result {
-        value.stream(self)
-    }
-
-    /**
     A value that simply _is_.
 
     Unit is one of the [extended data types](extended-data-types).
@@ -1080,7 +1070,7 @@ pub trait Stream<'sval> {
         stream.map_key_begin()?;
 
         // Keys must contain a single value
-        stream.value(key)?;
+        key.stream(&mut stream)?;
 
         stream.map_key_end()?;
 
@@ -1089,7 +1079,7 @@ pub trait Stream<'sval> {
         stream.map_value_begin()?;
 
         // Values must contain a single value
-        stream.value(value)?;
+        value.stream(&mut stream)?;
 
         stream.map_value_end()?;
     }
@@ -1390,7 +1380,7 @@ pub trait Stream<'sval> {
         self.map_key_begin()?;
 
         if let Some(label) = label.try_get_static() {
-            self.value(label)?;
+            label.stream(&mut *self)?;
         } else {
             let label = label.get();
 
@@ -1683,11 +1673,6 @@ macro_rules! impl_stream_forward {
             fn is_text_based(&self) -> bool {
                 let $bind = self;
                 ($($forward)*).is_text_based()
-            }
-
-            fn value<V: Value + ?Sized + 'sval>(&mut self, value: &'sval V) -> Result {
-                let $bind = self;
-                ($($forward)*).value(value)
             }
 
             fn dynamic_begin(&mut self) -> Result {
@@ -1995,16 +1980,15 @@ macro_rules! impl_stream_forward {
 
 // Simplifies the default streams for extracting concrete types from values
 pub(crate) trait DefaultUnsupported<'sval> {
-    fn as_stream(&mut self) -> AsStream<&mut Self> {
-        AsStream(self)
+    fn into_stream(self) -> IntoStream<Self>
+    where
+        Self: Sized,
+    {
+        IntoStream(self)
     }
 
     fn is_text_based(&self) -> bool {
         false
-    }
-
-    fn value<V: Value + ?Sized + 'sval>(&mut self, v: &'sval V) -> Result {
-        v.stream(self.as_stream())
     }
 
     fn dynamic_begin(&mut self) -> Result {
@@ -2248,10 +2232,10 @@ pub(crate) trait DefaultUnsupported<'sval> {
     }
 }
 
-pub(crate) struct AsStream<T: ?Sized>(T);
+pub(crate) struct IntoStream<T: ?Sized>(pub(crate) T);
 
 impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for &'a mut S where S: Stream<'sval> } => x => { **x });
-impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for AsStream<&'a mut S> where S: DefaultUnsupported<'sval> } => x => { x.0 });
+impl_stream_forward!({ impl<'sval, 'a, S> Stream<'sval> for IntoStream<S> where S: DefaultUnsupported<'sval> } => x => { x.0 });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {

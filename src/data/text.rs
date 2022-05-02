@@ -4,7 +4,7 @@ use crate::{
 };
 
 impl Value for char {
-    fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+    fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         let mut buf = [0; 4];
         let value = &*self.encode_utf8(&mut buf);
 
@@ -15,7 +15,7 @@ impl Value for char {
 }
 
 impl Value for str {
-    fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+    fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         stream.text_begin(Some(self.len()))?;
         stream.text_fragment(self)?;
         stream.text_end()
@@ -26,7 +26,10 @@ impl Value for str {
     }
 }
 
-pub(crate) fn display<'sval, T: fmt::Display>(text: T, mut stream: impl Stream<'sval>) -> Result {
+pub(crate) fn display<'sval, T: fmt::Display>(
+    text: T,
+    mut stream: &mut (impl Stream<'sval> + ?Sized),
+) -> Result {
     struct Writer<S>(S);
 
     impl<'a, S: Stream<'a>> Write for Writer<S> {
@@ -49,7 +52,7 @@ mod alloc_support {
     use crate::std::string::String;
 
     impl Value for String {
-        fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
+        fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
             (&**self).stream(stream)
         }
 

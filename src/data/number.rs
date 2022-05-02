@@ -3,11 +3,11 @@ use crate::{Stream, Value};
 macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
-            pub(crate) fn $fi<'sval>(v: $i, mut stream: impl Stream<'sval>) -> crate::Result {
+            pub(crate) fn $fi<'sval>(v: $i, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.int_begin()?;
 
                 if stream.is_text_based() {
-                    crate::data::text::display(v, &mut stream)?;
+                    crate::data::text::display(v, stream)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
@@ -19,11 +19,11 @@ macro_rules! int {
                 stream.int_end()
             }
 
-            pub(crate) fn $fu<'sval>(v: $u, mut stream: impl Stream<'sval>) -> crate::Result {
+            pub(crate) fn $fu<'sval>(v: $u, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.int_begin()?;
 
                 if stream.is_text_based() {
-                    crate::data::text::display(v, &mut stream)?;
+                    crate::data::text::display(v, stream)?;
                 } else {
                     if v >= (<$i>::MAX as $u) {
                         let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
@@ -52,11 +52,11 @@ macro_rules! int {
 macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
-            pub(crate) fn $f<'sval>(v: $n, mut stream: impl Stream<'sval>) -> crate::Result {
+            pub(crate) fn $f<'sval>(v: $n, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.binfloat_begin()?;
 
                 if stream.is_text_based() {
-                    crate::data::text::display(v, &mut stream)?;
+                    crate::data::text::display(v, stream)?;
                 } else {
                     let bytes = v.to_le_bytes();
 
@@ -77,7 +77,7 @@ macro_rules! convert {
     )+) => {
         $(
             impl Value for $ty {
-                fn stream<'sval, R: Stream<'sval>>(&'sval self, mut stream: R) -> crate::Result {
+                fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> crate::Result {
                     stream.$ty(*self)
                 }
 

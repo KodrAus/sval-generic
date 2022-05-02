@@ -56,7 +56,7 @@ impl Id {
 }
 
 impl Value for () {
-    fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+    fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         stream.unit()
     }
 
@@ -66,7 +66,7 @@ impl Value for () {
 }
 
 impl Value for bool {
-    fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+    fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         stream.bool(*self)
     }
 
@@ -79,7 +79,7 @@ impl Value for bool {
     }
 }
 
-pub(crate) fn bool_basic<'sval>(v: bool, stream: impl Stream<'sval>) -> Result {
+pub(crate) fn bool_basic<'sval>(v: bool, stream: &mut (impl Stream<'sval> + ?Sized)) -> Result {
     if stream.is_text_based() {
         if v { "true" } else { "false" }.stream(stream)
     } else {

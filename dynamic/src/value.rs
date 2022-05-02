@@ -4,7 +4,7 @@ mod private {
     use crate::stream::Stream;
 
     pub trait DispatchValue {
-        fn dispatch_stream<'a>(&'a self, stream: &mut dyn Stream<'a>) -> sval::Result;
+        fn dispatch_stream<'sval>(&'sval self, stream: &mut dyn Stream<'sval>) -> sval::Result;
         fn dispatch_is_dynamic(&self) -> bool;
         fn dispatch_to_bool(&self) -> Option<bool>;
         fn dispatch_to_f32(&self) -> Option<f32>;
@@ -39,7 +39,7 @@ impl<T: sval::Value> private::EraseValue for T {
 }
 
 impl<T: sval::Value> private::DispatchValue for T {
-    fn dispatch_stream<'a>(&'a self, stream: &mut dyn Stream<'a>) -> sval::Result {
+    fn dispatch_stream<'sval>(&'sval self, stream: &mut dyn Stream<'sval>) -> sval::Result {
         self.stream(stream)
     }
 
@@ -111,7 +111,7 @@ impl<T: sval::Value> private::DispatchValue for T {
 macro_rules! impl_value {
     ($($impl:tt)*) => {
         $($impl)* {
-            fn stream<'a, R: sval::Stream<'a>>(&'a self, mut stream: R) -> sval::Result {
+            fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, mut stream: &mut S) -> sval::Result {
                 if self.is_dynamic() {
                     self.erase_value().0.dispatch_stream(&mut stream)
                 } else {

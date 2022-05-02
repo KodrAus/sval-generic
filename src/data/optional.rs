@@ -1,13 +1,13 @@
 use crate::{Result, Stream, Value};
 
 impl<T: Value> Value for Option<T> {
-    fn stream<'a, S: Stream<'a>>(&'a self, mut receiver: S) -> Result {
+    fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
         match self {
-            None => receiver.optional_none(),
+            None => stream.optional_none(),
             Some(v) => {
-                receiver.optional_some_begin()?;
-                v.stream(&mut receiver)?;
-                receiver.optional_some_end()
+                stream.optional_some_begin()?;
+                v.stream(stream)?;
+                stream.optional_some_end()
             }
         }
     }

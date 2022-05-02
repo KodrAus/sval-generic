@@ -39,7 +39,7 @@ fn derive_struct<'a>(ident: &Ident, generics: &Generics, fields: &FieldsNamed) -
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -68,7 +68,7 @@ fn derive_newtype<'a>(ident: &Ident, generics: &Generics) -> TokenStream {
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -97,7 +97,7 @@ fn derive_tuple<'a>(ident: &Ident, generics: &Generics, fields: &FieldsUnnamed) 
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
                     match self {
                         #match_arm
                     }
@@ -163,7 +163,7 @@ fn derive_enum<'a>(
             extern crate sval;
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
-                fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, mut stream: S) -> sval::Result {
+                fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
                     stream.enum_begin(#label, #id)?;
 
                     match self {
@@ -219,7 +219,7 @@ fn stream_struct(
 
         #(
             stream.record_value_begin(#field_lit, #field_id)?;
-            stream.value(#field_ident)?;
+            sval::stream(stream, #field_ident)?;
             stream.record_value_end(#field_lit, #field_id)?;
         )*
 
@@ -242,7 +242,7 @@ fn stream_newtype(
 
     quote!(#path(ref field0) => {
         stream.tagged_begin(#label, #id)?;
-        stream.value(field0)?;
+        sval::stream(stream, field0)?;
         stream.tagged_end(#label, #id)?;
     })
 }
@@ -278,7 +278,7 @@ fn stream_tuple(
 
         #(
             stream.tuple_value_begin(#field_id)?;
-            stream.value(#field_ident)?;
+            sval::stream(stream, #field_ident)?;
             stream.tuple_value_end(#field_id)?;
         )*
 
@@ -301,7 +301,7 @@ fn stream_constant(
 
     quote!(#path => {
         stream.constant_begin(#label, #id)?;
-        stream.value(#constant)?;
+        sval::stream(stream, #constant)?;
         stream.constant_end(#label, #id)?;
     })
 }

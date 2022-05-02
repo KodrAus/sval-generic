@@ -1,12 +1,12 @@
 use crate::{Id, Result, Stream, Value};
 
 impl<T: Value> Value for [T] {
-    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
+    fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
         stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
             stream.seq_value_begin()?;
-            stream.value(elem)?;
+            elem.stream(stream)?;
             stream.seq_value_end()?;
         }
 
@@ -19,13 +19,13 @@ impl<T: Value> Value for [T] {
 }
 
 impl<T: Value, const N: usize> Value for [T; N] {
-    fn stream<'a, S: Stream<'a>>(&'a self, mut stream: S) -> Result {
+    fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
         stream.fixed_size_begin()?;
         stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
             stream.seq_value_begin()?;
-            stream.value(elem)?;
+            elem.stream(stream)?;
             stream.seq_value_end()?;
         }
 
@@ -44,12 +44,12 @@ macro_rules! tuple {
     )+) => {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
-                fn stream<'sval, S: Stream<'sval>>(&'sval self, mut stream: S) -> Result {
+                fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
                     stream.tuple_begin(None, None, Some($len))?;
 
                     $(
                         stream.tuple_value_begin(Id::new($i))?;
-                        stream.value(&self.$i)?;
+                        self.$i.stream(stream)?;
                         stream.tuple_value_end(Id::new($i))?;
                     )+
 
@@ -242,7 +242,7 @@ mod alloc_support {
     use crate::std::vec::Vec;
 
     impl<T: Value> Value for Vec<T> {
-        fn stream<'a, S: Stream<'a>>(&'a self, stream: S) -> Result {
+        fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
             (&**self).stream(stream)
         }
 

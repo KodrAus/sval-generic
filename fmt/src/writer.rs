@@ -71,9 +71,9 @@ impl<'a, 'b> Fmt for &'a mut fmt::Formatter<'b> {
     }
 }
 
-pub(crate) struct StdFree<W>(pub W);
+pub(crate) struct GenericWriter<W>(pub W);
 
-impl<W: Write> Write for StdFree<W> {
+impl<W: Write> Write for GenericWriter<W> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.write_str(s)
     }
@@ -87,7 +87,7 @@ impl<W: Write> Write for StdFree<W> {
     }
 }
 
-impl<W: Write> Fmt for StdFree<W> {
+impl<W: Write> Fmt for GenericWriter<W> {
     fn write_u8(&mut self, value: u8) -> fmt::Result {
         self.write_str(itoa::Buffer::new().format(value))
     }
@@ -197,6 +197,8 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
             // Inlined from `impl Debug for str`
             // This avoids writing the outer quotes for the string
             // and handles the `'` case
+            // NOTE: The vast (vast) majority of formatting time is spent here
+            // Optimizing this would be a big win
             let mut from = 0;
 
             for (i, c) in fragment.char_indices() {
@@ -447,7 +449,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn record_value_begin(&mut self, label: sval::Label, _: sval::Id) -> sval::Result {
         self.is_text_quoted = false;
         self.map_key_begin()?;
-        self.value(label.get())?;
+        sval::stream(&mut *self, label.get())?;
         self.map_key_end()?;
         self.is_text_quoted = true;
 

@@ -14,10 +14,10 @@ impl JsonSlice {
 }
 
 impl sval::Value for JsonSlice {
-    fn stream<'sval, R: sval::Stream<'sval>>(&'sval self, mut stream: R) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         let mut reader = JsonSliceReader::new(&self.0);
 
-        while reader.stream_resume(&mut stream)? {}
+        while reader.stream_resume(&mut *stream)? {}
 
         Ok(())
     }
@@ -179,7 +179,10 @@ impl<'a> JsonSliceReader<'a> {
         }
     }
 
-    fn stream_resume<'b, R: sval::Stream<'b>>(&mut self, mut stream: R) -> sval::Result<bool>
+    fn stream_resume<'b, S: sval::Stream<'b> + ?Sized>(
+        &mut self,
+        stream: &mut S,
+    ) -> sval::Result<bool>
     where
         'a: 'b,
     {
@@ -198,7 +201,7 @@ impl<'a> JsonSliceReader<'a> {
 
                 self.in_str = false;
 
-                self.maybe_done(stream)
+                self.maybe_done(&mut *stream)
             } else {
                 stream.text_fragment(fragment)?;
 
@@ -212,7 +215,7 @@ impl<'a> JsonSliceReader<'a> {
                 b'"' => {
                     self.head += 1;
 
-                    self.str_begin(&mut stream)?;
+                    self.str_begin(&mut *stream)?;
 
                     let (fragment, partial, head) = str_fragment(self.src, self.head)?;
 
@@ -227,7 +230,7 @@ impl<'a> JsonSliceReader<'a> {
                     return if !partial {
                         stream.text_end()?;
 
-                        self.maybe_done(stream)
+                        self.maybe_done(&mut *stream)
                     }
                     // If the string has escapes then yield this fragment
                     // The next time we loop through we'll grab the next one
@@ -241,7 +244,7 @@ impl<'a> JsonSliceReader<'a> {
                 b'{' => {
                     self.head += 1;
 
-                    self.map_begin(stream)?;
+                    self.map_begin(&mut *stream)?;
 
                     return Ok(true);
                 }
@@ -249,15 +252,15 @@ impl<'a> JsonSliceReader<'a> {
                 b'}' => {
                     self.head += 1;
 
-                    self.map_end(&mut stream)?;
+                    self.map_end(&mut *stream)?;
 
-                    return self.maybe_done(stream);
+                    return self.maybe_done(&mut *stream);
                 }
                 // Begin a seq
                 b'[' => {
                     self.head += 1;
 
-                    self.seq_begin(stream)?;
+                    self.seq_begin(&mut *stream)?;
 
                     return Ok(true);
                 }
@@ -265,15 +268,15 @@ impl<'a> JsonSliceReader<'a> {
                 b']' => {
                     self.head += 1;
 
-                    self.seq_end(&mut stream)?;
+                    self.seq_end(&mut *stream)?;
 
-                    return self.maybe_done(stream);
+                    return self.maybe_done(&mut *stream);
                 }
                 // End a map key
                 b':' => {
                     self.head += 1;
 
-                    self.map_key_end(stream)?;
+                    self.map_key_end(&mut *stream)?;
 
                     return Ok(true);
                 }
@@ -281,7 +284,7 @@ impl<'a> JsonSliceReader<'a> {
                 b',' => {
                     self.head += 1;
 
-                    self.map_value_seq_value_end(stream)?;
+                    self.map_value_seq_value_end(&mut *stream)?;
 
                     return Ok(true);
                 }
@@ -290,11 +293,11 @@ impl<'a> JsonSliceReader<'a> {
                     if let Some(b"true") = self.src.get(self.head..self.head + 4) {
                         self.head += 4;
 
-                        self.value_begin(&mut stream)?;
+                        self.value_begin(&mut *stream)?;
 
                         stream.bool(true)?;
 
-                        return self.maybe_done(stream);
+                        return self.maybe_done(&mut *stream);
                     } else {
                         todo!()
                     }
@@ -304,11 +307,11 @@ impl<'a> JsonSliceReader<'a> {
                     if let Some(b"false") = self.src.get(self.head..self.head + 5) {
                         self.head += 5;
 
-                        self.value_begin(&mut stream)?;
+                        self.value_begin(&mut *stream)?;
 
                         stream.bool(false)?;
 
-                        return self.maybe_done(stream);
+                        return self.maybe_done(&mut *stream);
                     } else {
                         todo!()
                     }
@@ -318,11 +321,11 @@ impl<'a> JsonSliceReader<'a> {
                     if let Some(b"null") = self.src.get(self.head..self.head + 4) {
                         self.head += 4;
 
-                        self.value_begin(&mut stream)?;
+                        self.value_begin(&mut *stream)?;
 
                         stream.null()?;
 
-                        return self.maybe_done(stream);
+                        return self.maybe_done(&mut *stream);
                     } else {
                         todo!()
                     }
@@ -342,7 +345,7 @@ impl<'a> JsonSliceReader<'a> {
                         todo!()
                     }
 
-                    self.value_begin(&mut stream)?;
+                    self.value_begin(&mut *stream)?;
 
                     stream.decfloat_begin()?;
                     stream.text_begin(Some(n.len()))?;
@@ -350,13 +353,13 @@ impl<'a> JsonSliceReader<'a> {
                     stream.text_end()?;
                     stream.decfloat_end()?;
 
-                    return self.maybe_done(stream);
+                    return self.maybe_done(&mut *stream);
                 }
                 _ => todo!(),
             }
         }
 
-        self.maybe_done(stream)
+        self.maybe_done(&mut *stream)
     }
 }
 

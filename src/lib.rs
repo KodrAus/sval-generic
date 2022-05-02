@@ -71,3 +71,10 @@ pub mod result;
 pub use self::{data::*, result::Error, stream::*, value::*};
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+
+pub fn stream<'sval, S: Stream<'sval> + ?Sized, V: Value + ?Sized>(
+    stream: &mut S,
+    value: &'sval V,
+) -> Result {
+    value.stream(stream)
+}

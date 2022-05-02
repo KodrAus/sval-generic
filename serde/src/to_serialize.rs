@@ -1,189 +1,236 @@
-use crate::writer::{GenericWriter, Writer};
-use core::fmt::Write;
-
-pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
-    v.stream(&mut Formatter::new(fmt))
+struct Stream<S: serde::Serializer> {
+    context: Context<S>,
+    ok: Option<S::Ok>,
+    is_text_based: bool,
 }
 
-pub struct Formatter<W>(Writer<GenericWriter<W>>);
+enum Context<S: serde::Serializer> {
+    Any {
+        serializer: Option<S>,
+        enum_label: Option<&'static str>,
+        value_label: Option<&'static str>,
+        value_variant: Option<u32>,
+    },
+    Map {
+        serializer: S::SerializeMap,
+    },
+    Seq {
+        serializer: S::SerializeSeq,
+    },
+    Struct {
+        serializer: S::SerializeStruct,
+    },
+    StructVariant {
+        serializer: S::SerializeStructVariant,
+        field: Option<(&'static str, u32)>,
+    },
+    Tuple {
+        serializer: S::SerializeTuple,
+    },
+    TupleVariant {
+        serializer: S::SerializeTupleVariant,
+        field: Option<u32>,
+    },
+}
 
-impl<W> Formatter<W> {
-    pub fn new(out: W) -> Self {
-        Formatter(Writer::new(GenericWriter(out)))
-    }
+impl<S: serde::Serializer> Stream<S> {
+    fn serialize_any(&mut self, value: impl serde::Serialize) -> sval::Result {
+        self.ok = Some(match self.context {
+            Context::Any {
+                ref mut serializer,
+                enum_label,
+                value_label,
+                value_variant,
+            } => {
+                let serializer = serializer.take().ok_or(sval::Error::unsupported())?;
 
-    pub fn into_inner(self) -> W {
-        self.0.into_inner().0
+                match (enum_label, value_label, value_variant) {
+                    (Some(enum_label), Some(value_label), Some(value_variant)) => serializer
+                        .serialize_newtype_variant(enum_label, value_variant, value_label, &value)
+                        .map_err(|_| sval::Error::unsupported()),
+                    (None, Some(label), _) => serializer
+                        .serialize_newtype_struct(label, &value)
+                        .map_err(|_| sval::Error::unsupported()),
+                    (None, None, None) => value
+                        .serialize(serializer)
+                        .map_err(|_| sval::Error::unsupported()),
+                    _ => return sval::result::unsupported(),
+                }
+            }
+            _ => todo!(),
+        }?);
+
+        Ok(())
     }
 }
 
-impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
+impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Stream<S> {
     fn is_text_based(&self) -> bool {
-        self.0.is_text_based()
+        self.is_text_based
     }
 
     fn unit(&mut self) -> sval::Result {
-        self.0.unit()
+        self.serialize_any(&())
     }
 
     fn null(&mut self) -> sval::Result {
-        self.0.null()
+        todo!()
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        self.0.bool(value)
+        todo!()
     }
 
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
-        self.0.text_begin(num_bytes_hint)
+        todo!()
     }
 
     fn text_fragment(&mut self, fragment: &'sval str) -> sval::Result {
-        self.0.text_fragment(fragment)
+        todo!()
     }
 
     fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
-        self.0.text_fragment_computed(fragment)
+        todo!()
     }
 
     fn text_end(&mut self) -> sval::Result {
-        self.0.text_end()
+        todo!()
     }
 
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> sval::Result {
-        self.0.binary_begin(num_bytes_hint)
+        todo!()
     }
 
     fn binary_fragment(&mut self, fragment: &'sval [u8]) -> sval::Result {
-        self.0.binary_fragment(fragment)
+        todo!()
     }
 
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
-        self.0.binary_fragment_computed(fragment)
+        todo!()
     }
 
     fn binary_end(&mut self) -> sval::Result {
-        self.0.binary_end()
+        todo!()
     }
 
     fn u8(&mut self, value: u8) -> sval::Result {
-        self.0.u8(value)
+        todo!()
     }
 
     fn u16(&mut self, value: u16) -> sval::Result {
-        self.0.u16(value)
+        todo!()
     }
 
     fn u32(&mut self, value: u32) -> sval::Result {
-        self.0.u32(value)
+        todo!()
     }
 
     fn u64(&mut self, value: u64) -> sval::Result {
-        self.0.u64(value)
+        todo!()
     }
 
     fn u128(&mut self, value: u128) -> sval::Result {
-        self.0.u128(value)
+        todo!()
     }
 
     fn i8(&mut self, value: i8) -> sval::Result {
-        self.0.i8(value)
+        todo!()
     }
 
     fn i16(&mut self, value: i16) -> sval::Result {
-        self.0.i16(value)
+        todo!()
     }
 
     fn i32(&mut self, value: i32) -> sval::Result {
-        self.0.i32(value)
+        todo!()
     }
 
     fn i64(&mut self, value: i64) -> sval::Result {
-        self.0.i64(value)
+        todo!()
     }
 
     fn i128(&mut self, value: i128) -> sval::Result {
-        self.0.i128(value)
+        todo!()
     }
 
     fn f32(&mut self, value: f32) -> sval::Result {
-        self.0.f32(value)
+        todo!()
     }
 
     fn f64(&mut self, value: f64) -> sval::Result {
-        self.0.f64(value)
+        todo!()
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        self.0.map_begin(num_entries_hint)
+        todo!()
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.0.map_key_begin()
+        todo!()
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.0.map_key_end()
+        todo!()
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        self.0.map_value_begin()
+        todo!()
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        self.0.map_value_end()
+        todo!()
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.0.map_end()
+        todo!()
     }
 
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        self.0.seq_begin(num_entries_hint)
+        todo!()
     }
 
     fn seq_value_begin(&mut self) -> sval::Result {
-        self.0.seq_value_begin()
+        todo!()
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
-        self.0.seq_value_end()
+        todo!()
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        self.0.seq_end()
+        todo!()
     }
 
     fn dynamic_begin(&mut self) -> sval::Result {
-        self.0.dynamic_begin()
+        todo!()
     }
 
     fn dynamic_end(&mut self) -> sval::Result {
-        self.0.dynamic_end()
+        todo!()
     }
 
     fn enum_begin(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.enum_begin(label, id)
+        todo!()
     }
 
     fn enum_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.enum_end(label, id)
+        todo!()
     }
 
     fn tagged_begin(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.tagged_begin(label, id)
+        todo!()
     }
 
     fn tagged_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.tagged_end(label, id)
+        todo!()
     }
 
     fn constant_begin(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.constant_begin(label, id)
+        todo!()
     }
 
     fn constant_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.constant_end(label, id)
+        todo!()
     }
 
     fn record_begin(
@@ -192,19 +239,19 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         id: Option<sval::Id>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.0.record_begin(label, id, num_entries_hint)
+        todo!()
     }
 
     fn record_value_begin(&mut self, label: sval::Label, id: sval::Id) -> sval::Result {
-        self.0.record_value_begin(label, id)
+        todo!()
     }
 
     fn record_value_end(&mut self, label: sval::Label, id: sval::Id) -> sval::Result {
-        self.0.record_value_end(label, id)
+        todo!()
     }
 
     fn record_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.record_end(label, id)
+        todo!()
     }
 
     fn tuple_begin(
@@ -213,62 +260,62 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         id: Option<sval::Id>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        self.0.tuple_begin(label, id, num_entries_hint)
+        todo!()
     }
 
     fn tuple_value_begin(&mut self, id: sval::Id) -> sval::Result {
-        self.0.tuple_value_begin(id)
+        todo!()
     }
 
     fn tuple_value_end(&mut self, id: sval::Id) -> sval::Result {
-        self.0.tuple_value_end(id)
+        todo!()
     }
 
     fn tuple_end(&mut self, label: Option<sval::Label>, id: Option<sval::Id>) -> sval::Result {
-        self.0.tuple_end(label, id)
+        todo!()
     }
 
     fn optional_some_begin(&mut self) -> sval::Result {
-        self.0.optional_some_begin()
+        todo!()
     }
 
     fn optional_some_end(&mut self) -> sval::Result {
-        self.0.optional_some_end()
+        todo!()
     }
 
     fn optional_none(&mut self) -> sval::Result {
-        self.0.optional_none()
+        todo!()
     }
 
     fn fixed_size_begin(&mut self) -> sval::Result {
-        self.0.fixed_size_begin()
+        todo!()
     }
 
     fn fixed_size_end(&mut self) -> sval::Result {
-        self.0.fixed_size_end()
+        todo!()
     }
 
     fn int_begin(&mut self) -> sval::Result {
-        self.0.int_begin()
+        todo!()
     }
 
     fn int_end(&mut self) -> sval::Result {
-        self.0.int_end()
+        todo!()
     }
 
     fn binfloat_begin(&mut self) -> sval::Result {
-        self.0.binfloat_begin()
+        todo!()
     }
 
     fn binfloat_end(&mut self) -> sval::Result {
-        self.0.binfloat_end()
+        todo!()
     }
 
     fn decfloat_begin(&mut self) -> sval::Result {
-        self.0.decfloat_begin()
+        todo!()
     }
 
     fn decfloat_end(&mut self) -> sval::Result {
-        self.0.decfloat_end()
+        todo!()
     }
 }
