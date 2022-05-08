@@ -33,18 +33,6 @@ fn main() {
 }
 
 #[derive(Debug)]
-pub struct Context {
-    result: Option<EvalType>,
-    stack: Vec<Option<EvalType>>,
-}
-
-#[derive(Debug)]
-struct EvalType {
-    state: State,
-    ty: Type,
-}
-
-#[derive(Debug)]
 pub enum Type {
     Simple(SimpleType),
     Map {
@@ -59,37 +47,15 @@ pub enum SimpleType {
 }
 
 #[derive(Debug)]
-enum TypeBuilder {
-    Simple(SimpleType),
-    Map,
+pub struct Context {
+    result: Option<ContextType>,
+    stack: Vec<Option<ContextType>>,
 }
 
-impl From<SimpleType> for TypeBuilder {
-    fn from(ty: SimpleType) -> Self {
-        TypeBuilder::Simple(ty)
-    }
-}
-
-impl TypeBuilder {
-    fn build(self) -> Type {
-        match self {
-            TypeBuilder::Simple(ty) => Type::Simple(ty),
-            TypeBuilder::Map => Type::Map {
-                key: Box::new(None),
-                value: Box::new(None),
-            },
-        }
-    }
-}
-
-impl Type {
-    fn compatible_with(&self, builder: &TypeBuilder) -> bool {
-        match (self, builder) {
-            (Type::Map { .. }, TypeBuilder::Map) => true,
-            (Type::Simple(a), TypeBuilder::Simple(b)) => a == b,
-            _ => false,
-        }
-    }
+#[derive(Debug)]
+struct ContextType {
+    state: State,
+    ty: Type,
 }
 
 #[derive(Debug, PartialEq)]
@@ -97,6 +63,50 @@ enum State {
     Ready,
     MapKey,
     MapValue,
+}
+
+impl ContextType {
+    fn unwrap(self) -> Type {
+        match self {
+            ContextType {
+                state: State::Ready,
+                ty,
+            } => ty,
+            invalid => panic!("cannot unwrap {:?}", invalid),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum InferenceType {
+    Simple(SimpleType),
+    Map,
+}
+
+impl From<SimpleType> for InferenceType {
+    fn from(ty: SimpleType) -> Self {
+        InferenceType::Simple(ty)
+    }
+}
+
+impl InferenceType {
+    fn build(self) -> Type {
+        match self {
+            InferenceType::Simple(ty) => Type::Simple(ty),
+            InferenceType::Map => Type::Map {
+                key: Box::new(None),
+                value: Box::new(None),
+            },
+        }
+    }
+
+    fn is_compatible_with(&self, ty: &Type) -> bool {
+        match (ty, self) {
+            (Type::Map { .. }, InferenceType::Map) => true,
+            (Type::Simple(a), InferenceType::Simple(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 impl Context {
@@ -114,7 +124,7 @@ impl Context {
         println!("{:?}", self);
     }
 
-    fn value_mut(&mut self) -> &mut Option<EvalType> {
+    fn current_mut(&mut self) -> &mut Option<ContextType> {
         if let Some(current) = self.stack.last_mut() {
             current
         } else {
@@ -122,45 +132,37 @@ impl Context {
         }
     }
 
-    fn pop_eval_value(&mut self) -> Option<EvalType> {
+    fn push(&mut self, ty: Option<ContextType>) {
+        self.stack.push(ty);
+    }
+
+    fn pop(&mut self) -> Option<ContextType> {
         self.stack
             .pop()
             .and_then(|v| v)
             .or_else(|| self.result.take())
     }
 
-    fn pop_value(&mut self) -> Type {
-        let value = self.pop_eval_value();
-
-        match value {
-            Some(EvalType {
-                state: State::Ready,
-                ty,
-            }) => ty,
-            invalid => panic!("cannot pop {:?}", invalid),
-        }
-    }
-
-    fn infer(&mut self, ty: impl Into<TypeBuilder>) -> &mut Option<EvalType> {
+    fn infer(&mut self, ty: impl Into<InferenceType>) -> &mut Option<ContextType> {
         let ty = ty.into();
 
-        match self.value_mut() {
+        match self.current_mut() {
             empty @ None => {
-                *empty = Some(EvalType {
+                *empty = Some(ContextType {
                     state: State::Ready,
                     ty: ty.build(),
                 });
 
                 empty
             }
-            inferred @ Some(EvalType {
+            inferred @ Some(ContextType {
                 state: State::Ready,
                 ..
             }) => {
                 let check = &inferred.as_mut().expect("missing type").ty;
 
                 assert!(
-                    check.compatible_with(&ty),
+                    ty.is_compatible_with(&check),
                     "expected {:?}, got {:?}",
                     check,
                     ty,
@@ -172,78 +174,75 @@ impl Context {
         }
     }
 
-    fn pop_infer(&mut self, ty: impl Into<TypeBuilder>) -> Option<EvalType> {
-        self.infer(ty);
-        self.pop_eval_value()
-    }
-
     fn push_map(&mut self) {
-        let map = self.pop_infer(TypeBuilder::Map);
+        self.infer(InferenceType::Map);
 
-        self.stack.push(map);
+        let map = self.pop();
+
+        self.push(map);
     }
 
     fn push_map_key(&mut self) {
-        match self.value_mut() {
-            Some(EvalType {
+        match self.current_mut() {
+            Some(ContextType {
                 state,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::Ready, "unexpected map key");
                 *state = State::MapKey;
 
-                let key = key.take().map(|ty| EvalType {
+                let key = key.take().map(|ty| ContextType {
                     state: State::Ready,
                     ty,
                 });
 
-                self.stack.push(key);
+                self.push(key);
             }
             v => panic!("expected map, got {:?}", v),
         }
     }
 
     fn pop_map_key(&mut self) {
-        let restore = self.pop_value();
+        let restore = self.pop().map(ContextType::unwrap);
 
-        match self.value_mut() {
-            Some(EvalType {
+        match self.current_mut() {
+            Some(ContextType {
                 state,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
 
-                **key = Some(restore);
+                **key = restore;
             }
             v => panic!("expected map, got {:?}", v),
         }
     }
 
     fn push_map_value(&mut self) {
-        match self.value_mut() {
-            Some(EvalType {
+        match self.current_mut() {
+            Some(ContextType {
                 state,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
                 *state = State::MapValue;
 
-                let value = value.take().map(|ty| EvalType {
+                let value = value.take().map(|ty| ContextType {
                     state: State::Ready,
                     ty,
                 });
 
-                self.stack.push(value);
+                self.push(value);
             }
             v => panic!("expected map, got {:?}", v),
         }
     }
 
     fn pop_map_value(&mut self) {
-        let restore = self.pop_value();
+        let restore = self.pop().map(ContextType::unwrap);
 
-        match self.value_mut() {
-            Some(EvalType {
+        match self.current_mut() {
+            Some(ContextType {
                 state,
                 ty: Type::Map { value, .. },
             }) => {
@@ -255,7 +254,7 @@ impl Context {
                 );
                 *state = State::Ready;
 
-                **value = Some(restore);
+                **value = restore;
             }
             v => panic!("failed to restore {:?}: expected map, got {:?}", restore, v),
         }
@@ -264,19 +263,19 @@ impl Context {
     fn pop_map(&mut self) {
         let depth = self.stack.len();
 
-        match self.value_mut() {
-            Some(EvalType {
+        match self.current_mut() {
+            Some(ContextType {
                 state,
                 ty: Type::Map { .. },
             }) if depth > 1 => {
                 assert_eq!(*state, State::Ready, "unexpected end of map");
             }
             _ => {
-                let restore = self.pop_value();
+                let restore = self.pop().expect("unexpected end of map").unwrap();
 
-                match self.value_mut() {
+                match self.current_mut() {
                     empty @ None => {
-                        *empty = Some(EvalType {
+                        *empty = Some(ContextType {
                             state: State::Ready,
                             ty: restore,
                         });
