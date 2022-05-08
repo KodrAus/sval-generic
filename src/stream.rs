@@ -62,6 +62,9 @@ If a stream is forwarding to another it should make an effort to forward all met
 Streams encode `sval`'s data model.
 For more details on specific [data types](#data-types) in the model, see the methods on this trait.
 
+`sval`'s data model isn't a one-to-one mapping of Rust's.
+It's designed for cases where the consumer of structured data may be for a different language altogether so gives formats more tools for retaining the semantics of streamed data.
+
 ## Text and binary data
 
 Each stream expects either text-based or binary-based data.
@@ -82,45 +85,46 @@ On the other hand, the data type of maps does not depend on their size, so a str
 ### Basic data types
 
 The required methods on the `Stream` trait represent the basic data model that all streams need to understand.
-The basic data model includes:
+The basic data model is:
 
 - **Simple values**:
-    - **Null**: the absence of a value.
+    - **Null**: the absence of any other meaningful value.
 - **Encoded data**:
     - **Text blobs**: UTF8 strings.
     - **Binary blobs**: arbitrary byte strings.
 - **Complex values**:
     - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
-    - **Sequences**: homogeneous collection of values, where elements are [values](#values).
+    - **Sequences**: homogeneous collection of elements, where elements are [values](#values).
 
-All other data types map onto this basic model somehow.
+All other data types map into this basic model.
 
 ### Extended data types
 
 Streams may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
-The extended data model includes:
+The extended data model adds:
 
 - **Simple values**:
-    - **Unit**: a value with no other meaningful data.
+    - **Unit**: a marker for a value with no other meaningful data.
     - **Booleans**: the values `true` and `false`.
     - **Integers**: native integers. `i8`-`i128`, `u8`-`u128` and arbitrarily sized.
     - **Binary floating points**: native base2 fractional numbers. `f32`-`f64` and arbitrarily sized.
-    - **Decimal floating points**: native base10 fractional numbers. Arbitrarily sized. These don't have a native Rust counterpart.
-    - **Optionals**: [values](#values) that may either have some data or have none.
-- **Tagged complex values**:
+    - **Decimal floating points**: native base10 fractional numbers. Arbitrarily sized.
+    - **Optionals**: [values](#values) that may have some data or none.
+- **Typed complex values**:
     - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data.
-    - **Records**: associate tags with a map and its entries. Struct map keys and values may have different data types, but must match across instances.
-    - **Tuples**: associate tags with a sequence and its elements. Sequence values may have different data types, but must match across instances.
-- **Dynamic values**:
+    - **Records**: associate tags and labels with a structure and each of its values. Record values are heterogeneous.
+    - **Tuples**: associate tags with a structure and each of its values. Tuples values are heterogeneous.
+- **Dynamically typed values**:
     - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types.
     - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants.
-- **Constant values**:
+- **Dependently typed values**:
     - **Constants**: for [values](#values) that will always have the same data.
     - **Fixed size**: for [values](#values) with a length where that length will always be the same.
 
 ## Values
 
 A value is the sequence of calls on a stream that represent a single instance of a [data type](trait.Stream.html#data-types).
+This concept is distinct from the [`Value`] trait, although it does represent a value in the data model.
 The following are all examples of values.
 
 A single integer:
@@ -152,7 +156,7 @@ stream.map_begin(Some(2))?;
 
     stream.map_key_begin()?;
         stream.text_begin(Some(1))?;
-            stream.text_fragment("a")?;
+        stream.text_fragment("a")?;
         stream.text_end()?;
     stream.map_key_end()?;
 
@@ -162,7 +166,7 @@ stream.map_begin(Some(2))?;
 
     stream.map_key_begin()?;
         stream.text_begin(Some(1))?;
-            stream.text_fragment("b")?;
+        stream.text_fragment("b")?;
         stream.text_end()?;
     stream.map_key_end()?;
 
@@ -212,10 +216,14 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     Unit is a distinct data type that only matches other units.
     That means unit and null are not the same data type, and unit and other values like `i32` are not the same data type.
+
+    # Value equality
+
+    All instances of unit are equal.
 
     # Unit encoding
 
@@ -244,12 +252,16 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     Null is a distinct data type that only matches other nulls.
     That means unit and null are not the same data type.
 
     Rust doesn't have a primitive type that maps directly to null.
+
+    # Value equality
+
+    All instances of null are equal.
     */
     fn null(&mut self) -> Result;
 
@@ -279,10 +291,14 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     Boolean is a distinct data type that only matches other booleans.
     The values `true` and `false` do have the same data type.
+
+    # Value equality
+
+    Booleans are equal when their values are logically equal.
 
     # Boolean encoding
 
@@ -301,7 +317,8 @@ pub trait Stream<'sval> {
     Most other data types map to text blobs for [text-based streams](text-and-binary-data), but binary-based streams may also stream text.
 
     The `num_bytes_hint` argument is a hint for how many bytes (not characters) the text blob will contain.
-    If a hint is given it should be as accurate as possible.
+    If a hint is given it must accurately reflect the total number of bytes in the blob.
+    A stream should be able to tell whether a single fragment covers the whole blob if its length is equal to this hint.
 
     # Examples
 
@@ -341,9 +358,13 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     All text blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
+
+    # Value equality
+
+    Text blobs are considered equal when their underlying bytes are equal, regardless of how those bytes are split into fragments.
 
     # Borrowing
 
@@ -408,7 +429,8 @@ pub trait Stream<'sval> {
     Most other data types map to binary blobs for [binary-based streams](text-and-binary-data), but text-based streams may also stream binary.
 
     The `num_bytes_hint` argument is a hint for how many bytes the binary blob will contain.
-    If a hint is given it should be as accurate as possible.
+    If a hint is given it must accurately reflect the total number of bytes in the blob.
+    A stream should be able to tell whether a single fragment covers the whole blob if its length is equal to this hint.
 
     # Examples
 
@@ -438,7 +460,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     All binary blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
 
@@ -524,7 +546,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `u8` is a distinct data type that only matches other `u8`s.
     That means `u8` doesn't have the same type as `i8`, `u16`, or arbitrary sized integers.
@@ -564,7 +586,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `u16` is a distinct data type that only matches other `u16`s.
     That means `u16` doesn't have the same type as `i16`, `u8`, or arbitrary sized integers.
@@ -608,7 +630,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `u32` is a distinct data type that only matches other `u32`s.
     That means `u32` doesn't have the same type as `i32`, `f32`, `u64`, or arbitrary sized integers.
@@ -652,7 +674,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `u64` is a distinct data type that only matches other `u64`s.
     That means `u64` doesn't have the same type as `i64`, `f64`, `u128`, or arbitrary sized integers.
@@ -696,7 +718,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `u128` is a distinct data type that only matches other `u128`s.
     That means `u128` doesn't have the same type as `i128` or arbitrary sized integers.
@@ -740,7 +762,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `i8` is a distinct data type that only matches other `i8`s.
     That means `i8` doesn't have the same type as `u8`, `i16`, or arbitrary sized integers.
@@ -780,7 +802,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `i16` is a distinct data type that only matches other `i16`s.
     That means `i16` doesn't have the same type as `u16`, `i8`, or arbitrary sized integers.
@@ -824,7 +846,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `i32` is a distinct data type that only matches other `i32`s.
     That means `i32` doesn't have the same type as `u32`, `f32`, `i64`, or arbitrary sized integers.
@@ -868,7 +890,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `i64` is a distinct data type that only matches other `i64`s.
     That means `i64` doesn't have the same type as `u64`, `f64`, `i128`, or arbitrary sized integers.
@@ -912,7 +934,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `i128` is a distinct data type that only matches other `i128`s.
     That means `i128` doesn't have the same type as `u128` or arbitrary sized integers.
@@ -956,7 +978,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `f32` is a distinct data type that only matches other `f32`s.
     That means `f32` doesn't have the same type as `i32`, `f64`, or arbitrary sized floating points.
@@ -996,7 +1018,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     `f64` is a distinct data type that only matches other `f64`s.
     That means `f64` doesn't have the same type as `f32`, or arbitrary sized floating points.
@@ -1132,7 +1154,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     Maps have the same [data type](data-types) as other maps where the data types of their keys and values match, regardless of their length.
 
@@ -1148,7 +1170,7 @@ pub trait Stream<'sval> {
 
     See [`Stream::map_begin`] for more details.
 
-    # Data type
+    # Type equality
 
     Map keys are a positional element and aren't considered a data type on their own.
     */
@@ -1164,7 +1186,7 @@ pub trait Stream<'sval> {
 
     See [`Stream::map_begin`] for more details.
 
-    # Data type
+    # Type equality
 
     Map values are a positional element and aren't considered a data type on their own.
     */
@@ -1292,7 +1314,7 @@ pub trait Stream<'sval> {
     # }
     ```
 
-    # Data type
+    # Type equality
 
     Sequences have the same [data type](data-types) as other sequences where the data types of their values match, regardless of their length.
 
@@ -1308,7 +1330,7 @@ pub trait Stream<'sval> {
 
     See [`Stream::seq_begin`] for more details.
 
-    # Data type
+    # Type equality
 
     Sequence values are a positional element and aren't considered a data type on their own.
     */

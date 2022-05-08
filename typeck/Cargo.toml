@@ -1,5 +1,5 @@
 [package]
-name = "typeck"
+name = "sval-typeck"
 version = "0.0.0"
 edition = "2021"
 
