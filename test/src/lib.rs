@@ -53,14 +53,14 @@ pub enum Token<'a> {
     DynamicEnd,
 }
 
-pub struct Source<'src> {
-    tokens: vec::IntoIter<Vec<Token<'src>>>,
+pub struct Source<'sval> {
+    tokens: vec::IntoIter<Vec<Token<'sval>>>,
     window_size: usize,
     dynamic: Option<bool>,
 }
 
-impl<'src> Source<'src> {
-    pub fn tokens<'a>(&'a self) -> impl Iterator<Item = Token<'src>> + 'a {
+impl<'sval> Source<'sval> {
+    pub fn tokens<'a>(&'a self) -> impl Iterator<Item = Token<'sval>> + 'a {
         self.tokens
             .as_slice()
             .iter()
@@ -108,7 +108,11 @@ impl Assert {
         self
     }
 
-    pub fn stream_equal<'src>(&self, source: impl sval::Source<'src>, expected: &[Token<'src>]) {
+    pub fn stream_equal<'sval>(
+        &self,
+        source: &'sval (impl sval::Value),
+        expected: &[Token<'sval>],
+    ) {
         let mut reporting = Reporting {
             expected: String::new(),
             actual: String::new(),
@@ -209,14 +213,14 @@ struct Expect<'data, 'brw> {
 }
 
 impl<'data, 'brw> Expect<'data, 'brw> {
-    fn stream_to_end<'src>(
-        mut source: impl sval::Source<'src>,
+    fn stream_to_end<'sval>(
+        mut source: impl sval::Source<'sval>,
         reporting: &mut Reporting,
         assert: &Assert,
         tokens: &[Token<'data>],
     ) -> sval::Result
     where
-        'src: 'data,
+        'sval: 'data,
     {
         let mut expect = Expect {
             assert,
@@ -257,81 +261,9 @@ impl<'data, 'brw> Expect<'data, 'brw> {
             }
         }
     }
-
-    fn expect_map_key<'src>(&mut self, key: impl sval::Source<'src>) -> sval::Result {
-        match self.tokens.get(0) {
-            Some(Token::MapKey(expected)) => {
-                self.reporting.begin_nested("MapKey");
-                Expect::stream_to_end(key, self.reporting, self.assert, expected)?;
-                self.reporting.end_nested();
-
-                self.advance();
-
-                Ok(())
-            }
-            Some(token) => {
-                self.reporting.fail_unexpected(token, "nested map key");
-                self.advance();
-
-                Ok(())
-            }
-            None => {
-                self.reporting.fail_end_of_stream("nested map key");
-                Ok(())
-            }
-        }
-    }
-
-    fn expect_map_value<'src>(&mut self, value: impl sval::Source<'src>) -> sval::Result {
-        match self.tokens.get(0) {
-            Some(Token::MapValue(expected)) => {
-                self.reporting.begin_nested("MapValue");
-                Expect::stream_to_end(value, self.reporting, self.assert, expected)?;
-                self.reporting.end_nested();
-
-                self.advance();
-
-                Ok(())
-            }
-            Some(token) => {
-                self.reporting.fail_unexpected(token, "nested map value");
-                self.advance();
-
-                Ok(())
-            }
-            None => {
-                self.reporting.fail_end_of_stream("nestd map value");
-                Ok(())
-            }
-        }
-    }
-
-    fn expect_seq_value<'src>(&mut self, value: impl sval::Source<'src>) -> sval::Result {
-        match self.tokens.get(0) {
-            Some(Token::SeqValue(expected)) => {
-                self.reporting.begin_nested("SeqValue");
-                Expect::stream_to_end(value, self.reporting, self.assert, expected)?;
-                self.reporting.end_nested();
-
-                self.advance();
-
-                Ok(())
-            }
-            Some(token) => {
-                self.reporting.fail_unexpected(token, "nested seq value");
-                self.advance();
-
-                Ok(())
-            }
-            None => {
-                self.reporting.fail_end_of_stream("nested seq value");
-                Ok(())
-            }
-        }
-    }
 }
 
-impl<'data, 'b> sval::Receiver<'data> for Expect<'data, 'b> {
+impl<'data, 'b> sval::Stream<'data> for Expect<'data, 'b> {
     fn is_text_based(&self) -> bool {
         self.assert.text_based
     }
@@ -635,7 +567,7 @@ impl<'data, 'b> sval::Receiver<'data> for Expect<'data, 'b> {
 
 struct Basic<R>(R);
 
-impl<'data, R: sval::Receiver<'data>> sval::Receiver<'data> for Basic<R> {
+impl<'data, R: sval::Stream<'data>> sval::Stream<'data> for Basic<R> {
     fn is_text_based(&self) -> bool {
         self.0.is_text_based()
     }
@@ -768,11 +700,11 @@ mod tests {
 
     #[test]
     fn stream_integer_basic() {
-        fn assert_integer<'src>(
+        fn assert_integer<'sval>(
             cases: &mut [(
-                impl sval::Source<'src> + Copy + Into<BigInt>,
-                &'src [&'src str],
-                &'src [u8],
+                impl sval::Source<'sval> + Copy + Into<BigInt>,
+                &'sval [&'sval str],
+                &'sval [u8],
             )],
         ) {
             for (src, expected_text, expected_binary) in cases {

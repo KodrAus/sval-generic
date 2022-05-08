@@ -8,6 +8,7 @@ members = [
     "derive",
     "derive/tests",
     "dynamic",
+    "typeck",
     "test",
     "buffer",
     "serde",
