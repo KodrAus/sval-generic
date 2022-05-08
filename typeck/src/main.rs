@@ -44,22 +44,50 @@ struct EvalType {
     ty: Type,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Type {
-    Unit,
+    Simple(SimpleType),
     Map {
         key: Box<Option<Type>>,
         value: Box<Option<Type>>,
     },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SimpleType {
+    Unit,
+}
+
+#[derive(Debug)]
+enum TypeBuilder {
+    Simple(SimpleType),
+    Map,
+}
+
+impl From<SimpleType> for TypeBuilder {
+    fn from(ty: SimpleType) -> Self {
+        TypeBuilder::Simple(ty)
+    }
+}
+
+impl TypeBuilder {
+    fn build(self) -> Type {
+        match self {
+            TypeBuilder::Simple(ty) => Type::Simple(ty),
+            TypeBuilder::Map => Type::Map {
+                key: Box::new(None),
+                value: Box::new(None),
+            },
+        }
+    }
+}
+
 impl Type {
-    fn compatible_with(&self, other: &Type) -> bool {
-        match (self, other) {
-            (Type::Map { .. }, Type::Map { key, value }) if key.is_none() && value.is_none() => {
-                true
-            }
-            (a, b) => a == b,
+    fn compatible_with(&self, builder: &TypeBuilder) -> bool {
+        match (self, builder) {
+            (Type::Map { .. }, TypeBuilder::Map) => true,
+            (Type::Simple(a), TypeBuilder::Simple(b)) => a == b,
+            _ => false,
         }
     }
 }
@@ -81,14 +109,9 @@ impl Context {
 
     pub fn eval(&mut self, v: impl sval::Value) {
         v.stream(self).expect("failed to stream");
-
-        if self.stack.len() == 1 {
-            self.result = self.pop_eval_value();
-        }
+        assert!(self.stack.is_empty(), "unexpected end of input");
 
         println!("{:?}", self);
-
-        assert!(self.stack.is_empty(), "unexpected end of input");
     }
 
     fn value_mut(&mut self) -> &mut Option<EvalType> {
@@ -118,12 +141,14 @@ impl Context {
         }
     }
 
-    fn infer(&mut self, ty: Type) -> &mut Option<EvalType> {
+    fn infer(&mut self, ty: impl Into<TypeBuilder>) -> &mut Option<EvalType> {
+        let ty = ty.into();
+
         match self.value_mut() {
             empty @ None => {
                 *empty = Some(EvalType {
                     state: State::Ready,
-                    ty,
+                    ty: ty.build(),
                 });
 
                 empty
@@ -147,17 +172,13 @@ impl Context {
         }
     }
 
-    fn pop_infer(&mut self, ty: Type) -> Option<EvalType> {
+    fn pop_infer(&mut self, ty: impl Into<TypeBuilder>) -> Option<EvalType> {
         self.infer(ty);
         self.pop_eval_value()
     }
 
     fn push_map(&mut self) {
-        // TODO: Avoid these boxes if they're not necessary
-        let map = self.pop_infer(Type::Map {
-            key: Box::new(None),
-            value: Box::new(None),
-        });
+        let map = self.pop_infer(TypeBuilder::Map);
 
         self.stack.push(map);
     }
@@ -241,11 +262,13 @@ impl Context {
     }
 
     fn pop_map(&mut self) {
+        let depth = self.stack.len();
+
         match self.value_mut() {
             Some(EvalType {
                 state,
                 ty: Type::Map { .. },
-            }) => {
+            }) if depth > 1 => {
                 assert_eq!(*state, State::Ready, "unexpected end of map");
             }
             _ => {
@@ -271,7 +294,7 @@ impl<'sval> sval::Stream<'sval> for Context {
     }
 
     fn unit(&mut self) -> sval::Result {
-        self.infer(Type::Unit);
+        self.infer(SimpleType::Unit);
 
         Ok(())
     }
