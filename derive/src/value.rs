@@ -191,25 +191,20 @@ fn stream_struct(
     let label = quote!(Some(sval::Label::new(#label)));
 
     let id = match id {
-        Some(id) => quote!(Some(sval::Id::new(#id))),
+        Some(id) => quote!(Some(sval::Id::local(#id))),
         None => quote!(None),
     };
 
     let mut field_ident = Vec::new();
-    let mut field_lit = Vec::new();
-    let mut field_id = Vec::new();
-    let mut field_count = 0usize;
+    let mut field_label = Vec::new();
+    let mut field_count = 0u64;
 
     for field in &fields.named {
         let label = attr::name_of_field(field);
         let label = quote!(sval::Label::new(#label));
 
-        let id = field_count as u128;
-        let id = quote!(sval::Id::new(#id));
-
         field_ident.push(&field.ident);
-        field_lit.push(label);
-        field_id.push(id);
+        field_label.push(label);
 
         field_count += 1;
     }
@@ -218,12 +213,12 @@ fn stream_struct(
         stream.record_begin(#label, #id, Some(#field_count))?;
 
         #(
-            stream.record_value_begin(#field_lit, #field_id)?;
+            stream.record_value_begin(#field_label)?;
             sval::stream(stream, #field_ident)?;
-            stream.record_value_end(#field_lit, #field_id)?;
+            stream.record_value_end(#field_label)?;
         )*
 
-        stream.record_end(#label, #id)?;
+        stream.record_end(#label, #id, Some(#field_count))?;
     })
 }
 
@@ -236,7 +231,7 @@ fn stream_newtype(
     let label = quote!(Some(sval::Label::new(#label)));
 
     let id = match id {
-        Some(id) => quote!(Some(sval::Id::new(#id))),
+        Some(id) => quote!(Some(sval::Id::local(#id))),
         None => quote!(None),
     };
 
@@ -256,20 +251,19 @@ fn stream_tuple(
     let label = label.to_string();
     let label = quote!(Some(sval::Label::new(#label)));
     let id = match id {
-        Some(id) => quote!(Some(sval::Id::new(#id))),
+        Some(id) => quote!(Some(sval::Id::local(#id))),
         None => quote!(None),
     };
 
     let mut field_ident = Vec::new();
-    let mut field_id = Vec::new();
-    let mut field_count = 0usize;
+    let mut field_index = Vec::new();
+    let mut field_count = 0u64;
 
     for field in &fields.unnamed {
-        let id = field_count as u128;
-        let id = quote!(sval::Id::new(#id));
+        let index = field_count as u32;
 
         field_ident.push(Ident::new(&format!("field{}", field_count), field.span()));
-        field_id.push(id);
+        field_index.push(quote!(#index));
         field_count += 1;
     }
 
@@ -277,12 +271,12 @@ fn stream_tuple(
         stream.tuple_begin(#label, #id, Some(#field_count))?;
 
         #(
-            stream.tuple_value_begin(#field_id)?;
+            stream.tuple_value_begin(#field_index)?;
             sval::stream(stream, #field_ident)?;
-            stream.tuple_value_end(#field_id)?;
+            stream.tuple_value_end(#field_index)?;
         )*
 
-        stream.tuple_end(#label, #id)?;
+        stream.tuple_end(#label, #id, Some(#field_count))?;
     })
 }
 
@@ -295,7 +289,7 @@ fn stream_constant(
     let label = quote!(Some(#constant));
 
     let id = match id {
-        Some(id) => quote!(Some(sval::Id::new(#id))),
+        Some(id) => quote!(Some(sval::Id::local(#id))),
         None => quote!(None),
     };
 

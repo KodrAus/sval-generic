@@ -4,10 +4,17 @@ pub(crate) mod optional;
 pub(crate) mod seq;
 pub(crate) mod text;
 
-use crate::{Result, Stream, Value};
+use crate::{
+    std::{
+        fmt,
+        hash::{Hash, Hasher},
+    },
+    Result, Stream, Value,
+};
+use std::ops::Deref;
 
 /**
-An informational label for some value.
+A textual label for some value.
 */
 #[derive(Clone, Copy)]
 pub struct Label<'a> {
@@ -16,6 +23,11 @@ pub struct Label<'a> {
 }
 
 impl<'a> Label<'a> {
+    /**
+    Create a new label from a static static value.
+
+    For labels that can't satisfy the `'static` lifetime, use [`Label::computed`].
+    */
     pub const fn new(label: &'static str) -> Self {
         Label {
             computed: label,
@@ -23,6 +35,9 @@ impl<'a> Label<'a> {
         }
     }
 
+    /**
+    Create a new label from a string value.
+    */
     pub const fn computed(label: &'a str) -> Self {
         Label {
             computed: label,
@@ -30,28 +45,116 @@ impl<'a> Label<'a> {
         }
     }
 
-    pub const fn get(&self) -> &'a str {
-        self.computed
-    }
+    /**
+    Try get the value of the label as a static string.
 
+    For labels that were created over computed data this method will return `None`.
+    */
     pub const fn try_get_static(&self) -> Option<&'static str> {
         self.value
     }
 }
 
+impl<'a> Deref for Label<'a> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.computed
+    }
+}
+
+impl<'a, 'b> PartialEq<Label<'b>> for Label<'a> {
+    fn eq(&self, other: &Label<'b>) -> bool {
+        self.computed == other.computed
+    }
+}
+
+impl<'a> Eq for Label<'a> {}
+
+impl<'a> Hash for Label<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.computed.hash(state)
+    }
+}
+
+impl<'a> fmt::Debug for Label<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.computed.fmt(f)
+    }
+}
+
 /**
 A canonical identifier for some value.
+
+Ids belong to some scope, which they must be unique within.
+That scope may be either local (like the set of variants in an enum) or global (like the set of all values).
 */
-#[derive(Clone, Copy)]
-pub struct Id(u128);
+#[derive(Clone, Copy, Debug)]
+pub struct Id {
+    value: [u8; 16],
+    scope: Scope,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Scope {
+    Local,
+    Global,
+}
 
 impl Id {
-    pub const fn new(id: u128) -> Self {
-        Id(id)
+    /**
+    Create an id for a local scope.
+    */
+    pub const fn local(id: [u8; 16]) -> Self {
+        Id {
+            value: id,
+            scope: Scope::Local,
+        }
     }
 
-    pub const fn get(&self) -> u128 {
-        self.0
+    /**
+    Create an id for the global scope.
+    */
+    pub const fn global(id: [u8; 16]) -> Self {
+        Id {
+            value: id,
+            scope: Scope::Global,
+        }
+    }
+
+    /**
+    Whether this id belongs to a local scope.
+    */
+    pub const fn is_local(&self) -> bool {
+        matches!(self.scope, Scope::Local)
+    }
+
+    /**
+    Whether this id belongs to a global scope.
+    */
+    pub const fn is_global(&self) -> bool {
+        matches!(self.scope, Scope::Global)
+    }
+
+    /**
+    Get the id as a 128bit value.
+    */
+    pub const fn get(&self) -> [u8; 16] {
+        self.value
+    }
+}
+
+impl PartialEq for Id {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Eq for Id {}
+
+impl Hash for Id {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state)
     }
 }
 

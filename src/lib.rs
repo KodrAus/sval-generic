@@ -29,7 +29,7 @@ stream.text_end()?;
 # }
 ```
 
-Streams are the fundamental concept in `sval` that encodes its data model.
+Streams are the core concept in `sval`.
 They're represented by the [`Stream`] trait.
 Streams are:
 
@@ -48,8 +48,8 @@ Values are:
 - **borrowed**: values are always streamed through a `&'sval` reference.
 
 Implementations of `Value` aren't the only source of data that can drive a stream.
-They're just a reasonable driver for Rust objects that are provided by this crate.
-The `Stream` trait makes very few demands on how it's fed data so could be used with buffering readers, async/await, or coroutines.
+They're just a reasonable basis for Rust objects.
+The `Stream` trait makes very few demands on how it's fed data so could be used with buffering readers, async/await, or general coroutines.
 */
 
 #![cfg_attr(not(test), no_std)]

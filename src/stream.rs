@@ -79,8 +79,13 @@ This means `sval` effectively has two in-memory representations of its data mode
 
 Data types represent the distinct kinds of data that a stream may choose to interpret or encode in a particular way.
 If two values have the same data type then a stream is expected to handle them in compatible ways, even if their content is different.
+The type definition of a data type specifies the information that determines whether two values have the same data type or not.
+
 As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Stream` may rely on their size when encoding them.
-On the other hand, the data type of maps does not depend on their size, so a stream is expected to handle maps of any length equivalently.
+On the other hand, the data type of a map does not depend on its size, so a stream is expected to handle maps of any length equivalently.
+
+The docs for each data type call out what is and isn't considered part of the type definition.
+In general though, if there's any information required by both the `begin` and `end` calls for a given data type then it's part of its definition.
 
 ### Basic data types
 
@@ -120,6 +125,16 @@ The extended data model adds:
 - **Dependently typed values**:
     - **Constants**: for [values](#values) that will always have the same data.
     - **Fixed size**: for [values](#values) with a length where that length will always be the same.
+
+### Ids and labels
+
+Some data types accept optional ids and labels.
+Ids are the canonical way to distinguish two values of the same data type as actually being distinct or not.
+Labels on data types are purely informational and can be given without any ids.
+
+Ids are expected to be unique in a particular scope.
+That scope may be either local (unique to all variants of an enum), or global (unique to all possible values).
+When global ids are used, a stream that builds a schema from data may be able to optimize by de-duplicating many occurrences of the same logical data type.
 
 ## Values
 
@@ -1390,10 +1405,10 @@ pub trait Stream<'sval> {
         &mut self,
         id: Option<Id>,
         label: Option<Label>,
-        num_entries_hint: Option<usize>,
+        num_entries: Option<u64>,
     ) -> Result {
         self.tagged_begin(id, label)?;
-        self.map_begin(num_entries_hint)
+        self.map_begin(num_entries.and_then(|e| e.try_into().ok()))
     }
 
     fn record_value_begin(&mut self, label: Label) -> Result {
@@ -1402,8 +1417,6 @@ pub trait Stream<'sval> {
         if let Some(label) = label.try_get_static() {
             label.stream(&mut *self)?;
         } else {
-            let label = label.get();
-
             self.text_begin(Some(label.len()))?;
             self.text_fragment_computed(&label)?;
             self.text_end()?;
@@ -1422,7 +1435,14 @@ pub trait Stream<'sval> {
         self.map_value_end()
     }
 
-    fn record_end(&mut self, id: Option<Id>, label: Option<Label>) -> Result {
+    fn record_end(
+        &mut self,
+        id: Option<Id>,
+        label: Option<Label>,
+        num_entries: Option<u64>,
+    ) -> Result {
+        let _ = num_entries;
+
         self.map_end()?;
         self.tagged_end(id, label)
     }
@@ -1431,56 +1451,118 @@ pub trait Stream<'sval> {
         &mut self,
         id: Option<Id>,
         label: Option<Label>,
-        num_entries_hint: Option<usize>,
+        num_entries: Option<u64>,
     ) -> Result {
         self.tagged_begin(id, label)?;
-        self.seq_begin(num_entries_hint)
+        self.seq_begin(num_entries.and_then(|e| e.try_into().ok()))
     }
 
-    fn tuple_value_begin(&mut self, id: Id) -> Result {
-        let _ = id;
+    fn tuple_value_begin(&mut self, index: u32) -> Result {
+        let _ = index;
 
         self.seq_value_begin()?;
         self.dynamic_begin()
     }
 
-    fn tuple_value_end(&mut self, id: Id) -> Result {
-        let _ = id;
+    fn tuple_value_end(&mut self, index: u32) -> Result {
+        let _ = index;
 
         self.dynamic_end()?;
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self, id: Option<Id>, label: Option<Label>) -> Result {
+    fn tuple_end(
+        &mut self,
+        id: Option<Id>,
+        label: Option<Label>,
+        num_entries: Option<u64>,
+    ) -> Result {
+        let _ = num_entries;
+
         self.seq_end()?;
         self.tagged_end(id, label)
     }
 
     fn optional_some_begin(&mut self) -> Result {
         self.enum_begin(None, Some(Label::new("Option")))?;
-        self.tagged_begin(Some(Id::new(1)), Some(Label::new("Some")))
+        self.tagged_begin(
+            Some(Id::local(1u128.to_le_bytes())),
+            Some(Label::new("Some")),
+        )
     }
 
     fn optional_some_end(&mut self) -> Result {
-        self.tagged_end(Some(Id::new(1)), Some(Label::new("Some")))?;
+        self.tagged_end(
+            Some(Id::local(1u128.to_le_bytes())),
+            Some(Label::new("Some")),
+        )?;
         self.enum_end(None, Some(Label::new("Option")))
     }
 
     fn optional_none(&mut self) -> Result {
         self.enum_begin(None, Some(Label::new("Option")))?;
-        self.constant_begin(Some(Id::new(0)), Some(Label::new("None")))?;
+        self.constant_begin(
+            Some(Id::local(0u128.to_le_bytes())),
+            Some(Label::new("None")),
+        )?;
 
         self.null()?;
 
-        self.constant_end(Some(Id::new(0)), Some(Label::new("None")))?;
+        self.constant_end(
+            Some(Id::local(0u128.to_le_bytes())),
+            Some(Label::new("None")),
+        )?;
         self.enum_end(None, Some(Label::new("Option")))
     }
 
-    fn fixed_size_begin(&mut self) -> Result {
+    /**
+    Begin a fixed-size value.
+
+    Data types of variable size that accept an optional hint as a `usize` don't consider that size to be part of their type definition.
+    Wrapping values of those data types in fixed-size requires all instances to always have the same size.
+    Different sizes become different data types.
+
+    The meaning of size depends on the data type being wrapped.
+
+    # Structure
+
+    Fixed-size values wrap a value of variable size.
+    That includes any data type that accepts an optional size hint as a `usize`, such as:
+
+    - Text and binary blobs.
+    - Maps.
+    - Sequences.
+
+    The actual size of that wrapped value must match the size specified.
+
+    ```
+    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
+    stream.fixed_size_begin(16)?;
+
+    // The hint and actual size of the binary fragment must be 16
+    stream.binary_begin(Some(16))?;
+    stream.binary_fragment(&[
+        0xa1, 0xa2, 0xa3, 0xa4,
+        0xb1, 0xb2,
+        0xc1, 0xc2,
+        0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
+    ])?;
+    stream.binary_end()?;
+
+    stream.fixed_size_end(16)?;
+    # Ok(())
+    # }
+    ```
+    */
+    fn fixed_size_begin(&mut self, size: u64) -> Result {
+        let _ = size;
+
         Ok(())
     }
 
-    fn fixed_size_end(&mut self) -> Result {
+    fn fixed_size_end(&mut self, size: u64) -> Result {
+        let _ = size;
+
         Ok(())
     }
 
@@ -1889,9 +1971,9 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).constant_end(id, label)
             }
 
-            fn record_begin(&mut self, id: Option<Id>, label: Option<Label>, num_entries_hint: Option<usize>) -> Result {
+            fn record_begin(&mut self, id: Option<Id>, label: Option<Label>, num_entries: Option<u64>) -> Result {
                 let $bind = self;
-                ($($forward)*).record_begin(id, label, num_entries_hint)
+                ($($forward)*).record_begin(id, label, num_entries)
             }
 
             fn record_value_begin(&mut self, label: Label) -> Result {
@@ -1904,29 +1986,29 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).record_value_end(label)
             }
 
-            fn record_end(&mut self, id: Option<Id>, label: Option<Label>) -> Result {
+            fn record_end(&mut self, id: Option<Id>, label: Option<Label>, num_entries: Option<u64>) -> Result {
                 let $bind = self;
-                ($($forward)*).record_end(id, label)
+                ($($forward)*).record_end(id, label, num_entries)
             }
 
-            fn tuple_begin(&mut self, id: Option<Id>, label: Option<Label>, num_entries_hint: Option<usize>) -> Result {
+            fn tuple_begin(&mut self, id: Option<Id>, label: Option<Label>, num_entries: Option<u64>) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_begin(id, label, num_entries_hint)
+                ($($forward)*).tuple_begin(id, label, num_entries)
             }
 
-            fn tuple_value_begin(&mut self, id: Id) -> Result {
+            fn tuple_value_begin(&mut self, index: u32) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_value_begin(id)
+                ($($forward)*).tuple_value_begin(index)
             }
 
-            fn tuple_value_end(&mut self, id: Id) -> Result {
+            fn tuple_value_end(&mut self, index: u32) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_value_end(id)
+                ($($forward)*).tuple_value_end(index)
             }
 
-            fn tuple_end(&mut self, id: Option<Id>, label: Option<Label>) -> Result {
+            fn tuple_end(&mut self, id: Option<Id>, label: Option<Label>, num_entries: Option<u64>) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_end(id, label)
+                ($($forward)*).tuple_end(id, label, num_entries)
             }
 
             fn enum_begin(&mut self, id: Option<Id>, label: Option<Label>) -> Result {
@@ -1954,14 +2036,14 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).optional_none()
             }
 
-            fn fixed_size_begin(&mut self) -> Result {
+            fn fixed_size_begin(&mut self, size: u64) -> Result {
                 let $bind = self;
-                ($($forward)*).fixed_size_begin()
+                ($($forward)*).fixed_size_begin(size)
             }
 
-            fn fixed_size_end(&mut self) -> Result {
+            fn fixed_size_end(&mut self, size: u64) -> Result {
                 let $bind = self;
-                ($($forward)*).fixed_size_end()
+                ($($forward)*).fixed_size_end(size)
             }
 
             fn int_begin(&mut self) -> Result {
@@ -2166,7 +2248,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn record_begin(&mut self, _: Option<Id>, _: Option<Label>, _: Option<usize>) -> Result {
+    fn record_begin(&mut self, _: Option<Id>, _: Option<Label>, _: Option<u64>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2178,23 +2260,23 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn record_end(&mut self, _: Option<Id>, _: Option<Label>) -> Result {
+    fn record_end(&mut self, _: Option<Id>, _: Option<Label>, _: Option<u64>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_begin(&mut self, _: Option<Id>, _: Option<Label>, _: Option<usize>) -> Result {
+    fn tuple_begin(&mut self, _: Option<Id>, _: Option<Label>, _: Option<u64>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_begin(&mut self, _: Id) -> Result {
+    fn tuple_value_begin(&mut self, _: u32) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_end(&mut self, _: Id) -> Result {
+    fn tuple_value_end(&mut self, _: u32) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_end(&mut self, _: Option<Id>, _: Option<Label>) -> Result {
+    fn tuple_end(&mut self, _: Option<Id>, _: Option<Label>, _: Option<u64>) -> Result {
         crate::result::unsupported()
     }
 
@@ -2218,11 +2300,11 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn fixed_size_begin(&mut self) -> Result {
+    fn fixed_size_begin(&mut self, _: u64) -> Result {
         crate::result::unsupported()
     }
 
-    fn fixed_size_end(&mut self) -> Result {
+    fn fixed_size_end(&mut self, _: u64) -> Result {
         crate::result::unsupported()
     }
 
