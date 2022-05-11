@@ -40,54 +40,71 @@ enum Sign {
     Negative,
 }
 
-// All we want to do is translate between text and binary encodings
-// We also need to implement equality
-// We could consider only storing normalized text and binary strings for floats
-// along with enough metadata to tell if they're equal or not
 #[derive(Debug)]
-enum Float {
-    Finite { scale: u64, mantissa: BigUint },
-}
+pub struct DecimalFloat(DecimalData);
 
 #[derive(Debug)]
-pub struct DecimalFloat {
-    sign: Sign,
-    data: Float,
-}
-
-#[derive(Debug)]
-struct BinaryFloat {
-    sign: Sign,
-    data: Float,
+enum DecimalData {
+    NaN {
+        payload: Vec<u8>,
+    },
+    Infinity {
+        sign: Sign,
+    },
+    Finite {
+        sign: Sign,
+        point_index: usize,
+        digits: BigUint,
+    },
 }
 
 impl EncodingValue for DecimalFloat {
     fn encode_text<W: fmt::Write>(&self, mut writer: W) -> sval::Result {
-        match self.data {
-            Float::Finite {
-                ref scale,
-                ref mantissa,
+        match self.0 {
+            DecimalData::NaN { .. } => {
+                writer.write_str("nan")?;
+
+                Ok(())
+            }
+            DecimalData::Infinity {
+                sign: Sign::Positive,
             } => {
-                if let Sign::Negative = self.sign {
+                writer.write_str("inf")?;
+
+                Ok(())
+            }
+            DecimalData::Infinity {
+                sign: Sign::Negative,
+            } => {
+                writer.write_str("-inf")?;
+
+                Ok(())
+            }
+            DecimalData::Finite {
+                ref sign,
+                ref point_index,
+                ref digits,
+            } => {
+                if let Sign::Negative = sign {
                     writer.write_str("-")?;
                 }
 
-                let mut digits = mantissa.to_radix_be(10);
+                let mut digits = digits.to_radix_be(10);
                 for d in &mut digits {
                     *d += b'0';
                 }
 
-                let digits = match scale.to_usize().ok_or(sval::Error::unsupported())? {
-                    // If the scale is zero then we don't have a decimal place to insert
+                let digits = match *point_index {
+                    // If the point is at zero then we don't have a decimal place to insert
                     0 => digits,
-                    // If the scale is within the digits then insert it at the right place
+                    // If the point is within the digits then insert it at the right place
                     scale if scale < digits.len() => {
                         let index = digits.len() - scale;
                         digits.insert(index, b'.');
 
                         digits
                     }
-                    // If the scale is past the digits then fill the front with zeroes
+                    // If the point is past the digits then fill the front with zeroes
                     scale => {
                         let mut scaled_digits = Vec::new();
 
@@ -111,62 +128,55 @@ impl EncodingValue for DecimalFloat {
     }
 
     fn decode_text(text: &str) -> sval::Result<Self> {
-        let mut buf = text.as_bytes();
+        let mut buf = text.trim().as_bytes();
 
         let mut sign = Sign::Positive;
 
         if buf.starts_with(b"-") {
             sign = Sign::Negative;
             buf = &buf[1..];
+        } else if buf.starts_with(b"+") {
+            buf = &buf[1..];
         }
 
-        let mut scale = 0;
-        let mut scale_step = 0;
+        if buf.eq_ignore_ascii_case(b"inf") {
+            return Ok(DecimalFloat(DecimalData::Infinity { sign }));
+        } else if buf.eq_ignore_ascii_case(b"nan") {
+            return Ok(DecimalFloat(DecimalData::NaN {
+                payload: Vec::new(),
+            }));
+        }
 
-        let mut mantissa = BigUint::zero();
+        let mut point_index = 0;
+        let mut point_step = 0;
+
+        let mut digits = BigUint::zero();
 
         for b in buf {
             match b {
                 b'0'..=b'9' => {
-                    mantissa *= 10u8;
-                    mantissa += b - b'0';
+                    digits *= 10u8;
+                    digits += b - b'0';
 
-                    scale += 1 * scale_step;
+                    point_index += 1 * point_step;
                 }
-                b'.' if scale_step == 0 => {
-                    scale_step = 1;
+                b'.' if point_step == 0 => {
+                    point_step = 1;
                 }
                 _ => return sval::result::unsupported(),
             }
         }
 
-        while scale > 0 && &mantissa % 10u8 == BigUint::zero() {
-            scale -= 1;
-            mantissa /= 10u8;
+        while point_index > 0 && &digits % 10u8 == BigUint::zero() {
+            point_index -= 1;
+            digits /= 10u8;
         }
 
-        Ok(DecimalFloat {
+        Ok(DecimalFloat(DecimalData::Finite {
             sign,
-            data: Float::Finite { scale, mantissa },
-        })
-    }
-
-    fn decode_binary(binary: &[u8]) -> sval::Result<Self> {
-        todo!()
-    }
-}
-
-impl EncodingValue for BinaryFloat {
-    fn encode_text<W: fmt::Write>(&self, mut writer: W) -> sval::Result {
-        todo!()
-    }
-
-    fn encode_bytes<W: io::Write>(&self, mut writer: W) -> sval::Result {
-        todo!()
-    }
-
-    fn decode_text(text: &str) -> sval::Result<Self> {
-        todo!()
+            point_index,
+            digits,
+        }))
     }
 
     fn decode_binary(binary: &[u8]) -> sval::Result<Self> {
@@ -186,7 +196,10 @@ mod tests {
             "1",
             "-1",
             "-0",
+            "+1",
+            "+0",
             "0.01",
+            "0.00000001",
             "1.01",
             "-1.01",
             "01.10",
@@ -194,6 +207,14 @@ mod tests {
             "-1278.000023748",
             "000000000100000000",
             "-00001143.0000111100000000",
+            "NaN",
+            "nan",
+            "-nan",
+            "+nan",
+            "-inf",
+            "inf",
+            "+inf",
+            "INF",
         ] {
             let decoded = DecimalFloat::decode(case).unwrap();
 
@@ -203,7 +224,11 @@ mod tests {
             let from_text: Decimal128 = case.parse().unwrap();
             let from_re_text: Decimal128 = re_text_encoding.parse().unwrap();
 
-            assert_eq!(from_text, from_re_text);
+            if from_text.is_nan() {
+                assert!(from_re_text.is_nan());
+            } else {
+                assert_eq!(from_text, from_re_text);
+            }
         }
     }
 
