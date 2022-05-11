@@ -1,8 +1,8 @@
-use std::{fmt, io};
+use std::{fmt, io, mem, str};
 
 use crate::EncodingValue;
-use num_bigint::BigInt;
-use num_traits::Num;
+use num_bigint::{BigInt, BigUint};
+use num_traits::{Num, One, Signed, ToPrimitive, Zero};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Int(BigInt);
@@ -34,6 +34,7 @@ impl EncodingValue for Int {
     }
 }
 
+#[derive(Debug)]
 enum Sign {
     Positive,
     Negative,
@@ -41,25 +42,63 @@ enum Sign {
 
 // All we want to do is translate between text and binary encodings
 // We also need to implement equality
+#[derive(Debug)]
 enum Float {
     NaN { payload: Vec<u8> },
     Infinity,
-    Finite { exp: BigInt, mantissa: BigInt },
+    Finite { scale: BigInt, mantissa: BigUint },
 }
 
+#[derive(Debug)]
 pub struct DecimalFloat {
     sign: Sign,
     data: Float,
 }
 
-pub struct BinaryFloat {
+#[derive(Debug)]
+struct BinaryFloat {
     sign: Sign,
     data: Float,
 }
 
 impl EncodingValue for DecimalFloat {
     fn encode_text<W: fmt::Write>(&self, mut writer: W) -> sval::Result {
-        todo!()
+        match self.data {
+            Float::Finite {
+                ref scale,
+                ref mantissa,
+            } => {
+                if let Sign::Negative = self.sign {
+                    writer.write_str("-")?;
+                }
+
+                let mut digits = mantissa.to_radix_be(10);
+                for d in &mut digits {
+                    *d += b'0';
+                }
+
+                if scale.is_negative() {
+                    let offset = scale
+                        .to_isize()
+                        .ok_or(sval::Error::unsupported())?
+                        .unsigned_abs();
+
+                    let index = digits
+                        .len()
+                        .checked_sub(offset)
+                        .ok_or(sval::Error::unsupported())?;
+
+                    digits.insert(index, b'.');
+                } else if !scale.is_zero() {
+                    todo!()
+                }
+
+                writer.write_str(str::from_utf8(&digits)?)?;
+
+                Ok(())
+            }
+            _ => todo!(),
+        }
     }
 
     fn encode_bytes<W: io::Write>(&self, mut writer: W) -> sval::Result {
@@ -67,7 +106,43 @@ impl EncodingValue for DecimalFloat {
     }
 
     fn decode_text(text: &str) -> sval::Result<Self> {
-        todo!()
+        let mut buf = text.as_bytes();
+
+        let mut sign = Sign::Positive;
+
+        if buf.starts_with(b"-") {
+            sign = Sign::Negative;
+            buf = &buf[1..];
+        }
+
+        let mut scale = BigInt::zero();
+        let mut mantissa = BigUint::zero();
+        let mut scale_step = 0i8;
+
+        for b in buf {
+            match b {
+                b'0'..=b'9' => {
+                    mantissa *= 10u8;
+                    mantissa += b - b'0';
+
+                    scale += 1 * scale_step;
+                }
+                b'.' if scale_step == 0 => {
+                    scale_step = -1;
+                }
+                _ => return sval::result::unsupported(),
+            }
+        }
+
+        while &mantissa % 10u8 == BigUint::zero() {
+            scale -= 1 * scale_step;
+            mantissa /= 10u8;
+        }
+
+        Ok(DecimalFloat {
+            sign,
+            data: Float::Finite { scale, mantissa },
+        })
     }
 
     fn decode_binary(binary: &[u8]) -> sval::Result<Self> {
@@ -101,13 +176,25 @@ mod tests {
     fn encode_decode_int() {
         let text = String::from("1235");
 
-        let from_text = Int::decode(&text).unwrap();
+        let it = Int::decode(&text).unwrap();
 
         let mut binary = Vec::new();
-        from_text.encode(&mut binary).unwrap();
+        it.encode(&mut binary).unwrap();
 
-        let from_binary = Int::decode(&binary).unwrap();
+        let ib = Int::decode(&binary).unwrap();
 
-        assert_eq!(from_text, from_binary);
+        assert_eq!(it, ib);
+    }
+
+    #[test]
+    fn decode_decimal() {
+        let text = String::from("0001234567890.09876543210000000");
+
+        let dt = DecimalFloat::decode(&text).unwrap();
+
+        let mut encoded = String::new();
+        dt.encode(&mut encoded).unwrap();
+
+        assert_eq!("1234567890.0987654321", encoded);
     }
 }
