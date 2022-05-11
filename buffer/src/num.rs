@@ -1,8 +1,8 @@
-use std::{fmt, io, mem, str};
+use std::{fmt, io, str};
 
 use crate::EncodingValue;
 use num_bigint::{BigInt, BigUint};
-use num_traits::{Num, One, Signed, ToPrimitive, Zero};
+use num_traits::{Num, ToPrimitive, Zero};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Int(BigInt);
@@ -42,11 +42,13 @@ enum Sign {
 
 // All we want to do is translate between text and binary encodings
 // We also need to implement equality
+// We could consider only storing normalized text and binary strings for floats
+// along with enough metadata to tell if they're equal or not
 #[derive(Debug)]
 enum Float {
     NaN { payload: Vec<u8> },
     Infinity,
-    Finite { scale: BigInt, mantissa: BigUint },
+    Finite { scale: u64, mantissa: BigUint },
 }
 
 #[derive(Debug)]
@@ -77,21 +79,27 @@ impl EncodingValue for DecimalFloat {
                     *d += b'0';
                 }
 
-                if scale.is_negative() {
-                    let offset = scale
-                        .to_isize()
-                        .ok_or(sval::Error::unsupported())?
-                        .unsigned_abs();
+                let digits = match scale.to_usize().ok_or(sval::Error::unsupported())? {
+                    // If the scale is zero then we don't have a decimal place to insert
+                    0 => digits,
+                    // If the scale is within the digits then insert it at the right place
+                    scale if scale < digits.len() => {
+                        let index = digits.len() - scale;
+                        digits.insert(index, b'.');
 
-                    let index = digits
-                        .len()
-                        .checked_sub(offset)
-                        .ok_or(sval::Error::unsupported())?;
+                        digits
+                    }
+                    // If the scale is past the digits then fill the front with zeroes
+                    scale => {
+                        let mut scaled_digits = Vec::new();
 
-                    digits.insert(index, b'.');
-                } else if !scale.is_zero() {
-                    todo!()
-                }
+                        scaled_digits.extend_from_slice(b"0.");
+                        scaled_digits.extend(std::iter::repeat(b'0').take(scale - digits.len()));
+                        scaled_digits.append(&mut digits);
+
+                        scaled_digits
+                    }
+                };
 
                 writer.write_str(str::from_utf8(&digits)?)?;
 
@@ -115,9 +123,10 @@ impl EncodingValue for DecimalFloat {
             buf = &buf[1..];
         }
 
-        let mut scale = BigInt::zero();
+        let mut scale = 0;
+        let mut scale_step = 0;
+
         let mut mantissa = BigUint::zero();
-        let mut scale_step = 0i8;
 
         for b in buf {
             match b {
@@ -128,14 +137,14 @@ impl EncodingValue for DecimalFloat {
                     scale += 1 * scale_step;
                 }
                 b'.' if scale_step == 0 => {
-                    scale_step = -1;
+                    scale_step = 1;
                 }
                 _ => return sval::result::unsupported(),
             }
         }
 
-        while &mantissa % 10u8 == BigUint::zero() {
-            scale -= 1 * scale_step;
+        while scale > 0 && &mantissa % 10u8 == BigUint::zero() {
+            scale -= 1;
             mantissa /= 10u8;
         }
 
@@ -187,6 +196,30 @@ mod tests {
     }
 
     #[test]
+    fn decode_decimal_integer() {
+        let text = String::from("0001234567890.00000");
+
+        let dt = DecimalFloat::decode(&text).unwrap();
+
+        let mut encoded = String::new();
+        dt.encode(&mut encoded).unwrap();
+
+        assert_eq!("1234567890", encoded);
+    }
+
+    #[test]
+    fn decode_decimal_tiny() {
+        let text = String::from("0.000000000000000235732800000");
+
+        let dt = DecimalFloat::decode(&text).unwrap();
+
+        let mut encoded = String::new();
+        dt.encode(&mut encoded).unwrap();
+
+        assert_eq!("0.0000000000000002357328", encoded);
+    }
+
+    #[test]
     fn decode_decimal() {
         let text = String::from("0001234567890.09876543210000000");
 
@@ -196,5 +229,28 @@ mod tests {
         dt.encode(&mut encoded).unwrap();
 
         assert_eq!("1234567890.0987654321", encoded);
+    }
+
+    #[bench]
+    fn bench_decode_decimal(b: &mut test::Bencher) {
+        let text = String::from("0001234567890.09876543210000000");
+
+        b.iter(|| DecimalFloat::decode(&text).unwrap());
+    }
+
+    #[bench]
+    fn bench_encode_decimal(b: &mut test::Bencher) {
+        let dt = DecimalFloat::decode(&String::from("1234567890.0987654321")).unwrap();
+
+        let mut buf = String::new();
+        dt.encode(&mut buf).unwrap();
+        buf.clear();
+
+        b.iter(|| {
+            dt.encode(&mut buf).unwrap();
+            buf.clear();
+
+            buf.len()
+        });
     }
 }
