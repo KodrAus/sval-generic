@@ -46,8 +46,6 @@ enum Sign {
 // along with enough metadata to tell if they're equal or not
 #[derive(Debug)]
 enum Float {
-    NaN { payload: Vec<u8> },
-    Infinity,
     Finite { scale: u64, mantissa: BigUint },
 }
 
@@ -105,7 +103,6 @@ impl EncodingValue for DecimalFloat {
 
                 Ok(())
             }
-            _ => todo!(),
         }
     }
 
@@ -180,67 +177,70 @@ impl EncodingValue for BinaryFloat {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dec::Decimal128;
 
     #[test]
-    fn encode_decode_int() {
-        let text = String::from("1235");
+    fn decimal128_compat() {
+        for case in &[
+            "0",
+            "1",
+            "-1",
+            "-0",
+            "0.01",
+            "1.01",
+            "-1.01",
+            "01.10",
+            "349875.45758567",
+            "-1278.000023748",
+            "000000000100000000",
+            "-00001143.0000111100000000",
+        ] {
+            let decoded = DecimalFloat::decode(case).unwrap();
 
-        let it = Int::decode(&text).unwrap();
+            let re_text_encoding = decoded.encode_to_string().unwrap();
 
-        let mut binary = Vec::new();
-        it.encode(&mut binary).unwrap();
+            // Ensure that we produce a text buffer that evaluates to the same decimal
+            let from_text: Decimal128 = case.parse().unwrap();
+            let from_re_text: Decimal128 = re_text_encoding.parse().unwrap();
 
-        let ib = Int::decode(&binary).unwrap();
-
-        assert_eq!(it, ib);
+            assert_eq!(from_text, from_re_text);
+        }
     }
 
-    #[test]
-    fn decode_decimal_integer() {
-        let text = String::from("0001234567890.00000");
-
-        let dt = DecimalFloat::decode(&text).unwrap();
-
-        let mut encoded = String::new();
-        dt.encode(&mut encoded).unwrap();
-
-        assert_eq!("1234567890", encoded);
+    #[bench]
+    fn bench_decode_decimal128(b: &mut test::Bencher) {
+        b.iter(|| {
+            let dt: Decimal128 = "0001234567890.09876543210000000".parse().unwrap();
+            dt
+        });
     }
 
-    #[test]
-    fn decode_decimal_tiny() {
-        let text = String::from("0.000000000000000235732800000");
+    #[bench]
+    fn bench_encode_decimal128(b: &mut test::Bencher) {
+        use fmt::Write;
 
-        let dt = DecimalFloat::decode(&text).unwrap();
+        let dt: Decimal128 = "1234567890.0987654321".parse().unwrap();
 
-        let mut encoded = String::new();
-        dt.encode(&mut encoded).unwrap();
+        let mut buf = String::new();
+        write!(buf, "{}", dt).unwrap();
+        buf.clear();
 
-        assert_eq!("0.0000000000000002357328", encoded);
-    }
+        b.iter(|| {
+            write!(buf, "{}", dt).unwrap();
+            buf.clear();
 
-    #[test]
-    fn decode_decimal() {
-        let text = String::from("0001234567890.09876543210000000");
-
-        let dt = DecimalFloat::decode(&text).unwrap();
-
-        let mut encoded = String::new();
-        dt.encode(&mut encoded).unwrap();
-
-        assert_eq!("1234567890.0987654321", encoded);
+            buf.len()
+        });
     }
 
     #[bench]
     fn bench_decode_decimal(b: &mut test::Bencher) {
-        let text = String::from("0001234567890.09876543210000000");
-
-        b.iter(|| DecimalFloat::decode(&text).unwrap());
+        b.iter(|| DecimalFloat::decode("0001234567890.09876543210000000").unwrap());
     }
 
     #[bench]
     fn bench_encode_decimal(b: &mut test::Bencher) {
-        let dt = DecimalFloat::decode(&String::from("1234567890.0987654321")).unwrap();
+        let dt = DecimalFloat::decode("1234567890.0987654321").unwrap();
 
         let mut buf = String::new();
         dt.encode(&mut buf).unwrap();
