@@ -287,11 +287,11 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Stream<S> {
         todo!()
     }
 
-    fn fixed_size_begin(&mut self) -> sval::Result {
+    fn constant_size_begin(&mut self) -> sval::Result {
         todo!()
     }
 
-    fn fixed_size_end(&mut self) -> sval::Result {
+    fn constant_size_end(&mut self) -> sval::Result {
         todo!()
     }
 

@@ -1,4 +1,4 @@
-use crate::{Result, Stream, Value};
+use crate::{Result, Stream, Tag, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
@@ -20,7 +20,7 @@ impl<T: Value> Value for [T] {
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream.fixed_size_begin(N as u64)?;
+        stream.constant_size_begin()?;
         stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -30,7 +30,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         stream.seq_end()?;
-        stream.fixed_size_end(N as u64)
+        stream.constant_size_end()
     }
 
     fn is_dynamic(&self) -> bool {
@@ -45,7 +45,7 @@ macro_rules! tuple {
         $(
             impl<$($ty: Value),+> Value for ($($ty,)+) {
                 fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
-                    stream.tuple_begin(None, None, Some($len))?;
+                    stream.tuple_begin(Tag::Structural(None), Some($len))?;
 
                     $(
                         stream.tuple_value_begin($i)?;
@@ -53,7 +53,7 @@ macro_rules! tuple {
                         stream.tuple_value_end($i)?;
                     )+
 
-                    stream.tuple_end(None, None, Some($len))
+                    stream.tuple_end(Tag::Structural(None))
                 }
 
                 fn is_dynamic(&self) -> bool {

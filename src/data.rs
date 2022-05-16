@@ -46,6 +46,13 @@ impl<'a> Label<'a> {
     }
 
     /**
+    Get the value of the label as a string.
+    */
+    pub const fn get(&self) -> &'a str {
+        self.computed
+    }
+
+    /**
     Try get the value of the label as a static string.
 
     For labels that were created over computed data this method will return `None`.
@@ -87,57 +94,23 @@ impl<'a> fmt::Debug for Label<'a> {
 A canonical identifier for some value.
 
 Ids belong to some scope, which they must be unique within.
-That scope may be either local (like the set of variants in an enum) or global (like the set of all values).
+That scope may be either local (like the set of variants in an enum) or global (like the set of all values and variants).
 */
 #[derive(Clone, Copy, Debug)]
 pub struct Id {
     value: [u8; 16],
-    scope: Scope,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Scope {
-    Local,
-    Global,
 }
 
 impl Id {
     /**
     Create an id for a local scope.
     */
-    pub const fn local(id: [u8; 16]) -> Self {
-        Id {
-            value: id,
-            scope: Scope::Local,
-        }
+    pub const fn new(id: [u8; 16]) -> Self {
+        Id { value: id }
     }
 
     /**
-    Create an id for the global scope.
-    */
-    pub const fn global(id: [u8; 16]) -> Self {
-        Id {
-            value: id,
-            scope: Scope::Global,
-        }
-    }
-
-    /**
-    Whether this id belongs to a local scope.
-    */
-    pub const fn is_local(&self) -> bool {
-        matches!(self.scope, Scope::Local)
-    }
-
-    /**
-    Whether this id belongs to a global scope.
-    */
-    pub const fn is_global(&self) -> bool {
-        matches!(self.scope, Scope::Global)
-    }
-
-    /**
-    Get the id as a 128bit value.
+    Get the id as a 16 byte value.
     */
     pub const fn get(&self) -> [u8; 16] {
         self.value
@@ -155,6 +128,53 @@ impl Eq for Id {}
 impl Hash for Id {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.value.hash(state)
+    }
+}
+
+/**
+A tag annotates a data type with an informational label and id.
+
+Data types with the same structure are not considered equal if they have different tags.
+*/
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Tag<'a> {
+    /**
+    The type of the tagged value depends on its structure.
+
+    The tag carries an optional informational label.
+    This label isn't considered canonical, different types may have the same label.
+    */
+    Structural(Option<Label<'a>>),
+    /**
+    The type of the tagged value is unique to its scope.
+
+    The scope of local ids is the set of variants in their containing enum.
+    */
+    Local(Id, Option<Label<'a>>),
+    /**
+    The type of the tagged value is unique to all values.
+
+    This value can be identified anywhere it appears by its id, whether that's
+    as an enum variant or property of some other value.
+    */
+    Global(Id, Option<Label<'a>>),
+}
+
+impl<'a> Tag<'a> {
+    pub fn id(&self) -> Option<Id> {
+        match self {
+            Tag::Structural(_) => None,
+            Tag::Local(id, _) => Some(*id),
+            Tag::Global(id, _) => Some(*id),
+        }
+    }
+
+    pub fn label(&self) -> Option<Label> {
+        match self {
+            Tag::Structural(label) => *label,
+            Tag::Local(_, label) => *label,
+            Tag::Global(_, label) => *label,
+        }
     }
 }
 

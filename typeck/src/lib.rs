@@ -1,11 +1,12 @@
 mod eval;
 
 use crate::eval::Evaluator;
-pub use sval::{Id, Label};
+use std::borrow::Cow;
 
 #[derive(Debug, PartialEq)]
 pub enum Type {
     Simple(SimpleType),
+    // TODO: Consider an `EmptyMap` type
     Map {
         key: Box<Option<Type>>,
         value: Box<Option<Type>>,
@@ -15,10 +16,32 @@ pub enum Type {
     },
     Record {
         id: Option<Id>,
-        label: Option<Label<'static>>,
-        values: Vec<(Label<'static>, Option<Type>)>,
+        label: Option<Label>,
+        values: Vec<(Label, Option<Type>)>,
     },
     Global(Id),
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Id([u8; 16]);
+
+impl From<sval::Id> for Id {
+    fn from(id: sval::Id) -> Id {
+        Id(id.get())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Label(Cow<'static, str>);
+
+impl<'a> From<sval::Label<'a>> for Label {
+    fn from(label: sval::Label<'a>) -> Label {
+        if let Some(label) = label.try_get_static() {
+            Label(Cow::Borrowed(label))
+        } else {
+            Label(Cow::Owned(label.get().to_owned()))
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

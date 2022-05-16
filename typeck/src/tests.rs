@@ -68,6 +68,7 @@ fn typecheck_nested_map() {
             map.insert("ba", ());
             map
         });
+        map.insert("c", HashMap::new());
         map
     });
 
@@ -105,7 +106,7 @@ fn typecheck_simple_seq() {
 fn typecheck_nested_seq() {
     let mut ctxt = Context::new();
 
-    let ty = ctxt.eval(&[&[(), ()] as &[()], &[(), ()]] as &[&[()]]);
+    let ty = ctxt.eval(&[&[(), ()] as &[()], &[]] as &[&[()]]);
 
     assert!(ty.is_complete());
 

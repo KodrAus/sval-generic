@@ -428,11 +428,11 @@ impl<'data, 'b> sval::Stream<'data> for Expect<'data, 'b> {
         self.expect(Token::DynamicEnd)
     }
 
-    fn fixed_size_begin(&mut self) -> sval::Result {
+    fn constant_size_begin(&mut self) -> sval::Result {
         todo!()
     }
 
-    fn fixed_size_end(&mut self) -> sval::Result {
+    fn constant_size_end(&mut self) -> sval::Result {
         todo!()
     }
 

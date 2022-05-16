@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{Id, Label, SimpleType, Type};
+use crate::{Id, SimpleType, Type};
 
 #[derive(Debug)]
 pub struct Evaluator {
@@ -57,7 +57,7 @@ impl Evaluator {
             .or_else(|| self.root.take())
     }
 
-    fn infer_begin(&mut self, builder: impl Into<TypeBuilder>) {
+    fn infer_begin<'a>(&mut self, builder: impl Into<TypeBuilder<'a>>) {
         let builder = builder.into();
 
         // For a global, the type we should end up with in the root of our context will
@@ -77,12 +77,13 @@ impl Evaluator {
         match self.current_mut() {
             empty @ None => {
                 *empty = Some(ContextType {
-                    state: State::Ready,
+                    size: None,
+                    state: State::Valid,
                     ty: builder.build(),
                 });
             }
             inferred @ Some(ContextType {
-                state: State::Ready,
+                state: State::Valid,
                 ..
             }) => {
                 let check = &inferred.as_mut().expect("missing type").ty;
@@ -103,7 +104,7 @@ impl Evaluator {
         }
     }
 
-    fn infer_end(&mut self, builder: impl Into<TypeBuilder>) {
+    fn infer_end<'a>(&mut self, builder: impl Into<TypeBuilder<'a>>) {
         let builder = builder.into();
         let depth = self.stack.len();
 
@@ -117,21 +118,24 @@ impl Evaluator {
                 );
             }
             _ => {
-                let ty = self.pop().expect("unexpected end of value").unwrap();
+                let ended = self.pop().expect("unexpected end of value");
 
                 assert!(
-                    builder.is_compatible_with(&ty),
+                    ended.is_valid(),
+                    "attempt to restore an invalid type {:?}",
+                    ended
+                );
+
+                assert!(
+                    builder.is_compatible_with(&ended.ty),
                     "expected {:?}, got {:?}",
-                    ty,
+                    ended.ty,
                     builder,
                 );
 
                 match self.current_mut() {
                     empty @ None => {
-                        *empty = Some(ContextType {
-                            state: State::Ready,
-                            ty,
-                        });
+                        *empty = Some(ended);
                     }
                     v => panic!("attempt to restore value into {:?}", v),
                 }
@@ -147,8 +151,11 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Text),
-                ..
-            }) => (),
+                size,
+                state: _,
+            }) => {
+                *size = Some(size.take().unwrap_or_default() + 1);
+            }
             v => panic!("expected text, got {:?}", v),
         }
     }
@@ -165,8 +172,11 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Binary),
-                ..
-            }) => (),
+                size,
+                state: _,
+            }) => {
+                *size = Some(size.take().unwrap_or_default() + 1);
+            }
             v => panic!("expected text, got {:?}", v),
         }
     }
@@ -182,14 +192,16 @@ impl Evaluator {
     fn push_map_key(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state,
+                state: state,
+                size: _,
                 ty: Type::Map { key, .. },
             }) => {
-                assert_eq!(*state, State::Ready, "unexpected map key");
+                assert_eq!(*state, State::Valid, "unexpected map key");
                 *state = State::MapKey;
 
                 let key = key.take().map(|ty| ContextType {
-                    state: State::Ready,
+                    state: State::Valid,
+                    size: None,
                     ty,
                 });
 
@@ -200,16 +212,23 @@ impl Evaluator {
     }
 
     fn pop_map_key(&mut self) {
-        let restore = self.pop().map(ContextType::unwrap);
+        let restore = self.pop().expect("missing key to restore");
+
+        assert!(
+            restore.is_valid(),
+            "attempt to restore invalid key {:?}",
+            restore
+        );
 
         match self.current_mut() {
             Some(ContextType {
                 state,
+                size: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
 
-                **key = restore;
+                **key = Some(restore.ty);
             }
             v => panic!("expected map, got {:?}", v),
         }
@@ -218,14 +237,16 @@ impl Evaluator {
     fn push_map_value(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state,
+                state: state,
+                size: _,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
                 *state = State::MapValue;
 
                 let value = value.take().map(|ty| ContextType {
-                    state: State::Ready,
+                    state: State::Valid,
+                    size: None,
                     ty,
                 });
 
@@ -236,11 +257,18 @@ impl Evaluator {
     }
 
     fn pop_map_value(&mut self) {
-        let restore = self.pop().map(ContextType::unwrap);
+        let restore = self.pop().expect("missing value to restore");
+
+        assert!(
+            restore.is_valid(),
+            "attempt to restore invalid value {:?}",
+            restore
+        );
 
         match self.current_mut() {
             Some(ContextType {
-                state,
+                state: state,
+                size,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(
@@ -249,9 +277,11 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected map value",
                     restore
                 );
-                *state = State::Ready;
+                *state = State::Valid;
 
-                **value = restore;
+                *size = Some(size.take().unwrap_or_default() + 1);
+
+                **value = Some(restore.ty);
             }
             v => panic!("failed to restore {:?}: expected map, got {:?}", restore, v),
         }
@@ -268,14 +298,16 @@ impl Evaluator {
     fn push_seq_value(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state,
+                state: state,
+                size: _,
                 ty: Type::Seq { value, .. },
             }) => {
-                assert_eq!(*state, State::Ready, "unexpected seq value");
+                assert_eq!(*state, State::Valid, "unexpected seq value");
                 *state = State::SeqValue;
 
                 let value = value.take().map(|ty| ContextType {
-                    state: State::Ready,
+                    state: State::Valid,
+                    size: None,
                     ty,
                 });
 
@@ -286,11 +318,18 @@ impl Evaluator {
     }
 
     fn pop_seq_value(&mut self) {
-        let restore = self.pop().map(ContextType::unwrap);
+        let restore = self.pop().expect("missing value to restore");
+
+        assert!(
+            restore.is_valid(),
+            "attempt to restore invalid value {:?}",
+            restore
+        );
 
         match self.current_mut() {
             Some(ContextType {
-                state,
+                state: state,
+                size,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(
@@ -299,9 +338,11 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected seq value",
                     restore
                 );
-                *state = State::Ready;
+                *state = State::Valid;
 
-                **value = restore;
+                *size = Some(size.take().unwrap_or_default() + 1);
+
+                **value = Some(restore.ty);
             }
             v => panic!("failed to restore {:?}: expected seq, got {:?}", restore, v),
         }
@@ -313,46 +354,41 @@ impl Evaluator {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum TypeBuilder {
+enum TypeBuilder<'a> {
     Simple(SimpleType),
     Map,
     Seq,
-    Record(Option<Id>),
+    Record(sval::Tag<'a>),
 }
 
 #[derive(Debug)]
 struct ContextType {
+    size: Option<usize>,
     state: State,
     ty: Type,
 }
 
 #[derive(Debug, PartialEq)]
 enum State {
-    Ready,
+    Valid,
     MapKey,
     MapValue,
     SeqValue,
 }
 
 impl ContextType {
-    fn unwrap(self) -> Type {
-        match self {
-            ContextType {
-                state: State::Ready,
-                ty,
-            } => ty,
-            invalid => panic!("cannot unwrap {:?}", invalid),
-        }
+    fn is_valid(&self) -> bool {
+        matches!(self.state, State::Valid)
     }
 }
 
-impl From<SimpleType> for TypeBuilder {
+impl<'a> From<SimpleType> for TypeBuilder<'a> {
     fn from(ty: SimpleType) -> Self {
         TypeBuilder::Simple(ty)
     }
 }
 
-impl TypeBuilder {
+impl<'a> TypeBuilder<'a> {
     fn build(self) -> Type {
         match self {
             TypeBuilder::Simple(ty) => Type::Simple(ty),
@@ -363,9 +399,9 @@ impl TypeBuilder {
             TypeBuilder::Seq => Type::Seq {
                 value: Box::new(None),
             },
-            TypeBuilder::Record(id) => Type::Record {
-                id,
-                label: None,
+            TypeBuilder::Record(tag) => Type::Record {
+                id: tag.id().map(Into::into),
+                label: tag.label().map(Into::into),
                 values: Vec::new(),
             },
         }
@@ -588,62 +624,39 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
         todo!()
     }
 
-    fn enum_begin(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn enum_begin(&mut self, tag: sval::Tag) -> sval::Result {
         todo!()
     }
 
-    fn enum_end(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn enum_end(&mut self, tag: sval::Tag) -> sval::Result {
         todo!()
     }
 
-    fn tagged_begin(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
         todo!()
     }
 
-    fn tagged_end(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn tagged_end(&mut self, tag: sval::Tag) -> sval::Result {
         todo!()
     }
 
-    fn constant_begin(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn record_begin(&mut self, tag: sval::Tag, num_entries: Option<usize>) -> sval::Result {
         todo!()
     }
 
-    fn constant_end(&mut self, id: Option<Id>, label: Option<Label>) -> sval::Result {
+    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
         todo!()
     }
 
-    fn record_begin(
-        &mut self,
-        id: Option<Id>,
-        label: Option<Label>,
-        num_entries: Option<u64>,
-    ) -> sval::Result {
+    fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
         todo!()
     }
 
-    fn record_value_begin(&mut self, label: Label) -> sval::Result {
+    fn record_end(&mut self, tag: sval::Tag) -> sval::Result {
         todo!()
     }
 
-    fn record_value_end(&mut self, label: Label) -> sval::Result {
-        todo!()
-    }
-
-    fn record_end(
-        &mut self,
-        id: Option<Id>,
-        label: Option<Label>,
-        num_entries: Option<u64>,
-    ) -> sval::Result {
-        todo!()
-    }
-
-    fn tuple_begin(
-        &mut self,
-        id: Option<Id>,
-        label: Option<Label>,
-        num_entries_hint: Option<u64>,
-    ) -> sval::Result {
+    fn tuple_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {
         todo!()
     }
 
@@ -655,12 +668,23 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
         todo!()
     }
 
-    fn tuple_end(
-        &mut self,
-        id: Option<Id>,
-        label: Option<Label>,
-        num_entries: Option<u64>,
-    ) -> sval::Result {
+    fn tuple_end(&mut self, tag: sval::Tag) -> sval::Result {
+        todo!()
+    }
+
+    fn constant_begin(&mut self, tag: sval::Tag) -> sval::Result {
+        todo!()
+    }
+
+    fn constant_end(&mut self, tag: sval::Tag) -> sval::Result {
+        todo!()
+    }
+
+    fn constant_size_begin(&mut self) -> sval::Result {
+        todo!()
+    }
+
+    fn constant_size_end(&mut self) -> sval::Result {
         todo!()
     }
 
@@ -673,14 +697,6 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
     }
 
     fn optional_none(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn fixed_size_begin(&mut self, size: u64) -> sval::Result {
-        todo!()
-    }
-
-    fn fixed_size_end(&mut self, size: u64) -> sval::Result {
         todo!()
     }
 

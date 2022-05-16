@@ -610,11 +610,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn fixed_size_begin(&mut self, _: u64) -> Result {
+            fn constant_size_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn fixed_size_end(&mut self, _: u64) -> Result {
+            fn constant_size_end(&mut self) -> Result {
                 Ok(())
             }
         }
@@ -680,11 +680,11 @@ pub trait Value {
                 Ok(())
             }
 
-            fn fixed_size_begin(&mut self, _: u64) -> Result {
+            fn constant_size_begin(&mut self) -> Result {
                 Ok(())
             }
 
-            fn fixed_size_end(&mut self, _: u64) -> Result {
+            fn constant_size_end(&mut self) -> Result {
                 Ok(())
             }
         }
