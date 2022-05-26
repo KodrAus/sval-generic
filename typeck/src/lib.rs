@@ -19,7 +19,6 @@ pub enum Type {
         label: Option<Label>,
         values: Vec<(Label, Option<Type>)>,
     },
-    Global(Id),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -188,10 +187,6 @@ impl Context {
 
     pub fn get_root(&self) -> Option<&Type> {
         self.evaluator.get_root()
-    }
-
-    pub fn get_global(&self, id: &Id) -> Option<&Type> {
-        self.evaluator.get_global(id)
     }
 
     pub fn clear(&mut self) {

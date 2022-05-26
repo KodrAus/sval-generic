@@ -189,7 +189,7 @@ fn stream_struct(
 
     let mut field_ident = Vec::new();
     let mut field_label = Vec::new();
-    let mut field_count = 0u64;
+    let mut field_count = 0usize;
 
     for field in &fields.named {
         let label = attr::name_of_field(field);
@@ -210,7 +210,7 @@ fn stream_struct(
             stream.record_value_end(#field_label)?;
         )*
 
-        stream.record_end(#tag, Some(#field_count))?;
+        stream.record_end(#tag)?;
     })
 }
 
@@ -238,7 +238,7 @@ fn stream_tuple(
 
     let mut field_ident = Vec::new();
     let mut field_index = Vec::new();
-    let mut field_count = 0u64;
+    let mut field_count = 0usize;
 
     for field in &fields.unnamed {
         let index = field_count as u32;
@@ -257,7 +257,7 @@ fn stream_tuple(
             stream.tuple_value_end(#field_index)?;
         )*
 
-        stream.tuple_end(#tag, Some(#field_count))?;
+        stream.tuple_end(#tag)?;
     })
 }
 
@@ -279,7 +279,9 @@ fn stream_constant(
 fn tag(label: &Ident, id: Option<u128>) -> proc_macro2::TokenStream {
     let label = label.to_string();
     match id {
-        Some(id) => quote!(sval::Tag::Local(sval::Id::local(#id), Some(sval::Label::new(#label)))),
+        Some(id) => {
+            quote!(sval::Tag::Identified(sval::Id::new(#id.to_le_bytes()), Some(sval::Label::new(#label))))
+        }
         None => quote!(sval::Tag::Structural(Some(sval::Label::new(#label)))),
     }
 }

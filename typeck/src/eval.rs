@@ -5,7 +5,6 @@ use crate::{Id, SimpleType, Type};
 #[derive(Debug)]
 pub struct Evaluator {
     root: Option<ContextType>,
-    globals: HashMap<Id, Type>,
     stack: Vec<Option<ContextType>>,
 }
 
@@ -14,7 +13,6 @@ impl Evaluator {
         Evaluator {
             root: None,
             stack: Vec::new(),
-            globals: HashMap::new(),
         }
     }
 
@@ -29,13 +27,41 @@ impl Evaluator {
         self.root.as_ref().map(|result| &result.ty)
     }
 
-    pub fn get_global(&self, id: &Id) -> Option<&Type> {
-        self.globals.get(id)
-    }
-
     pub fn clear(&mut self) {
         self.root = None;
         self.stack.clear();
+    }
+
+    fn path(&self) -> String {
+        let mut path = String::new();
+
+        let parts = self
+            .stack
+            .iter()
+            .filter_map(|ty| ty.as_ref())
+            .filter_map(|ty| match ty {
+                ContextType {
+                    ty: Type::Map { .. },
+                    ..
+                } => Some("map"),
+                ContextType {
+                    ty: Type::Seq { .. },
+                    ..
+                } => Some("seq"),
+                _ => None,
+            });
+
+        let mut first = true;
+        for part in parts {
+            if !first {
+                path.push_str(".");
+            }
+
+            first = false;
+            path.push_str(part);
+        }
+
+        path
     }
 
     fn current_mut(&mut self) -> &mut Option<ContextType> {
@@ -77,7 +103,6 @@ impl Evaluator {
         match self.current_mut() {
             empty @ None => {
                 *empty = Some(ContextType {
-                    size: None,
                     state: State::Valid,
                     ty: builder.build(),
                 });
@@ -151,11 +176,8 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Text),
-                size,
                 state: _,
-            }) => {
-                *size = Some(size.take().unwrap_or_default() + 1);
-            }
+            }) => (),
             v => panic!("expected text, got {:?}", v),
         }
     }
@@ -172,11 +194,8 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Binary),
-                size,
                 state: _,
-            }) => {
-                *size = Some(size.take().unwrap_or_default() + 1);
-            }
+            }) => (),
             v => panic!("expected text, got {:?}", v),
         }
     }
@@ -193,7 +212,6 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state: state,
-                size: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected map key");
@@ -201,7 +219,6 @@ impl Evaluator {
 
                 let key = key.take().map(|ty| ContextType {
                     state: State::Valid,
-                    size: None,
                     ty,
                 });
 
@@ -223,7 +240,6 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state,
-                size: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
@@ -237,8 +253,7 @@ impl Evaluator {
     fn push_map_value(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state: state,
-                size: _,
+                state,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
@@ -246,7 +261,6 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| ContextType {
                     state: State::Valid,
-                    size: None,
                     ty,
                 });
 
@@ -268,7 +282,6 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state: state,
-                size,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(
@@ -278,8 +291,6 @@ impl Evaluator {
                     restore
                 );
                 *state = State::Valid;
-
-                *size = Some(size.take().unwrap_or_default() + 1);
 
                 **value = Some(restore.ty);
             }
@@ -299,7 +310,6 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state: state,
-                size: _,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected seq value");
@@ -307,7 +317,6 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| ContextType {
                     state: State::Valid,
-                    size: None,
                     ty,
                 });
 
@@ -329,7 +338,6 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state: state,
-                size,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(
@@ -339,8 +347,6 @@ impl Evaluator {
                     restore
                 );
                 *state = State::Valid;
-
-                *size = Some(size.take().unwrap_or_default() + 1);
 
                 **value = Some(restore.ty);
             }
@@ -363,7 +369,6 @@ enum TypeBuilder<'a> {
 
 #[derive(Debug)]
 struct ContextType {
-    size: Option<usize>,
     state: State,
     ty: Type,
 }

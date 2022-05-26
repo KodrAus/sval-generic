@@ -1,4 +1,4 @@
-use crate::{result, std::convert::TryInto, stream::DefaultUnsupported, Result, Stream};
+use crate::{result, std::convert::TryInto, stream::DefaultUnsupported, Result, Stream, Tag};
 
 /**
 An immutable and repeatable source of structured data.
@@ -335,6 +335,39 @@ enum Enum {
 */
 pub trait Value {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result;
+
+    #[inline]
+    fn tag(&self) -> Option<Tag> {
+        struct Extract<'a>(Option<Tag<'a>>);
+
+        impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+            fn tagged_begin(&mut self, tag: Tag<'sval>) -> Result {
+                match self.0 {
+                    None => {
+                        self.0 = Some(tag);
+                        Ok(())
+                    }
+                    Some(_) => result::unsupported(),
+                }
+            }
+
+            fn record_begin(&mut self, tag: Tag<'sval>, _: Option<usize>) -> Result {
+                self.tagged_begin(tag)
+            }
+
+            fn tuple_begin(&mut self, tag: Tag<'sval>, _: Option<usize>) -> Result {
+                self.tagged_begin(tag)
+            }
+
+            fn enum_begin(&mut self, tag: Tag<'sval>) -> Result {
+                self.tagged_begin(tag)
+            }
+        }
+
+        let mut extract = Extract(None).into_stream();
+        self.stream(&mut extract).ok()?;
+        (extract.0).0
+    }
 
     #[inline]
     fn is_dynamic(&self) -> bool {
