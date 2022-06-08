@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies.sval]
 path = "../"
 features = ["std"]
+
+[dev-dependencies.sval-derive]
+path = "../derive"

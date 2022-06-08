@@ -16,7 +16,7 @@ use crate::{
 /**
 A textual label for some value.
 */
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Label<'a> {
     computed: &'a str,
     value: Option<&'static str>,
@@ -48,8 +48,8 @@ impl<'a> Label<'a> {
     /**
     Get the value of the label as a string.
     */
-    pub const fn get(&self) -> &'a str {
-        self.computed
+    pub const fn try_get(&self) -> Option<&'a str> {
+        Some(self.computed)
     }
 
     /**
@@ -93,8 +93,8 @@ impl<'a> fmt::Debug for Label<'a> {
 /**
 A canonical identifier for some value.
 
-Ids belong to some scope, which they must be unique within.
-That scope may be either local (like the set of variants in an enum) or global (like the set of all values and variants).
+Ids used on enum variants must be unique within that enum.
+Ids used on values outside of enums must be unique among all values.
 */
 #[derive(Clone, Copy, Debug)]
 pub struct Id {
@@ -136,7 +136,7 @@ A tag annotates a data type with an informational label and id.
 
 Data types with the same structure are not considered equal if they have different tag ids.
 */
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag<'a> {
     /**
     The type of the tagged value depends on its structure.
@@ -156,17 +156,24 @@ pub enum Tag<'a> {
 }
 
 impl<'a> Tag<'a> {
-    pub fn id(&self) -> Option<Id> {
+    pub fn id(&self) -> Option<&Id> {
         match self {
             Tag::Structural(_) => None,
-            Tag::Identified(id, _) => Some(*id),
+            Tag::Identified(id, _) => Some(id),
         }
     }
 
-    pub fn label(&self) -> Option<Label> {
+    pub fn label(&self) -> Option<&Label<'a>> {
         match self {
-            Tag::Structural(label) => *label,
-            Tag::Identified(_, label) => *label,
+            Tag::Structural(label) => label.as_ref(),
+            Tag::Identified(_, label) => label.as_ref(),
+        }
+    }
+
+    pub fn split(self) -> (Option<Id>, Option<Label<'a>>) {
+        match self {
+            Tag::Structural(label) => (None, label),
+            Tag::Identified(id, label) => (Some(id), label),
         }
     }
 }

@@ -5,6 +5,7 @@ use crate::{Id, SimpleType, Type};
 #[derive(Debug)]
 pub struct Evaluator {
     root: Option<ContextType>,
+    globals: HashMap<Id, Type>,
     stack: Vec<Option<ContextType>>,
 }
 
@@ -12,6 +13,7 @@ impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
             root: None,
+            globals: HashMap::new(),
             stack: Vec::new(),
         }
     }
@@ -28,40 +30,15 @@ impl Evaluator {
     }
 
     pub fn clear(&mut self) {
-        self.root = None;
-        self.stack.clear();
-    }
+        let Evaluator {
+            root,
+            globals,
+            stack,
+        } = self;
 
-    fn path(&self) -> String {
-        let mut path = String::new();
-
-        let parts = self
-            .stack
-            .iter()
-            .filter_map(|ty| ty.as_ref())
-            .filter_map(|ty| match ty {
-                ContextType {
-                    ty: Type::Map { .. },
-                    ..
-                } => Some("map"),
-                ContextType {
-                    ty: Type::Seq { .. },
-                    ..
-                } => Some("seq"),
-                _ => None,
-            });
-
-        let mut first = true;
-        for part in parts {
-            if !first {
-                path.push_str(".");
-            }
-
-            first = false;
-            path.push_str(part);
-        }
-
-        path
+        *root = None;
+        globals.clear();
+        stack.clear();
     }
 
     fn current_mut(&mut self) -> &mut Option<ContextType> {
@@ -85,25 +62,37 @@ impl Evaluator {
 
     fn infer_begin<'a>(&mut self, builder: impl Into<TypeBuilder<'a>>) {
         let builder = builder.into();
+        let is_chunked = builder.is_chunked();
 
-        // For a global, the type we should end up with in the root of our context will
-        // be a `Type::Global(Id)`, which we can then lookup in the global set.
-        // The way we could do this is by checking whether a builder belongs to the global set
-        // or not instead of whether it's chunked?
+        /*
+        Ids follow a particular rule:
 
-        // NOTE: How would we deal with self-referential types?
-        // If a global may contain a global?
-        // We'd need a way to get a copy of it. We're basically re-entering
-        // the current value so we can define it. Maybe this actually works out ok?
-        // We won't find it in the global list because we've moved it, so we'll start
-        // building a fresh one. Once we return it we'll see that a version exists and will
-        // merge ourselves into it. We need to make sure that new information we discover
-        // is added to information that was already there. This should be possible because
-        // we only discover one new thing at a path at a time.
+        1. Ids in the same Scope must always match the same Structural Type.
+
+        The Scope of an Id can be either:
+
+        1. The set of Variants in a particular Enum.
+        2. The set of all Ids that can appear in the Context, including any Enums.
+
+        Ids that appear on Values immediately following an Enum are in that Enum's Scope.
+        Ids that appear anywhere else are in the Context's Scope.
+
+        We know we're looking at a particular Enum because either:
+
+        1. It has the same Path from the root of the Context.
+        2. It has the same Id.
+
+        The Variants that can appear in an Enum are distinguished by their Type.
+        Given the rules for Ids, that means Variants may be either purely Structural (without an Id)
+        or Identified (with an Id, which must always match that same structural type).
+        */
+
         match self.current_mut() {
             empty @ None => {
                 *empty = Some(ContextType {
                     state: State::Valid,
+                    index: 0,
+                    scope: builder.scope(),
                     ty: builder.build(),
                 });
             }
@@ -112,7 +101,6 @@ impl Evaluator {
                 ..
             }) => {
                 let check = &inferred.as_mut().expect("missing type").ty;
-
                 assert!(
                     builder.is_compatible_with(&check),
                     "expected {:?}, got {:?}",
@@ -123,7 +111,7 @@ impl Evaluator {
             inferred => panic!("expected {:?}, got {:?}", inferred, builder),
         }
 
-        if builder.is_chunked() {
+        if is_chunked {
             let ty = self.pop();
             self.push(ty);
         }
@@ -132,6 +120,8 @@ impl Evaluator {
     fn infer_end<'a>(&mut self, builder: impl Into<TypeBuilder<'a>>) {
         let builder = builder.into();
         let depth = self.stack.len();
+
+        // TODO: Check the Scope of our context: if there's an id then ensure it also matches
 
         match self.current_mut() {
             Some(ContextType { ty, .. }) if builder.is_chunked() && depth > 1 => {
@@ -176,7 +166,9 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Text),
+                scope: _,
                 state: _,
+                index: _,
             }) => (),
             v => panic!("expected text, got {:?}", v),
         }
@@ -194,7 +186,9 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 ty: Type::Simple(SimpleType::Binary),
+                scope: _,
                 state: _,
+                index: _,
             }) => (),
             v => panic!("expected text, got {:?}", v),
         }
@@ -211,7 +205,9 @@ impl Evaluator {
     fn push_map_key(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state: state,
+                state,
+                scope,
+                index: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected map key");
@@ -219,6 +215,8 @@ impl Evaluator {
 
                 let key = key.take().map(|ty| ContextType {
                     state: State::Valid,
+                    scope: *scope,
+                    index: 0,
                     ty,
                 });
 
@@ -240,6 +238,8 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state,
+                scope: _,
+                index: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
@@ -254,6 +254,8 @@ impl Evaluator {
         match self.current_mut() {
             Some(ContextType {
                 state,
+                scope,
+                index: _,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
@@ -261,6 +263,8 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| ContextType {
                     state: State::Valid,
+                    scope: *scope,
+                    index: 0,
                     ty,
                 });
 
@@ -281,7 +285,9 @@ impl Evaluator {
 
         match self.current_mut() {
             Some(ContextType {
-                state: state,
+                state,
+                scope: _,
+                index,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(
@@ -291,6 +297,7 @@ impl Evaluator {
                     restore
                 );
                 *state = State::Valid;
+                *index += 1;
 
                 **value = Some(restore.ty);
             }
@@ -309,7 +316,9 @@ impl Evaluator {
     fn push_seq_value(&mut self) {
         match self.current_mut() {
             Some(ContextType {
-                state: state,
+                state,
+                scope,
+                index: _,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected seq value");
@@ -317,6 +326,8 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| ContextType {
                     state: State::Valid,
+                    scope: *scope,
+                    index: 0,
                     ty,
                 });
 
@@ -337,7 +348,9 @@ impl Evaluator {
 
         match self.current_mut() {
             Some(ContextType {
-                state: state,
+                state,
+                scope: _,
+                index,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(
@@ -347,6 +360,7 @@ impl Evaluator {
                     restore
                 );
                 *state = State::Valid;
+                *index += 1;
 
                 **value = Some(restore.ty);
             }
@@ -357,9 +371,86 @@ impl Evaluator {
     fn pop_seq(&mut self) {
         self.infer_end(TypeBuilder::Seq);
     }
+
+    fn push_record(&mut self, tag: sval::Tag) {
+        self.infer_begin(TypeBuilder::Record(tag));
+    }
+
+    fn push_record_value(&mut self, label: sval::Label) {
+        match self.current_mut() {
+            Some(ContextType {
+                state,
+                scope,
+                index,
+                ty: Type::Record { values, .. },
+            }) => {
+                assert_eq!(*state, State::Valid, "unexpected record value");
+                *state = State::RecordValue;
+
+                let value = match values.get_mut(*index) {
+                    Some((existing_label, value)) => {
+                        assert_eq!(&*existing_label, &label.into(), "values out-of-order");
+
+                        value.take().map(|ty| ContextType {
+                            state: State::Valid,
+                            scope: *scope,
+                            index: 0,
+                            ty,
+                        })
+                    }
+                    None => {
+                        assert_eq!(*index, values.len(), "attempt to push values out-of-order");
+                        values.push((label.into(), None));
+
+                        None
+                    }
+                };
+
+                self.push(value);
+            }
+            v => panic!("expected record, got {:?}", v),
+        }
+    }
+
+    fn pop_record_value(&mut self, label: sval::Label) {
+        let restore = self.pop().expect("missing value to restore");
+
+        assert!(
+            restore.is_valid(),
+            "attempt to restore invalid value {:?}",
+            restore
+        );
+
+        match self.current_mut() {
+            Some(ContextType {
+                state,
+                scope: _,
+                index,
+                ty: Type::Record { values, .. },
+            }) => {
+                assert_eq!(
+                    *state,
+                    State::RecordValue,
+                    "failed to restore {:?}: unexpected record value",
+                    restore
+                );
+
+                assert_eq!(&values[*index].0, &label.into(), "values out-of-order");
+                values[*index].1 = Some(restore.ty);
+
+                *state = State::Valid;
+                *index += 1;
+            }
+            v => panic!("failed to restore {:?}: expected map, got {:?}", restore, v),
+        }
+    }
+
+    fn pop_record(&mut self, tag: sval::Tag) {
+        self.infer_end(TypeBuilder::Record(tag));
+    }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum TypeBuilder<'a> {
     Simple(SimpleType),
     Map,
@@ -370,7 +461,15 @@ enum TypeBuilder<'a> {
 #[derive(Debug)]
 struct ContextType {
     state: State,
+    scope: Scope,
+    index: usize,
     ty: Type,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Scope {
+    Local,
+    Global,
 }
 
 #[derive(Debug, PartialEq)]
@@ -379,6 +478,7 @@ enum State {
     MapKey,
     MapValue,
     SeqValue,
+    RecordValue,
 }
 
 impl ContextType {
@@ -404,11 +504,15 @@ impl<'a> TypeBuilder<'a> {
             TypeBuilder::Seq => Type::Seq {
                 value: Box::new(None),
             },
-            TypeBuilder::Record(tag) => Type::Record {
-                id: tag.id().map(Into::into),
-                label: tag.label().map(Into::into),
-                values: Vec::new(),
-            },
+            TypeBuilder::Record(tag) => {
+                let (id, label) = tag.split();
+
+                Type::Record {
+                    id: id.map(Into::into),
+                    label: label.map(Into::into),
+                    values: Vec::new(),
+                }
+            }
         }
     }
 
@@ -417,6 +521,7 @@ impl<'a> TypeBuilder<'a> {
             (Type::Map { .. }, TypeBuilder::Map) => true,
             (Type::Seq { .. }, TypeBuilder::Seq) => true,
             (Type::Simple(a), TypeBuilder::Simple(b)) => a == b,
+            (Type::Record { id, .. }, TypeBuilder::Record(tag)) => tag.id() == id.as_ref(),
             _ => false,
         }
     }
@@ -428,6 +533,17 @@ impl<'a> TypeBuilder<'a> {
             TypeBuilder::Simple(SimpleType::Text) => true,
             TypeBuilder::Simple(SimpleType::Binary) => true,
             _ => false,
+        }
+    }
+
+    fn scope(&self) -> Scope {
+        Scope::Global
+    }
+
+    fn id(&self) -> Option<Id> {
+        match self {
+            TypeBuilder::Record(sval::Tag::Identified(id, _)) => Some(*id),
+            _ => None,
         }
     }
 }
@@ -646,19 +762,23 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
     }
 
     fn record_begin(&mut self, tag: sval::Tag, num_entries: Option<usize>) -> sval::Result {
-        todo!()
+        self.push_record(tag);
+        Ok(())
     }
 
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.push_record_value(label);
+        Ok(())
     }
 
     fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.pop_record_value(label);
+        Ok(())
     }
 
     fn record_end(&mut self, tag: sval::Tag) -> sval::Result {
-        todo!()
+        self.pop_record(tag);
+        Ok(())
     }
 
     fn tuple_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {

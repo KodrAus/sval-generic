@@ -21,14 +21,7 @@ pub enum Type {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Id([u8; 16]);
-
-impl From<sval::Id> for Id {
-    fn from(id: sval::Id) -> Id {
-        Id(id.get())
-    }
-}
+pub use sval::Id;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Label(Cow<'static, str>);
@@ -38,7 +31,7 @@ impl<'a> From<sval::Label<'a>> for Label {
         if let Some(label) = label.try_get_static() {
             Label(Cow::Borrowed(label))
         } else {
-            Label(Cow::Owned(label.get().to_owned()))
+            Label(Cow::Owned((*label).to_owned()))
         }
     }
 }

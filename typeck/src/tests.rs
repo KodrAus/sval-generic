@@ -112,3 +112,20 @@ fn typecheck_nested_seq() {
 
     assert_eq!(&Type::seq(Type::seq(Type::unit())), ty);
 }
+
+#[test]
+fn typecheck_record() {
+    use sval_derive::*;
+
+    #[derive(Value)]
+    struct Record {
+        a: i32,
+        b: bool,
+    }
+
+    let mut ctxt = Context::new();
+
+    let ty = ctxt.eval(&Record { a: 42, b: true });
+
+    println!("{:?}", ty);
+}
