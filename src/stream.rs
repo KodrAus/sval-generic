@@ -176,7 +176,7 @@ stream.tuple_begin(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::
 stream.tuple_end(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
 # Ok(())
 # }
-* ```
+```
 
 The presence of an [`Id`](../struct.Id.html) in the tag marks `A` as being a different kind of tuple as `(i32, bool)`.
 
