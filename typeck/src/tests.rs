@@ -3,44 +3,40 @@ use std::collections::HashMap;
 
 #[test]
 fn typecheck_simple() {
-    assert_eq!(&Type::unit(), Context::new().eval(()));
+    assert_eq!(Type::unit(), type_of_val(()));
 
-    assert_eq!(&Type::bool(), Context::new().eval(true));
+    assert_eq!(Type::bool(), type_of_val(true));
 
-    assert_eq!(&Type::u8(), Context::new().eval(1u8));
-    assert_eq!(&Type::u16(), Context::new().eval(1u16));
-    assert_eq!(&Type::u32(), Context::new().eval(1u32));
-    assert_eq!(&Type::u64(), Context::new().eval(1u64));
-    assert_eq!(&Type::u128(), Context::new().eval(1u128));
+    assert_eq!(Type::u8(), type_of_val(1u8));
+    assert_eq!(Type::u16(), type_of_val(1u16));
+    assert_eq!(Type::u32(), type_of_val(1u32));
+    assert_eq!(Type::u64(), type_of_val(1u64));
+    assert_eq!(Type::u128(), type_of_val(1u128));
 
-    assert_eq!(&Type::i8(), Context::new().eval(-1i8));
-    assert_eq!(&Type::i16(), Context::new().eval(-1i16));
-    assert_eq!(&Type::i32(), Context::new().eval(-1i32));
-    assert_eq!(&Type::i64(), Context::new().eval(-1i64));
-    assert_eq!(&Type::i128(), Context::new().eval(-1i128));
+    assert_eq!(Type::i8(), type_of_val(-1i8));
+    assert_eq!(Type::i16(), type_of_val(-1i16));
+    assert_eq!(Type::i32(), type_of_val(-1i32));
+    assert_eq!(Type::i64(), type_of_val(-1i64));
+    assert_eq!(Type::i128(), type_of_val(-1i128));
 
-    assert_eq!(&Type::f32(), Context::new().eval(1f32));
-    assert_eq!(&Type::f64(), Context::new().eval(1f64));
+    assert_eq!(Type::f32(), type_of_val(1f32));
+    assert_eq!(Type::f64(), type_of_val(1f64));
 
-    assert_eq!(&Type::text(), Context::new().eval("Some text"));
+    assert_eq!(Type::text(), type_of_val("Some text"));
 }
 
 #[test]
 fn typecheck_empty_map() {
-    let mut ctxt = Context::new();
-
-    let ty = ctxt.eval(HashMap::<String, ()>::new());
+    let ty = type_of_val(HashMap::<String, ()>::new());
 
     assert!(!ty.is_complete());
 
-    assert_eq!(&Type::empty_map(), ty);
+    assert_eq!(Type::empty_map(), ty);
 }
 
 #[test]
 fn typecheck_simple_map() {
-    let mut ctxt = Context::new();
-
-    let ty = ctxt.eval({
+    let ty = type_of_val({
         let mut map = HashMap::new();
         map.insert("a", ());
         map.insert("b", ());
@@ -49,14 +45,12 @@ fn typecheck_simple_map() {
 
     assert!(ty.is_complete());
 
-    assert_eq!(&Type::map(Type::text(), Type::unit()), ty);
+    assert_eq!(Type::map(Type::text(), Type::unit()), ty);
 }
 
 #[test]
 fn typecheck_nested_map() {
-    let mut ctxt = Context::new();
-
-    let ty = ctxt.eval({
+    let ty = type_of_val({
         let mut map = HashMap::new();
         map.insert("a", {
             let mut map = HashMap::new();
@@ -75,42 +69,63 @@ fn typecheck_nested_map() {
     assert!(ty.is_complete());
 
     assert_eq!(
-        &Type::map(Type::text(), Type::map(Type::text(), Type::unit())),
+        Type::map(Type::text(), Type::map(Type::text(), Type::unit())),
         ty
     );
 }
 
 #[test]
-fn typecheck_empty_seq() {
+fn extend_empty_map() {
+    let map = {
+        let mut map = HashMap::new();
+        map.insert("a", ());
+        map.insert("b", ());
+        map
+    };
+
     let mut ctxt = Context::new();
 
-    let ty = ctxt.eval(&[] as &[()]);
+    ctxt.eval(HashMap::<String, ()>::new());
+    let extended_ty = ctxt.eval(&map);
+
+    assert_eq!(&type_of_val(&map), extended_ty);
+}
+
+#[test]
+fn typecheck_empty_seq() {
+    let ty = type_of_val(&[] as &[()]);
 
     assert!(!ty.is_complete());
 
-    assert_eq!(&Type::empty_seq(), ty);
+    assert_eq!(Type::empty_seq(), ty);
 }
 
 #[test]
 fn typecheck_simple_seq() {
-    let mut ctxt = Context::new();
-
-    let ty = ctxt.eval(&[(), ()] as &[()]);
+    let ty = type_of_val(&[(), ()] as &[()]);
 
     assert!(ty.is_complete());
 
-    assert_eq!(&Type::seq(Type::unit()), ty);
+    assert_eq!(Type::seq(Type::unit()), ty);
 }
 
 #[test]
 fn typecheck_nested_seq() {
-    let mut ctxt = Context::new();
-
-    let ty = ctxt.eval(&[&[(), ()] as &[()], &[]] as &[&[()]]);
+    let ty = type_of_val(&[&[(), ()] as &[()], &[]] as &[&[()]]);
 
     assert!(ty.is_complete());
 
-    assert_eq!(&Type::seq(Type::seq(Type::unit())), ty);
+    assert_eq!(Type::seq(Type::seq(Type::unit())), ty);
+}
+
+#[test]
+fn extend_empty_seq() {
+    let mut ctxt = Context::new();
+
+    ctxt.eval(&[] as &[()]);
+    let extended_ty = ctxt.eval(&[(), ()] as &[()]);
+
+    assert_eq!(&type_of_val(&[(), ()] as &[()]), extended_ty);
 }
 
 #[test]
@@ -123,9 +138,17 @@ fn typecheck_record() {
         b: bool,
     }
 
-    let mut ctxt = Context::new();
+    let ty = type_of_val(&Record { a: 42, b: true });
 
-    let ty = ctxt.eval(&Record { a: 42, b: true });
-
-    println!("{:?}", ty);
+    assert_eq!(
+        Type::record(
+            None,
+            Some(Label::new("Record")),
+            [
+                (Label::new("a"), Type::i32()),
+                (Label::new("b"), Type::bool()),
+            ]
+        ),
+        ty
+    );
 }

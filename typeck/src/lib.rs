@@ -1,3 +1,11 @@
+/*!
+An implementation of `sval`'s type system.
+
+This library is a playground for validating the rules of `sval`'s type system. The goal is to
+implement the system using as few special rules as possible, so it can be described in something of
+a complete and concise way.
+*/
+
 mod eval;
 
 use crate::eval::Evaluator;
@@ -6,7 +14,6 @@ use std::borrow::Cow;
 #[derive(Debug, PartialEq)]
 pub enum Type {
     Simple(SimpleType),
-    // TODO: Consider an `EmptyMap` type
     Map {
         key: Box<Option<Type>>,
         value: Box<Option<Type>>,
@@ -23,8 +30,15 @@ pub enum Type {
 
 pub use sval::Id;
 
+// TODO: Consider killing this off and adding `Cow` support to `sval::Label`
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Label(Cow<'static, str>);
+
+impl Label {
+    pub fn new(value: impl Into<Cow<'static, str>>) -> Self {
+        Label(value.into())
+    }
+}
 
 impl<'a> From<sval::Label<'a>> for Label {
     fn from(label: sval::Label<'a>) -> Label {
@@ -152,6 +166,21 @@ impl Type {
         }
     }
 
+    pub fn record(
+        id: Option<Id>,
+        label: Option<Label>,
+        values: impl IntoIterator<Item = (Label, Type)>,
+    ) -> Self {
+        Type::Record {
+            id,
+            label,
+            values: values
+                .into_iter()
+                .map(|(label, ty)| (label, Some(ty)))
+                .collect(),
+        }
+    }
+
     pub fn is_complete(&self) -> bool {
         match self {
             Type::Seq { value } if value.is_some() => true,
@@ -164,27 +193,39 @@ impl Type {
 
 #[derive(Debug)]
 pub struct Context {
-    evaluator: Evaluator,
+    evaluator: Option<Evaluator>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Context {
-            evaluator: Evaluator::new(),
+            evaluator: Some(Evaluator::empty()),
         }
     }
 
     pub fn eval(&mut self, v: impl sval::Value) -> &Type {
-        self.evaluator.eval(v)
+        let evaluator = self.evaluator.take().expect("evaluator was poisoned");
+
+        self.evaluator = Some(evaluator.eval(v).expect("failed to evaluate"));
+
+        self.get_root().expect("evaluation didn't produce a type")
     }
 
     pub fn get_root(&self) -> Option<&Type> {
-        self.evaluator.get_root()
+        self.evaluator.as_ref().and_then(|eval| eval.get_type())
     }
 
     pub fn clear(&mut self) {
-        self.evaluator.clear()
+        if let Some(ref mut evaluator) = self.evaluator {
+            evaluator.clear();
+        } else {
+            self.evaluator = Some(Evaluator::empty())
+        }
     }
+}
+
+pub fn type_of_val(v: impl sval::Value) -> Type {
+    Evaluator::type_of_val(v)
 }
 
 #[cfg(test)]

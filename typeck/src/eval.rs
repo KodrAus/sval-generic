@@ -2,15 +2,25 @@ use std::collections::HashMap;
 
 use crate::{Id, SimpleType, Type};
 
+/**
+Infer and check the types of values.
+
+The evaluator works on the theory that it should only ever see correctly typed data. If it encounters
+invalid data then it doesn't attempt to restore itself to a working state, it simply blows up with
+the error, taking its state with it.
+*/
 #[derive(Debug)]
 pub struct Evaluator {
-    root: Option<ContextType>,
+    root: Option<StackType>,
     globals: HashMap<Id, Type>,
-    stack: Vec<Option<ContextType>>,
+    stack: Vec<Option<StackType>>,
 }
 
 impl Evaluator {
-    pub fn new() -> Self {
+    /**
+    Create an empty evaluator that hasn't seen any data yet.
+    */
+    pub fn empty() -> Self {
         Evaluator {
             root: None,
             globals: HashMap::new(),
@@ -18,17 +28,54 @@ impl Evaluator {
         }
     }
 
-    pub fn eval(&mut self, v: impl sval::Value) -> &Type {
-        v.stream(self).expect("failed to stream");
-        assert!(self.stack.is_empty(), "unexpected end of input");
+    /**
+    Evaluate the type of an individual value.
+    */
+    pub fn type_of_val(v: impl sval::Value) -> Type {
+        let evaluator = Self::empty().eval(v).expect("failed to evaluate");
 
-        self.get_root().expect("value didn't produce a type")
+        evaluator
+            .root
+            .map(|result| result.ty)
+            .expect("value didn't produce a type")
     }
 
-    pub fn get_root(&self) -> Option<&Type> {
+    /**
+    Extend the type known to the evaluator using the given value.
+
+    If the value isn't compatible with whatever type the evaluator has already seen then it will fail.
+    */
+    pub fn eval(mut self, v: impl sval::Value) -> Result<Self, sval::Error> {
+        v.stream(&mut self)?;
+        assert!(self.stack.is_empty(), "unexpected end of input");
+
+        Ok(self)
+    }
+
+    /**
+    Check whether the type of a value is compatible with what's been evaluated.
+
+    If the evaluator hasn't seen a type yet this method will panic.
+    */
+    pub fn check(&self, v: impl sval::Value) -> bool {
+        let typeof_self = self
+            .get_type()
+            .expect("attempt to check the type of an empty context");
+        let typeof_v = Evaluator::type_of_val(v);
+
+        typeof_self == &typeof_v
+    }
+
+    /**
+    Get the type as it's currently known to the evaluator.
+    */
+    pub fn get_type(&self) -> Option<&Type> {
         self.root.as_ref().map(|result| &result.ty)
     }
 
+    /**
+    Clear all state from the evaluator so it can be re-used.
+    */
     pub fn clear(&mut self) {
         let Evaluator {
             root,
@@ -41,7 +88,7 @@ impl Evaluator {
         stack.clear();
     }
 
-    fn current_mut(&mut self) -> &mut Option<ContextType> {
+    fn current_mut(&mut self) -> &mut Option<StackType> {
         if let Some(current) = self.stack.last_mut() {
             current
         } else {
@@ -49,11 +96,11 @@ impl Evaluator {
         }
     }
 
-    fn push(&mut self, ty: Option<ContextType>) {
+    fn push(&mut self, ty: Option<StackType>) {
         self.stack.push(ty);
     }
 
-    fn pop(&mut self) -> Option<ContextType> {
+    fn pop(&mut self) -> Option<StackType> {
         self.stack
             .pop()
             .and_then(|v| v)
@@ -89,14 +136,14 @@ impl Evaluator {
 
         match self.current_mut() {
             empty @ None => {
-                *empty = Some(ContextType {
+                *empty = Some(StackType {
                     state: State::Valid,
                     index: 0,
                     scope: builder.scope(),
                     ty: builder.build(),
                 });
             }
-            inferred @ Some(ContextType {
+            inferred @ Some(StackType {
                 state: State::Valid,
                 ..
             }) => {
@@ -124,7 +171,7 @@ impl Evaluator {
         // TODO: Check the Scope of our context: if there's an id then ensure it also matches
 
         match self.current_mut() {
-            Some(ContextType { ty, .. }) if builder.is_chunked() && depth > 1 => {
+            Some(StackType { ty, .. }) if builder.is_chunked() && depth > 1 => {
                 assert!(
                     builder.is_compatible_with(&ty),
                     "expected {:?}, got {:?}",
@@ -164,7 +211,7 @@ impl Evaluator {
 
     fn text_fragment(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 ty: Type::Simple(SimpleType::Text),
                 scope: _,
                 state: _,
@@ -184,7 +231,7 @@ impl Evaluator {
 
     fn binary_fragment(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 ty: Type::Simple(SimpleType::Binary),
                 scope: _,
                 state: _,
@@ -204,7 +251,7 @@ impl Evaluator {
 
     fn push_map_key(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope,
                 index: _,
@@ -213,7 +260,7 @@ impl Evaluator {
                 assert_eq!(*state, State::Valid, "unexpected map key");
                 *state = State::MapKey;
 
-                let key = key.take().map(|ty| ContextType {
+                let key = key.take().map(|ty| StackType {
                     state: State::Valid,
                     scope: *scope,
                     index: 0,
@@ -236,7 +283,7 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope: _,
                 index: _,
@@ -252,7 +299,7 @@ impl Evaluator {
 
     fn push_map_value(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope,
                 index: _,
@@ -261,7 +308,7 @@ impl Evaluator {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
                 *state = State::MapValue;
 
-                let value = value.take().map(|ty| ContextType {
+                let value = value.take().map(|ty| StackType {
                     state: State::Valid,
                     scope: *scope,
                     index: 0,
@@ -284,7 +331,7 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope: _,
                 index,
@@ -315,7 +362,7 @@ impl Evaluator {
 
     fn push_seq_value(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope,
                 index: _,
@@ -324,7 +371,7 @@ impl Evaluator {
                 assert_eq!(*state, State::Valid, "unexpected seq value");
                 *state = State::SeqValue;
 
-                let value = value.take().map(|ty| ContextType {
+                let value = value.take().map(|ty| StackType {
                     state: State::Valid,
                     scope: *scope,
                     index: 0,
@@ -347,7 +394,7 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope: _,
                 index,
@@ -378,7 +425,7 @@ impl Evaluator {
 
     fn push_record_value(&mut self, label: sval::Label) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope,
                 index,
@@ -391,7 +438,7 @@ impl Evaluator {
                     Some((existing_label, value)) => {
                         assert_eq!(&*existing_label, &label.into(), "values out-of-order");
 
-                        value.take().map(|ty| ContextType {
+                        value.take().map(|ty| StackType {
                             state: State::Valid,
                             scope: *scope,
                             index: 0,
@@ -422,7 +469,7 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
                 scope: _,
                 index,
@@ -459,7 +506,7 @@ enum TypeBuilder<'a> {
 }
 
 #[derive(Debug)]
-struct ContextType {
+struct StackType {
     state: State,
     scope: Scope,
     index: usize,
@@ -481,7 +528,7 @@ enum State {
     RecordValue,
 }
 
-impl ContextType {
+impl StackType {
     fn is_valid(&self) -> bool {
         matches!(self.state, State::Valid)
     }
