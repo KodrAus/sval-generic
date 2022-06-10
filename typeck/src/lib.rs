@@ -10,8 +10,9 @@ mod eval;
 
 use crate::eval::Evaluator;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Simple(SimpleType),
     Map {
@@ -26,12 +27,15 @@ pub enum Type {
         label: Option<Label>,
         values: Vec<(Label, Option<Type>)>,
     },
+    Enum {
+        variants: HashMap<Id, Option<Type>>,
+    },
 }
 
 pub use sval::Id;
 
 // TODO: Consider killing this off and adding `Cow` support to `sval::Label`
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label(Cow<'static, str>);
 
 impl Label {
@@ -183,6 +187,13 @@ impl Type {
                 .into_iter()
                 .map(|(label, ty)| (label, Some(ty)))
                 .collect(),
+        }
+    }
+
+    pub fn id(&self) -> Option<Id> {
+        match self {
+            Type::Record { id, .. } => *id,
+            _ => None,
         }
     }
 

@@ -174,3 +174,47 @@ fn typecheck_record() {
         ty
     );
 }
+
+#[test]
+fn typecheck_record_id() {
+    struct Record {
+        a: i32,
+        b: bool,
+    }
+
+    impl Record {
+        const ID: sval::Id =
+            sval::Id::new(uuid::uuid!("ab12bf2d-5b74-4451-9c2d-33e3e5be6212").into_bytes());
+    }
+
+    impl sval::Value for Record {
+        fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(
+            &'sval self,
+            stream: &mut S,
+        ) -> sval::Result {
+            stream.record_begin(
+                sval::Tag::Identified(Self::ID, Some(sval::Label::new("Record"))),
+                Some(2),
+            )?;
+
+            stream.record_value_begin(sval::Label::new("a"))?;
+            sval::Value::stream(&self.a, stream)?;
+            stream.record_value_end(sval::Label::new("a"))?;
+
+            stream.record_value_begin(sval::Label::new("b"))?;
+            sval::Value::stream(&self.b, stream)?;
+            stream.record_value_end(sval::Label::new("b"))?;
+
+            stream.record_end(sval::Tag::Identified(
+                Self::ID,
+                Some(sval::Label::new("Record")),
+            ))
+        }
+    }
+
+    let mut ctxt = Context::new();
+
+    ctxt.eval(&Record { a: 42, b: true });
+
+    println!("{:?}", ctxt);
+}

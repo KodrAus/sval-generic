@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
+use std::mem;
 
 use crate::{Id, SimpleType, Type};
 
@@ -12,7 +13,6 @@ the error, taking its state with it.
 #[derive(Debug)]
 pub struct Evaluator {
     root: Option<StackType>,
-    globals: HashMap<Id, Type>,
     stack: Vec<Option<StackType>>,
 }
 
@@ -23,7 +23,6 @@ impl Evaluator {
     pub fn empty() -> Self {
         Evaluator {
             root: None,
-            globals: HashMap::new(),
             stack: Vec::new(),
         }
     }
@@ -77,14 +76,9 @@ impl Evaluator {
     Clear all state from the evaluator so it can be re-used.
     */
     pub fn clear(&mut self) {
-        let Evaluator {
-            root,
-            globals,
-            stack,
-        } = self;
+        let Evaluator { root, stack } = self;
 
         *root = None;
-        globals.clear();
         stack.clear();
     }
 
@@ -139,7 +133,7 @@ impl Evaluator {
                 *empty = Some(StackType {
                     state: State::Valid,
                     index: 0,
-                    scope: builder.scope(),
+                    globals: HashMap::new(),
                     ty: builder.build(),
                 });
             }
@@ -168,8 +162,6 @@ impl Evaluator {
         let builder = builder.into();
         let depth = self.stack.len();
 
-        // TODO: Check the Scope of our context: if there's an id then ensure it also matches
-
         match self.current_mut() {
             Some(StackType { ty, .. }) if builder.is_chunked() && depth > 1 => {
                 assert!(
@@ -180,7 +172,7 @@ impl Evaluator {
                 );
             }
             _ => {
-                let ended = self.pop().expect("unexpected end of value");
+                let mut ended = self.pop().expect("unexpected end of value");
 
                 assert!(
                     ended.is_valid(),
@@ -194,6 +186,25 @@ impl Evaluator {
                     ended.ty,
                     builder,
                 );
+
+                if let Some(id) = ended.ty.id() {
+                    let ty = ended.ty.clone();
+
+                    match ended.id_scope_mut().entry(id) {
+                        hash_map::Entry::Vacant(vacant) => {
+                            vacant.insert(Some(ty));
+                        }
+                        hash_map::Entry::Occupied(mut occupied) => match occupied.get_mut() {
+                            Some(scope_ty) => {
+                                // TODO: How do should we combine these back into ids? Just assign them?
+                                assert_eq!(&*scope_ty, &ty);
+                            }
+                            None => {
+                                occupied.insert(Some(ty));
+                            }
+                        },
+                    }
+                }
 
                 match self.current_mut() {
                     empty @ None => {
@@ -213,7 +224,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 ty: Type::Simple(SimpleType::Text),
-                scope: _,
+                globals: _,
                 state: _,
                 index: _,
             }) => (),
@@ -233,7 +244,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 ty: Type::Simple(SimpleType::Binary),
-                scope: _,
+                globals: _,
                 state: _,
                 index: _,
             }) => (),
@@ -253,7 +264,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope,
+                globals,
                 index: _,
                 ty: Type::Map { key, .. },
             }) => {
@@ -262,7 +273,7 @@ impl Evaluator {
 
                 let key = key.take().map(|ty| StackType {
                     state: State::Valid,
-                    scope: *scope,
+                    globals: mem::take(globals),
                     index: 0,
                     ty,
                 });
@@ -285,11 +296,13 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope: _,
+                globals,
                 index: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
+
+                globals.extend(restore.globals);
 
                 **key = Some(restore.ty);
             }
@@ -301,7 +314,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope,
+                globals,
                 index: _,
                 ty: Type::Map { value, .. },
             }) => {
@@ -310,7 +323,7 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| StackType {
                     state: State::Valid,
-                    scope: *scope,
+                    globals: mem::take(globals),
                     index: 0,
                     ty,
                 });
@@ -333,7 +346,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope: _,
+                globals,
                 index,
                 ty: Type::Map { value, .. },
             }) => {
@@ -343,6 +356,9 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected map value",
                     restore
                 );
+
+                globals.extend(restore.globals);
+
                 *state = State::Valid;
                 *index += 1;
 
@@ -364,7 +380,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope,
+                globals,
                 index: _,
                 ty: Type::Seq { value, .. },
             }) => {
@@ -373,7 +389,7 @@ impl Evaluator {
 
                 let value = value.take().map(|ty| StackType {
                     state: State::Valid,
-                    scope: *scope,
+                    globals: mem::take(globals),
                     index: 0,
                     ty,
                 });
@@ -396,7 +412,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope: _,
+                globals,
                 index,
                 ty: Type::Seq { value, .. },
             }) => {
@@ -406,6 +422,9 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected seq value",
                     restore
                 );
+
+                globals.extend(restore.globals);
+
                 *state = State::Valid;
                 *index += 1;
 
@@ -441,7 +460,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope,
+                globals,
                 index,
                 ty: Type::Record { values, .. },
             }) => {
@@ -454,7 +473,7 @@ impl Evaluator {
 
                         value.take().map(|ty| StackType {
                             state: State::Valid,
-                            scope: *scope,
+                            globals: mem::take(globals),
                             index: 0,
                             ty,
                         })
@@ -485,7 +504,7 @@ impl Evaluator {
         match self.current_mut() {
             Some(StackType {
                 state,
-                scope: _,
+                globals,
                 index,
                 ty: Type::Record { values, .. },
             }) => {
@@ -495,6 +514,8 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected record value",
                     restore
                 );
+
+                globals.extend(restore.globals);
 
                 assert_eq!(&values[*index].0, &label.into(), "values out-of-order");
                 values[*index].1 = Some(restore.ty);
@@ -522,15 +543,9 @@ enum TypeBuilder<'a> {
 #[derive(Debug)]
 struct StackType {
     state: State,
-    scope: Scope,
     index: usize,
+    globals: HashMap<Id, Option<Type>>,
     ty: Type,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum Scope {
-    Local,
-    Global,
 }
 
 #[derive(Debug, PartialEq)]
@@ -545,6 +560,15 @@ enum State {
 impl StackType {
     fn is_valid(&self) -> bool {
         matches!(self.state, State::Valid)
+    }
+
+    fn id_scope_mut(&mut self) -> &mut HashMap<Id, Option<Type>> {
+        match self.ty {
+            Type::Enum {
+                ref mut variants, ..
+            } => variants,
+            _ => &mut self.globals,
+        }
     }
 }
 
@@ -596,10 +620,6 @@ impl<'a> TypeBuilder<'a> {
             TypeBuilder::Simple(_) => false,
             _ => true,
         }
-    }
-
-    fn scope(&self) -> Scope {
-        Scope::Global
     }
 }
 

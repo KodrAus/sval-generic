@@ -12,3 +12,7 @@ path = "../derive"
 
 [dev-dependencies.sval-dynamic]
 path = "../dynamic"
+
+[dev-dependencies.uuid]
+version = "1"
+features = ["v4"]
