@@ -9,3 +9,6 @@ features = ["std"]
 
 [dev-dependencies.sval-derive]
 path = "../derive"
+
+[dev-dependencies.sval-dynamic]
+path = "../dynamic"

@@ -419,6 +419,20 @@ impl Evaluator {
         self.infer_end(TypeBuilder::Seq);
     }
 
+    fn push_dynamic(&mut self) {
+        self.infer_begin(TypeBuilder::Simple(SimpleType::Dynamic));
+
+        // Push an empty frame. This will always type-check any valid value
+        self.push(None);
+    }
+
+    fn pop_dynamic(&mut self) {
+        // Pop the inferred type. It'll be ignored
+        let _ = self.pop();
+
+        self.infer_end(TypeBuilder::Simple(SimpleType::Dynamic));
+    }
+
     fn push_record(&mut self, tag: sval::Tag) {
         self.infer_begin(TypeBuilder::Record(tag));
     }
@@ -575,23 +589,17 @@ impl<'a> TypeBuilder<'a> {
 
     fn is_chunked(&self) -> bool {
         match self {
-            TypeBuilder::Map => true,
-            TypeBuilder::Seq => true,
+            // TODO: Move `Text` and `Binary` out of `Simple`?
             TypeBuilder::Simple(SimpleType::Text) => true,
             TypeBuilder::Simple(SimpleType::Binary) => true,
-            _ => false,
+            TypeBuilder::Simple(SimpleType::Dynamic) => true,
+            TypeBuilder::Simple(_) => false,
+            _ => true,
         }
     }
 
     fn scope(&self) -> Scope {
         Scope::Global
-    }
-
-    fn id(&self) -> Option<Id> {
-        match self {
-            TypeBuilder::Record(sval::Tag::Identified(id, _)) => Some(*id),
-            _ => None,
-        }
     }
 }
 
@@ -785,11 +793,13 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
     }
 
     fn dynamic_begin(&mut self) -> sval::Result {
-        todo!()
+        self.push_dynamic();
+        Ok(())
     }
 
     fn dynamic_end(&mut self) -> sval::Result {
-        todo!()
+        self.pop_dynamic();
+        Ok(())
     }
 
     fn enum_begin(&mut self, tag: sval::Tag) -> sval::Result {

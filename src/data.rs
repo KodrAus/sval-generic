@@ -17,12 +17,12 @@ use crate::{
 A textual label for some value.
 */
 #[derive(Clone)]
-pub struct Label<'a> {
-    computed: &'a str,
-    value: Option<&'static str>,
+pub struct Label<'computed> {
+    computed: &'computed str,
+    value_static: Option<&'static str>,
 }
 
-impl<'a> Label<'a> {
+impl<'computed> Label<'computed> {
     /**
     Create a new label from a static static value.
 
@@ -31,25 +31,25 @@ impl<'a> Label<'a> {
     pub const fn new(label: &'static str) -> Self {
         Label {
             computed: label,
-            value: Some(label),
+            value_static: Some(label),
         }
     }
 
     /**
     Create a new label from a string value.
     */
-    pub const fn computed(label: &'a str) -> Self {
+    pub const fn computed(label: &'computed str) -> Self {
         Label {
             computed: label,
-            value: None,
+            value_static: None,
         }
     }
 
     /**
     Get the value of the label as a string.
     */
-    pub const fn try_get(&self) -> Option<&'a str> {
-        Some(self.computed)
+    pub const fn get(&self) -> &'computed str {
+        self.computed
     }
 
     /**
@@ -58,7 +58,7 @@ impl<'a> Label<'a> {
     For labels that were created over computed data this method will return `None`.
     */
     pub const fn try_get_static(&self) -> Option<&'static str> {
-        self.value
+        self.value_static
     }
 }
 
@@ -103,7 +103,7 @@ pub struct Id {
 
 impl Id {
     /**
-    Create an id for a local scope.
+    Create an id.
     */
     pub const fn new(id: [u8; 16]) -> Self {
         Id { value: id }
@@ -132,19 +132,19 @@ impl Hash for Id {
 }
 
 /**
-A tag annotates a data type with an informational label and id.
+A tag annotates a data type with an informational label and canonical id.
 
 Data types with the same structure are not considered equal if they have different tag ids.
 */
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Tag<'a> {
+pub enum Tag<'computed> {
     /**
     The type of the tagged value depends on its structure.
 
     The tag carries an optional informational label.
     This label isn't considered canonical, different types may have the same label.
     */
-    Structural(Option<Label<'a>>),
+    Structural(Option<Label<'computed>>),
     /**
     The type of the tagged value depends on its structure and its id.
 
@@ -152,10 +152,10 @@ pub enum Tag<'a> {
     The id carries a canonical identifier that separates the type of the tagged value from
     others that don't share the same id.
     */
-    Identified(Id, Option<Label<'a>>),
+    Identified(Id, Option<Label<'computed>>),
 }
 
-impl<'a> Tag<'a> {
+impl<'computed> Tag<'computed> {
     pub fn id(&self) -> Option<&Id> {
         match self {
             Tag::Structural(_) => None,
@@ -163,14 +163,14 @@ impl<'a> Tag<'a> {
         }
     }
 
-    pub fn label(&self) -> Option<&Label<'a>> {
+    pub fn label(&self) -> Option<&Label<'computed>> {
         match self {
             Tag::Structural(label) => label.as_ref(),
             Tag::Identified(_, label) => label.as_ref(),
         }
     }
 
-    pub fn split(self) -> (Option<Id>, Option<Label<'a>>) {
+    pub fn split(self) -> (Option<Id>, Option<Label<'computed>>) {
         match self {
             Tag::Structural(label) => (None, label),
             Tag::Identified(id, label) => (Some(id), label),

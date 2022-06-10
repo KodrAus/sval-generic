@@ -129,6 +129,28 @@ fn extend_empty_seq() {
 }
 
 #[test]
+fn typecheck_dynamic() {
+    let ty = type_of_val(&42i32 as &dyn sval_dynamic::Value);
+
+    assert!(ty.is_complete());
+
+    assert_eq!(Type::dynamic(), ty);
+}
+
+#[test]
+fn extend_dynamic() {
+    let mut ctxt = Context::new();
+
+    let ty_from_i32 = ctxt.eval(&42i32 as &dyn sval_dynamic::Value);
+
+    assert_eq!(&Type::dynamic(), ty_from_i32);
+
+    let ty_from_bool = ctxt.eval(&true as &dyn sval_dynamic::Value);
+
+    assert_eq!(&Type::dynamic(), ty_from_bool);
+}
+
+#[test]
 fn typecheck_record() {
     use sval_derive::*;
 

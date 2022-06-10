@@ -52,6 +52,7 @@ impl<'a> From<sval::Label<'a>> for Label {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SimpleType {
+    Dynamic,
     Unit,
     Null,
     Text,
@@ -164,6 +165,10 @@ impl Type {
         Type::Seq {
             value: Box::new(Some(value)),
         }
+    }
+
+    pub fn dynamic() -> Self {
+        Type::Simple(SimpleType::Dynamic)
     }
 
     pub fn record(
