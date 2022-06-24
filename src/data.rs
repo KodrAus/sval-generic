@@ -6,6 +6,7 @@ pub(crate) mod text;
 
 use crate::{
     std::{
+        borrow::Borrow,
         fmt,
         hash::{Hash, Hasher},
         ops::Deref,
@@ -84,6 +85,12 @@ impl<'a> Hash for Label<'a> {
     }
 }
 
+impl<'a> Borrow<str> for Label<'a> {
+    fn borrow(&self) -> &str {
+        self.computed
+    }
+}
+
 impl<'a> fmt::Debug for Label<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.computed.fmt(f)
@@ -136,7 +143,7 @@ A tag annotates a data type with an informational label and id.
 
 Data types with the same structure are not considered equal if they have different tag ids.
 */
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug)]
 pub enum Tag<'a> {
     /**
     The type of the tagged value depends on its structure.
@@ -153,6 +160,26 @@ pub enum Tag<'a> {
     others that don't share the same id.
     */
     Identified(Id, Option<Label<'a>>),
+}
+
+/**
+Equality for tags is based purely on their ids. Labels are informational.
+*/
+impl<'a> PartialEq for Tag<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl<'a> Eq for Tag<'a> {}
+
+/**
+Tags are hashed based purely on their ids. Labels are informational.
+*/
+impl<'a> Hash for Tag<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id().hash(state)
+    }
 }
 
 impl<'a> Tag<'a> {
@@ -200,5 +227,40 @@ pub(crate) fn bool_basic<'sval>(v: bool, stream: &mut (impl Stream<'sval> + ?Siz
         if v { "true" } else { "false" }.stream(stream)
     } else {
         if v { &1u8 } else { &0u8 }.stream(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::std::collections::hash_map::DefaultHasher;
+
+    #[test]
+    fn tag_equality() {
+        for (a, b) in [
+            (
+                Tag::Structural(None),
+                Tag::Structural(Some(Label::new("a"))),
+            ),
+            (
+                Tag::Identified(Id::new(1u128.to_le_bytes()), Some(Label::new("a"))),
+                Tag::Identified(Id::new(1u128.to_le_bytes()), Some(Label::new("b"))),
+            ),
+        ] {
+            assert_eq!(a, b);
+
+            assert_eq!(
+                {
+                    let mut h = DefaultHasher::new();
+                    a.hash(&mut h);
+                    h.finish()
+                },
+                {
+                    let mut h = DefaultHasher::new();
+                    b.hash(&mut h);
+                    h.finish()
+                }
+            );
+        }
     }
 }

@@ -97,7 +97,6 @@ The basic data model is:
     - **Text blobs**: UTF8 strings.
     - **Binary blobs**: arbitrary byte strings.
 - **Complex values**:
-    - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
     - **Sequences**: homogeneous collection of elements, where elements are [values](#values).
 
 All other data types map into this basic model.
@@ -113,6 +112,8 @@ The extended data model adds:
     - **Integers**: native integers. `i8`-`i128`, `u8`-`u128`.
     - **Binary floating points**: native base2 fractional numbers. `f32`-`f64`.
     - **Optionals**: [values](#values) that may have some data or none.
+- **Complex values**:
+    - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
 - **Encoded values**:
     - **Integers**: Arbitrarily sized signed integers.
     - **Binary floating points**: Arbitrarily sized base2 fractional numbers.
@@ -176,7 +177,7 @@ stream.tuple_begin(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::
 stream.tuple_end(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
 # Ok(())
 # }
-* ```
+```
 
 The presence of an [`Id`](../struct.Id.html) in the tag marks `A` as being a different kind of tuple as `(i32, bool)`.
 
@@ -1094,7 +1095,7 @@ pub trait Stream<'sval> {
     /**
     Begin a homogeneous map of key-value pairs.
 
-    Maps are one of the [basic data types](basic-data-types).
+    Maps are one of the [extended data types](extended-data-types).
 
     The `num_entries_hint` parameter is an optional hint for the number of pairs the map will contain.
     If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
@@ -1225,8 +1226,15 @@ pub trait Stream<'sval> {
 
     Types defined as Rust `struct`s with named fields can be more semantically represented as "struct maps".
     See the [`Stream::record_begin`] method for details.
+
+    # Map encoding
+
+    Maps are encoded in the basic model as a sequence, with each key-value pair encoded as a tuple
+    of key and value.
     */
-    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
+    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
+        self.seq_begin(num_entries_hint)
+    }
 
     /**
     Begin a map key.
@@ -1237,12 +1245,21 @@ pub trait Stream<'sval> {
 
     Map keys are a positional element and aren't considered a data type on their own.
     */
-    fn map_key_begin(&mut self) -> Result;
+    fn map_key_begin(&mut self) -> Result {
+        self.seq_value_begin()?;
+
+        // Encode the key-value pair as a tuple, since keys and values must have
+        // the same type.
+        self.tuple_begin(Tag::Structural(None), Some(2))?;
+        self.tuple_value_begin(0)
+    }
 
     /**
     Complete a map key.
     */
-    fn map_key_end(&mut self) -> Result;
+    fn map_key_end(&mut self) -> Result {
+        self.tuple_value_end(0)
+    }
 
     /**
     Begin a map value.
@@ -1253,17 +1270,26 @@ pub trait Stream<'sval> {
 
     Map values are a positional element and aren't considered a data type on their own.
     */
-    fn map_value_begin(&mut self) -> Result;
+    fn map_value_begin(&mut self) -> Result {
+        self.tuple_value_begin(1)
+    }
 
     /**
     Complete a map value.
     */
-    fn map_value_end(&mut self) -> Result;
+    fn map_value_end(&mut self) -> Result {
+        self.tuple_value_end(1)?;
+        self.tuple_end(Tag::Structural(None))?;
+
+        self.seq_value_end()
+    }
 
     /**
     Complete a map.
     */
-    fn map_end(&mut self) -> Result;
+    fn map_end(&mut self) -> Result {
+        self.seq_end()
+    }
 
     /**
     Begin a homogeneous sequence of values.

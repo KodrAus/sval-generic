@@ -23,9 +23,7 @@ fn main() -> sval::Result {
 }
 
 fn stream(v: impl sval::Value) {
-    use sval::Stream;
-
-    MyStream.value(&v).expect("failed to stream");
+    v.stream(&mut MyStream).expect("failed to stream");
     println!();
 }
 
@@ -65,34 +63,6 @@ impl<'sval> sval::Stream<'sval> for MyStream {
     }
 
     fn binary_end(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
-        print!("{{ ");
-        Ok(())
-    }
-
-    fn map_key_begin(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn map_key_end(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn map_value_begin(&mut self) -> sval::Result {
-        print!(": ");
-        Ok(())
-    }
-
-    fn map_value_end(&mut self) -> sval::Result {
-        print!(", ");
-        Ok(())
-    }
-
-    fn map_end(&mut self) -> sval::Result {
-        print!("}}");
         Ok(())
     }
 
