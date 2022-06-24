@@ -1,12 +1,20 @@
+/*!
+An implementation of `sval`'s type system.
+
+This library is a playground for validating the rules of `sval`'s type system. The goal is to
+implement the system using as few special rules as possible, so it can be described in something of
+a complete and concise way.
+*/
+
 mod eval;
 
 use crate::eval::Evaluator;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Simple(SimpleType),
-    // TODO: Consider an `EmptyMap` type
     Map {
         key: Box<Option<Type>>,
         value: Box<Option<Type>>,
@@ -19,32 +27,36 @@ pub enum Type {
         label: Option<Label>,
         values: Vec<(Label, Option<Type>)>,
     },
+    Enum {
+        variants: HashMap<Id, Option<Type>>,
+    },
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Id([u8; 16]);
+pub use sval::Id;
 
-impl From<sval::Id> for Id {
-    fn from(id: sval::Id) -> Id {
-        Id(id.get())
+// TODO: Consider killing this off and adding `Cow` support to `sval::Label`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Label(Cow<'static, str>);
+
+impl Label {
+    pub fn new(value: impl Into<Cow<'static, str>>) -> Self {
+        Label(value.into())
     }
 }
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Label(Cow<'static, str>);
 
 impl<'a> From<sval::Label<'a>> for Label {
     fn from(label: sval::Label<'a>) -> Label {
         if let Some(label) = label.try_get_static() {
             Label(Cow::Borrowed(label))
         } else {
-            Label(Cow::Owned(label.get().to_owned()))
+            Label(Cow::Owned((*label).to_owned()))
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SimpleType {
+    Dynamic,
     Unit,
     Null,
     Text,
@@ -159,6 +171,32 @@ impl Type {
         }
     }
 
+    pub fn dynamic() -> Self {
+        Type::Simple(SimpleType::Dynamic)
+    }
+
+    pub fn record(
+        id: Option<Id>,
+        label: Option<Label>,
+        values: impl IntoIterator<Item = (Label, Type)>,
+    ) -> Self {
+        Type::Record {
+            id,
+            label,
+            values: values
+                .into_iter()
+                .map(|(label, ty)| (label, Some(ty)))
+                .collect(),
+        }
+    }
+
+    pub fn id(&self) -> Option<Id> {
+        match self {
+            Type::Record { id, .. } => *id,
+            _ => None,
+        }
+    }
+
     pub fn is_complete(&self) -> bool {
         match self {
             Type::Seq { value } if value.is_some() => true,
@@ -171,27 +209,39 @@ impl Type {
 
 #[derive(Debug)]
 pub struct Context {
-    evaluator: Evaluator,
+    evaluator: Option<Evaluator>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Context {
-            evaluator: Evaluator::new(),
+            evaluator: Some(Evaluator::empty()),
         }
     }
 
     pub fn eval(&mut self, v: impl sval::Value) -> &Type {
-        self.evaluator.eval(v)
+        let evaluator = self.evaluator.take().expect("evaluator was poisoned");
+
+        self.evaluator = Some(evaluator.eval(v).expect("failed to evaluate"));
+
+        self.get_root().expect("evaluation didn't produce a type")
     }
 
     pub fn get_root(&self) -> Option<&Type> {
-        self.evaluator.get_root()
+        self.evaluator.as_ref().and_then(|eval| eval.get_type())
     }
 
     pub fn clear(&mut self) {
-        self.evaluator.clear()
+        if let Some(ref mut evaluator) = self.evaluator {
+            evaluator.clear();
+        } else {
+            self.evaluator = Some(Evaluator::empty())
+        }
     }
+}
+
+pub fn type_of_val(v: impl sval::Value) -> Type {
+    Evaluator::type_of_val(v)
 }
 
 #[cfg(test)]

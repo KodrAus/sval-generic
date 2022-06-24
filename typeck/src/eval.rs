@@ -1,70 +1,88 @@
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
+use std::mem;
 
 use crate::{Id, SimpleType, Type};
 
+/**
+Infer and check the types of values.
+
+The evaluator works on the theory that it should only ever see correctly typed data. If it encounters
+invalid data then it doesn't attempt to restore itself to a working state, it simply blows up with
+the error, taking its state with it.
+*/
 #[derive(Debug)]
 pub struct Evaluator {
-    root: Option<ContextType>,
-    stack: Vec<Option<ContextType>>,
+    root: Option<StackType>,
+    stack: Vec<Option<StackType>>,
 }
 
 impl Evaluator {
-    pub fn new() -> Self {
+    /**
+    Create an empty evaluator that hasn't seen any data yet.
+    */
+    pub fn empty() -> Self {
         Evaluator {
             root: None,
             stack: Vec::new(),
         }
     }
 
-    pub fn eval(&mut self, v: impl sval::Value) -> &Type {
-        v.stream(self).expect("failed to stream");
-        assert!(self.stack.is_empty(), "unexpected end of input");
+    /**
+    Evaluate the type of an individual value.
+    */
+    pub fn type_of_val(v: impl sval::Value) -> Type {
+        let evaluator = Self::empty().eval(v).expect("failed to evaluate");
 
-        self.get_root().expect("value didn't produce a type")
+        evaluator
+            .root
+            .map(|result| result.ty)
+            .expect("value didn't produce a type")
     }
 
-    pub fn get_root(&self) -> Option<&Type> {
+    /**
+    Extend the type known to the evaluator using the given value.
+
+    If the value isn't compatible with whatever type the evaluator has already seen then it will fail.
+    */
+    pub fn eval(mut self, v: impl sval::Value) -> Result<Self, sval::Error> {
+        v.stream(&mut self)?;
+        assert!(self.stack.is_empty(), "unexpected end of input");
+
+        Ok(self)
+    }
+
+    /**
+    Check whether the type of a value is compatible with what's been evaluated.
+
+    If the evaluator hasn't seen a type yet this method will panic.
+    */
+    pub fn check(&self, v: impl sval::Value) -> bool {
+        let typeof_self = self
+            .get_type()
+            .expect("attempt to check the type of an empty context");
+        let typeof_v = Evaluator::type_of_val(v);
+
+        typeof_self == &typeof_v
+    }
+
+    /**
+    Get the type as it's currently known to the evaluator.
+    */
+    pub fn get_type(&self) -> Option<&Type> {
         self.root.as_ref().map(|result| &result.ty)
     }
 
+    /**
+    Clear all state from the evaluator so it can be re-used.
+    */
     pub fn clear(&mut self) {
-        self.root = None;
-        self.stack.clear();
+        let Evaluator { root, stack } = self;
+
+        *root = None;
+        stack.clear();
     }
 
-    fn path(&self) -> String {
-        let mut path = String::new();
-
-        let parts = self
-            .stack
-            .iter()
-            .filter_map(|ty| ty.as_ref())
-            .filter_map(|ty| match ty {
-                ContextType {
-                    ty: Type::Map { .. },
-                    ..
-                } => Some("map"),
-                ContextType {
-                    ty: Type::Seq { .. },
-                    ..
-                } => Some("seq"),
-                _ => None,
-            });
-
-        let mut first = true;
-        for part in parts {
-            if !first {
-                path.push_str(".");
-            }
-
-            first = false;
-            path.push_str(part);
-        }
-
-        path
-    }
-
-    fn current_mut(&mut self) -> &mut Option<ContextType> {
+    fn current_mut(&mut self) -> &mut Option<StackType> {
         if let Some(current) = self.stack.last_mut() {
             current
         } else {
@@ -72,11 +90,11 @@ impl Evaluator {
         }
     }
 
-    fn push(&mut self, ty: Option<ContextType>) {
+    fn push(&mut self, ty: Option<StackType>) {
         self.stack.push(ty);
     }
 
-    fn pop(&mut self) -> Option<ContextType> {
+    fn pop(&mut self) -> Option<StackType> {
         self.stack
             .pop()
             .and_then(|v| v)
@@ -85,34 +103,45 @@ impl Evaluator {
 
     fn infer_begin<'a>(&mut self, builder: impl Into<TypeBuilder<'a>>) {
         let builder = builder.into();
+        let is_chunked = builder.is_chunked();
 
-        // For a global, the type we should end up with in the root of our context will
-        // be a `Type::Global(Id)`, which we can then lookup in the global set.
-        // The way we could do this is by checking whether a builder belongs to the global set
-        // or not instead of whether it's chunked?
+        /*
+        Ids follow a particular rule:
 
-        // NOTE: How would we deal with self-referential types?
-        // If a global may contain a global?
-        // We'd need a way to get a copy of it. We're basically re-entering
-        // the current value so we can define it. Maybe this actually works out ok?
-        // We won't find it in the global list because we've moved it, so we'll start
-        // building a fresh one. Once we return it we'll see that a version exists and will
-        // merge ourselves into it. We need to make sure that new information we discover
-        // is added to information that was already there. This should be possible because
-        // we only discover one new thing at a path at a time.
+        1. Ids in the same Scope must always match the same Structural Type.
+
+        The Scope of an Id can be either:
+
+        1. The set of Variants in a particular Enum.
+        2. The set of all Ids that can appear in the Context, including any Enums.
+
+        Ids that appear on Values immediately following an Enum are in that Enum's Scope.
+        Ids that appear anywhere else are in the Context's Scope.
+
+        We know we're looking at a particular Enum because either:
+
+        1. It has the same Path from the root of the Context.
+        2. It has the same Id.
+
+        The Variants that can appear in an Enum are distinguished by their Type.
+        Given the rules for Ids, that means Variants may be either purely Structural (without an Id)
+        or Identified (with an Id, which must always match that same structural type).
+        */
+
         match self.current_mut() {
             empty @ None => {
-                *empty = Some(ContextType {
+                *empty = Some(StackType {
                     state: State::Valid,
+                    index: 0,
+                    globals: HashMap::new(),
                     ty: builder.build(),
                 });
             }
-            inferred @ Some(ContextType {
+            inferred @ Some(StackType {
                 state: State::Valid,
                 ..
             }) => {
                 let check = &inferred.as_mut().expect("missing type").ty;
-
                 assert!(
                     builder.is_compatible_with(&check),
                     "expected {:?}, got {:?}",
@@ -123,7 +152,7 @@ impl Evaluator {
             inferred => panic!("expected {:?}, got {:?}", inferred, builder),
         }
 
-        if builder.is_chunked() {
+        if is_chunked {
             let ty = self.pop();
             self.push(ty);
         }
@@ -134,7 +163,7 @@ impl Evaluator {
         let depth = self.stack.len();
 
         match self.current_mut() {
-            Some(ContextType { ty, .. }) if builder.is_chunked() && depth > 1 => {
+            Some(StackType { ty, .. }) if builder.is_chunked() && depth > 1 => {
                 assert!(
                     builder.is_compatible_with(&ty),
                     "expected {:?}, got {:?}",
@@ -143,7 +172,7 @@ impl Evaluator {
                 );
             }
             _ => {
-                let ended = self.pop().expect("unexpected end of value");
+                let mut ended = self.pop().expect("unexpected end of value");
 
                 assert!(
                     ended.is_valid(),
@@ -157,6 +186,25 @@ impl Evaluator {
                     ended.ty,
                     builder,
                 );
+
+                if let Some(id) = ended.ty.id() {
+                    let ty = ended.ty.clone();
+
+                    match ended.id_scope_mut().entry(id) {
+                        hash_map::Entry::Vacant(vacant) => {
+                            vacant.insert(Some(ty));
+                        }
+                        hash_map::Entry::Occupied(mut occupied) => match occupied.get_mut() {
+                            Some(scope_ty) => {
+                                // TODO: How do should we combine these back into ids? Just assign them?
+                                assert_eq!(&*scope_ty, &ty);
+                            }
+                            None => {
+                                occupied.insert(Some(ty));
+                            }
+                        },
+                    }
+                }
 
                 match self.current_mut() {
                     empty @ None => {
@@ -174,9 +222,11 @@ impl Evaluator {
 
     fn text_fragment(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 ty: Type::Simple(SimpleType::Text),
+                globals: _,
                 state: _,
+                index: _,
             }) => (),
             v => panic!("expected text, got {:?}", v),
         }
@@ -192,9 +242,11 @@ impl Evaluator {
 
     fn binary_fragment(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 ty: Type::Simple(SimpleType::Binary),
+                globals: _,
                 state: _,
+                index: _,
             }) => (),
             v => panic!("expected text, got {:?}", v),
         }
@@ -210,15 +262,19 @@ impl Evaluator {
 
     fn push_map_key(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
-                state: state,
+            Some(StackType {
+                state,
+                globals,
+                index: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected map key");
                 *state = State::MapKey;
 
-                let key = key.take().map(|ty| ContextType {
+                let key = key.take().map(|ty| StackType {
                     state: State::Valid,
+                    globals: mem::take(globals),
+                    index: 0,
                     ty,
                 });
 
@@ -238,11 +294,15 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
+                globals,
+                index: _,
                 ty: Type::Map { key, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map key");
+
+                globals.extend(restore.globals);
 
                 **key = Some(restore.ty);
             }
@@ -252,15 +312,19 @@ impl Evaluator {
 
     fn push_map_value(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
+            Some(StackType {
                 state,
+                globals,
+                index: _,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(*state, State::MapKey, "unexpected map value");
                 *state = State::MapValue;
 
-                let value = value.take().map(|ty| ContextType {
+                let value = value.take().map(|ty| StackType {
                     state: State::Valid,
+                    globals: mem::take(globals),
+                    index: 0,
                     ty,
                 });
 
@@ -280,8 +344,10 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
-                state: state,
+            Some(StackType {
+                state,
+                globals,
+                index,
                 ty: Type::Map { value, .. },
             }) => {
                 assert_eq!(
@@ -290,7 +356,11 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected map value",
                     restore
                 );
+
+                globals.extend(restore.globals);
+
                 *state = State::Valid;
+                *index += 1;
 
                 **value = Some(restore.ty);
             }
@@ -308,15 +378,19 @@ impl Evaluator {
 
     fn push_seq_value(&mut self) {
         match self.current_mut() {
-            Some(ContextType {
-                state: state,
+            Some(StackType {
+                state,
+                globals,
+                index: _,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(*state, State::Valid, "unexpected seq value");
                 *state = State::SeqValue;
 
-                let value = value.take().map(|ty| ContextType {
+                let value = value.take().map(|ty| StackType {
                     state: State::Valid,
+                    globals: mem::take(globals),
+                    index: 0,
                     ty,
                 });
 
@@ -336,8 +410,10 @@ impl Evaluator {
         );
 
         match self.current_mut() {
-            Some(ContextType {
-                state: state,
+            Some(StackType {
+                state,
+                globals,
+                index,
                 ty: Type::Seq { value, .. },
             }) => {
                 assert_eq!(
@@ -346,7 +422,11 @@ impl Evaluator {
                     "failed to restore {:?}: unexpected seq value",
                     restore
                 );
+
+                globals.extend(restore.globals);
+
                 *state = State::Valid;
+                *index += 1;
 
                 **value = Some(restore.ty);
             }
@@ -357,9 +437,102 @@ impl Evaluator {
     fn pop_seq(&mut self) {
         self.infer_end(TypeBuilder::Seq);
     }
+
+    fn push_dynamic(&mut self) {
+        self.infer_begin(TypeBuilder::Simple(SimpleType::Dynamic));
+
+        // Push an empty frame. This will always type-check any valid value
+        self.push(None);
+    }
+
+    fn pop_dynamic(&mut self) {
+        // Pop the inferred type. It'll be ignored
+        let _ = self.pop();
+
+        self.infer_end(TypeBuilder::Simple(SimpleType::Dynamic));
+    }
+
+    fn push_record(&mut self, tag: sval::Tag) {
+        self.infer_begin(TypeBuilder::Record(tag));
+    }
+
+    fn push_record_value(&mut self, label: sval::Label) {
+        match self.current_mut() {
+            Some(StackType {
+                state,
+                globals,
+                index,
+                ty: Type::Record { values, .. },
+            }) => {
+                assert_eq!(*state, State::Valid, "unexpected record value");
+                *state = State::RecordValue;
+
+                let value = match values.get_mut(*index) {
+                    Some((existing_label, value)) => {
+                        assert_eq!(&*existing_label, &label.into(), "values out-of-order");
+
+                        value.take().map(|ty| StackType {
+                            state: State::Valid,
+                            globals: mem::take(globals),
+                            index: 0,
+                            ty,
+                        })
+                    }
+                    None => {
+                        assert_eq!(*index, values.len(), "attempt to push values out-of-order");
+                        values.push((label.into(), None));
+
+                        None
+                    }
+                };
+
+                self.push(value);
+            }
+            v => panic!("expected record, got {:?}", v),
+        }
+    }
+
+    fn pop_record_value(&mut self, label: sval::Label) {
+        let restore = self.pop().expect("missing value to restore");
+
+        assert!(
+            restore.is_valid(),
+            "attempt to restore invalid value {:?}",
+            restore
+        );
+
+        match self.current_mut() {
+            Some(StackType {
+                state,
+                globals,
+                index,
+                ty: Type::Record { values, .. },
+            }) => {
+                assert_eq!(
+                    *state,
+                    State::RecordValue,
+                    "failed to restore {:?}: unexpected record value",
+                    restore
+                );
+
+                globals.extend(restore.globals);
+
+                assert_eq!(&values[*index].0, &label.into(), "values out-of-order");
+                values[*index].1 = Some(restore.ty);
+
+                *state = State::Valid;
+                *index += 1;
+            }
+            v => panic!("failed to restore {:?}: expected map, got {:?}", restore, v),
+        }
+    }
+
+    fn pop_record(&mut self, tag: sval::Tag) {
+        self.infer_end(TypeBuilder::Record(tag));
+    }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum TypeBuilder<'a> {
     Simple(SimpleType),
     Map,
@@ -368,8 +541,10 @@ enum TypeBuilder<'a> {
 }
 
 #[derive(Debug)]
-struct ContextType {
+struct StackType {
     state: State,
+    index: usize,
+    globals: HashMap<Id, Option<Type>>,
     ty: Type,
 }
 
@@ -379,11 +554,21 @@ enum State {
     MapKey,
     MapValue,
     SeqValue,
+    RecordValue,
 }
 
-impl ContextType {
+impl StackType {
     fn is_valid(&self) -> bool {
         matches!(self.state, State::Valid)
+    }
+
+    fn id_scope_mut(&mut self) -> &mut HashMap<Id, Option<Type>> {
+        match self.ty {
+            Type::Enum {
+                ref mut variants, ..
+            } => variants,
+            _ => &mut self.globals,
+        }
     }
 }
 
@@ -404,11 +589,15 @@ impl<'a> TypeBuilder<'a> {
             TypeBuilder::Seq => Type::Seq {
                 value: Box::new(None),
             },
-            TypeBuilder::Record(tag) => Type::Record {
-                id: tag.id().map(Into::into),
-                label: tag.label().map(Into::into),
-                values: Vec::new(),
-            },
+            TypeBuilder::Record(tag) => {
+                let (id, label) = tag.split();
+
+                Type::Record {
+                    id: id.map(Into::into),
+                    label: label.map(Into::into),
+                    values: Vec::new(),
+                }
+            }
         }
     }
 
@@ -417,17 +606,19 @@ impl<'a> TypeBuilder<'a> {
             (Type::Map { .. }, TypeBuilder::Map) => true,
             (Type::Seq { .. }, TypeBuilder::Seq) => true,
             (Type::Simple(a), TypeBuilder::Simple(b)) => a == b,
+            (Type::Record { id, .. }, TypeBuilder::Record(tag)) => tag.id() == id.as_ref(),
             _ => false,
         }
     }
 
     fn is_chunked(&self) -> bool {
         match self {
-            TypeBuilder::Map => true,
-            TypeBuilder::Seq => true,
+            // TODO: Move `Text` and `Binary` out of `Simple`?
             TypeBuilder::Simple(SimpleType::Text) => true,
             TypeBuilder::Simple(SimpleType::Binary) => true,
-            _ => false,
+            TypeBuilder::Simple(SimpleType::Dynamic) => true,
+            TypeBuilder::Simple(_) => false,
+            _ => true,
         }
     }
 }
@@ -622,11 +813,13 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
     }
 
     fn dynamic_begin(&mut self) -> sval::Result {
-        todo!()
+        self.push_dynamic();
+        Ok(())
     }
 
     fn dynamic_end(&mut self) -> sval::Result {
-        todo!()
+        self.pop_dynamic();
+        Ok(())
     }
 
     fn enum_begin(&mut self, tag: sval::Tag) -> sval::Result {
@@ -646,19 +839,23 @@ impl<'sval> sval::Stream<'sval> for Evaluator {
     }
 
     fn record_begin(&mut self, tag: sval::Tag, num_entries: Option<usize>) -> sval::Result {
-        todo!()
+        self.push_record(tag);
+        Ok(())
     }
 
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.push_record_value(label);
+        Ok(())
     }
 
     fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.pop_record_value(label);
+        Ok(())
     }
 
     fn record_end(&mut self, tag: sval::Tag) -> sval::Result {
-        todo!()
+        self.pop_record(tag);
+        Ok(())
     }
 
     fn tuple_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {

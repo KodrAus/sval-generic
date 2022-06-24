@@ -6,3 +6,13 @@ edition = "2021"
 [dependencies.sval]
 path = "../"
 features = ["std"]
+
+[dev-dependencies.sval-derive]
+path = "../derive"
+
+[dev-dependencies.sval-dynamic]
+path = "../dynamic"
+
+[dev-dependencies.uuid]
+version = "1"
+features = ["v4"]

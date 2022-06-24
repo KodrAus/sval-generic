@@ -17,13 +17,13 @@ use crate::{
 /**
 A textual label for some value.
 */
-#[derive(Clone, Copy)]
-pub struct Label<'a> {
-    computed: &'a str,
-    value: Option<&'static str>,
+#[derive(Clone)]
+pub struct Label<'computed> {
+    computed: &'computed str,
+    value_static: Option<&'static str>,
 }
 
-impl<'a> Label<'a> {
+impl<'computed> Label<'computed> {
     /**
     Create a new label from a static static value.
 
@@ -32,24 +32,24 @@ impl<'a> Label<'a> {
     pub const fn new(label: &'static str) -> Self {
         Label {
             computed: label,
-            value: Some(label),
+            value_static: Some(label),
         }
     }
 
     /**
     Create a new label from a string value.
     */
-    pub const fn computed(label: &'a str) -> Self {
+    pub const fn computed(label: &'computed str) -> Self {
         Label {
             computed: label,
-            value: None,
+            value_static: None,
         }
     }
 
     /**
     Get the value of the label as a string.
     */
-    pub const fn get(&self) -> &'a str {
+    pub const fn get(&self) -> &'computed str {
         self.computed
     }
 
@@ -59,7 +59,7 @@ impl<'a> Label<'a> {
     For labels that were created over computed data this method will return `None`.
     */
     pub const fn try_get_static(&self) -> Option<&'static str> {
-        self.value
+        self.value_static
     }
 }
 
@@ -100,8 +100,8 @@ impl<'a> fmt::Debug for Label<'a> {
 /**
 A canonical identifier for some value.
 
-Ids belong to some scope, which they must be unique within.
-That scope may be either local (like the set of variants in an enum) or global (like the set of all values and variants).
+Ids used on enum variants must be unique within that enum.
+Ids used on values outside of enums must be unique among all values.
 */
 #[derive(Clone, Copy, Debug)]
 pub struct Id {
@@ -110,7 +110,7 @@ pub struct Id {
 
 impl Id {
     /**
-    Create an id for a local scope.
+    Create an id.
     */
     pub const fn new(id: [u8; 16]) -> Self {
         Id { value: id }
@@ -139,19 +139,19 @@ impl Hash for Id {
 }
 
 /**
-A tag annotates a data type with an informational label and id.
+A tag annotates a data type with an informational label and canonical id.
 
 Data types with the same structure are not considered equal if they have different tag ids.
 */
-#[derive(Clone, Copy, Debug)]
-pub enum Tag<'a> {
+#[derive(Clone, Debug)]
+pub enum Tag<'computed> {
     /**
     The type of the tagged value depends on its structure.
 
     The tag carries an optional informational label.
     This label isn't considered canonical, different types may have the same label.
     */
-    Structural(Option<Label<'a>>),
+    Structural(Option<Label<'computed>>),
     /**
     The type of the tagged value depends on its structure and its id.
 
@@ -159,41 +159,48 @@ pub enum Tag<'a> {
     The id carries a canonical identifier that separates the type of the tagged value from
     others that don't share the same id.
     */
-    Identified(Id, Option<Label<'a>>),
+    Identified(Id, Option<Label<'computed>>),
 }
 
 /**
 Equality for tags is based purely on their ids. Labels are informational.
 */
-impl<'a> PartialEq for Tag<'a> {
+impl<'computed> PartialEq for Tag<'computed> {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl<'a> Eq for Tag<'a> {}
+impl<'computed> Eq for Tag<'computed> {}
 
 /**
 Tags are hashed based purely on their ids. Labels are informational.
 */
-impl<'a> Hash for Tag<'a> {
+impl<'computed> Hash for Tag<'computed> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id().hash(state)
     }
 }
 
-impl<'a> Tag<'a> {
-    pub fn id(&self) -> Option<Id> {
+impl<'computed> Tag<'computed> {
+    pub fn id(&self) -> Option<&Id> {
         match self {
             Tag::Structural(_) => None,
-            Tag::Identified(id, _) => Some(*id),
+            Tag::Identified(id, _) => Some(id),
         }
     }
 
-    pub fn label(&self) -> Option<Label> {
+    pub fn label(&self) -> Option<&Label<'computed>> {
         match self {
-            Tag::Structural(label) => *label,
-            Tag::Identified(_, label) => *label,
+            Tag::Structural(label) => label.as_ref(),
+            Tag::Identified(_, label) => label.as_ref(),
+        }
+    }
+
+    pub fn split(self) -> (Option<Id>, Option<Label<'computed>>) {
+        match self {
+            Tag::Structural(label) => (None, label),
+            Tag::Identified(id, label) => (Some(id), label),
         }
     }
 }
@@ -227,40 +234,5 @@ pub(crate) fn bool_basic<'sval>(v: bool, stream: &mut (impl Stream<'sval> + ?Siz
         if v { "true" } else { "false" }.stream(stream)
     } else {
         if v { &1u8 } else { &0u8 }.stream(stream)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::std::collections::hash_map::DefaultHasher;
-
-    #[test]
-    fn tag_equality() {
-        for (a, b) in [
-            (
-                Tag::Structural(None),
-                Tag::Structural(Some(Label::new("a"))),
-            ),
-            (
-                Tag::Identified(Id::new(1u128.to_le_bytes()), Some(Label::new("a"))),
-                Tag::Identified(Id::new(1u128.to_le_bytes()), Some(Label::new("b"))),
-            ),
-        ] {
-            assert_eq!(a, b);
-
-            assert_eq!(
-                {
-                    let mut h = DefaultHasher::new();
-                    a.hash(&mut h);
-                    h.finish()
-                },
-                {
-                    let mut h = DefaultHasher::new();
-                    b.hash(&mut h);
-                    h.finish()
-                }
-            );
-        }
     }
 }
