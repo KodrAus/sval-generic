@@ -8,7 +8,7 @@ pub struct Formatter<W> {
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
     is_text_quoted: bool,
-    text_handler: Option<(u32, fn(&str, &mut u32, &mut dyn Write) -> sval::Result)>,
+    text_handler: Option<TextHandler>,
     out: W,
 }
 
@@ -57,8 +57,8 @@ where
     }
 
     fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
-        if let Some((ref mut state, text_handler)) = self.text_handler {
-            text_handler(v, state, &mut self.out)?;
+        if let Some(ref mut handler) = self.text_handler {
+            handler.text_fragment(v, &mut self.out)?;
         } else {
             escape_str(v, &mut self.out)?;
         }
@@ -335,124 +335,129 @@ where
         self.null()
     }
 
-    fn int_begin(&mut self) -> sval::Result {
+    fn number_begin(&mut self) -> sval::Result {
         self.is_text_quoted = false;
+        self.text_handler = Some(TextHandler::number());
 
         Ok(())
     }
 
-    fn int_end(&mut self) -> sval::Result {
+    fn number_end(&mut self) -> sval::Result {
         self.is_text_quoted = true;
 
-        Ok(())
-    }
-
-    fn binfloat_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-        self.text_handler = Some((Default::default(), float_text_handler));
-
-        Ok(())
-    }
-
-    fn binfloat_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
-        self.text_handler = None;
-
-        Ok(())
-    }
-
-    fn decfloat_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-        self.text_handler = Some((Default::default(), float_text_handler));
-
-        Ok(())
-    }
-
-    fn decfloat_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
-        self.text_handler = None;
+        if let Some(TextHandler::Number(mut number)) = self.text_handler.take() {
+            number.end(&mut self.out)?;
+        }
 
         Ok(())
     }
 }
 
-fn float_text_handler(mut v: &str, state: &mut u32, out: &mut dyn Write) -> sval::Result {
-    // The state tracks what kind of number we've detected across calls
-    struct State<'a>(&'a mut u32);
+enum TextHandler {
+    Number(NumberTextHandler),
+}
 
-    impl<'a> State<'a> {
-        fn check_write_negative_sign(&self) -> bool {
-            *self.0 >> 16 == 1
-        }
+struct NumberTextHandler {
+    at_start: bool,
+    sign_negative: bool,
+    leading_zeroes: usize,
+    is_nan_or_infinity: bool,
+}
 
-        fn must_write_negative_sign(&mut self) {
-            *self.0 |= 1u32 << 16;
-        }
-
-        fn complete_write_negative_sign(&mut self) {
-            *self.0 &= u16::MAX as u32;
-        }
-
-        fn check_nan_or_inf(&self) -> bool {
-            *self.0 as u16 == 0
-        }
-
-        fn check_write_digits(&self) -> bool {
-            *self.0 as u16 == 2
-        }
-
-        fn must_not_write_digits(&mut self) {
-            *self.0 = 1;
-        }
-
-        fn must_write_digits(&mut self) {
-            *self.0 = *self.0 | 2;
-        }
+impl TextHandler {
+    fn number() -> Self {
+        TextHandler::Number(NumberTextHandler {
+            sign_negative: false,
+            leading_zeroes: 0,
+            at_start: true,
+            is_nan_or_infinity: false,
+        })
     }
 
-    let mut skip = 0;
-    let mut s = State(state);
+    fn text_fragment(&mut self, v: &str, out: impl Write) -> sval::Result {
+        match self {
+            TextHandler::Number(number) => number.text_fragment(v, out),
+        }
+    }
+}
 
-    // Check whether the number is NaN or +/- infinity
-    // In these cases we want to write `null` instead
-    if s.check_nan_or_inf() {
-        for b in v.as_bytes() {
-            match b {
-                b'+' => {
-                    skip = 1;
-                }
-                b'-' => {
-                    skip = 1;
-                    s.must_write_negative_sign();
-                }
-                b'n' | b'i' | b'N' | b'I' => {
-                    out.write_str("null")?;
-                    s.must_not_write_digits();
+impl NumberTextHandler {
+    fn text_fragment(&mut self, v: &str, mut out: impl Write) -> sval::Result {
+        if !self.is_nan_or_infinity {
+            let mut range = 0..0;
 
-                    return Ok(());
-                }
-                _ => {
-                    s.must_write_digits();
-                    break;
+            for b in v.as_bytes() {
+                match b {
+                    // JSON numbers don't support leading zeroes (except for `0.x`)
+                    // so we need to shift over them
+                    b'0' if self.at_start => {
+                        self.leading_zeroes += 1;
+                        range.start += 1;
+                        range.end += 1;
+                    }
+                    // If we're not skipping zeroes then shift over it to write later
+                    b'0'..=b'9' => {
+                        if self.at_start && self.sign_negative {
+                            out.write_char('-')?;
+                        }
+
+                        self.at_start = false;
+                        range.end += 1;
+                    }
+                    // If we encounter a decimal point we might need to write a leading `0`
+                    b'.' => {
+                        if self.at_start {
+                            if self.sign_negative {
+                                out.write_char('-')?;
+                            }
+
+                            out.write_char('0')?;
+                        }
+
+                        self.at_start = false;
+                        range.end += 1;
+                    }
+                    // If we encounter a sign then stash it until we know the number is finite
+                    // A value like `-inf` should still write `null`, not `-null`
+                    b'-' if self.at_start => {
+                        self.sign_negative = true;
+                        range.start += 1;
+                        range.end += 1;
+                    }
+                    // JSON doesn't support a leading `+` sign
+                    b'+' if self.at_start => {
+                        range.start += 1;
+                        range.end += 1;
+                    }
+                    // `snan`, `nan`, `inf` in any casing should write `null`
+                    b's' | b'n' | b'i' | b'S' | b'N' | b'I' => {
+                        self.is_nan_or_infinity = true;
+                        self.at_start = false;
+
+                        out.write_str("null")?;
+
+                        range.start = 0;
+                        range.end = 0;
+
+                        break;
+                    }
+                    _ => range.end += 1,
                 }
             }
-        }
-    }
 
-    // A leading sign will be stripped
-    // This means we make 2 calls to the writer for negative numbers
-    v = &v[skip..];
-
-    if s.check_write_digits() {
-        if s.check_write_negative_sign() {
-            out.write_str("-")?;
-            s.complete_write_negative_sign();
+            out.write_str(&v[range])?;
         }
 
-        out.write_str(v)?;
+        Ok(())
     }
 
-    Ok(())
+    fn end(&mut self, mut out: impl Write) -> sval::Result {
+        if self.at_start {
+            out.write_char('0')?;
+        }
+
+        Ok(())
+    }
 }
 
 /*

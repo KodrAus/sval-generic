@@ -19,7 +19,7 @@ A textual label for some value.
 */
 #[derive(Clone)]
 pub struct Label<'computed> {
-    computed: &'computed str,
+    value_computed: &'computed str,
     value_static: Option<&'static str>,
 }
 
@@ -31,7 +31,7 @@ impl<'computed> Label<'computed> {
     */
     pub const fn new(label: &'static str) -> Self {
         Label {
-            computed: label,
+            value_computed: label,
             value_static: Some(label),
         }
     }
@@ -41,7 +41,7 @@ impl<'computed> Label<'computed> {
     */
     pub const fn computed(label: &'computed str) -> Self {
         Label {
-            computed: label,
+            value_computed: label,
             value_static: None,
         }
     }
@@ -50,7 +50,7 @@ impl<'computed> Label<'computed> {
     Get the value of the label as a string.
     */
     pub const fn get(&self) -> &'computed str {
-        self.computed
+        self.value_computed
     }
 
     /**
@@ -67,13 +67,13 @@ impl<'a> Deref for Label<'a> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.computed
+        self.value_computed
     }
 }
 
 impl<'a, 'b> PartialEq<Label<'b>> for Label<'a> {
     fn eq(&self, other: &Label<'b>) -> bool {
-        self.computed == other.computed
+        self.value_computed == other.value_computed
     }
 }
 
@@ -81,19 +81,19 @@ impl<'a> Eq for Label<'a> {}
 
 impl<'a> Hash for Label<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.computed.hash(state)
+        self.value_computed.hash(state)
     }
 }
 
 impl<'a> Borrow<str> for Label<'a> {
     fn borrow(&self) -> &str {
-        self.computed
+        self.value_computed
     }
 }
 
 impl<'a> fmt::Debug for Label<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.computed.fmt(f)
+        self.value_computed.fmt(f)
     }
 }
 
@@ -230,9 +230,5 @@ impl Value for bool {
 }
 
 pub(crate) fn bool_basic<'sval>(v: bool, stream: &mut (impl Stream<'sval> + ?Sized)) -> Result {
-    if stream.is_text_based() {
-        if v { "true" } else { "false" }.stream(stream)
-    } else {
-        if v { &1u8 } else { &0u8 }.stream(stream)
-    }
+    if v { "true" } else { "false" }.stream(stream)
 }

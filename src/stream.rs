@@ -5,7 +5,7 @@ An observer of structured data emitted by some value.
 
 # Using streams
 
-Streams can be used to convert between structured data and a [text or binary format](#text-and-binary-data).
+Streams can be used to convert between structured data and some text or binary encoding.
 They can also be used to observe and transform data as it's yielded by values.
 
 ## Borrowing
@@ -14,37 +14,6 @@ Streams may accept text and binary data that's borrowed for a particular lifetim
 Borrowing is just an optimization though, and streams also need to expect data that's computed on-demand.
 
 Callers should prefer passing borrowed data where possible.
-
-## Picking a representation
-
-Streams may be either text-based or binary-based. This decision determines how values that don't have a direct representation in Rust should be encoded.
-Text-based streams use human-readable formats, like `"true"`, or `"123"`. Binary-based streams use binary formats, like the byte `0`, or bitstrings.
-
-Callers need to check whether a stream is [text-based or binary-based](#text-and-binary-data) before streaming encoded data.
-The following example streams an encoded integer as either text or binary depending on the stream:
-
-```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-stream.int_begin()?;
-
-    if stream.is_text_based() {
-        // The stream is text-based
-        // Stream the integer as text
-        stream.text_begin(Some(3))?;
-        stream.text_fragment("123")?;
-        stream.text_end()?;
-    } else {
-        // The stream is binary-based
-        // Stream the integer as binary
-        stream.binary_begin(Some(1))?;
-        stream.binary_fragment(&[0b01111011])?;
-        stream.binary_end()?;
-    }
-
-stream.int_end()?;
-# Ok(())
-# }
-```
 
 # Building streams
 
@@ -69,16 +38,6 @@ For more details on specific [data types](#data-types) in the model, see the met
 
 `sval`'s data model isn't a one-to-one mapping of Rust's.
 It's designed for cases where the consumer of structured data may be for a different language altogether so gives formats more tools for retaining the semantics of streamed data.
-
-## Text and binary data
-
-Each stream expects either text-based or binary-based data.
-This decision is communicated by [`Stream::is_text_based`].
-Some [data types](#data-types) may be streamed differently depending on whether a stream is text-based or binary-based.
-
-Streams should only ever expect [values](#values) encoded using either the text or binary representation for their [data type](#data-types).
-Binary-based streams may still receive text and text-based streams may still receive binary though.
-This means `sval` effectively has two in-memory representations of its data model: one for text-based and one for binary-based streams.
 
 ## Data types
 
@@ -120,9 +79,7 @@ The extended data model adds:
 - **Complex values**:
     - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
 - **Encoded values**:
-    - **Integers**: Arbitrarily sized signed integers.
-    - **Binary floating points**: Arbitrarily sized base2 fractional numbers.
-    - **Decimal floating points**: Arbitrarily sized base10 fractional numbers.
+    - **Decimal numbers**: Arbitrarily sized decimal numbers with representations for NaNs and infinities.
 - **Typed complex values**:
     - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data.
     - **Records**: associate tags and labels with a structure and each of its values. Record values are heterogeneous.
@@ -271,16 +228,6 @@ stream.map_end()?;
 ```
 */
 pub trait Stream<'sval> {
-    /**
-    Whether or not the stream expects text or binary data.
-
-    This choice is expected to be constant over a single complete value.
-    Callers are expected to check this method before choosing between the text or binary encoding for a particular [data type](#data-type).
-    */
-    fn is_text_based(&self) -> bool {
-        true
-    }
-
     /**
     A value that simply _is_.
 
@@ -1641,203 +1588,36 @@ pub trait Stream<'sval> {
     }
 
     /**
-    Begin an arbitrarily sized integer.
-
-    # Structure
-
-    Arbitrary sized integers wrap a text or binary blob with the encoding described below.
-    A call to `int_begin` must be followed by a call to `int_end` after the integer value:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.int_begin()?;
-
-    // Integers must contain a single text or binary blob
-    if stream.is_text_based() {
-        // Text-based streams require a single text blob
-        stream.text_begin(Some(3))?;
-        stream.text_fragment("754")?;
-        stream.text_end()?;
-    } else {
-        // Binary-based streams require a single binary blob
-        stream.binary_begin(Some(2))?;
-        stream.binary_fragment(&[0b11110010, 0b00000010])?;
-        stream.binary_end()?;
-    }
-
-    stream.int_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Integer encoding
-
-    Each kind of integer is considered a different data type.
-    So `u8` is a different type to `i8` and `u8` is a different type to `u16`.
-    All arbitarily sized integers (those streamed using [`Stream::int_begin`]) are considered the same type.
-
-    `i8`-`i128`, `u8`-`u128`, and arbitrary-sized integers use the same text-based or binary-based encoding described below.
-
-    For [text-based streams](#text-and-binary-data), integers map to text blobs representing a base10 number with the following grammar:
-
-    ```text
-    -?[0-9]+
-    ```
-
-    For [binary-based streams](#binary-based-streams), integers map to signed, little-endian, two's-compliment bytes.
-
-    The following table shows some example integers along with their text and binary encodings.
-    The binary encoding uses the smallest possible representation, even though that's not a requirement.
-
-    | Integer | Text encoding | Binary encoding     |
-    | ------- | ------------: | ------------------: |
-    | 0       | `0`           | `00000000`          |
-    | 754     | `754`         | `11110010_00000010` |
-    | -754    | `-754`        | `00001110_11111101` |
-    */
-    fn int_begin(&mut self) -> Result {
-        Ok(())
-    }
-
-    /**
-    End an arbitrary sized integer.
-
-    See [`Stream::int_begin`] for details on arbitrary sized integers.
-    */
-    fn int_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    /**
-    Begin an arbitrarily sized binary floating point number.
-
-    # Structure
-
-    Arbitrary sized binary floating points wrap a text or binary blob with the encoding described below.
-    A call to `binfloat_begin` must be followed by a call to `binfloat_end` after the floating point value:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binfloat_begin()?;
-
-    // Floating points must contain a single text or binary blob
-    if stream.is_text_based() {
-        // Text-based streams require a single text blob
-        stream.text_begin(Some(8))?;
-        stream.text_fragment("1333.754")?;
-        stream.text_end()?;
-    } else {
-        // Binary-based streams require a single binary blob
-        stream.binary_begin(Some(4))?;
-        stream.binary_fragment(&[0b00100001, 0b10111000, 0b10100110, 0b01000100])?;
-        stream.binary_end()?;
-    }
-
-    stream.binfloat_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Binary floating point encoding
-
-    `f32` is a different type to `f64`.
-    All arbitrarily sized binary floating points (those streamed using [`Stream::binfloat_begin`]) are considered the same type, regardless of size.
-
-    `f32`, `f64`, and arbitrarily-sized floating points use the same text-based or binary-based encoding described below.
-
-    For [text-based streams](#text-and-binary-data), binary floating points map to text blobs representing a base10 number with the following case-insensitive grammar:
-
-    ```text
-    inf|[-+]?(nan|[0-9]+(\.[0-9]+)?)
-    ```
-
-    For [binary-based streams](#text-and-binary-data), binary floating points map to little-endian IEEE754 interchange binary floating points.
-
-    The following table shows some example binary floating points along with their text and binary encodings.
-    The binary encoding uses the smallest possible representation, even though that's not a requirement.
-
-    | Number            | Text encoding | Binary encoding                       |
-    | ----------------- | ------------: | ------------------------------------: |
-    | NaN               | `nan`         | `00000000_01111110`                   |
-    | Positive infinity | `inf`         | `00000000_01111100`                   |
-    | Negative infinity | `-inf`        | `00000000_11111100`                   |
-    | 1333.754          | `1333.754`    | `00100001_10111000_10100110_01000100` |
-    | -1333.754         | `-1333.754`   | `00100001_10111000_10100110_11000100` |
-    | 0                 | `0`           | `00000000_00000000`                   |
-    | -0                | `-0`          | `00000000_10000000`                   |
-    */
-    fn binfloat_begin(&mut self) -> Result {
-        Ok(())
-    }
-
-    /**
-    End an arbitrary sized binary floating point number.
-
-    See [`Stream::binfloat_begin`] for details on arbitrary sized binary floating points.
-    */
-    fn binfloat_end(&mut self) -> Result {
-        Ok(())
-    }
-
-    /**
     Begin an arbitrarily sized decimal floating point number.
 
     # Structure
 
     Arbitrary sized decimal floating points wrap a text or binary blob with the encoding described below.
-    A call to `decfloat_begin` must be followed by a call to `decfloat_end` after the floating point value:
+    A call to `number_begin` must be followed by a call to `number_end` after the floating point value:
 
     ```
     # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.decfloat_begin()?;
+    stream.number_begin()?;
 
-    // Floating points must contain a single text or binary blob
-    if stream.is_text_based() {
-        // Text-based streams require a single text blob
-        stream.text_begin(Some(8))?;
-        stream.text_fragment("1333.754")?;
-        stream.text_end()?;
-    } else {
-        // Binary-based streams require a single binary blob
-        stream.binary_begin(Some(4))?;
-        stream.binary_fragment(&[0b1101010, 0b1100111, 0b0010011, 0b00100110])?;
-        stream.binary_end()?;
-    }
+    stream.text_begin(Some(8))?;
+    stream.text_fragment("1333.754")?;
+    stream.text_end()?;
 
-    stream.decfloat_end()?;
+    stream.number_end()?;
     # Ok(())
     # }
     ```
-
-    # Decimal floating point encoding
-
-    Rust doesn't have any native decimal floating point types.
-    All arbitrarily sized decimal floating points (those streamed using [`Stream::decfloat_begin`]) are considered the same type.
-
-    For [text-based streams](#text-and-binary-data), decimal floating points use the same encoding as [binary floating points](#binary-floating-point-encoding).
-
-    For [binary-based streams](#text-and-binary-data), decimal floating points map to little-endian IEEE754 interchange decimal floating points using the [densely-packed-decimal](https://en.wikipedia.org/wiki/Densely_tuple_decimal) representation.
-
-    | Number            | Text encoding | Binary encoding                       |
-    | ----------------- | ------------: | ------------------------------------: |
-    | NaN               | `nan`         | `00000000_00000000_00000000_01111100` |
-    | Positive infinity | `inf`         | `00000000_00000000_00000000_01111000` |
-    | Negative infinity | `-inf`        | `00000000_00000000_00000000_11111000` |
-    | 1333.754          | `1333.754`    | `11010100_11001111_00100110_00100110` |
-    | -1333.754         | `-1333.754`   | `11010100_11001111_00100110_10100110` |
-    | 0                 | `0`           | `00000000_00000000_01010000_00100010` |
-    | -0                | `-0`          | `00000000_00000000_01010000_10100010` |
     */
-    fn decfloat_begin(&mut self) -> Result {
+    fn number_begin(&mut self) -> Result {
         Ok(())
     }
 
     /**
     End an arbitrary sized decimal floating point number.
 
-    See [`Stream::decfloat_begin`] for details on arbitrary sized decimal floating points.
+    See [`Stream::number_begin`] for details on arbitrary sized decimal floating points.
      */
-    fn decfloat_end(&mut self) -> Result {
+    fn number_end(&mut self) -> Result {
         Ok(())
     }
 }
@@ -1845,11 +1625,6 @@ pub trait Stream<'sval> {
 macro_rules! impl_stream_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn is_text_based(&self) -> bool {
-                let $bind = self;
-                ($($forward)*).is_text_based()
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 let $bind = self;
                 ($($forward)*).dynamic_begin()
@@ -2120,34 +1895,14 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).constant_size_end()
             }
 
-            fn int_begin(&mut self) -> Result {
+            fn number_begin(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).int_begin()
+                ($($forward)*).number_begin()
             }
 
-            fn int_end(&mut self) -> Result {
+            fn number_end(&mut self) -> Result {
                 let $bind = self;
-                ($($forward)*).int_end()
-            }
-
-            fn binfloat_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).binfloat_begin()
-            }
-
-            fn binfloat_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).binfloat_end()
-            }
-
-            fn decfloat_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).decfloat_begin()
-            }
-
-            fn decfloat_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).decfloat_end()
+                ($($forward)*).number_end()
             }
         }
     };
@@ -2160,10 +1915,6 @@ pub(crate) trait DefaultUnsupported<'sval> {
         Self: Sized,
     {
         IntoStream(self)
-    }
-
-    fn is_text_based(&self) -> bool {
-        false
     }
 
     fn dynamic_begin(&mut self) -> Result {
@@ -2382,27 +2133,11 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn int_begin(&mut self) -> Result {
+    fn number_begin(&mut self) -> Result {
         crate::result::unsupported()
     }
 
-    fn int_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binfloat_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binfloat_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn decfloat_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn decfloat_end(&mut self) -> Result {
+    fn number_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 }

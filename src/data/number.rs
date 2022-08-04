@@ -4,46 +4,19 @@ macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
             pub(crate) fn $fi<'sval>(v: $i, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.int_begin()?;
+                stream.number_begin()?;
 
-                if stream.is_text_based() {
-                    crate::data::text::display(v, stream)?;
-                } else {
-                    let bytes = v.to_le_bytes();
+                crate::data::text::display(v, stream)?;
 
-                    stream.binary_begin(Some(bytes.len()))?;
-                    stream.binary_fragment_computed(&bytes)?;
-                    stream.binary_end()?;
-                }
-
-                stream.int_end()
+                stream.number_end()
             }
 
             pub(crate) fn $fu<'sval>(v: $u, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.int_begin()?;
+                stream.number_begin()?;
 
-                if stream.is_text_based() {
-                    crate::data::text::display(v, stream)?;
-                } else {
-                    if v >= (<$i>::MAX as $u) {
-                        let mut bytes = [0; (<$u>::BITS as usize / 8) + 1];
-                        let unsigned = v.to_le_bytes();
+                crate::data::text::display(v, stream)?;
 
-                        bytes[..unsigned.len()].copy_from_slice(&unsigned);
-
-                        stream.binary_begin(Some(bytes.len()))?;
-                        stream.binary_fragment_computed(&bytes)?;
-                        stream.binary_end()?;
-                    } else {
-                        let bytes = v.to_le_bytes();
-
-                        stream.binary_begin(Some(bytes.len()))?;
-                        stream.binary_fragment_computed(&bytes)?;
-                        stream.binary_end()?;
-                    }
-                }
-
-                stream.int_end()
+                stream.number_end()
             }
         )*
     };
@@ -53,19 +26,11 @@ macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
             pub(crate) fn $f<'sval>(v: $n, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.binfloat_begin()?;
+                stream.number_begin()?;
 
-                if stream.is_text_based() {
-                    crate::data::text::display(v, stream)?;
-                } else {
-                    let bytes = v.to_le_bytes();
+                crate::data::text::display(v, stream)?;
 
-                    stream.binary_begin(Some(bytes.len()))?;
-                    stream.binary_fragment_computed(&bytes)?;
-                    stream.binary_end()?;
-                }
-
-                stream.binfloat_end()
+                stream.number_end()
             }
         )*
     };

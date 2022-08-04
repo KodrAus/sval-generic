@@ -4,6 +4,8 @@ extern crate sval_derive;
 #[macro_use]
 extern crate serde_derive;
 
+use sval::Tag;
+
 #[derive(Value, Serialize)]
 pub enum Enum {
     Constant,
@@ -107,16 +109,16 @@ fn anonymous_enum() {
             &'sval self,
             stream: &mut S,
         ) -> sval::Result {
-            stream.enum_begin(None)?;
-            stream.tagged_begin(None)?;
+            stream.enum_begin(Tag::Structural(None))?;
+            stream.tagged_begin(Tag::Structural(None))?;
 
             match self {
                 AnonymousEnum::I32(v) => sval::stream(&mut *stream, v)?,
                 AnonymousEnum::Bool(v) => sval::stream(&mut *stream, v)?,
             }
 
-            stream.tagged_end(None)?;
-            stream.enum_end(None)
+            stream.tagged_end(Tag::Structural(None))?;
+            stream.enum_end(Tag::Structural(None))
         }
     }
 
@@ -235,11 +237,11 @@ fn co() {
     }
 }
 
-struct BinFloat<'a>(&'a [&'a str]);
+struct Number<'a>(&'a [&'a str]);
 
-impl<'a> sval::Value for BinFloat<'a> {
-    fn stream<'b, S: sval::Stream<'b>>(&'b self, mut stream: S) -> sval::Result {
-        stream.binfloat_begin()?;
+impl<'a> sval::Value for Number<'a> {
+    fn stream<'b, S: sval::Stream<'b> + ?Sized>(&'b self, stream: &mut S) -> sval::Result {
+        stream.number_begin()?;
         stream.text_begin(None)?;
 
         for fragment in self.0 {
@@ -247,45 +249,51 @@ impl<'a> sval::Value for BinFloat<'a> {
         }
 
         stream.text_end()?;
-        stream.binfloat_end()
+        stream.number_end()
     }
 }
 
 #[test]
 fn float_normal_contiguous() {
-    for case in [
-        "0",
-        "1",
-        "3454475",
-        "728725.788864389",
-        "-0",
-        "-1",
-        "-87235.54387",
-        "3.7587238e10",
-        "3.7587238e+10",
-        "3.7587238e-10",
-        "-3.7587238e10",
-        "-3.7587238e+10",
-        "-3.7587238e-10",
+    for (case, expected) in [
+        ("0", "0"),
+        ("1", "1"),
+        ("3454475", "3454475"),
+        ("728725.788864389", "728725.788864389"),
+        ("00000000", "0"),
+        ("000000001", "1"),
+        ("-0", "0"),
+        ("-1", "-1"),
+        ("-87235.54387", "-87235.54387"),
+        ("3.7587238e10", "3.7587238e10"),
+        ("3.7587238e+10", "3.7587238e+10"),
+        ("3.7587238e-10", "3.7587238e-10"),
+        ("-3.7587238e10", "-3.7587238e10"),
+        ("-3.7587238e+10", "-3.7587238e+10"),
+        ("-3.7587238e-10", "-3.7587238e-10"),
     ] {
-        assert_eq!(case, sval_json::to_string(&BinFloat(&[case])).unwrap());
+        assert_eq!(expected, sval_json::to_string(&Number(&[case])).unwrap());
     }
 }
 
 #[test]
 fn float_normal_chunked() {
-    for case in [
-        &["345", "4475"] as &[&str],
-        &["72", "8725.", "78886", "4389"],
-        &["-", "0"],
-        &["-", "1"],
-        &["-8", "7235.54387"],
-        &["3.", "7587238e10"],
-        &["3", ".", "7587238", "e+10"],
-        &["-", "8", "7", "2", "3", "5", ".", "5", "4", "3", "8", "7"],
+    for (case, expected) in [
+        (&["345", "4475"] as &[&str], "3454475"),
+        (&["72", "8725.", "78886", "4389"], "728725.788864389"),
+        (&["0", "000", "0000"], "0"),
+        (&["0", "000", "00001"], "1"),
+        (&["-", "0"], "0"),
+        (&["-", "1"], "-1"),
+        (&["-8", "7235.54387"], "-87235.54387"),
+        (&["3.", "7587238e10"], "3.7587238e10"),
+        (&["3", ".", "7587238", "e+10"], "3.7587238e+10"),
+        (
+            &["-", "8", "7", "2", "3", "5", ".", "5", "4", "3", "8", "7"],
+            "-87235.54387",
+        ),
     ] {
-        let expected = case.join("");
-        assert_eq!(expected, sval_json::to_string(&BinFloat(case)).unwrap());
+        assert_eq!(expected, sval_json::to_string(&Number(case)).unwrap());
     }
 }
 
@@ -296,7 +304,7 @@ fn float_leading_plus_contiguous() {
         ("+12432.7593", "12432.7593"),
         ("+1.7593e7", "1.7593e7"),
     ] {
-        assert_eq!(expected, sval_json::to_string(&BinFloat(&[case])).unwrap());
+        assert_eq!(expected, sval_json::to_string(&Number(&[case])).unwrap());
     }
 }
 
@@ -306,14 +314,14 @@ fn float_leading_plus_chunked() {
         (&["+", "0"] as &[&str], "0"),
         (&["+1", "2432.7593"], "12432.7593"),
     ] {
-        assert_eq!(expected, sval_json::to_string(&BinFloat(case)).unwrap());
+        assert_eq!(expected, sval_json::to_string(&Number(case)).unwrap());
     }
 }
 
 #[test]
 fn float_nan_inf_contiguous() {
     for case in ["nan", "NaN", "inf", "INF", "+inf", "+INF", "-inf", "-INF"] {
-        assert_eq!("null", sval_json::to_string(&BinFloat(&[case])).unwrap());
+        assert_eq!("null", sval_json::to_string(&Number(&[case])).unwrap());
     }
 }
 
@@ -329,6 +337,6 @@ fn float_nan_inf_chunked() {
         &["-", "i", "n", "f"],
         &["-i", "nf"],
     ] {
-        assert_eq!("null", sval_json::to_string(&BinFloat(case)).unwrap());
+        assert_eq!("null", sval_json::to_string(&Number(case)).unwrap());
     }
 }

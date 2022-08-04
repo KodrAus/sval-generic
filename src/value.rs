@@ -182,7 +182,7 @@ Data types that wrap others, like dynamic, constant, and fixed size, are order-d
 This value:
 
 ```
-# fn wrap<'a>(stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // This value...
 stream.dynamic_begin()?;
     stream.constant_begin()?;
@@ -196,7 +196,7 @@ stream.dynamic_end()?;
 does not have the same data type as this one:
 
 ```
-# fn wrap<'a>(stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // ...does not match this one
 stream.constant_begin()?;
     stream.dynamic_begin()?;
@@ -230,7 +230,7 @@ is streamed as a record:
 
 ```
 # struct Struct { a: i32, b: bool }
-# fn wrap<'a>(value: &'a Struct, stream: impl sval::Stream<'a>) -> sval::Result {
+# fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.record_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
     stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
@@ -364,16 +364,16 @@ pub trait Value {
         struct Extract(Option<bool>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn bool(&mut self, value: bool) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 Ok(())
             }
 
             fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn bool(&mut self, value: bool) -> Result {
+                self.0 = Some(value);
                 Ok(())
             }
 
@@ -396,16 +396,16 @@ pub trait Value {
         struct Extract(Option<f32>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn f32(&mut self, value: f32) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 Ok(())
             }
 
             fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn f32(&mut self, value: f32) -> Result {
+                self.0 = Some(value);
                 Ok(())
             }
 
@@ -428,16 +428,16 @@ pub trait Value {
         struct Extract(Option<f64>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn f64(&mut self, value: f64) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 Ok(())
             }
 
             fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn f64(&mut self, value: f64) -> Result {
+                self.0 = Some(value);
                 Ok(())
             }
 
@@ -480,16 +480,16 @@ pub trait Value {
         struct Extract(Option<i128>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn i128(&mut self, value: i128) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 Ok(())
             }
 
             fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn i128(&mut self, value: i128) -> Result {
+                self.0 = Some(value);
                 Ok(())
             }
 
@@ -532,16 +532,16 @@ pub trait Value {
         struct Extract(Option<u128>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn u128(&mut self, value: u128) -> Result {
-                self.0 = Some(value);
-                Ok(())
-            }
-
             fn dynamic_begin(&mut self) -> Result {
                 Ok(())
             }
 
             fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn u128(&mut self, value: u128) -> Result {
+                self.0 = Some(value);
                 Ok(())
             }
 
@@ -567,6 +567,14 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
             fn text_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -591,14 +599,6 @@ pub trait Value {
             }
 
             fn text_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
                 Ok(())
             }
 
@@ -637,6 +637,14 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+            fn dynamic_begin(&mut self) -> Result {
+                Ok(())
+            }
+
+            fn dynamic_end(&mut self) -> Result {
+                Ok(())
+            }
+
             fn binary_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -661,14 +669,6 @@ pub trait Value {
             }
 
             fn binary_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
                 Ok(())
             }
 

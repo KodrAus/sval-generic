@@ -1,7 +1,6 @@
 struct Stream<S: serde::Serializer> {
     context: Context<S>,
     ok: Option<S::Ok>,
-    is_text_based: bool,
 }
 
 enum Context<S: serde::Serializer> {
@@ -65,10 +64,6 @@ impl<S: serde::Serializer> Stream<S> {
 }
 
 impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Stream<S> {
-    fn is_text_based(&self) -> bool {
-        self.is_text_based
-    }
-
     fn unit(&mut self) -> sval::Result {
         self.serialize_any(&())
     }

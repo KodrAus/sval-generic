@@ -340,18 +340,13 @@ impl<'a> JsonSliceReader<'a> {
 
                     self.head = head;
 
-                    if !stream.is_text_based() {
-                        // Convert the number to a concrete value
-                        todo!()
-                    }
-
                     self.value_begin(&mut *stream)?;
 
-                    stream.decfloat_begin()?;
+                    stream.number_begin()?;
                     stream.text_begin(Some(n.len()))?;
                     stream.text_fragment(n)?;
                     stream.text_end()?;
-                    stream.decfloat_end()?;
+                    stream.number_end()?;
 
                     return self.maybe_done(&mut *stream);
                 }

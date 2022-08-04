@@ -1,7 +1,5 @@
 mod private {
     pub trait DispatchStream<'sval> {
-        fn dispatch_is_text_based(&self) -> bool;
-
         fn dispatch_dynamic_begin(&mut self) -> sval::Result;
 
         fn dispatch_dynamic_end(&mut self) -> sval::Result;
@@ -118,17 +116,9 @@ mod private {
 
         fn dispatch_constant_size_end(&mut self) -> sval::Result;
 
-        fn dispatch_int_begin(&mut self) -> sval::Result;
+        fn dispatch_number_begin(&mut self) -> sval::Result;
 
-        fn dispatch_int_end(&mut self) -> sval::Result;
-
-        fn dispatch_binfloat_begin(&mut self) -> sval::Result;
-
-        fn dispatch_binfloat_end(&mut self) -> sval::Result;
-
-        fn dispatch_decfloat_begin(&mut self) -> sval::Result;
-
-        fn dispatch_decfloat_end(&mut self) -> sval::Result;
+        fn dispatch_number_end(&mut self) -> sval::Result;
     }
 
     pub trait EraseStream<'sval> {
@@ -152,10 +142,6 @@ impl<'sval, R: sval::Stream<'sval>> private::EraseStream<'sval> for R {
 }
 
 impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
-    fn dispatch_is_text_based(&self) -> bool {
-        self.is_text_based()
-    }
-
     fn dispatch_dynamic_begin(&mut self) -> sval::Result {
         self.dynamic_begin()
     }
@@ -376,38 +362,18 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
         self.constant_size_end()
     }
 
-    fn dispatch_int_begin(&mut self) -> sval::Result {
-        self.int_begin()
+    fn dispatch_number_begin(&mut self) -> sval::Result {
+        self.number_begin()
     }
 
-    fn dispatch_int_end(&mut self) -> sval::Result {
-        self.int_end()
-    }
-
-    fn dispatch_binfloat_begin(&mut self) -> sval::Result {
-        self.binfloat_begin()
-    }
-
-    fn dispatch_binfloat_end(&mut self) -> sval::Result {
-        self.binfloat_end()
-    }
-
-    fn dispatch_decfloat_begin(&mut self) -> sval::Result {
-        self.decfloat_begin()
-    }
-
-    fn dispatch_decfloat_end(&mut self) -> sval::Result {
-        self.decfloat_end()
+    fn dispatch_number_end(&mut self) -> sval::Result {
+        self.number_end()
     }
 }
 
 macro_rules! impl_stream {
     ($($impl:tt)*) => {
         $($impl)* {
-            fn is_text_based(&self) -> bool {
-                self.erase_stream_ref().0.dispatch_is_text_based()
-            }
-
             fn dynamic_begin(&mut self) -> sval::Result {
                 self.erase_stream().0.dispatch_dynamic_begin()
             }
@@ -624,28 +590,12 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_constant_size_end()
             }
 
-            fn int_begin(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_int_begin()
+            fn number_begin(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_number_begin()
             }
 
-            fn int_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_int_end()
-            }
-
-            fn binfloat_begin(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_binfloat_begin()
-            }
-
-            fn binfloat_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_binfloat_end()
-            }
-
-            fn decfloat_begin(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_decfloat_begin()
-            }
-
-            fn decfloat_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_decfloat_end()
+            fn number_end(&mut self) -> sval::Result {
+                self.erase_stream().0.dispatch_number_end()
             }
         }
     }
