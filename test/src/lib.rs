@@ -74,30 +74,18 @@ pub fn assert() -> Assert {
 
 #[non_exhaustive]
 pub struct Assert {
-    pub text_based: bool,
     pub basic_model: bool,
 }
 
 impl Default for Assert {
     fn default() -> Self {
         Assert {
-            text_based: true,
             basic_model: false,
         }
     }
 }
 
 impl Assert {
-    pub fn when_text_based(mut self) -> Self {
-        self.text_based = true;
-        self
-    }
-
-    pub fn when_binary_based(mut self) -> Self {
-        self.text_based = false;
-        self
-    }
-
     pub fn in_basic_model(mut self) -> Self {
         self.basic_model = true;
         self
@@ -264,10 +252,6 @@ impl<'data, 'brw> Expect<'data, 'brw> {
 }
 
 impl<'data, 'b> sval::Stream<'data> for Expect<'data, 'b> {
-    fn is_text_based(&self) -> bool {
-        self.assert.text_based
-    }
-
     fn unit(&mut self) -> sval::Result {
         self.expect(Token::Unit)
     }
@@ -540,27 +524,11 @@ impl<'data, 'b> sval::Stream<'data> for Expect<'data, 'b> {
         todo!()
     }
 
-    fn int_begin(&mut self) -> sval::Result {
+    fn number_begin(&mut self) -> sval::Result {
         todo!()
     }
 
-    fn int_end(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn binfloat_begin(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn binfloat_end(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn decfloat_begin(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn decfloat_end(&mut self) -> sval::Result {
+    fn number_end(&mut self) -> sval::Result {
         todo!()
     }
 }
@@ -568,10 +536,6 @@ impl<'data, 'b> sval::Stream<'data> for Expect<'data, 'b> {
 struct Basic<R>(R);
 
 impl<'data, R: sval::Stream<'data>> sval::Stream<'data> for Basic<R> {
-    fn is_text_based(&self) -> bool {
-        self.0.is_text_based()
-    }
-
     fn unit(&mut self) -> sval::Result {
         self.0.unit()
     }

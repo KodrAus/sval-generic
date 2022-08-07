@@ -100,6 +100,12 @@ impl<'a> sval::Value for MyKey<'a> {
 }
 ```
 
+## Values always produce valid text data
+
+A valid implementation of `Value` must only produce valid data for text-encoded data
+like arbitrary precision numbers. `Stream`s are free to assume any text-encoded data is correct
+without validating it.
+
 ## Values always map to the same data type
 
 A valid implementation of `Value` must correspond to a single `sval` [data type](trait.Stream.html#data-types).
@@ -134,14 +140,15 @@ impl<'a> sval::Value for MyData<'a> {
 }
 ```
 
-This implementation is invalid and needs to be wrapped.
-It can be fixed by wrapping the `stream` implementation in dynamic:
+This implementation can be fixed by wrapping the `stream` implementation in dynamic:
 
 ```
 # struct MyData<'a>(&'a str);
 impl<'a> sval::Value for MyData<'a> {
     fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces `dynamic`
+        // Think of it like `dyn Value`
+
         stream.dynamic_begin()?;
 
         match self.0 {
@@ -162,6 +169,8 @@ Wrapping in an enum is also valid:
 impl<'a> sval::Value for MyData<'a> {
     fn stream<'sval, S: sval::Stream<'sval>>(&'sval self, stream: &mut S) -> sval::Result {
         // VALID: `MyData` produces an enum with structural variants
+        // Think of it like `(bool | i64)`
+
         stream.enum_begin(None)?;
         stream.tagged_begin(None)?;
 
@@ -185,9 +194,11 @@ This value:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // This value...
 stream.dynamic_begin()?;
-    stream.constant_begin()?;
-        stream.i32(42)?;
-    stream.constant_end()?;
+
+stream.constant_begin()?;
+stream.i32(42)?;
+stream.constant_end()?;
+
 stream.dynamic_end()?;
 # Ok(())
 # }
@@ -199,9 +210,11 @@ does not have the same data type as this one:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 // ...does not match this one
 stream.constant_begin()?;
-    stream.dynamic_begin()?;
-        stream.i32(42)?;
-    stream.dynamic_end()?;
+
+stream.dynamic_begin()?;
+stream.i32(42)?;
+stream.dynamic_end()?;
+
 stream.constant_end()?;
 # Ok(())
 # }
@@ -211,7 +224,7 @@ The first is a dynamic value that happens to contain a constant.
 The second is a constant that holds a dynamic value.
 This restriction isn't entirely necessary, but it aims to simplify stream encoding.
 
-## Rust structures in `sval`
+## Rust types as `sval` types
 
 `sval` can represent the basic building blocks of Rust datastructures.
 
@@ -233,13 +246,13 @@ is streamed as a record:
 # fn wrap<'a>(value: &'a Struct, mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.record_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
-    stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
-    stream.value(&value.a)?;
-    stream.record_value_end(sval::TagNamed { name: "a", id: Some(0) })?;
+stream.record_value_begin(sval::TagNamed { name: "a", id: Some(0) })?;
+stream.value(&value.a)?;
+stream.record_value_end(sval::TagNamed { name: "a", id: Some(0) })?;
 
-    stream.record_value_begin(sval::TagNamed { name: "b", id: Some(1) })?;
-    stream.value(&value.b)?;
-    stream.record_value_end(sval::TagNamed { name: "b", id: Some(1) })?;
+stream.record_value_begin(sval::TagNamed { name: "b", id: Some(1) })?;
+stream.value(&value.b)?;
+stream.record_value_end(sval::TagNamed { name: "b", id: Some(1) })?;
 
 stream.record_end(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 # Ok(())
@@ -263,13 +276,13 @@ is streamed as a tuple:
 # fn wrap<'a>(value: &'a Struct, stream: impl sval::Stream<'a>) -> sval::Result {
 stream.tuple_begin(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 
-    stream.tuple_value_begin(sval::TagUnnamed { id: 0 })?;
-    stream.value(&value.0)?;
-    stream.tuple_value_end(sval::TagUnnamed { id: 0 })?;
+stream.tuple_value_begin(sval::TagUnnamed { id: 0 })?;
+stream.value(&value.0)?;
+stream.tuple_value_end(sval::TagUnnamed { id: 0 })?;
 
-    stream.tuple_value_begin(sval::TagUnnamed { id: 1 })?;
-    stream.value(&value.1)?;
-    stream.tuple_value_end(sval::TagUnnamed { id: 1 })?;
+stream.tuple_value_begin(sval::TagUnnamed { id: 1 })?;
+stream.value(&value.1)?;
+stream.tuple_value_end(sval::TagUnnamed { id: 1 })?;
 
 stream.tuple_end(Some(sval::Tag::Named { name: "Struct", id: None }), Some(2))?;
 # Ok(())

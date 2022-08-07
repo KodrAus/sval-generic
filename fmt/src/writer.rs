@@ -486,37 +486,13 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn int_begin(&mut self) -> sval::Result {
+    fn number_begin(&mut self) -> sval::Result {
         self.is_text_quoted = false;
 
         Ok(())
     }
 
-    fn int_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
-
-        Ok(())
-    }
-
-    fn binfloat_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-
-        Ok(())
-    }
-
-    fn binfloat_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
-
-        Ok(())
-    }
-
-    fn decfloat_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-
-        Ok(())
-    }
-
-    fn decfloat_end(&mut self) -> sval::Result {
+    fn number_end(&mut self) -> sval::Result {
         self.is_text_quoted = true;
 
         Ok(())

@@ -24,36 +24,43 @@ Instead, it surrounds nested data with `begin`/`end` calls that remind a stream 
 
 ## Streams don't validate
 
-Streams aren't responsible for validating the correctness of the data they're given.
-That's up to the caller (usually an implementation of [`Value`]) to do.
+Streams aren't responsible for validating the correctness of the data they're given. That's up to
+the caller (usually an implementation of [`Value`]) to do. Since these APIs are safe, a `Stream`
+can't rely on correctness for memory safety, but are free to fail, panic, or produce garbage when
+given invalid input.
 
 ## Streams preserve semantics when forwarding
 
-If a stream is forwarding to another it should make an effort to forward all methods accurately, unless it's specifically transforming the data in some way.
+If a stream is forwarding to another it should make an effort to forward all methods accurately,
+unless it's specifically transforming the data in some way.
 
 # Data model
 
-Streams encode `sval`'s data model.
-For more details on specific [data types](#data-types) in the model, see the methods on this trait.
+Streams encode `sval`'s data model. A data model is like a type system for data. It defines the rules
+for what kinds of data can be represented, and how that data can be interpreted. For more details on
+specific [data types](#data-types) in the model, see the methods on this trait.
 
-`sval`'s data model isn't a one-to-one mapping of Rust's.
-It's designed for cases where the consumer of structured data may be for a different language altogether so gives formats more tools for retaining the semantics of streamed data.
+`sval`'s data model isn't a one-to-one mapping of Rust's. It's designed for cases where the consumer
+of structured data may be for a different language altogether so gives formats more tools for retaining
+the semantics of streamed data.
 
 ## Data types
 
-Data types represent the distinct kinds of data that a stream may choose to interpret or encode in a particular way.
-If two values have the same data type then a stream is expected to handle them in compatible ways, even if their content is different.
-The type definition of a data type specifies the information that determines whether two values have the same data type or not.
+Data types represent the distinct kinds of values that a stream may choose to interpret or encode in
+a particular way. If two values have the same data type then a stream is expected to handle them in
+compatible ways, even if their content is different. The type definition of a data type specifies
+the information that determines whether two values have the same data type or not.
 
-As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between them, because a `Stream` may rely on their size when encoding them.
-On the other hand, the data type of a map does not depend on its size, so a stream is expected to handle maps of any length equivalently.
+As an example, `u8` and `u16` have different data types, even though Rust will freely coerce between
+them, because a `Stream` may rely on their size when encoding them. On the other hand, the data type
+of a map does not depend on its size, so a stream is expected to handle maps of any length equivalently.
 
 The docs for each data type call out what is and isn't considered part of the type definition.
 
 ### Basic data types
 
-The required methods on the `Stream` trait represent the basic data model that all streams need to understand.
-The basic data model is:
+The required methods on the `Stream` trait represent the basic data model that all streams need to 
+understand. The basic data model is:
 
 - **Simple values**:
     - **Null**: the absence of any other meaningful value.
@@ -61,113 +68,42 @@ The basic data model is:
     - **Text blobs**: UTF8 strings.
     - **Binary blobs**: arbitrary byte strings.
 - **Complex values**:
-    - **Sequences**: homogeneous collection of elements, where elements are [values](#values).
+    - **Sequences**: homogeneous collection of elements, where elements are [values](#values). All
+    elements have the same data type.
 
 All other data types map into this basic model.
 
 ### Extended data types
 
-Streams may opt-in to direct support for data types in the extended data model either as an optimization, or to handle them differently.
-The extended data model adds:
+Streams may opt-in to direct support for data types in the extended data model either as an
+optimization, or to handle them differently. The extended data model adds:
 
 - **Simple values**:
-    - **Unit**: a marker for a value with no other meaningful data.
-    - **Booleans**: the values `true` and `false`.
-    - **Integers**: native integers. `i8`-`i128`, `u8`-`u128`.
-    - **Binary floating points**: native base2 fractional numbers. `f32`-`f64`.
-    - **Optionals**: [values](#values) that may have some data or none.
+    - **Unit**: a marker for a value with no other meaningful data. This type is distinct from null. Rust's `()`.
+    - **Booleans**: the values `true` and `false`. Rust's `bool`.
+    - **Integers**: native integers. Rust's `i8`-`i128`, `u8`-`u128`.
+    - **Binary floating points**: native base2 fractional numbers. Rust's `f32`-`f64`.
+    - **Optionals**: [values](#values) that may sometimes be null. Rust's `Option<T>`.
 - **Complex values**:
     - **Maps**: homogeneous collection of key-value pairs, where keys and values are each [values](#values).
+    All keys have the same data type, and all values have the same data type.
 - **Encoded values**:
     - **Decimal numbers**: Arbitrarily sized decimal numbers with representations for NaNs and infinities.
 - **Typed complex values**:
-    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct from the value type of its underlying data.
-    - **Records**: associate tags and labels with a structure and each of its values. Record values are heterogeneous.
+    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct 
+    from the value type of its underlying data.
+    - **Records**: associate tags and labels with a structure and each of its values. Record values 
+    are heterogeneous.
     - **Tuples**: associate tags with a structure and each of its values. Tuples values are heterogeneous.
 - **Dynamically typed values**:
-    - **Dynamic**: make [values](#values) heterogeneous so that maps and sequences can contain values of different data types.
-    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of non-overlapping variants.
+    - **Dynamic**: make [values](#values) heterogeneous by signaling that they may have any type.
+    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of 
+    non-overlapping variants.
 - **Dependently typed values**:
-    - **Constant values**: for [values](#values) that will always have the same data.
-    - **Constant sized**: for [values](#values) with a length where that length will always be the same.
+    - **Constant values**: for [values](#values) that will always produce exactly the same data.
+    - **Constant sized**: for [values](#values) that will always produce data with exactly the same length.
 
-### Tags
-
-Some data types accept a tag that associates a label and id with their values.
-Tag labels are purely informational and intended for end-users.
-Tag ids uniquely identify values either as enum variants, or as a specialized instance of a data type.
-
-As an example, consider these Rust types:
-
-```
-type Tuple = (i32, bool);
-
-struct A(i32, bool);
-```
-
-You can think of `A` as a tuple with `i32` and `bool` fields, just like `(i32, bool)`, but it's not the same tuple.
-The type of `A` depends on its identifier:
-
-```compile_fail
-# type Tuple = (i32, bool);
-# struct A(i32, bool);
-let t: Tuple = (42, true);
-
-// Does not compile: `Tuple` and `A` are different types
-let a: A = t;
-```
-
-In `sval`, that example might look something like this:
-
-```
-# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-# fn some_uuid() -> [u8; 16] { Default::default() }
-// type Tuple
-// This type has a structural tag, so any other tuples that also have structural tags
-// and the same fields will match. The `None` field is an informational label
-stream.tuple_begin(sval::Tag::Structural(None))?;
-
-    stream.tuple_value_begin(0)?;
-    stream.i32(42)?;
-    stream.tuple_value_end(0)?;
-
-    stream.tuple_value_begin(1)?;
-    stream.bool(true)?;
-    stream.tuple_value_end(1)?;
-
-stream.tuple_end(sval::Tag::Structural(None))?;
-
-// struct A
-// This type has an identified tag, so any time this UUID is seen, it means this exact type
-stream.tuple_begin(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
-
-    stream.tuple_value_begin(0)?;
-    stream.i32(42)?;
-    stream.tuple_value_end(0)?;
-
-    stream.tuple_value_begin(1)?;
-    stream.bool(true)?;
-    stream.tuple_value_end(1)?;
-
-stream.tuple_end(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
-# Ok(())
-# }
-```
-
-The presence of an [`Id`](../struct.Id.html) in the tag marks `A` as being a different kind of tuple as `Tuple`.
-When generating code, `sval` won't assign identifiers to types like `A` on its own. It's up to implementors to
-decide if they want this uniqueness property in their scenario.
-
-Ids on enum variants can be used to distinguish between variants that otherwise have the same content, like:
-
-```
-enum MyEnum {
-    A(i32),
-    B(i32),
-}
-```
-
-Ids on other values can be used to deduplicate them in schema-based formats.
+Streams may opt-in to any parts of the extended data model and ignore the others.
 
 ## Values
 
@@ -189,8 +125,10 @@ A text blob, streamed as a list of fragments:
 ```
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.text_begin(Some(14))?;
-    stream.text_fragment("A blob ")?;
-    stream.text_fragment("of text")?;
+
+stream.text_fragment("A blob ")?;
+stream.text_fragment("of text")?;
+
 stream.text_end()?;
 # Ok(())
 # }
@@ -202,30 +140,103 @@ A map of text-integer key-value pairs:
 # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
 stream.map_begin(Some(2))?;
 
-    stream.map_key_begin()?;
-        stream.text_begin(Some(1))?;
-        stream.text_fragment("a")?;
-        stream.text_end()?;
-    stream.map_key_end()?;
+stream.map_key_begin()?;
 
-    stream.map_value_begin()?;
-        stream.i32(1)?;
-    stream.map_value_end()?;
+stream.text_begin(Some(1))?;
+stream.text_fragment("a")?;
+stream.text_end()?;
 
-    stream.map_key_begin()?;
-        stream.text_begin(Some(1))?;
-        stream.text_fragment("b")?;
-        stream.text_end()?;
-    stream.map_key_end()?;
+stream.map_key_end()?;
 
-    stream.map_value_begin()?;
-        stream.i32(2)?;
-    stream.map_value_end()?;
+stream.map_value_begin()?;
+stream.i32(1)?;
+stream.map_value_end()?;
+
+stream.map_key_begin()?;
+
+stream.text_begin(Some(1))?;
+stream.text_fragment("b")?;
+stream.text_end()?;
+
+stream.map_key_end()?;
+
+stream.map_value_begin()?;
+stream.i32(2)?;
+stream.map_value_end()?;
 
 stream.map_end()?;
 # Ok(())
 # }
 ```
+
+## Tags
+
+Some data types accept a tag that associates a label and id with their data. Tag labels are purely 
+informational and intended for end-users. Tag ids uniquely identify values either as enum variants,
+or as a specialized instance of a data type.
+
+As an example, consider these Rust types:
+
+```
+type Tuple = (i32, bool);
+
+struct A(i32, bool);
+```
+
+You can think of `A` as a tuple with `i32` and `bool` fields, just like `(i32, bool)`, but `A` and
+`(i32, bool)` are not the same tuple. The type of `A` depends on its identifier:
+
+```compile_fail
+# type Tuple = (i32, bool);
+# struct A(i32, bool);
+let t: Tuple = (42, true);
+
+// Does not compile: `Tuple` and `A` are different types
+let a: A = t;
+```
+
+In `sval`, `A` and `(i32, bool)` can be represented as:
+
+```
+# fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
+# fn some_uuid() -> [u8; 16] { Default::default() }
+// type Tuple
+// This type has a structural tag, so any other tuples that also have structural tags
+// and the same fields will match. The `None` field is an informational label, which we don't have
+stream.tuple_begin(sval::Tag::Structural(None))?;
+
+stream.tuple_value_begin(0)?;
+stream.i32(42)?;
+stream.tuple_value_end(0)?;
+
+stream.tuple_value_begin(1)?;
+stream.bool(true)?;
+stream.tuple_value_end(1)?;
+
+stream.tuple_end(sval::Tag::Structural(None))?;
+
+// struct A
+// This type has an identified tag, so any time this UUID is seen, it means this exact type
+stream.tuple_begin(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
+
+stream.tuple_value_begin(0)?;
+stream.i32(42)?;
+stream.tuple_value_end(0)?;
+
+stream.tuple_value_begin(1)?;
+stream.bool(true)?;
+stream.tuple_value_end(1)?;
+
+stream.tuple_end(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
+# Ok(())
+# }
+```
+
+The presence of an [`Id`](../struct.Id.html) in the tag marks `A` as being a different kind of tuple 
+as `Tuple`.
+
+When generating code, `sval` won't assign ids to types like `A` on its own. It's up to
+implementors to decide if they want this uniqueness property or not.
 */
 pub trait Stream<'sval> {
     /**
@@ -592,7 +603,7 @@ pub trait Stream<'sval> {
     # `u8` encoding
 
     `u8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn u8(&mut self, value: u8) -> Result {
         data::number::u8_int(value, self)
@@ -632,7 +643,7 @@ pub trait Stream<'sval> {
     # `u16` encoding
 
     `u16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn u16(&mut self, value: u16) -> Result {
         if let Ok(value) = value.try_into() {
@@ -676,7 +687,7 @@ pub trait Stream<'sval> {
     # `u32` encoding
 
     `u32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn u32(&mut self, value: u32) -> Result {
         if let Ok(value) = value.try_into() {
@@ -720,7 +731,7 @@ pub trait Stream<'sval> {
     # `u64` encoding
 
     `u64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn u64(&mut self, value: u64) -> Result {
         if let Ok(value) = value.try_into() {
@@ -764,7 +775,7 @@ pub trait Stream<'sval> {
     # `u128` encoding
 
     `u128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
@@ -808,7 +819,7 @@ pub trait Stream<'sval> {
     # `i8` encoding
 
     `i8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn i8(&mut self, value: i8) -> Result {
         data::number::i8_int(value, self)
@@ -848,7 +859,7 @@ pub trait Stream<'sval> {
     # `i16` encoding
 
     `i16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn i16(&mut self, value: i16) -> Result {
         if let Ok(value) = value.try_into() {
@@ -892,7 +903,7 @@ pub trait Stream<'sval> {
     # `i32` encoding
 
     `i32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn i32(&mut self, value: i32) -> Result {
         if let Ok(value) = value.try_into() {
@@ -936,7 +947,7 @@ pub trait Stream<'sval> {
     # `i64` encoding
 
     `i64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn i64(&mut self, value: i64) -> Result {
         if let Ok(value) = value.try_into() {
@@ -980,7 +991,7 @@ pub trait Stream<'sval> {
     # `i128` encoding
 
     `i128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::int_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
@@ -1024,7 +1035,7 @@ pub trait Stream<'sval> {
     # `f32` encoding
 
     `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Stream::binfloat_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn f32(&mut self, value: f32) -> Result {
         data::number::f32_number(value, self)
@@ -1064,7 +1075,7 @@ pub trait Stream<'sval> {
     # `f64` encoding
 
     `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Stream::binfloat_begin`] for more details.
+    See [`Stream::number_begin`] for more details.
     */
     fn f64(&mut self, value: f64) -> Result {
         data::number::f64_number(value, self)

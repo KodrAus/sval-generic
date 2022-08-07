@@ -290,27 +290,11 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Stream<S> {
         todo!()
     }
 
-    fn int_begin(&mut self) -> sval::Result {
+    fn number_begin(&mut self) -> sval::Result {
         todo!()
     }
 
-    fn int_end(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn binfloat_begin(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn binfloat_end(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn decfloat_begin(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn decfloat_end(&mut self) -> sval::Result {
+    fn number_end(&mut self) -> sval::Result {
         todo!()
     }
 }

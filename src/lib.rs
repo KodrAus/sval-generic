@@ -2,7 +2,35 @@
 Structured, streaming values.
 
 `sval` is a serialization framework that treats data as a flat stream of tokens.
-The source of that data could be some Rust object or parsed from some text format.
+The source of that data could be some Rust object or parsed from some encoding.
+
+# Getting started
+
+Add `sval` to your `Cargo.toml`:
+
+```toml
+[dependencies.sval]
+version = "0.0.0"
+```
+
+By default, `sval` doesn't depend on Rust's standard library or integrate
+with its collection types. To include them, add the `alloc` or `std` features:
+
+```toml
+[dependencies.sval]
+version = "0.0.0"
+features = ["std"]
+```
+
+## The `Value` trait
+
+[`Value`] is a trait for data types to implement that surfaces their structure
+through visitors called _streams_. `Value` is like `serde`'s `Serialize`.
+
+## The `Stream` trait
+
+[`Stream`] is a trait for data formats and visitors to implement that observes
+the structure of _values_. `Stream` is like `serde`'s `Serializer`.
 */
 
 #![cfg_attr(not(test), no_std)]

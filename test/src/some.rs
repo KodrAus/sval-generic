@@ -93,51 +93,51 @@ pub fn binary() -> Vec<Token<'static>> {
     text
 }
 
-pub fn int_u8() -> Vec<Token<'static>> {
+pub fn number_u8() -> Vec<Token<'static>> {
     vec![Token::U8(random())]
 }
 
-pub fn int_u16() -> Vec<Token<'static>> {
+pub fn number_u16() -> Vec<Token<'static>> {
     vec![Token::U16(random())]
 }
 
-pub fn int_u32() -> Vec<Token<'static>> {
+pub fn number_u32() -> Vec<Token<'static>> {
     vec![Token::U32(random())]
 }
 
-pub fn int_u64() -> Vec<Token<'static>> {
+pub fn number_u64() -> Vec<Token<'static>> {
     vec![Token::U64(random())]
 }
 
-pub fn int_u128() -> Vec<Token<'static>> {
+pub fn number_u128() -> Vec<Token<'static>> {
     vec![Token::U128(random())]
 }
 
-pub fn int_i8() -> Vec<Token<'static>> {
+pub fn number_i8() -> Vec<Token<'static>> {
     vec![Token::I8(random())]
 }
 
-pub fn int_i16() -> Vec<Token<'static>> {
+pub fn number_i16() -> Vec<Token<'static>> {
     vec![Token::I16(random())]
 }
 
-pub fn int_i32() -> Vec<Token<'static>> {
+pub fn number_i32() -> Vec<Token<'static>> {
     vec![Token::I32(random())]
 }
 
-pub fn int_i64() -> Vec<Token<'static>> {
+pub fn number_i64() -> Vec<Token<'static>> {
     vec![Token::I64(random())]
 }
 
-pub fn int_i128() -> Vec<Token<'static>> {
+pub fn number_i128() -> Vec<Token<'static>> {
     vec![Token::I128(random())]
 }
 
-pub fn binfloat_32() -> Vec<Token<'static>> {
+pub fn number_32() -> Vec<Token<'static>> {
     vec![Token::F32(random())]
 }
 
-pub fn binfloat_64() -> Vec<Token<'static>> {
+pub fn number_64() -> Vec<Token<'static>> {
     vec![Token::U64(random())]
 }
 

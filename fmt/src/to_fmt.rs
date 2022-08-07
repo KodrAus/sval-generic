@@ -18,10 +18,6 @@ impl<W> Formatter<W> {
 }
 
 impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
-    fn is_text_based(&self) -> bool {
-        self.0.is_text_based()
-    }
-
     fn unit(&mut self) -> sval::Result {
         self.0.unit()
     }
@@ -238,27 +234,11 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.optional_none()
     }
 
-    fn int_begin(&mut self) -> sval::Result {
-        self.0.int_begin()
+    fn number_begin(&mut self) -> sval::Result {
+        self.0.number_begin()
     }
 
-    fn int_end(&mut self) -> sval::Result {
-        self.0.int_end()
-    }
-
-    fn binfloat_begin(&mut self) -> sval::Result {
-        self.0.binfloat_begin()
-    }
-
-    fn binfloat_end(&mut self) -> sval::Result {
-        self.0.binfloat_end()
-    }
-
-    fn decfloat_begin(&mut self) -> sval::Result {
-        self.0.decfloat_begin()
-    }
-
-    fn decfloat_end(&mut self) -> sval::Result {
-        self.0.decfloat_end()
+    fn number_end(&mut self) -> sval::Result {
+        self.0.number_end()
     }
 }

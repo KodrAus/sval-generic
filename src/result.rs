@@ -1,9 +1,18 @@
 use crate::std::{fmt, str};
 
+/**
+An error encountered while streaming a value.
+
+Errors don't capture details of failures, that responsibility is left
+to the stream to surface.
+*/
 #[derive(Debug)]
 pub struct Error(());
 
 impl Error {
+    /**
+    A kind of value is unsupported by this stream.
+    */
     pub fn unsupported() -> Self {
         Error(())
     }
