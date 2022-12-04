@@ -1,15 +1,23 @@
-use crate::{Result, Stream, Value};
+use crate::{Result, Stream, Value, Label, Id, Index};
 
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
+        stream.enum_begin(Some(Id::OPTION), Some(Label::new("Option")), None)?;
+
         match self {
-            None => stream.optional_none(),
+            None => {
+                stream.tagged_begin(Some(Id::OPTION_NONE), Some(Label::new("None")), Some(Index::new(0)))?;
+                stream.null()?;
+                stream.tagged_end(Some(Id::OPTION_NONE), Some(Label::new("None")), Some(Index::new(0)))?;
+            },
             Some(v) => {
-                stream.optional_some_begin()?;
+                stream.tagged_begin(Some(Id::OPTION_SOME), Some(Label::new("Some")), Some(Index::new(1)))?;
                 v.stream(stream)?;
-                stream.optional_some_end()
+                stream.tagged_end(Some(Id::OPTION_SOME), Some(Label::new("Some")), Some(Index::new(1)))?;
             }
         }
+
+        stream.enum_end(Some(Id::OPTION), Some(Label::new("Option")), None)
     }
 
     fn is_dynamic(&self) -> bool {

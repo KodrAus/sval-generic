@@ -100,15 +100,19 @@ impl<'a> fmt::Debug for Label<'a> {
 /**
 A canonical identifier for some value.
 
-Ids used on enum variants must be unique within that enum.
-Ids used on values outside of enums must be unique among all values.
+Ids are unique, so they can be used to tell whether a particular value has a particular type
+regardless of the context it's seen in.
 */
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Id {
     value: [u8; 16],
 }
 
 impl Id {
+    pub const OPTION: Self = Id::new(1u128.to_le_bytes());
+    pub const OPTION_SOME: Self = Id::new(2u128.to_le_bytes());
+    pub const OPTION_NONE: Self = Id::new(3u128.to_le_bytes());
+
     /**
     Create an id.
     */
@@ -124,90 +128,25 @@ impl Id {
     }
 }
 
-impl PartialEq for Id {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl Eq for Id {}
-
-impl Hash for Id {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.hash(state)
-    }
-}
-
 /**
-A tag annotates a data type with an informational label and canonical id.
-
-Data types with the same structure are not considered equal if they have different tag ids.
+A binary index for some value in its parent context.
 */
-#[derive(Clone, Debug)]
-pub enum Tag<'computed> {
-    /**
-    The type of the tagged value depends on its structure.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Index(u32);
 
-    The tag carries an optional informational label.
-    This label isn't considered canonical, different types may have the same label.
-    */
-    Structural(Option<Label<'computed>>),
-    /**
-    The type of the tagged value depends on its structure and its id.
-
-    The tag carries an optional informational label.
-    The id carries a canonical identifier that separates the type of the tagged value from
-    others that don't share the same id.
-    */
-    Identified(Id, Option<Label<'computed>>),
-}
-
-/**
-Equality for tags is based purely on their ids. Labels are informational.
-*/
-impl<'computed> PartialEq for Tag<'computed> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
-    }
-}
-
-impl<'computed> Eq for Tag<'computed> {}
-
-/**
-Tags are hashed based purely on their ids. Labels are informational.
-*/
-impl<'computed> Hash for Tag<'computed> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
-    }
-}
-
-impl<'computed> Tag<'computed> {
-    pub fn id(&self) -> Option<&Id> {
-        match self {
-            Tag::Structural(_) => None,
-            Tag::Identified(id, _) => Some(id),
-        }
+impl Index {
+    pub const fn new(index: u32) -> Self {
+        Index(index)
     }
 
-    pub fn label(&self) -> Option<&Label<'computed>> {
-        match self {
-            Tag::Structural(label) => label.as_ref(),
-            Tag::Identified(_, label) => label.as_ref(),
-        }
-    }
-
-    pub fn split(self) -> (Option<Id>, Option<Label<'computed>>) {
-        match self {
-            Tag::Structural(label) => (None, label),
-            Tag::Identified(id, label) => (Some(id), label),
-        }
+    pub const fn get(&self) -> u32 {
+        self.0
     }
 }
 
 impl Value for () {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
-        stream.unit()
+        stream.null()
     }
 
     fn is_dynamic(&self) -> bool {
