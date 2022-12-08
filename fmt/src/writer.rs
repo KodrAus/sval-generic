@@ -402,10 +402,10 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn tagged_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
         self.is_text_quoted = true;
 
-        if let Some(label) = tag.label() {
+        if let Some(label) = label {
             self.write_str(&*label)?;
         }
 
@@ -420,8 +420,8 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn record_begin(&mut self, tag: sval::Tag, num_entries_hint: Option<usize>) -> sval::Result {
-        if let Some(label) = tag.label() {
+    fn record_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
+        if let Some(label) = label {
             self.write_str(&*label)?;
             self.write_char(' ')?;
         }
@@ -447,7 +447,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_end()
     }
 
-    fn tuple_begin(&mut self, tag: sval::Tag, _: Option<usize>) -> sval::Result {
+    fn tuple_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>, _: Option<usize>) -> sval::Result {
         self.is_text_quoted = true;
         self.is_current_depth_empty = true;
 

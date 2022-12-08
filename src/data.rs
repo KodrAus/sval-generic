@@ -98,34 +98,17 @@ impl<'a> fmt::Debug for Label<'a> {
 }
 
 /**
-A canonical identifier for some value.
+A type tag for a value.
 
-Ids are unique, so they can be used to tell whether a particular value has a particular type
-regardless of the context it's seen in.
+Tags communicate information about the type of a value upfront so
+that streams can choose to handle those values differently.
 */
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Id {
-    value: [u8; 16],
-}
-
-impl Id {
-    pub const OPTION: Self = Id::new(1u128.to_le_bytes());
-    pub const OPTION_SOME: Self = Id::new(2u128.to_le_bytes());
-    pub const OPTION_NONE: Self = Id::new(3u128.to_le_bytes());
-
-    /**
-    Create an id.
-    */
-    pub const fn new(id: [u8; 16]) -> Self {
-        Id { value: id }
-    }
-
-    /**
-    Get the id as a 16 byte value.
-    */
-    pub const fn get(&self) -> [u8; 16] {
-        self.value
-    }
+#[non_exhaustive]
+pub enum Tag {
+    Option,
+    Number,
+    Custom([u8; 16]),
 }
 
 /**

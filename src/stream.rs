@@ -1,4 +1,4 @@
-use crate::{data, Label, Result, Id, Index, Value};
+use crate::{data, Label, Result, Tag, Index, Value};
 
 /**
 An observer of structured data emitted by some value.
@@ -216,7 +216,7 @@ stream.tuple_end(sval::Tag::Structural(None))?;
 
 // struct A
 // This type has an identified tag, so any time this UUID is seen, it means this exact type
-stream.tuple_begin(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
+stream.tuple_begin(sval::Tag::Tagentified(sval::Tag::new(some_uuid()), Some(sval::Label::new("A"))))?;
 
 stream.tuple_value_begin(0)?;
 stream.i32(42)?;
@@ -226,298 +226,40 @@ stream.tuple_value_begin(1)?;
 stream.bool(true)?;
 stream.tuple_value_end(1)?;
 
-stream.tuple_end(sval::Tag::Identified(sval::Id::new(some_uuid()), Some(sval::Label::new("A"))))?;
+stream.tuple_end(sval::Tag::Tagentified(sval::Tag::new(some_uuid()), Some(sval::Label::new("A"))))?;
 # Ok(())
 # }
 ```
 
-The presence of an [`Id`](../struct.Id.html) in the tag marks `A` as being a different kind of tuple 
+The presence of an [`Tag`](../struct.Tag.html) in the tag marks `A` as being a different kind of tuple
 as `Tuple`.
 
 When generating code, `sval` won't assign ids to types like `A` on its own. It's up to
 implementors to decide if they want this uniqueness property or not.
 */
 pub trait Stream<'sval> {
-    /**
-    A value that simply _isn't_.
-
-    Null is one of the [basic data types](basic-data-types), but isn't commonly used directly.
-    In Rust, you'd usually use `Option` to represent nullable values.
-    `Option::None` doesn't map directly to null though, it maps to an optional.
-    See [`Stream::optional_none`] for details.
-
-    # Examples
-
-    Stream a null:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.null()?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    Null is a distinct data type that only matches other nulls.
-    That means unit and null are not the same data type.
-
-    Rust doesn't have a primitive type that maps directly to null.
-
-    # Value equality
-
-    All instances of null are equal.
-    */
     fn null(&mut self) -> Result;
 
-    /**
-    The values `true` or `false`.
+    fn bool(&mut self, value: bool) -> Result;
 
-    Boolean is one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a boolean:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.bool(true)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `bool` type also streams as a boolean:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    true.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    Boolean is a distinct data type that only matches other booleans.
-    The values `true` and `false` do have the same data type.
-
-    # Value equality
-
-    Booleans are equal when their values are logically equal.
-
-    # Boolean encoding
-
-    For [text-based streams](#text-and-binary-data), booleans map to the case insensitive text blob `true` or `false`.
-
-    For [binary-based streams](#binary-based-streams), booleans map to a single byte `1` for `true` and `0` for `false`.
-    */
-    fn bool(&mut self, value: bool) -> Result {
-        data::bool_basic(value, self)
-    }
-
-    /**
-    Begin a UTF8 text blob.
-
-    Text blobs are one of the [basic data types](basic-data-types).
-    Most other data types map to text blobs for [text-based streams](text-and-binary-data), but binary-based streams may also stream text.
-
-    The `num_bytes_hint` argument is a hint for how many bytes (not characters) the text blob will contain.
-    If a hint is given it must accurately reflect the total number of bytes in the blob.
-    A stream should be able to tell whether a single fragment covers the whole blob if its length is equal to this hint.
-
-    # Examples
-
-    Stream a text blob using a single string:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.text_begin(Some(14))?;
-        stream.text_fragment("A blob of text")?;
-    stream.text_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `str` type also streams as a text blob:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    "A blob of text".stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Structure
-
-    After beginning a text blob, the stream should only expect zero or more text fragments ([`Stream::text_fragment`] or [`Stream::text_fragment_computed`]) followed by a call to [`Stream::text_end`]:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.text_begin(num_bytes_hint)?;
-
-    // 0 or more calls to any combination of text_fragment and text_fragment_computed
-
-    stream.text_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    All text blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
-
-    # Value equality
-
-    Text blobs are considered equal when their underlying bytes are equal, regardless of how those bytes are split into fragments.
-
-    # Borrowing
-
-    Text blobs may contain data that's borrowed for the stream's `'sval` lifetime.
-    Fragments streamed using [`Stream::text_fragment`] will be borrowed for `'sval`.
-    Fragments streamed using [`Stream::text_fragment_computed`] will be arbitrarily short-lived.
-
-    Callers should use data borrowed for `'sval` wherever possible.
-    Borrowing is just an optimization though, so streams need to cater to both cases.
-
-    The following example uses [`Stream::text_fragment_computed`] to stream a blob of computed text:
-
-    ```
-    # fn compute_text() -> String { Default::default() }
-    # fn wrap<'a>(borrowed_text: &'a str, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.text_begin(None)?;
-
-    // This borrowed text lives for `'sval`
-    stream.text_fragment(borrowed_text)?;
-
-    // This owned text only lives until the end of our function call
-    // So we need to stream it as a computed fragment
-    let s: String = compute_text();
-    stream.text_fragment_computed(&s)?;
-
-    stream.text_end()?;
-    # Ok(())
-    # }
-    ```
-    */
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
-    /**
-    A UTF8 text fragment that's borrowed for `'sval`.
-
-    See [`Stream::text_begin`] for details on text fragments.
-    The [`Stream::text_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
-    */
     fn text_fragment(&mut self, fragment: &'sval str) -> Result {
         self.text_fragment_computed(fragment)
     }
 
-    /**
-    A UTF8 text fragment that's borrowed for some arbitrarily short lifetime.
-
-    See [`Stream::text_begin`] for details on text fragments.
-    The [`Stream::text_fragment`] method is an alternative to this one that borrows for `'sval`.
-    */
     fn text_fragment_computed(&mut self, fragment: &str) -> Result;
 
-    /**
-    End a UTF8 text blob.
-
-    See [`Stream::text_begin`] for details on text fragments.
-    */
     fn text_end(&mut self) -> Result;
 
-    /**
-    Begin a binary blob.
-
-    Binary blobs are one of the [basic data types](basic-data-types).
-    Most other data types map to binary blobs for [binary-based streams](text-and-binary-data), but text-based streams may also stream binary.
-
-    The `num_bytes_hint` argument is a hint for how many bytes the binary blob will contain.
-    If a hint is given it must accurately reflect the total number of bytes in the blob.
-    A stream should be able to tell whether a single fragment covers the whole blob if its length is equal to this hint.
-
-    # Examples
-
-    Stream a binary blob using a single string:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binary_begin(Some(5))?;
-        stream.binary_fragment(&[0xaa, 0xbb, 0xcc, 0xdd, 0x00])?;
-    stream.binary_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Structure
-
-    After beginning a binary blob, the stream should only expect zero or more binary fragments ([`Stream::binary_fragment`] or [`Stream::binary_fragment_computed`]) followed by a call to [`Stream::binary_end`]:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binary_begin(num_bytes_hint)?;
-
-    // 0 or more calls to any combination of binary_fragment and binary_fragment_computed
-
-    stream.binary_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    All binary blobs have the same [data type](#data-types) regardless of length or how they're split into fragments.
-
-    # Borrowing
-
-    Binary blobs may contain data that's borrowed for the stream's `'sval` lifetime.
-    Fragments streamed using [`Stream::binary_fragment`] will be borrowed for `'sval`.
-    Fragments streamed using [`Stream::binary_fragment_computed`] will be arbitrarily short-lived.
-
-    Callers should use data borrowed for `'sval` wherever possible.
-    Borrowing is just an optimization though, so streams need to cater to both cases.
-
-    The following example uses [`Stream::binary_fragment_computed`] to stream a blob of computed binary:
-
-    ```
-    # fn compute_binary() -> Vec<u8> { Default::default() }
-    # fn wrap<'a>(borrowed_binary: &'a [u8], mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.binary_begin(None)?;
-
-    // This borrowed binary lives for `'sval`
-    stream.binary_fragment(borrowed_binary)?;
-
-    // This owned binary only lives until the end of our function call
-    // So we need to stream it as a computed fragment
-    let s: Vec<u8> = compute_binary();
-    stream.binary_fragment_computed(&s)?;
-
-    stream.binary_end()?;
-    # Ok(())
-    # }
-    ```
-    */
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
         self.seq_begin(num_bytes_hint)
     }
 
-    /**
-    A binary fragment that's borrowed for `'sval`.
-
-    See [`Stream::binary_begin`] for details on binary fragments.
-    The [`Stream::binary_fragment_computed`] method is an alternative to this one that doesn't need to borrow for `'sval`.
-    */
     fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
 
-    /**
-    A binary fragment that's borrowed for some arbitrarily short lifetime.
-
-    See [`Stream::binary_begin`] for details on binary fragments.
-    The [`Stream::binary_fragment`] method is an alternative to this one that borrows for `'sval`.
-    */
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
         for byte in fragment {
             self.seq_value_begin()?;
@@ -528,91 +270,14 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
-    /**
-    End a binary blob.
-
-    See [`Stream::binary_begin`] for details on binary fragments.
-    */
     fn binary_end(&mut self) -> Result {
         self.seq_end()
     }
 
-    /**
-    Stream an 8bit unsigned integer.
-
-    `u8`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `u8`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.u8(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `u8` type also streams as an 8bit unsigned integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42u8.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `u8` is a distinct data type that only matches other `u8`s.
-    That means `u8` doesn't have the same type as `i8`, `u16`, or arbitrary sized integers.
-
-    # `u8` encoding
-
-    `u8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn u8(&mut self, value: u8) -> Result {
         data::number::u8_int(value, self)
     }
 
-    /**
-    Stream a 16bit unsigned integer.
-
-    `u16`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `u16`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.u16(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `u16` type also streams as a 16bit unsigned integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42u16.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `u16` is a distinct data type that only matches other `u16`s.
-    That means `u16` doesn't have the same type as `i16`, `u8`, or arbitrary sized integers.
-
-    # `u16` encoding
-
-    `u16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn u16(&mut self, value: u16) -> Result {
         if let Ok(value) = value.try_into() {
             self.u8(value)
@@ -621,42 +286,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 32bit unsigned integer.
-
-    `u32`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `u32`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.u32(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `u32` type also streams as a 32bit unsigned integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42u32.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `u32` is a distinct data type that only matches other `u32`s.
-    That means `u32` doesn't have the same type as `i32`, `f32`, `u64`, or arbitrary sized integers.
-
-    # `u32` encoding
-
-    `u32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn u32(&mut self, value: u32) -> Result {
         if let Ok(value) = value.try_into() {
             self.u16(value)
@@ -665,42 +294,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 64bit unsigned integer.
-
-    `u64`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `u64`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.u64(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `u64` type also streams as a 64bit unsigned integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42u64.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `u64` is a distinct data type that only matches other `u64`s.
-    That means `u64` doesn't have the same type as `i64`, `f64`, `u128`, or arbitrary sized integers.
-
-    # `u64` encoding
-
-    `u64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn u64(&mut self, value: u64) -> Result {
         if let Ok(value) = value.try_into() {
             self.u32(value)
@@ -709,42 +302,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 128bit unsigned integer.
-
-    `u128`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `u128`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.u128(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `u128` type also streams as a 128bit unsigned integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42u128.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `u128` is a distinct data type that only matches other `u128`s.
-    That means `u128` doesn't have the same type as `i128` or arbitrary sized integers.
-
-    # `u128` encoding
-
-    `u128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
             self.u64(value)
@@ -753,82 +310,10 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream an 8bit signed integer.
-
-    `i8`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream an `i8`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.i8(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `i8` type also streams as an 8bit signed integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42i8.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `i8` is a distinct data type that only matches other `i8`s.
-    That means `i8` doesn't have the same type as `u8`, `i16`, or arbitrary sized integers.
-
-    # `i8` encoding
-
-    `i8`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn i8(&mut self, value: i8) -> Result {
         data::number::i8_int(value, self)
     }
 
-    /**
-    Stream a 16bit signed integer.
-
-    `i16`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream an `i16`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.i16(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `i16` type also streams as a 16bit signed integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42i16.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `i16` is a distinct data type that only matches other `i16`s.
-    That means `i16` doesn't have the same type as `u16`, `i8`, or arbitrary sized integers.
-
-    # `i16` encoding
-
-    `i16`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn i16(&mut self, value: i16) -> Result {
         if let Ok(value) = value.try_into() {
             self.i8(value)
@@ -837,42 +322,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 32bit signed integer.
-
-    `i32`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream an `i32`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.i32(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `i32` type also streams as a 32bit signed integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42i32.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `i32` is a distinct data type that only matches other `i32`s.
-    That means `i32` doesn't have the same type as `u32`, `f32`, `i64`, or arbitrary sized integers.
-
-    # `i32` encoding
-
-    `i32`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn i32(&mut self, value: i32) -> Result {
         if let Ok(value) = value.try_into() {
             self.i16(value)
@@ -881,42 +330,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 64bit signed integer.
-
-    `i64`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream an `i64`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.i64(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `i64` type also streams as a 64bit signed integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42i64.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `i64` is a distinct data type that only matches other `i64`s.
-    That means `i64` doesn't have the same type as `u64`, `f64`, `i128`, or arbitrary sized integers.
-
-    # `i64` encoding
-
-    `i64`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn i64(&mut self, value: i64) -> Result {
         if let Ok(value) = value.try_into() {
             self.i32(value)
@@ -925,42 +338,6 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 128bit signed integer.
-
-    `i128`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream an `i128`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.i128(42)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `i128` type also streams as a 128bit signed integer:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    42i128.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `i128` is a distinct data type that only matches other `i128`s.
-    That means `i128` doesn't have the same type as `u128` or arbitrary sized integers.
-
-    # `i128` encoding
-
-    `i128`s map to the basic data model as a text or binary blob containing an integer.
-    See [`Stream::number_begin`] for more details.
-    */
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
             self.i64(value)
@@ -969,407 +346,30 @@ pub trait Stream<'sval> {
         }
     }
 
-    /**
-    Stream a 32bit binary floating number.
-
-    `f32`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `f32`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.f32(4.2)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `f32` type also streams as a 32bit binary floating number:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    4.2f32.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `f32` is a distinct data type that only matches other `f32`s.
-    That means `f32` doesn't have the same type as `i32`, `f64`, or arbitrary sized floating points.
-
-    # `f32` encoding
-
-    `f32`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Stream::number_begin`] for more details.
-    */
     fn f32(&mut self, value: f32) -> Result {
         data::number::f32_number(value, self)
     }
 
-    /**
-    Stream a 64bit binary floating number.
-
-    `f64`s are one of the [extended data types](extended-data-types).
-
-    # Examples
-
-    Stream a `f64`:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.f64(4.2)?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's `f64` type also streams as a 64bit binary floating number:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    4.2f64.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    `f64` is a distinct data type that only matches other `f64`s.
-    That means `f64` doesn't have the same type as `f32`, or arbitrary sized floating points.
-
-    # `f64` encoding
-
-    `f64`s map to the basic data model as a text or binary blob containing a binary floating point number.
-    See [`Stream::number_begin`] for more details.
-    */
     fn f64(&mut self, value: f64) -> Result {
         data::number::f64_number(value, self)
     }
 
-    /**
-    Begin a homogeneous map of key-value pairs.
-
-    Maps are one of the [extended data types](extended-data-types).
-
-    The `num_entries_hint` parameter is an optional hint for the number of pairs the map will contain.
-    If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
-
-    # Examples
-
-    Stream some key-value pairs as a map:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.map_begin(Some(2))?;
-
-        stream.map_key_begin()?;
-            stream.text_begin(Some(2))?;
-                stream.text_fragment("id")?;
-            stream.text_end()?;
-        stream.map_key_end()?;
-
-        stream.map_value_begin()?;
-            stream.text_begin(Some(5))?;
-                stream.text_fragment("An id")?;
-            stream.text_end()?;
-        stream.map_value_end()?;
-
-        stream.map_key_begin()?;
-            stream.text_begin(Some(5))?;
-                stream.text_fragment("title")?;
-            stream.text_end()?;
-        stream.map_key_end()?;
-
-        stream.map_value_begin()?;
-            stream.text_begin(Some(10))?;
-                stream.text_fragment("A document")?;
-            stream.text_end()?;
-        stream.map_value_end()?;
-
-    stream.map_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Structure
-
-    Maps must contain zero or more pairs of keys and values, followed by a call to [`Stream::map_end`].
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(key_values: &'a [(impl Value, impl Value)], mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.map_begin(None)?;
-
-    // Maps contain 0 or more key-value pairs
-    for (key, value) in key_values {
-        // Keys are a value surrounded by `map_key_begin` and `map_key_end`
-        stream.map_key_begin()?;
-
-        // Keys must contain a single value
-        key.stream(&mut stream)?;
-
-        stream.map_key_end()?;
-
-        // Values are a value surrounded by `map_value_begin` and `map_value_end`
-        // Values must follow keys and all keys must be followed by a value
-        stream.map_value_begin()?;
-
-        // Values must contain a single value
-        value.stream(&mut stream)?;
-
-        stream.map_value_end()?;
-    }
-
-    stream.map_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Maps are homogeneous
-
-    The [data type](data-types) of all keys and the [data type](data-types) of all values must be the same.
-
-    Maps can contain heterogeneous data if keys and values are dynamic or enums.
-    See [`Stream::dynamic_begin`] and [`Stream::enum_begin`] for more details.
-    The following example is a map with string keys and dynamic values:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.map_begin(Some(2))?;
-
-        stream.map_key_begin()?;
-            stream.text_begin(Some(2))?;
-                stream.text_fragment("id")?;
-            stream.text_end()?;
-        stream.map_key_end()?;
-
-        stream.map_value_begin()?;
-            stream.dynamic_begin()?;
-                stream.i32(42)?;
-            stream.dynamic_end()?;
-        stream.map_value_end()?;
-
-        stream.map_key_begin()?;
-            stream.text_begin(Some(5))?;
-                stream.text_fragment("title")?;
-            stream.text_end()?;
-        stream.map_key_end()?;
-
-        stream.map_value_begin()?;
-            stream.dynamic_begin()?;
-                stream.text_begin(Some(10))?;
-                    stream.text_fragment("A document")?;
-                stream.text_end()?;
-            stream.dynamic_end()?;
-        stream.map_value_end()?;
-
-    stream.map_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    Maps have the same [data type](data-types) as other maps where the data types of their keys and values match, regardless of their length.
-
-    # Value equality
-
-    Maps are considered equal if they have the same length and their key-value pairs (including duplicates) are equal and in the same order.
-
-    # Maps and structs
-
-    Types defined as Rust `struct`s with named fields can be more semantically represented as "struct maps".
-    See the [`Stream::record_begin`] method for details.
-
-    # Map encoding
-
-    Maps are encoded in the basic model as a sequence, with each key-value pair encoded as a tuple
-    of key and value.
-    */
-    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
-
-    /**
-    Begin a map key.
-
-    See [`Stream::map_begin`] for more details.
-
-    # Type equality
-
-    Map keys are a positional element and aren't considered a data type on their own.
-    */
     fn map_key_begin(&mut self) -> Result;
 
-    /**
-    Complete a map key.
-    */
     fn map_key_end(&mut self) -> Result;
 
-    /**
-    Begin a map value.
-
-    See [`Stream::map_begin`] for more details.
-
-    # Type equality
-
-    Map values are a positional element and aren't considered a data type on their own.
-    */
     fn map_value_begin(&mut self) -> Result;
 
-    /**
-    Complete a map value.
-    */
     fn map_value_end(&mut self) -> Result;
 
-    /**
-    Complete a map.
-    */
     fn map_end(&mut self) -> Result;
 
-    /**
-    Begin a homogeneous sequence of values.
-
-    Sequences are one of the [basic data types](basic-data-types).
-
-    The [data type](data-types) of all values must be the same.
-
-    The `num_entries_hint` parameter is an optional hint for the number of values the sequence will contain.
-    If a hint is given it should be accurate, but streams can't rely on the correctness of any hints.
-
-    # Examples
-
-    Stream some values as a sequence:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.seq_begin(Some(2))?;
-
-        stream.seq_value_begin()?;
-            stream.i32(1)?;
-        stream.seq_value_end()?;
-
-        stream.seq_value_begin()?;
-            stream.i32(2)?;
-        stream.seq_value_end()?;
-
-    stream.seq_end()?;
-    # Ok(())
-    # }
-    ```
-
-    Rust's unsized array (`[T]`) type is streamed as a sequence:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    let slice: &[i32] = &[1, 2, 3];
-    slice.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    Fixed-size arrays (`[T; N]`) are also streamed as sequences:
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    let slice: [i32; 3] = [1, 2, 3];
-    slice.stream(stream)?;
-    # Ok(())
-    # }
-    ```
-
-    The fact that the size of these arrays is fixed is retained.
-    See [`Stream::constant_size_begin`] for details.
-
-    # Structure
-
-    Sequences must contain zero or more values, followed by a call to [`Stream::seq_end`].
-
-    ```
-    # use sval::Value;
-    # fn wrap<'a>(values: &'a [impl Value], mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.seq_begin(None)?;
-
-    // Maps contain 0 or more key-value pairs
-    for value in values {
-        // Values are a value surrounded by `seq_value_begin` and `seq_value_end`
-        stream.seq_value_begin()?;
-
-        // Values must contain a single value
-        stream.value(value)?;
-
-        stream.seq_value_end()?;
-    }
-
-    stream.seq_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Sequences are homogeneous
-
-    The [data type](data-types) of all values must be the same.
-
-    Sequences can contain heterogeneous data if values are dynamic or enums.
-    See [`Stream::dynamic_begin`] and [`Stream::enum_begin`] for more details.
-    The following example is a sequence with dynamic values:
-
-    ```
-    # fn wrap<'a>(mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.seq_begin(Some(2))?;
-
-        stream.seq_value_begin()?;
-            stream.dynamic_begin()?;
-                stream.i32(1)?;
-            stream.dynamic_end()?;
-        stream.seq_value_end()?;
-
-        stream.seq_value_begin()?;
-            stream.dynamic_begin()?;
-                stream.text_begin(Some(7))?;
-                    stream.text_fragment("A value")?;
-                stream.text_end()?;
-            stream.dynamic_end()?;
-        stream.seq_value_end()?;
-
-    stream.seq_end()?;
-    # Ok(())
-    # }
-    ```
-
-    # Type equality
-
-    Sequences have the same [data type](data-types) as other sequences where the data types of their values match, regardless of their length.
-
-    # Sequences and structs
-
-    Types defined as Rust `struct`s with unnamed fields can be more semantically represented as "struct sequences".
-    See the [`Stream::tuple_begin`] method for details.
-    */
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
-    /**
-    Begin a sequence value.
-
-    See [`Stream::seq_begin`] for more details.
-
-    # Type equality
-
-    Sequence values are a positional element and aren't considered a data type on their own.
-    */
     fn seq_value_begin(&mut self) -> Result;
 
-    /**
-    Complete a sequence value.
-    */
     fn seq_value_end(&mut self) -> Result;
 
-    /**
-    Complete a sequence.
-    */
     fn seq_end(&mut self) -> Result;
 
     fn dynamic_begin(&mut self) -> Result {
@@ -1380,40 +380,30 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
-    /**
-    Begin a tagged value.
-
-    # Structure
-
-    Enums wrap a tagged value, which represent one of a number of possible variants.
-
-    Variants are distinguished purely by their type, so enums can contain untagged variants.
-    Ids must be non-overlapping, so if an id is associated with values of one type, that same id can't be re-used for values of a different type.
-    */
-    fn enum_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.tagged_begin(id, label, index)?;
+    fn enum_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+        self.tagged_begin(tag, label, index)?;
         self.dynamic_begin()
     }
 
-    fn enum_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn enum_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         self.dynamic_end()?;
-        self.tagged_end(id, label, index)
+        self.tagged_end(tag, label, index)
     }
 
-    fn tagged_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tagged_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
-    fn tagged_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tagged_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         let _ = tag;
 
         Ok(())
     }
 
-    fn record_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
-        self.tagged_begin(id, label, index)?;
+    fn record_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+        self.tagged_begin(tag, label, index)?;
         self.constant_size_begin()?;
         self.map_begin(num_entries)
     }
@@ -1442,14 +432,14 @@ pub trait Stream<'sval> {
         self.map_value_end()
     }
 
-    fn record_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn record_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         self.map_end()?;
         self.constant_size_end()?;
-        self.tagged_end(id, label, index)
+        self.tagged_end(tag, label, index)
     }
 
-    fn tuple_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
-        self.tagged_begin(id, label, index)?;
+    fn tuple_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+        self.tagged_begin(tag, label, index)?;
         self.constant_size_begin()?;
         self.seq_begin(num_entries)
     }
@@ -1468,18 +458,18 @@ pub trait Stream<'sval> {
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tuple_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         self.seq_end()?;
         self.constant_size_end()?;
-        self.tagged_end(id, label, index)
+        self.tagged_end(tag, label, index)
     }
 
-    fn constant_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.tagged_begin(id, label, index)
+    fn constant_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+        self.tagged_begin(tag, label, index)
     }
 
-    fn constant_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.tagged_end(id, label, index)
+    fn constant_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+        self.tagged_end(tag, label, index)
     }
 
     /**
@@ -1551,7 +541,7 @@ pub trait Stream<'sval> {
     ```
     */
     fn number_begin(&mut self) -> Result {
-        Ok(())
+        self.tagged_begin(Some(Tag::Number), None, None)
     }
 
     /**
@@ -1560,7 +550,7 @@ pub trait Stream<'sval> {
     See [`Stream::number_begin`] for details on arbitrary sized decimal floating points.
      */
     fn number_end(&mut self) -> Result {
-        Ok(())
+        self.tagged_end(Some(Tag::Number), None, None)
     }
 }
 
@@ -1737,29 +727,29 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).seq_value_end()
             }
 
-            fn tagged_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn tagged_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).tagged_begin(id, label, index)
+                ($($forward)*).tagged_begin(tag, label, index)
             }
 
-            fn tagged_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn tagged_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).tagged_end(id, label, index)
+                ($($forward)*).tagged_end(tag, label, index)
             }
 
-            fn constant_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn constant_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).constant_begin(id, label, index)
+                ($($forward)*).constant_begin(tag, label, index)
             }
 
-            fn constant_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn constant_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).constant_end(id, label, index)
+                ($($forward)*).constant_end(tag, label, index)
             }
 
-            fn record_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+            fn record_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).record_begin(id, label, index, num_entries)
+                ($($forward)*).record_begin(tag, label, index, num_entries)
             }
 
             fn record_value_begin(&mut self, label: Label) -> Result {
@@ -1772,14 +762,14 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).record_value_end(label)
             }
 
-            fn record_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn record_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).record_end(id, label, index)
+                ($($forward)*).record_end(tag, label, index)
             }
 
-            fn tuple_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+            fn tuple_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_begin(id, label, index, num_entries)
+                ($($forward)*).tuple_begin(tag, label, index, num_entries)
             }
 
             fn tuple_value_begin(&mut self, index: Index) -> Result {
@@ -1792,19 +782,19 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tuple_value_end(index)
             }
 
-            fn tuple_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn tuple_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_end(id, label, index)
+                ($($forward)*).tuple_end(tag, label, index)
             }
 
-            fn enum_begin(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn enum_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).enum_begin(id, label, index)
+                ($($forward)*).enum_begin(tag, label, index)
             }
 
-            fn enum_end(&mut self, id: Option<Id>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn enum_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).enum_end(id, label, index)
+                ($($forward)*).enum_end(tag, label, index)
             }
 
             fn constant_size_begin(&mut self) -> Result {
