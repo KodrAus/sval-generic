@@ -158,23 +158,49 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.dynamic_end()
     }
 
-    fn enum_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn enum_begin(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.enum_begin(tag, label, index)
     }
 
-    fn enum_end(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn enum_end(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.enum_end(tag, label, index)
     }
 
-    fn tagged_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn tagged_begin(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.tagged_begin(tag, label, index)
     }
 
-    fn tagged_end(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn tagged_end(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.tagged_end(tag, label, index)
     }
 
-    fn record_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
+    fn record_begin(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+        num_entries_hint: Option<usize>,
+    ) -> sval::Result {
         self.0.record_begin(tag, label, index, num_entries_hint)
     }
 
@@ -186,11 +212,22 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.record_value_end(label)
     }
 
-    fn record_end(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn record_end(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.record_end(tag, label, index)
     }
 
-    fn tuple_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
+    fn tuple_begin(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+        num_entries_hint: Option<usize>,
+    ) -> sval::Result {
         self.0.tuple_begin(tag, label, index, num_entries_hint)
     }
 
@@ -202,15 +239,30 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.tuple_value_end(index)
     }
 
-    fn tuple_end(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn tuple_end(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.tuple_end(tag, label, index)
     }
 
-    fn constant_begin(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn constant_begin(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.constant_begin(tag, label, index)
     }
 
-    fn constant_end(&mut self, tag: sval::Tag, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
+    fn constant_end(
+        &mut self,
+        tag: sval::Tag,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.0.constant_end(tag, label, index)
     }
 

@@ -79,9 +79,7 @@ pub struct Assert {
 
 impl Default for Assert {
     fn default() -> Self {
-        Assert {
-            basic_model: false,
-        }
+        Assert { basic_model: false }
     }
 }
 

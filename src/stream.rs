@@ -1,4 +1,4 @@
-use crate::{data, Label, Result, Tag, Index, Value};
+use crate::{data, Index, Label, Result, Tag, Value};
 
 /**
 An observer of structured data emitted by some value.
@@ -59,7 +59,7 @@ The docs for each data type call out what is and isn't considered part of the ty
 
 ### Basic data types
 
-The required methods on the `Stream` trait represent the basic data model that all streams need to 
+The required methods on the `Stream` trait represent the basic data model that all streams need to
 understand. The basic data model is:
 
 - **Simple values**:
@@ -89,14 +89,14 @@ optimization, or to handle them differently. The extended data model adds:
 - **Encoded values**:
     - **Decimal numbers**: Arbitrarily sized decimal numbers with representations for NaNs and infinities.
 - **Typed complex values**:
-    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct 
+    - **Tagged values**: associate a tag with a [value](#values) so that its data type is distinct
     from the value type of its underlying data.
-    - **Records**: associate tags and labels with a structure and each of its values. Record values 
+    - **Records**: associate tags and labels with a structure and each of its values. Record values
     are heterogeneous.
     - **Tuples**: associate tags with a structure and each of its values. Tuples values are heterogeneous.
 - **Dynamically typed values**:
     - **Dynamic**: make [values](#values) heterogeneous by signaling that they may have any type.
-    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of 
+    - **Enums**: make [values](#values) heterogeneous by tagging them as one of a number of
     non-overlapping variants.
 - **Dependently typed values**:
     - **Constant values**: for [values](#values) that will always produce exactly the same data.
@@ -170,7 +170,7 @@ stream.map_end()?;
 
 ## Tags
 
-Some data types accept a tag that associates a label and id with their data. Tag labels are purely 
+Some data types accept a tag that associates a label and id with their data. Tag labels are purely
 informational and intended for end-users. Tag ids uniquely identify values either as enum variants,
 or as a specialized instance of a data type.
 
@@ -263,7 +263,7 @@ pub trait Stream<'sval> {
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
         for byte in fragment {
             self.seq_value_begin()?;
-            byte.stream(self)?;
+            self.u8(*byte)?;
             self.seq_value_end()?;
         }
 
@@ -354,6 +354,8 @@ pub trait Stream<'sval> {
         data::number::f64_number(value, self)
     }
 
+    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
+
     fn map_key_begin(&mut self) -> Result;
 
     fn map_key_end(&mut self) -> Result;
@@ -380,7 +382,12 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
-    fn enum_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn enum_begin(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         self.tagged_begin(tag, label, index)?;
         self.dynamic_begin()
     }
@@ -390,21 +397,40 @@ pub trait Stream<'sval> {
         self.tagged_end(tag, label, index)
     }
 
-    fn tagged_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tagged_begin(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         let _ = tag;
+        let _ = label;
+        let _ = index;
 
         Ok(())
     }
 
-    fn tagged_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tagged_end(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         let _ = tag;
+        let _ = label;
+        let _ = index;
 
         Ok(())
     }
 
-    fn record_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+    fn record_begin(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+        num_entries: Option<usize>,
+    ) -> Result {
         self.tagged_begin(tag, label, index)?;
-        self.constant_size_begin()?;
         self.map_begin(num_entries)
     }
 
@@ -432,15 +458,24 @@ pub trait Stream<'sval> {
         self.map_value_end()
     }
 
-    fn record_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn record_end(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         self.map_end()?;
-        self.constant_size_end()?;
         self.tagged_end(tag, label, index)
     }
 
-    fn tuple_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
+    fn tuple_begin(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+        num_entries: Option<usize>,
+    ) -> Result {
         self.tagged_begin(tag, label, index)?;
-        self.constant_size_begin()?;
         self.seq_begin(num_entries)
     }
 
@@ -458,65 +493,32 @@ pub trait Stream<'sval> {
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn tuple_end(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         self.seq_end()?;
-        self.constant_size_end()?;
         self.tagged_end(tag, label, index)
     }
 
-    fn constant_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn constant_begin(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         self.tagged_begin(tag, label, index)
     }
 
-    fn constant_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+    fn constant_end(
+        &mut self,
+        tag: Option<Tag>,
+        label: Option<Label>,
+        index: Option<Index>,
+    ) -> Result {
         self.tagged_end(tag, label, index)
-    }
-
-    /**
-    Begin a fixed-size value.
-
-    Data types of variable size that accept an optional hint as a `usize` don't consider that size to be part of their type definition.
-    Wrapping values of those data types in fixed-size requires all instances to always have the same size.
-    Different sizes become different data types.
-
-    The meaning of size depends on the data type being wrapped.
-
-    # Structure
-
-    Fixed-size values wrap a value of variable size.
-    That includes any data type that accepts an optional size hint as a `usize`, such as:
-
-    - Text and binary blobs.
-    - Maps.
-    - Sequences.
-
-    The actual size of that wrapped value must match the size specified.
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.constant_size_begin()?;
-
-    // The hint and actual size of the binary fragment must be 16
-    stream.binary_begin(Some(16))?;
-    stream.binary_fragment(&[
-        0xa1, 0xa2, 0xa3, 0xa4,
-        0xb1, 0xb2,
-        0xc1, 0xc2,
-        0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
-    ])?;
-    stream.binary_end()?;
-
-    stream.constant_size_end()?;
-    # Ok(())
-    # }
-    ```
-    */
-    fn constant_size_begin(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn constant_size_end(&mut self) -> Result {
-        Ok(())
     }
 
     /**
@@ -541,7 +543,7 @@ pub trait Stream<'sval> {
     ```
     */
     fn number_begin(&mut self) -> Result {
-        self.tagged_begin(Some(Tag::Number), None, None)
+        Ok(())
     }
 
     /**
@@ -550,7 +552,7 @@ pub trait Stream<'sval> {
     See [`Stream::number_begin`] for details on arbitrary sized decimal floating points.
      */
     fn number_end(&mut self) -> Result {
-        self.tagged_end(Some(Tag::Number), None, None)
+        Ok(())
     }
 }
 
@@ -797,16 +799,6 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).enum_end(tag, label, index)
             }
 
-            fn constant_size_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).constant_size_begin()
-            }
-
-            fn constant_size_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).constant_size_end()
-            }
-
             fn number_begin(&mut self) -> Result {
                 let $bind = self;
                 ($($forward)*).number_begin()
@@ -965,23 +957,29 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tagged_begin(&mut self, _: Tag) -> Result {
+    fn tagged_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tagged_end(&mut self, _: Tag) -> Result {
+    fn tagged_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn constant_begin(&mut self, _: Tag) -> Result {
+    fn constant_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn constant_end(&mut self, _: Tag) -> Result {
+    fn constant_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn record_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+    fn record_begin(
+        &mut self,
+        _: Option<Tag>,
+        _: Option<Label>,
+        _: Option<Index>,
+        _: Option<usize>,
+    ) -> Result {
         crate::result::unsupported()
     }
 
@@ -993,51 +991,37 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn record_end(&mut self, _: Tag) -> Result {
+    fn record_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_begin(&mut self, _: Tag, _: Option<usize>) -> Result {
+    fn tuple_begin(
+        &mut self,
+        _: Option<Tag>,
+        _: Option<Label>,
+        _: Option<Index>,
+        _: Option<usize>,
+    ) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_begin(&mut self, _: u32) -> Result {
+    fn tuple_value_begin(&mut self, _: Index) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_value_end(&mut self, _: u32) -> Result {
+    fn tuple_value_end(&mut self, _: Index) -> Result {
         crate::result::unsupported()
     }
 
-    fn tuple_end(&mut self, _: Tag) -> Result {
+    fn tuple_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn enum_begin(&mut self, _: Tag) -> Result {
+    fn enum_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
-    fn enum_end(&mut self, _: Tag) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn optional_some_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn optional_some_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn optional_none(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn constant_size_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn constant_size_end(&mut self) -> Result {
+    fn enum_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 
