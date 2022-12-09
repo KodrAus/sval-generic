@@ -16,6 +16,3 @@ version = "1"
 version = "0.4"
 features = ["i128"]
 default-features = false
-
-[dependencies.corosensei]
-version = "*"

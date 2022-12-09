@@ -118,7 +118,7 @@ fn derive_enum<'a>(
     generics: &Generics,
     variants: impl Iterator<Item = &'a Variant> + 'a,
 ) -> TokenStream {
-    let tag = tag(ident, None);
+    let (label, index) = label_index(ident, None);
 
     let (impl_generics, ty_generics, _) = generics.split_for_impl();
 
@@ -134,24 +134,24 @@ fn derive_enum<'a>(
             Fields::Named(ref fields) => stream_struct(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u128),
+                Some(variant_match_arms.len() as u32),
                 fields,
             ),
             Fields::Unnamed(ref fields) if fields.unnamed.len() == 1 => stream_newtype(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u128),
+                Some(variant_match_arms.len() as u32),
             ),
             Fields::Unnamed(ref fields) => stream_tuple(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u128),
+                Some(variant_match_arms.len() as u32),
                 fields,
             ),
             Fields::Unit => stream_constant(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u128),
+                Some(variant_match_arms.len() as u32),
             ),
         });
     }
@@ -162,13 +162,13 @@ fn derive_enum<'a>(
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
                 fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-                    stream.enum_begin(#tag)?;
+                    stream.enum_begin(None, #label, #index)?;
 
                     match self {
                         #(#variant_match_arms)*
                     }
 
-                    stream.enum_end(#tag)
+                    stream.enum_end(None, #label, #index)
                 }
 
                 fn is_dynamic(&self) -> bool {
@@ -182,106 +182,139 @@ fn derive_enum<'a>(
 fn stream_struct(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    id: Option<u128>,
+    index: Option<u32>,
     fields: &FieldsNamed,
 ) -> proc_macro2::TokenStream {
-    let tag = tag(label, id);
+    let (label, index) = label_index(label, index);
 
-    let mut field_ident = Vec::new();
-    let mut field_label = Vec::new();
     let mut field_count = 0usize;
+    let mut field_ident = Vec::new();
+    let mut stream_field = Vec::new();
 
     for field in &fields.named {
         let label = attr::name_of_field(field);
         let label = quote!(sval::Label::new(#label));
 
-        field_ident.push(&field.ident);
-        field_label.push(label);
+        let ident = &field.ident;
 
+        stream_field.push(if let Some(tag) = attr::tag(field) {
+            quote!({
+                stream.record_value_begin(#label)?;
+                stream.tagged_begin(Some(sval::Tag::new(#tag)), None, None)?;
+                sval::stream(stream, #ident)?;
+                stream.tagged_end(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.record_value_end(#label)?;
+            })
+        } else {
+            quote!({
+                stream.record_value_begin(#label)?;
+                sval::stream(stream, #ident)?;
+                stream.record_value_end(#label)?;
+            })
+        });
+
+        field_ident.push(ident.clone());
         field_count += 1;
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        stream.record_begin(#tag, Some(#field_count))?;
+        stream.record_begin(None, #label, #index, Some(#field_count))?;
 
         #(
-            stream.record_value_begin(#field_label)?;
-            sval::stream(stream, #field_ident)?;
-            stream.record_value_end(#field_label)?;
+            #stream_field
         )*
 
-        stream.record_end(#tag)?;
+        stream.record_end(None, #label, #index)?;
     })
 }
 
 fn stream_newtype(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    id: Option<u128>,
+    index: Option<u32>,
 ) -> proc_macro2::TokenStream {
-    let tag = tag(label, id);
+    let (label, index) = label_index(label, index);
 
     quote!(#path(ref field0) => {
-        stream.tagged_begin(#tag)?;
+        stream.tagged_begin(None, #label, #index)?;
         sval::stream(stream, field0)?;
-        stream.tagged_end(#tag)?;
+        stream.tagged_end(None, #label, #index)?;
     })
 }
 
 fn stream_tuple(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    id: Option<u128>,
+    index: Option<u32>,
     fields: &FieldsUnnamed,
 ) -> proc_macro2::TokenStream {
-    let tag = tag(label, id);
+    let (label, index) = label_index(label, index);
 
     let mut field_ident = Vec::new();
-    let mut field_index = Vec::new();
+    let mut stream_field = Vec::new();
     let mut field_count = 0usize;
 
     for field in &fields.unnamed {
         let index = field_count as u32;
 
-        field_ident.push(Ident::new(&format!("field{}", field_count), field.span()));
-        field_index.push(quote!(#index));
+        let ident = Ident::new(&format!("field{}", field_count), field.span());
+
+        stream_field.push(if let Some(tag) = attr::tag(field) {
+            quote!({
+                stream.tuple_value_begin(sval::Index::new(#index))?;
+                stream.tagged_begin(Some(sval::Tag::new(#tag)), None, None)?;
+                sval::stream(stream, #ident)?;
+                stream.tagged_end(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.tuple_value_end(sval::Index::new(#index))?;
+            })
+        } else {
+            quote!({
+                stream.tuple_value_begin(sval::Index::new(#index))?;
+                sval::stream(stream, #ident)?;
+                stream.tuple_value_end(sval::Index::new(#index))?;
+            })
+        });
+
+        field_ident.push(ident);
         field_count += 1;
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        stream.tuple_begin(#tag, Some(#field_count))?;
+        stream.tuple_begin(None, #label, #index, Some(#field_count))?;
 
         #(
-            stream.tuple_value_begin(#field_index)?;
-            sval::stream(stream, #field_ident)?;
-            stream.tuple_value_end(#field_index)?;
+            #stream_field
         )*
 
-        stream.tuple_end(#tag)?;
+        stream.tuple_end(None, #label, #index)?;
     })
 }
 
 fn stream_constant(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    id: Option<u128>,
+    id: Option<u32>,
 ) -> proc_macro2::TokenStream {
     let constant = label.to_string();
-    let tag = tag(label, id);
+    let (label, index) = label_index(label, id);
 
     quote!(#path => {
-        stream.constant_begin(#tag)?;
+        stream.constant_begin(None, #label, #index)?;
         sval::stream(stream, #constant)?;
-        stream.constant_end(#tag)?;
+        stream.constant_end(None, #label, #index)?;
     })
 }
 
-fn tag(label: &Ident, id: Option<u128>) -> proc_macro2::TokenStream {
+fn label_index(
+    label: &Ident,
+    index: Option<u32>,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     let label = label.to_string();
-    match id {
-        Some(id) => {
-            quote!(sval::Tag::Identified(sval::Id::new(#id.to_le_bytes()), Some(sval::Label::new(#label))))
-        }
-        None => quote!(sval::Tag::Structural(Some(sval::Label::new(#label)))),
+    match index {
+        Some(index) => (
+            quote!(Some(sval::Label::new(#label))),
+            quote!(Some(sval::Index::new(#index))),
+        ),
+        None => (quote!(Some(sval::Label::new(#label))), quote!(None)),
     }
 }

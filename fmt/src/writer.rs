@@ -166,12 +166,6 @@ impl<W: fmt::Write> Write for Writer<W> {
 }
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
-    fn unit(&mut self) -> sval::Result {
-        self.out.write_str("()")?;
-
-        Ok(())
-    }
-
     fn null(&mut self) -> sval::Result {
         self.write_str("None")?;
 
@@ -394,42 +388,61 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn enum_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         Ok(())
     }
 
-    fn enum_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn enum_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         Ok(())
     }
 
     fn tagged_begin(
         &mut self,
-        tag: sval::Tag,
+        tag: Option<sval::Tag>,
         label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
         self.is_text_quoted = true;
 
-        if let Some(label) = label {
-            self.write_str(&*label)?;
-        }
+        if tag != Some(sval::TAG_RUST_OPTION_NONE) {
+            if let Some(label) = label {
+                self.write_str(&*label)?;
+            }
 
-        self.write_char('(')?;
+            self.write_char('(')?;
+        }
 
         Ok(())
     }
 
-    fn tagged_end(&mut self, _: sval::Tag) -> sval::Result {
-        self.write_char(')')?;
+    fn tagged_end(
+        &mut self,
+        tag: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        if tag != Some(sval::TAG_RUST_OPTION_NONE) {
+            self.write_char(')')?;
+        }
 
         Ok(())
     }
 
     fn record_begin(
         &mut self,
-        tag: sval::Tag,
+        _: Option<sval::Tag>,
         label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Index>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         if let Some(label) = label {
@@ -454,21 +467,26 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_value_end()
     }
 
-    fn record_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn record_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.map_end()
     }
 
     fn tuple_begin(
         &mut self,
-        tag: sval::Tag,
+        _: Option<sval::Tag>,
         label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Index>,
         _: Option<usize>,
     ) -> sval::Result {
         self.is_text_quoted = true;
         self.is_current_depth_empty = true;
 
-        if let Some(label) = tag.label() {
+        if let Some(label) = label {
             self.write_str(&*label)?;
         }
 
@@ -477,27 +495,42 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn tuple_value_begin(&mut self, _: u32) -> sval::Result {
+    fn tuple_value_begin(&mut self, _: sval::Index) -> sval::Result {
         self.seq_value_begin()
     }
 
-    fn tuple_value_end(&mut self, _: u32) -> sval::Result {
+    fn tuple_value_end(&mut self, _: sval::Index) -> sval::Result {
         self.seq_value_end()
     }
 
-    fn tuple_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn tuple_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.write_char(')')?;
 
         Ok(())
     }
 
-    fn constant_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn constant_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.is_text_quoted = false;
 
         Ok(())
     }
 
-    fn constant_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn constant_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.is_text_quoted = true;
 
         Ok(())

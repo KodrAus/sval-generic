@@ -112,15 +112,8 @@ pub struct Tag<'a> {
     // NOTE: Leaving room here to carry some user-defined data
 }
 
-/**
-A tag for Rust's `Option` type.
-
-This tag is applied to enums with two possible variants:
-
-- An index of `0` and label of `None`, followed by the value `null`.
-- An index of `1` and label of `Some`, followed by some other value.
-*/
-pub const TAG_RUST_OPTION: Tag<'static> = Tag::new("ropt");
+pub const TAG_RUST_OPTION_SOME: Tag<'static> = Tag::new("rsome");
+pub const TAG_RUST_OPTION_NONE: Tag<'static> = Tag::new("rnone");
 
 /**
 A tag for Rust's `()` type.
@@ -132,7 +125,7 @@ pub const TAG_RUST_UNIT: Tag<'static> = Tag::new("r()");
 /**
 A tag for values that have a constant size.
 */
-pub const TAG_CONSTANT_SIZE: Tag<'static> = Tag::new("svalcsize");
+pub const TAG_CONSTANT_SIZE: Tag<'static> = Tag::new("svalcs");
 
 impl<'a> Tag<'a> {
     /**

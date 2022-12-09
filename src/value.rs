@@ -228,14 +228,6 @@ pub trait Value {
             fn text_end(&mut self) -> Result {
                 Ok(())
             }
-
-            fn constant_size_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn constant_size_end(&mut self) -> Result {
-                Ok(())
-            }
         }
 
         let mut extract = Extract {
@@ -288,14 +280,6 @@ pub trait Value {
             }
 
             fn binary_end(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn constant_size_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn constant_size_end(&mut self) -> Result {
                 Ok(())
             }
         }

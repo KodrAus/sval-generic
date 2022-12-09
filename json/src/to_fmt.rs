@@ -32,10 +32,6 @@ impl<'sval, W> sval::Stream<'sval> for Formatter<W>
 where
     W: Write,
 {
-    fn unit(&mut self) -> sval::Result {
-        self.null()
-    }
-
     fn null(&mut self) -> sval::Result {
         self.out.write_str("null")?;
 
@@ -254,13 +250,23 @@ where
         Ok(())
     }
 
-    fn enum_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn enum_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.is_internally_tagged = true;
 
         Ok(())
     }
 
-    fn enum_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn enum_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         if self.is_internally_tagged {
             self.map_value_end()?;
             self.map_end()?;
@@ -271,9 +277,14 @@ where
         Ok(())
     }
 
-    fn tagged_begin(&mut self, tag: sval::Tag) -> sval::Result {
+    fn tagged_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         if self.is_internally_tagged {
-            if let Some(label) = tag.label() {
+            if let Some(label) = label {
                 self.map_begin(Some(1))?;
 
                 self.map_key_begin()?;
@@ -289,8 +300,13 @@ where
         Ok(())
     }
 
-    fn tagged_end(&mut self, tag: sval::Tag) -> sval::Result {
-        if tag.label().is_some() {
+    fn tagged_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        if label.is_some() {
             self.is_internally_tagged = true;
         }
 
@@ -313,26 +329,24 @@ where
         self.map_value_begin()
     }
 
-    fn constant_begin(&mut self, _: sval::Tag) -> sval::Result {
+    fn constant_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         Ok(())
     }
 
-    fn constant_end(&mut self, _: sval::Tag) -> sval::Result {
+    fn constant_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
         self.is_internally_tagged = false;
 
         Ok(())
-    }
-
-    fn optional_some_begin(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn optional_some_end(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn optional_none(&mut self) -> sval::Result {
-        self.null()
     }
 
     fn number_begin(&mut self) -> sval::Result {

@@ -9,15 +9,30 @@ pub(crate) fn name_of_field(field: &Field) -> String {
                 if value.path.is_ident("rename") && rename.is_none() {
                     if let Lit::Str(s) = value.lit {
                         rename = Some(s.value());
-                        continue;
+                        break;
                     }
                 }
             }
-            panic!("unsupported attribute");
         }
     }
 
     rename.unwrap_or_else(|| field.ident.as_ref().unwrap().to_string())
+}
+
+pub(crate) fn tag(field: &Field) -> Option<String> {
+    for list in field.attrs.iter().filter_map(sval_attr) {
+        for meta in list.nested {
+            if let NestedMeta::Meta(Meta::NameValue(value)) = meta {
+                if value.path.is_ident("tag") {
+                    if let Lit::Str(s) = value.lit {
+                        return Some(s.value());
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 fn sval_attr(attr: &Attribute) -> Option<MetaList> {

@@ -15,6 +15,3 @@ mod to_string;
 
 #[cfg(feature = "alloc")]
 pub use self::to_string::to_string;
-
-mod from_slice_co;
-pub use self::from_slice_co::JsonSliceCoReader;

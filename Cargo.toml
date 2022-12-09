@@ -8,17 +8,10 @@ members = [
     "derive",
     "derive/tests",
     "dynamic",
-    "typeck",
     "test",
-    "buffer",
-    "serde",
     "fmt",
     "fmt/tests",
     "json",
-    "json/benches/twitter",
-    "json/benches/profile",
-    "json/tests",
-    "json/tests/twitter",
     "examples/stream-simple",
 ]
 
