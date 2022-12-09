@@ -1,4 +1,4 @@
-use crate::{Index, Label, Result, Stream, Value, TAG_RUST_OPTION_NONE, TAG_RUST_OPTION_SOME};
+use crate::{tags, Index, Label, Result, Stream, Value};
 
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
@@ -7,26 +7,26 @@ impl<T: Value> Value for Option<T> {
         match self {
             None => {
                 stream.tagged_begin(
-                    Some(TAG_RUST_OPTION_NONE),
+                    Some(tags::RUST_OPTION_NONE),
                     Some(Label::new("None")),
                     Some(Index::new(0)),
                 )?;
                 stream.null()?;
                 stream.tagged_end(
-                    Some(TAG_RUST_OPTION_NONE),
+                    Some(tags::RUST_OPTION_NONE),
                     Some(Label::new("None")),
                     Some(Index::new(0)),
                 )?;
             }
             Some(v) => {
                 stream.tagged_begin(
-                    Some(TAG_RUST_OPTION_SOME),
+                    Some(tags::RUST_OPTION_SOME),
                     Some(Label::new("Some")),
                     Some(Index::new(1)),
                 )?;
                 v.stream(stream)?;
                 stream.tagged_end(
-                    Some(TAG_RUST_OPTION_SOME),
+                    Some(tags::RUST_OPTION_SOME),
                     Some(Label::new("Some")),
                     Some(Index::new(1)),
                 )?;

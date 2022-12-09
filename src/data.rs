@@ -14,6 +14,32 @@ use crate::{
     Result, Stream, Value,
 };
 
+pub mod tags {
+    use super::Tag;
+
+    /**
+    A tag for a value that represents the `Some` variant of a Rust `Option`.
+    */
+    pub const RUST_OPTION_SOME: Tag<'static> = Tag::new("rsome");
+
+    /**
+    A tag for a value that represents the `None` variant of a Rust `Option`.
+    */
+    pub const RUST_OPTION_NONE: Tag<'static> = Tag::new("rnone");
+
+    /**
+    A tag for Rust's `()` type.
+
+    This tag is applied to `null`s to indicate that they're a unit value.
+    */
+    pub const RUST_UNIT: Tag<'static> = Tag::new("r()");
+
+    /**
+    A tag for values that have a constant size.
+    */
+    pub const CONSTANT_SIZE: Tag<'static> = Tag::new("svalcs");
+}
+
 /**
 A textual label for some value.
 */
@@ -100,10 +126,8 @@ impl<'a> fmt::Debug for Label<'a> {
 /**
 A type tag for a value.
 
-Tags communicate information about the type of a value upfront so
-that streams can choose to handle those values differently.
-
-Tags are annotations that extend `sval`'s type system with user-defined semantics.
+Tags are additional hints that a stream may use to interpret a value differently,
+or to avoid some unnecessary work.
 */
 #[derive(Clone, Copy, Hash)]
 pub struct Tag<'a> {
@@ -111,21 +135,6 @@ pub struct Tag<'a> {
     data: &'a str,
     // NOTE: Leaving room here to carry some user-defined data
 }
-
-pub const TAG_RUST_OPTION_SOME: Tag<'static> = Tag::new("rsome");
-pub const TAG_RUST_OPTION_NONE: Tag<'static> = Tag::new("rnone");
-
-/**
-A tag for Rust's `()` type.
-
-This tag is applied to `null`s to indicate that they're a unit value.
-*/
-pub const TAG_RUST_UNIT: Tag<'static> = Tag::new("r()");
-
-/**
-A tag for values that have a constant size.
-*/
-pub const TAG_CONSTANT_SIZE: Tag<'static> = Tag::new("svalcs");
 
 impl<'a> Tag<'a> {
     /**
@@ -223,7 +232,7 @@ impl<'a> fmt::Debug for Tag<'a> {
 }
 
 /**
-A binary index for some value in its parent context.
+The index of a value in its parent context.
 */
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Index(u32);
@@ -240,9 +249,9 @@ impl Index {
 
 impl Value for () {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
-        stream.tagged_begin(Some(TAG_RUST_UNIT), None, None)?;
+        stream.tagged_begin(Some(tags::RUST_UNIT), None, None)?;
         stream.null()?;
-        stream.tagged_begin(Some(TAG_RUST_UNIT), None, None)
+        stream.tagged_begin(Some(tags::RUST_UNIT), None, None)
     }
 
     fn is_dynamic(&self) -> bool {

@@ -266,6 +266,7 @@ pub trait Stream<'sval> {
         self.tagged_end(tag, label, index)
     }
 
+    // TODO: Move this to a tag
     fn constant_begin(
         &mut self,
         tag: Option<Tag>,

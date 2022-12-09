@@ -1,4 +1,4 @@
-use crate::{Index, Result, Stream, Value, TAG_CONSTANT_SIZE};
+use crate::{tags, Index, Result, Stream, Value};
 
 impl<T: Value> Value for [T] {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
@@ -20,7 +20,7 @@ impl<T: Value> Value for [T] {
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream.tagged_begin(Some(TAG_CONSTANT_SIZE), None, None)?;
+        stream.tagged_begin(Some(tags::CONSTANT_SIZE), None, None)?;
         stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -30,7 +30,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         stream.seq_end()?;
-        stream.tagged_end(Some(TAG_CONSTANT_SIZE), None, None)
+        stream.tagged_end(Some(tags::CONSTANT_SIZE), None, None)
     }
 
     fn is_dynamic(&self) -> bool {

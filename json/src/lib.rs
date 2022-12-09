@@ -10,6 +10,13 @@ pub use self::{
     to_fmt::{to_fmt, Formatter},
 };
 
+pub mod tags {
+    /**
+    A tag from strings that are either already escaped in JSON, or that don't need any escaping.
+    */
+    pub const JSON_STRING: sval::Tag<'static> = sval::Tag::new("svaljsonstr");
+}
+
 #[cfg(feature = "alloc")]
 mod to_string;
 

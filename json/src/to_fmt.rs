@@ -1,5 +1,7 @@
 use core::fmt::{self, Write};
 
+use crate::tags;
+
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(&mut Formatter::new(fmt))
 }
@@ -8,6 +10,7 @@ pub struct Formatter<W> {
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
     is_text_quoted: bool,
+    is_text_escaped: bool,
     text_handler: Option<TextHandler>,
     out: W,
 }
@@ -18,6 +21,7 @@ impl<W> Formatter<W> {
             is_internally_tagged: false,
             is_current_depth_empty: true,
             is_text_quoted: true,
+            is_text_escaped: false,
             text_handler: None,
             out,
         }
@@ -55,8 +59,10 @@ where
     fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
         if let Some(ref mut handler) = self.text_handler {
             handler.text_fragment(v, &mut self.out)?;
-        } else {
+        } else if !self.is_text_escaped {
             escape_str(v, &mut self.out)?;
+        } else {
+            self.out.write_str(v)?;
         }
 
         Ok(())
@@ -279,10 +285,16 @@ where
 
     fn tagged_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        tag: Option<sval::Tag>,
         label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
+        if tag == Some(tags::JSON_STRING) {
+            self.is_text_escaped = true;
+
+            return Ok(());
+        }
+
         if self.is_internally_tagged {
             if let Some(label) = label {
                 self.map_begin(Some(1))?;
@@ -302,10 +314,16 @@ where
 
     fn tagged_end(
         &mut self,
-        _: Option<sval::Tag>,
+        tag: Option<sval::Tag>,
         label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
+        if tag == Some(tags::JSON_STRING) {
+            self.is_text_escaped = false;
+
+            return Ok(());
+        }
+
         if label.is_some() {
             self.is_internally_tagged = true;
         }

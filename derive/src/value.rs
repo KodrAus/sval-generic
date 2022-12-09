@@ -200,9 +200,9 @@ fn stream_struct(
         stream_field.push(if let Some(tag) = attr::tag(field) {
             quote!({
                 stream.record_value_begin(#label)?;
-                stream.tagged_begin(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.tagged_begin(Some(#tag), None, None)?;
                 sval::stream(stream, #ident)?;
-                stream.tagged_end(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.tagged_end(Some(#tag), None, None)?;
                 stream.record_value_end(#label)?;
             })
         } else {
@@ -262,9 +262,9 @@ fn stream_tuple(
         stream_field.push(if let Some(tag) = attr::tag(field) {
             quote!({
                 stream.tuple_value_begin(sval::Index::new(#index))?;
-                stream.tagged_begin(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.tagged_begin(Some(#tag), None, None)?;
                 sval::stream(stream, #ident)?;
-                stream.tagged_end(Some(sval::Tag::new(#tag)), None, None)?;
+                stream.tagged_end(Some(#tag), None, None)?;
                 stream.tuple_value_end(sval::Index::new(#index))?;
             })
         } else {
