@@ -14,6 +14,8 @@ use crate::{
     Result, Stream, Value,
 };
 
+pub use text::*;
+
 pub mod tags {
     use super::Tag;
 
@@ -35,6 +37,11 @@ pub mod tags {
     pub const RUST_UNIT: Tag<'static> = Tag::new("r()");
 
     /**
+    A tag for arbitrary-precision decimal numbers.
+    */
+    pub const NUMBER: Tag<'static> = Tag::new("svalnum");
+
+    /**
     A tag for values that have a constant size.
     */
     pub const CONSTANT_SIZE: Tag<'static> = Tag::new("svalcs");
@@ -43,7 +50,7 @@ pub mod tags {
 /**
 A textual label for some value.
 */
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Label<'computed> {
     value_computed: &'computed str,
     value_static: Option<&'static str>,
@@ -129,11 +136,10 @@ A type tag for a value.
 Tags are additional hints that a stream may use to interpret a value differently,
 or to avoid some unnecessary work.
 */
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Tag<'a> {
     id: u64,
     data: &'a str,
-    // NOTE: Leaving room here to carry some user-defined data
 }
 
 impl<'a> Tag<'a> {
@@ -215,15 +221,6 @@ impl<'a> Tag<'a> {
         }
     }
 }
-
-impl<'a, 'b> PartialEq<Tag<'b>> for Tag<'a> {
-    fn eq(&self, other: &Tag<'b>) -> bool {
-        // Compare on id first
-        self.id == other.id && self.data == other.data
-    }
-}
-
-impl<'a> Eq for Tag<'a> {}
 
 impl<'a> fmt::Debug for Tag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -12,9 +12,12 @@ pub use self::{
 
 pub mod tags {
     /**
-    A tag from strings that are either already escaped in JSON, or that don't need any escaping.
+    A tag for values that are already in a JSON compatible form.
+
+    For strings, that means they either don't need escaping or are already escaped.
+    For numbers, that means they're already in a JSON compatible format.
     */
-    pub const JSON_STRING: sval::Tag<'static> = sval::Tag::new("svaljsonstr");
+    pub const JSON_NATIVE: sval::Tag<'static> = sval::Tag::new("svaljsonnat");
 }
 
 #[cfg(feature = "alloc")]

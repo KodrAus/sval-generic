@@ -26,7 +26,7 @@ impl Value for str {
     }
 }
 
-pub(crate) fn display<'sval, T: fmt::Display>(
+pub fn display<'sval, T: fmt::Display>(
     text: T,
     mut stream: &mut (impl Stream<'sval> + ?Sized),
 ) -> Result {

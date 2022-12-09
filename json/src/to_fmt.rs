@@ -10,7 +10,7 @@ pub struct Formatter<W> {
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
     is_text_quoted: bool,
-    is_text_escaped: bool,
+    is_json_native: bool,
     text_handler: Option<TextHandler>,
     out: W,
 }
@@ -21,7 +21,7 @@ impl<W> Formatter<W> {
             is_internally_tagged: false,
             is_current_depth_empty: true,
             is_text_quoted: true,
-            is_text_escaped: false,
+            is_json_native: false,
             text_handler: None,
             out,
         }
@@ -59,7 +59,7 @@ where
     fn text_fragment_computed(&mut self, v: &str) -> sval::Result {
         if let Some(ref mut handler) = self.text_handler {
             handler.text_fragment(v, &mut self.out)?;
-        } else if !self.is_text_escaped {
+        } else if !self.is_json_native {
             escape_str(v, &mut self.out)?;
         } else {
             self.out.write_str(v)?;
@@ -289,27 +289,39 @@ where
         label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
-        if tag == Some(tags::JSON_STRING) {
-            self.is_text_escaped = true;
+        match tag {
+            Some(tags::JSON_NATIVE) => {
+                self.is_json_native = true;
 
-            return Ok(());
-        }
+                Ok(())
+            }
+            Some(sval::tags::NUMBER) => {
+                self.is_text_quoted = false;
 
-        if self.is_internally_tagged {
-            if let Some(label) = label {
-                self.map_begin(Some(1))?;
+                if !self.is_json_native {
+                    self.text_handler = Some(TextHandler::number());
+                }
 
-                self.map_key_begin()?;
-                escape_str(&*label, &mut self.out)?;
-                self.map_key_end()?;
+                Ok(())
+            }
+            _ => {
+                if self.is_internally_tagged {
+                    if let Some(label) = label {
+                        self.map_begin(Some(1))?;
 
-                self.map_value_begin()?;
+                        self.map_key_begin()?;
+                        escape_str(&*label, &mut self.out)?;
+                        self.map_key_end()?;
+
+                        self.map_value_begin()?;
+                    }
+                }
+
+                self.is_internally_tagged = false;
+
+                Ok(())
             }
         }
-
-        self.is_internally_tagged = false;
-
-        Ok(())
     }
 
     fn tagged_end(
@@ -318,15 +330,44 @@ where
         label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
-        if tag == Some(tags::JSON_STRING) {
-            self.is_text_escaped = false;
+        match tag {
+            Some(tags::JSON_NATIVE) => {
+                self.is_json_native = false;
 
-            return Ok(());
-        }
+                Ok(())
+            }
+            Some(sval::tags::NUMBER) => {
+                self.is_text_quoted = true;
 
-        if label.is_some() {
-            self.is_internally_tagged = true;
+                if !self.is_json_native {
+                    if let Some(TextHandler::Number(mut number)) = self.text_handler.take() {
+                        number.end(&mut self.out)?;
+                    }
+                }
+
+                Ok(())
+            }
+            _ => {
+                if label.is_some() {
+                    self.is_internally_tagged = true;
+                }
+
+                Ok(())
+            }
         }
+    }
+
+    fn tag(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: sval::Label,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        self.out.write_str("\"")?;
+        escape_str(&*label, &mut self.out)?;
+        self.out.write_str("\"")?;
+
+        self.is_internally_tagged = false;
 
         Ok(())
     }
@@ -345,43 +386,6 @@ where
         self.out.write_str("\":")?;
 
         self.map_value_begin()
-    }
-
-    fn constant_begin(
-        &mut self,
-        _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        Ok(())
-    }
-
-    fn constant_end(
-        &mut self,
-        _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        self.is_internally_tagged = false;
-
-        Ok(())
-    }
-
-    fn number_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-        self.text_handler = Some(TextHandler::number());
-
-        Ok(())
-    }
-
-    fn number_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
-
-        if let Some(TextHandler::Number(mut number)) = self.text_handler.take() {
-            number.end(&mut self.out)?;
-        }
-
-        Ok(())
     }
 }
 

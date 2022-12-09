@@ -1,22 +1,22 @@
-use crate::{Stream, Value};
+use crate::{tags, Stream, Value};
 
 macro_rules! int {
     ($($fi:ident => $i:ty, $fu:ident => $u:ty,)*) => {
         $(
             pub(crate) fn $fi<'sval>(v: $i, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.number_begin()?;
+                stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
                 crate::data::text::display(v, stream)?;
 
-                stream.number_end()
+                stream.tagged_end(Some(tags::NUMBER), None, None)
             }
 
             pub(crate) fn $fu<'sval>(v: $u, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.number_begin()?;
+                stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
                 crate::data::text::display(v, stream)?;
 
-                stream.number_end()
+                stream.tagged_end(Some(tags::NUMBER), None, None)
             }
         )*
     };
@@ -26,11 +26,11 @@ macro_rules! float {
     ($($f:ident => $n:ty,)*) => {
         $(
             pub(crate) fn $f<'sval>(v: $n, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.number_begin()?;
+                stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
                 crate::data::text::display(v, stream)?;
 
-                stream.number_end()
+                stream.tagged_end(Some(tags::NUMBER), None, None)
             }
         )*
     };

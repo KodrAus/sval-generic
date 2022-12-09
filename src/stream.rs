@@ -186,6 +186,20 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
+    fn tag(&mut self, tag: Option<Tag>, label: Label, index: Option<Index>) -> Result {
+        self.tagged_begin(tag, Some(label), index)?;
+
+        if let Some(label) = label.try_get_static() {
+            label.stream(self)?;
+        } else {
+            self.text_begin(Some(label.len()))?;
+            self.text_fragment_computed(&*label)?;
+            self.text_end()?;
+        }
+
+        self.tagged_end(tag, Some(label), index)
+    }
+
     fn record_begin(
         &mut self,
         tag: Option<Tag>,
@@ -264,59 +278,6 @@ pub trait Stream<'sval> {
     ) -> Result {
         self.seq_end()?;
         self.tagged_end(tag, label, index)
-    }
-
-    // TODO: Move this to a tag
-    fn constant_begin(
-        &mut self,
-        tag: Option<Tag>,
-        label: Option<Label>,
-        index: Option<Index>,
-    ) -> Result {
-        self.tagged_begin(tag, label, index)
-    }
-
-    fn constant_end(
-        &mut self,
-        tag: Option<Tag>,
-        label: Option<Label>,
-        index: Option<Index>,
-    ) -> Result {
-        self.tagged_end(tag, label, index)
-    }
-
-    /**
-    Begin an arbitrarily sized decimal floating point number.
-
-    # Structure
-
-    Arbitrary sized decimal floating points wrap a text or binary blob with the encoding described below.
-    A call to `number_begin` must be followed by a call to `number_end` after the floating point value:
-
-    ```
-    # fn wrap<'a>(num_bytes_hint: Option<usize>, mut stream: impl sval::Stream<'a>) -> sval::Result {
-    stream.number_begin()?;
-
-    stream.text_begin(Some(8))?;
-    stream.text_fragment("1333.754")?;
-    stream.text_end()?;
-
-    stream.number_end()?;
-    # Ok(())
-    # }
-    ```
-    */
-    fn number_begin(&mut self) -> Result {
-        Ok(())
-    }
-
-    /**
-    End an arbitrary sized decimal floating point number.
-
-    See [`Stream::number_begin`] for details on arbitrary sized decimal floating points.
-     */
-    fn number_end(&mut self) -> Result {
-        Ok(())
     }
 }
 
@@ -503,14 +464,9 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tagged_end(tag, label, index)
             }
 
-            fn constant_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+            fn tag(&mut self, tag: Option<Tag>, label: Label, index: Option<Index>) -> Result {
                 let $bind = self;
-                ($($forward)*).constant_begin(tag, label, index)
-            }
-
-            fn constant_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
-                let $bind = self;
-                ($($forward)*).constant_end(tag, label, index)
+                ($($forward)*).tag(tag, label, index)
             }
 
             fn record_begin(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>, num_entries: Option<usize>) -> Result {
@@ -561,16 +517,6 @@ macro_rules! impl_stream_forward {
             fn enum_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_end(tag, label, index)
-            }
-
-            fn number_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).number_begin()
-            }
-
-            fn number_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).number_end()
             }
         }
     };
@@ -729,6 +675,10 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
+    fn tag(&mut self, _: Option<Tag>, _: Label, _: Option<Index>) -> Result {
+        crate::result::unsupported()
+    }
+
     fn constant_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
@@ -786,14 +736,6 @@ pub(crate) trait DefaultUnsupported<'sval> {
     }
 
     fn enum_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn number_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn number_end(&mut self) -> Result {
         crate::result::unsupported()
     }
 }

@@ -82,17 +82,10 @@ mod private {
             index: Option<sval::Index>,
         ) -> sval::Result;
 
-        fn dispatch_constant_begin(
+        fn dispatch_tag(
             &mut self,
             tag: Option<sval::Tag>,
-            label: Option<sval::Label>,
-            index: Option<sval::Index>,
-        ) -> sval::Result;
-
-        fn dispatch_constant_end(
-            &mut self,
-            tag: Option<sval::Tag>,
-            label: Option<sval::Label>,
+            label: sval::Label,
             index: Option<sval::Index>,
         ) -> sval::Result;
 
@@ -147,10 +140,6 @@ mod private {
             label: Option<sval::Label>,
             index: Option<sval::Index>,
         ) -> sval::Result;
-
-        fn dispatch_number_begin(&mut self) -> sval::Result;
-
-        fn dispatch_number_end(&mut self) -> sval::Result;
     }
 
     pub trait EraseStream<'sval> {
@@ -328,22 +317,13 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
         self.tagged_end(tag, label, index)
     }
 
-    fn dispatch_constant_begin(
+    fn dispatch_tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
+        label: sval::Label,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        self.constant_begin(tag, label, index)
-    }
-
-    fn dispatch_constant_end(
-        &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
-    ) -> sval::Result {
-        self.constant_end(tag, label, index)
+        self.tag(tag, label, index)
     }
 
     fn dispatch_record_begin(
@@ -416,14 +396,6 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
         index: Option<sval::Index>,
     ) -> sval::Result {
         self.enum_end(tag, label, index)
-    }
-
-    fn dispatch_number_begin(&mut self) -> sval::Result {
-        self.number_begin()
-    }
-
-    fn dispatch_number_end(&mut self) -> sval::Result {
-        self.number_end()
     }
 }
 
@@ -574,12 +546,13 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_tagged_end(tag, label, index)
             }
 
-            fn constant_begin(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
-                self.erase_stream().0.dispatch_constant_begin(tag, label, index)
-            }
-
-            fn constant_end(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
-                self.erase_stream().0.dispatch_constant_end(tag, label, index)
+            fn tag(
+                &mut self,
+                tag: Option<sval::Tag>,
+                label: sval::Label,
+                index: Option<sval::Index>,
+            ) -> sval::Result {
+                self.erase_stream().0.dispatch_tag(tag, label, index)
             }
 
             fn record_begin(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
@@ -620,14 +593,6 @@ macro_rules! impl_stream {
 
             fn enum_end(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_enum_end(tag, label, index)
-            }
-
-            fn number_begin(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_number_begin()
-            }
-
-            fn number_end(&mut self) -> sval::Result {
-                self.erase_stream().0.dispatch_number_end()
             }
         }
     }
