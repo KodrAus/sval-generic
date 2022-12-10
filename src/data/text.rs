@@ -3,6 +3,25 @@ use crate::{
     Result, Stream, Value,
 };
 
+pub fn stream_fmt<'sval, T: fmt::Display>(
+    mut stream: &mut (impl Stream<'sval> + ?Sized),
+    text: T,
+) -> Result {
+    struct Writer<S>(S);
+
+    impl<'a, S: Stream<'a>> Write for Writer<S> {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            self.0.text_fragment_computed(s)?;
+
+            Ok(())
+        }
+    }
+
+    stream.text_begin(None)?;
+    write!(Writer(&mut stream), "{}", text)?;
+    stream.text_end()
+}
+
 impl Value for char {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         let mut buf = [0; 4];
@@ -24,25 +43,6 @@ impl Value for str {
     fn to_text(&self) -> Option<&str> {
         Some(self)
     }
-}
-
-pub fn display<'sval, T: fmt::Display>(
-    text: T,
-    mut stream: &mut (impl Stream<'sval> + ?Sized),
-) -> Result {
-    struct Writer<S>(S);
-
-    impl<'a, S: Stream<'a>> Write for Writer<S> {
-        fn write_str(&mut self, s: &str) -> fmt::Result {
-            self.0.text_fragment_computed(s)?;
-
-            Ok(())
-        }
-    }
-
-    stream.text_begin(None)?;
-    write!(Writer(&mut stream), "{}", text)?;
-    stream.text_end()
 }
 
 #[cfg(feature = "alloc")]

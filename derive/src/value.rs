@@ -194,13 +194,13 @@ fn derive_enum<'a>(
 
             impl #impl_generics sval::Value for #ident #ty_generics #bounded_where_clause {
                 fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-                    stream.enum_begin(None, Some(#label), #index)?;
+                    stream.enum_begin(None, #label, #index)?;
 
                     match self {
                         #(#variant_match_arms)*
                     }
 
-                    stream.enum_end(None, Some(#label), #index)
+                    stream.enum_end(None, #label, #index)
                 }
 
                 fn is_dynamic(&self) -> bool {
@@ -250,13 +250,13 @@ fn stream_record(
     }
 
     quote!(#path { #(ref #field_ident,)* } => {
-        stream.record_begin(None, Some(#label), #index, Some(#field_count))?;
+        stream.record_begin(None, #label, #index, Some(#field_count))?;
 
         #(
             #stream_field
         )*
 
-        stream.record_end(None, Some(#label), #index)?;
+        stream.record_end(None, #label, #index)?;
     })
 }
 
@@ -268,9 +268,9 @@ fn stream_newtype(
     let (label, index) = label_index(label, index);
 
     quote!(#path(ref field0) => {
-        stream.tagged_begin(None, Some(#label), #index)?;
+        stream.tagged_begin(None, #label, #index)?;
         sval::stream(stream, field0)?;
-        stream.tagged_end(None, Some(#label), #index)?;
+        stream.tagged_end(None, #label, #index)?;
     })
 }
 
@@ -312,13 +312,13 @@ fn stream_tuple(
     }
 
     quote!(#path(#(ref #field_ident,)*) => {
-        stream.tuple_begin(None, Some(#label), #index, Some(#field_count))?;
+        stream.tuple_begin(None, #label, #index, Some(#field_count))?;
 
         #(
             #stream_field
         )*
 
-        stream.tuple_end(None, Some(#label), #index)?;
+        stream.tuple_end(None, #label, #index)?;
     })
 }
 
@@ -341,9 +341,9 @@ fn label_index(
     let label = label.to_string();
     match index {
         Some(index) => (
-            quote!(sval::Label::new(#label)),
+            quote!(Some(sval::Label::new(#label))),
             quote!(Some(sval::Index::new(#index))),
         ),
-        None => (quote!(sval::Label::new(#label)), quote!(None)),
+        None => (quote!(Some(sval::Label::new(#label))), quote!(None)),
     }
 }

@@ -1,36 +1,43 @@
 use crate::{tags, Index, Label, Result, Stream, Value};
 
+pub(crate) fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
+    mut stream: &mut S,
+    some: impl FnOnce(&mut S) -> Result,
+) -> Result {
+    stream.tagged_begin(
+        Some(tags::RUST_OPTION_SOME),
+        Some(Label::new("Some")),
+        Some(Index::new(1)),
+    )?;
+    some(stream)?;
+    stream.tagged_end(
+        Some(tags::RUST_OPTION_SOME),
+        Some(Label::new("Some")),
+        Some(Index::new(1)),
+    )
+}
+
+pub(crate) fn stream_none<'sval, S: Stream<'sval> + ?Sized>(mut stream: &mut S) -> Result {
+    stream.tagged_begin(
+        Some(tags::RUST_OPTION_NONE),
+        Some(Label::new("None")),
+        Some(Index::new(0)),
+    )?;
+    stream.null()?;
+    stream.tagged_end(
+        Some(tags::RUST_OPTION_NONE),
+        Some(Label::new("None")),
+        Some(Index::new(0)),
+    )
+}
+
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
         stream.dynamic_begin()?;
 
         match self {
-            None => {
-                stream.tagged_begin(
-                    Some(tags::RUST_OPTION_NONE),
-                    Some(Label::new("None")),
-                    Some(Index::new(0)),
-                )?;
-                stream.null()?;
-                stream.tagged_end(
-                    Some(tags::RUST_OPTION_NONE),
-                    Some(Label::new("None")),
-                    Some(Index::new(0)),
-                )?;
-            }
-            Some(v) => {
-                stream.tagged_begin(
-                    Some(tags::RUST_OPTION_SOME),
-                    Some(Label::new("Some")),
-                    Some(Index::new(1)),
-                )?;
-                v.stream(stream)?;
-                stream.tagged_end(
-                    Some(tags::RUST_OPTION_SOME),
-                    Some(Label::new("Some")),
-                    Some(Index::new(1)),
-                )?;
-            }
+            None => stream_none(stream)?,
+            Some(v) => stream_some(stream, |stream| v.stream(stream))?,
         }
 
         stream.dynamic_end()

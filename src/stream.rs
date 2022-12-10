@@ -1,4 +1,4 @@
-use crate::{data, Index, Label, Result, Tag, Value};
+use crate::{data, stream_none, stream_some, Index, Label, Result, Tag, Value};
 
 pub trait Stream<'sval> {
     fn null(&mut self) -> Result;
@@ -38,68 +38,42 @@ pub trait Stream<'sval> {
     }
 
     fn u8(&mut self, value: u8) -> Result {
-        data::number::u8_int(value, self)
+        self.u16(value as u16)
     }
 
     fn u16(&mut self, value: u16) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.u8(value)
-        } else {
-            data::number::u16_int(value, self)
-        }
+        self.u32(value as u32)
     }
 
     fn u32(&mut self, value: u32) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.u16(value)
-        } else {
-            data::number::u32_int(value, self)
-        }
+        self.u64(value as u64)
     }
 
     fn u64(&mut self, value: u64) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.u32(value)
-        } else {
-            data::number::u64_int(value, self)
-        }
+        self.u128(value as u128)
     }
 
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
-            self.u64(value)
+            self.i64(value)
         } else {
             data::number::u128_int(value, self)
         }
     }
 
     fn i8(&mut self, value: i8) -> Result {
-        data::number::i8_int(value, self)
+        self.i16(value as i16)
     }
 
     fn i16(&mut self, value: i16) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.i8(value)
-        } else {
-            data::number::i16_int(value, self)
-        }
+        self.i32(value as i32)
     }
 
     fn i32(&mut self, value: i32) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.i16(value)
-        } else {
-            data::number::i32_int(value, self)
-        }
+        self.i64(value as i64)
     }
 
-    fn i64(&mut self, value: i64) -> Result {
-        if let Ok(value) = value.try_into() {
-            self.i32(value)
-        } else {
-            data::number::i64_int(value, self)
-        }
-    }
+    fn i64(&mut self, value: i64) -> Result;
 
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
@@ -110,24 +84,38 @@ pub trait Stream<'sval> {
     }
 
     fn f32(&mut self, value: f32) -> Result {
-        data::number::f32_number(value, self)
+        self.f64(value as f64)
     }
 
-    fn f64(&mut self, value: f64) -> Result {
-        data::number::f64_number(value, self)
+    fn f64(&mut self, value: f64) -> Result;
+
+    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
+        self.seq_begin(num_entries_hint)
     }
 
-    fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
+    fn map_key_begin(&mut self) -> Result {
+        self.seq_value_begin()?;
+        self.tuple_begin(None, None, None, Some(2))?;
+        self.tuple_value_begin(Index::new(0))
+    }
 
-    fn map_key_begin(&mut self) -> Result;
+    fn map_key_end(&mut self) -> Result {
+        self.tuple_value_end(Index::new(0))
+    }
 
-    fn map_key_end(&mut self) -> Result;
+    fn map_value_begin(&mut self) -> Result {
+        self.tuple_value_begin(Index::new(1))
+    }
 
-    fn map_value_begin(&mut self) -> Result;
+    fn map_value_end(&mut self) -> Result {
+        self.tuple_value_end(Index::new(1))?;
+        self.tuple_end(None, None, None)?;
+        self.seq_value_end()
+    }
 
-    fn map_value_end(&mut self) -> Result;
-
-    fn map_end(&mut self) -> Result;
+    fn map_end(&mut self) -> Result {
+        self.seq_end()
+    }
 
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
@@ -186,18 +174,24 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
-    fn tag(&mut self, tag: Option<Tag>, label: Label, index: Option<Index>) -> Result {
-        self.tagged_begin(tag, Some(label), index)?;
+    fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
+        self.tagged_begin(tag, label, index)?;
 
-        if let Some(label) = label.try_get_static() {
-            label.stream(self)?;
+        if let Some(label) = label {
+            stream_some(self, |stream| {
+                if let Some(label) = label.try_get_static() {
+                    label.stream(stream)
+                } else {
+                    stream.text_begin(Some(label.len()))?;
+                    stream.text_fragment_computed(&*label)?;
+                    stream.text_end()
+                }
+            })?;
         } else {
-            self.text_begin(Some(label.len()))?;
-            self.text_fragment_computed(&*label)?;
-            self.text_end()?;
+            stream_none(self)?;
         }
 
-        self.tagged_end(tag, Some(label), index)
+        self.tagged_end(tag, label, index)
     }
 
     fn record_begin(
@@ -464,7 +458,7 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).tagged_end(tag, label, index)
             }
 
-            fn tag(&mut self, tag: Option<Tag>, label: Label, index: Option<Index>) -> Result {
+            fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).tag(tag, label, index)
             }
@@ -675,7 +669,7 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn tag(&mut self, _: Option<Tag>, _: Label, _: Option<Index>) -> Result {
+    fn tag(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
         crate::result::unsupported()
     }
 

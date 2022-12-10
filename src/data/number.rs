@@ -6,7 +6,7 @@ macro_rules! int {
             pub(crate) fn $fi<'sval>(v: $i, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
-                crate::data::text::display(v, stream)?;
+                crate::stream_fmt(stream, v)?;
 
                 stream.tagged_end(Some(tags::NUMBER), None, None)
             }
@@ -14,21 +14,7 @@ macro_rules! int {
             pub(crate) fn $fu<'sval>(v: $u, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
-                crate::data::text::display(v, stream)?;
-
-                stream.tagged_end(Some(tags::NUMBER), None, None)
-            }
-        )*
-    };
-}
-
-macro_rules! float {
-    ($($f:ident => $n:ty,)*) => {
-        $(
-            pub(crate) fn $f<'sval>(v: $n, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
-                stream.tagged_begin(Some(tags::NUMBER), None, None)?;
-
-                crate::data::text::display(v, stream)?;
+                crate::stream_fmt(stream, v)?;
 
                 stream.tagged_end(Some(tags::NUMBER), None, None)
             }
@@ -55,21 +41,8 @@ macro_rules! convert {
 }
 
 int!(
-    i8_int => i8,
-    u8_int => u8,
-    i16_int => i16,
-    u16_int => u16,
-    i32_int => i32,
-    u32_int => u32,
-    i64_int => i64,
-    u64_int => u64,
     i128_int => i128,
     u128_int => u128,
-);
-
-float!(
-    f32_number => f32,
-    f64_number => f64,
 );
 
 convert!(

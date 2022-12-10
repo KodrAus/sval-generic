@@ -35,6 +35,21 @@ impl<'sval> sval::Stream<'sval> for MyStream {
         Ok(())
     }
 
+    fn bool(&mut self, v: bool) -> sval::Result {
+        print!("{}", v);
+        Ok(())
+    }
+
+    fn i64(&mut self, v: i64) -> sval::Result {
+        print!("{}", v);
+        Ok(())
+    }
+
+    fn f64(&mut self, v: f64) -> sval::Result {
+        print!("{}", v);
+        Ok(())
+    }
+
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
         print!("\"");
         Ok(())
@@ -48,21 +63,6 @@ impl<'sval> sval::Stream<'sval> for MyStream {
 
     fn text_end(&mut self) -> sval::Result {
         print!("\"");
-        Ok(())
-    }
-
-    fn binary_begin(&mut self, _: Option<usize>) -> sval::Result {
-        Ok(())
-    }
-
-    fn binary_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
-        for b in fragment {
-            print!("{:x}", b);
-        }
-        Ok(())
-    }
-
-    fn binary_end(&mut self) -> sval::Result {
         Ok(())
     }
 
