@@ -188,13 +188,21 @@ pub trait Stream<'sval> {
     fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         self.tagged_begin(tag, label, index)?;
 
-        stream_option(self, label, |stream, label| {
-            if let Some(label) = label.try_get_static() {
-                stream.value(label)
-            } else {
-                stream.value_computed(&*label)
-            }
-        })?;
+        self.dynamic_begin()?;
+
+        if let Some(crate::tags::RUST_OPTION_NONE) = tag {
+            self.null()?;
+        } else {
+            stream_option(self, label, |stream, label| {
+                if let Some(label) = label.try_get_static() {
+                    stream.value(label)
+                } else {
+                    stream.value_computed(&*label)
+                }
+            })?;
+        }
+
+        self.dynamic_end()?;
 
         self.tagged_end(tag, label, index)
     }

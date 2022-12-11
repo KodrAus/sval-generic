@@ -357,25 +357,6 @@ where
         }
     }
 
-    fn tag(
-        &mut self,
-        _: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        if let Some(label) = label {
-            self.out.write_str("\"")?;
-            escape_str(&*label, &mut self.out)?;
-            self.out.write_str("\"")?;
-        } else {
-            self.null()?;
-        }
-
-        self.is_internally_tagged = false;
-
-        Ok(())
-    }
-
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
         self.is_internally_tagged = false;
 

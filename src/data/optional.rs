@@ -5,51 +5,32 @@ pub(crate) fn stream_option<'sval, S: Stream<'sval> + ?Sized, V>(
     v: Option<V>,
     some: impl FnOnce(&mut S, V) -> Result,
 ) -> Result {
-    stream.dynamic_begin()?;
-
     if let Some(v) = v {
-        stream_some(stream, |stream| some(stream, v))?;
+        stream.tagged_begin(
+            Some(tags::RUST_OPTION_SOME),
+            Some(Label::new("Some")),
+            Some(Index::new(1)),
+        )?;
+        some(stream, v)?;
+        stream.tagged_end(
+            Some(tags::RUST_OPTION_SOME),
+            Some(Label::new("Some")),
+            Some(Index::new(1)),
+        )
     } else {
-        stream_none(stream)?;
+        stream.tag(
+            Some(tags::RUST_OPTION_NONE),
+            Some(Label::new("None")),
+            Some(Index::new(0)),
+        )
     }
-
-    stream.dynamic_end()
-}
-
-fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
-    stream: &mut S,
-    some: impl FnOnce(&mut S) -> Result,
-) -> Result {
-    stream.tagged_begin(
-        Some(tags::RUST_OPTION_SOME),
-        Some(Label::new("Some")),
-        Some(Index::new(1)),
-    )?;
-    some(stream)?;
-    stream.tagged_end(
-        Some(tags::RUST_OPTION_SOME),
-        Some(Label::new("Some")),
-        Some(Index::new(1)),
-    )
-}
-
-fn stream_none<'sval, S: Stream<'sval> + ?Sized>(stream: &mut S) -> Result {
-    stream.tagged_begin(
-        Some(tags::RUST_OPTION_NONE),
-        Some(Label::new("None")),
-        Some(Index::new(0)),
-    )?;
-    stream.null()?;
-    stream.tagged_end(
-        Some(tags::RUST_OPTION_NONE),
-        Some(Label::new("None")),
-        Some(Index::new(0)),
-    )
 }
 
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream_option(stream, self.as_ref(), |stream, some| stream.value(some))
+        stream.dynamic_begin()?;
+        stream_option(stream, self.as_ref(), |stream, some| stream.value(some))?;
+        stream.dynamic_end()
     }
 
     fn is_dynamic(&self) -> bool {

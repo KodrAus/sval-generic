@@ -3,7 +3,6 @@ use core::fmt::{self, Debug, Write};
 pub(crate) struct Writer<W> {
     is_current_depth_empty: bool,
     is_text_quoted: bool,
-    is_none: bool,
     out: W,
 }
 
@@ -143,7 +142,6 @@ impl<W> Writer<W> {
         Writer {
             is_current_depth_empty: true,
             is_text_quoted: true,
-            is_none: false,
             out,
         }
     }
@@ -169,15 +167,13 @@ impl<W: fmt::Write> Write for Writer<W> {
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn null(&mut self) -> sval::Result {
-        if !self.is_none {
-            self.write_str("()")?;
-        }
+        self.write_str("()")?;
 
         Ok(())
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        self.out.write_str(if value { "true" } else { "false" })?;
+        self.write_str(if value { "true" } else { "false" })?;
 
         Ok(())
     }
@@ -424,13 +420,6 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
                 Ok(())
             }
-            Some(sval::tags::RUST_OPTION_NONE) => {
-                self.is_none = true;
-
-                self.write_str("None")?;
-
-                Ok(())
-            }
             _ => {
                 if let Some(label) = label {
                     self.write_str(&*label)?;
@@ -452,11 +441,6 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         match tag {
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = true;
-
-                Ok(())
-            }
-            Some(sval::tags::RUST_OPTION_NONE) => {
-                self.is_none = false;
 
                 Ok(())
             }
