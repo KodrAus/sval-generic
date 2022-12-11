@@ -6,9 +6,7 @@ edition = "2021"
 [workspace]
 members = [
     "derive",
-    "derive/tests",
     "dynamic",
-    "test",
     "fmt",
     "fmt/tests",
     "json",

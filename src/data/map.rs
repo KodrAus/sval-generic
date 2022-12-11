@@ -8,11 +8,11 @@ mod alloc_support {
 
             for (k, v) in self {
                 stream.map_key_begin()?;
-                k.stream(stream)?;
+                stream.value(k)?;
                 stream.map_key_end()?;
 
                 stream.map_value_begin()?;
-                v.stream(stream)?;
+                stream.value(v)?;
                 stream.map_value_end()?;
             }
 
@@ -38,11 +38,11 @@ mod std_support {
 
             for (k, v) in self {
                 stream.map_key_begin()?;
-                k.stream(stream)?;
+                stream.value(k)?;
                 stream.map_key_end()?;
 
                 stream.map_value_begin()?;
-                v.stream(stream)?;
+                stream.value(v)?;
                 stream.map_value_end()?;
             }
 

@@ -69,5 +69,5 @@ pub fn stream<'sval, S: Stream<'sval> + ?Sized, V: Value + ?Sized>(
     stream: &mut S,
     value: &'sval V,
 ) -> Result {
-    value.stream(stream)
+    stream.value(value)
 }

@@ -1,11 +1,17 @@
-use crate::{data, stream_none, stream_some, Index, Label, Result, Tag, Value};
+use crate::{
+    data::{
+        self,
+        optional::{stream_none, stream_some},
+    },
+    Index, Label, Result, Tag, Value,
+};
 
 pub trait Stream<'sval> {
-    fn value<V: Value>(&mut self, v: &'sval V) -> Result {
-        self.value_computed(v)
+    fn value<V: Value + ?Sized>(&mut self, v: &'sval V) -> Result {
+        v.stream(self)
     }
 
-    fn value_computed<V: Value>(&mut self, v: &V) -> Result {
+    fn value_computed<V: Value + ?Sized>(&mut self, v: &V) -> Result {
         stream_computed(self, v)
     }
 
@@ -188,11 +194,9 @@ pub trait Stream<'sval> {
         if let Some(label) = label {
             stream_some(self, |stream| {
                 if let Some(label) = label.try_get_static() {
-                    label.stream(stream)
+                    stream.value(label)
                 } else {
-                    stream.text_begin(Some(label.len()))?;
-                    stream.text_fragment_computed(&*label)?;
-                    stream.text_end()
+                    stream.value_computed(&*label)
                 }
             })?;
         } else {
@@ -217,11 +221,9 @@ pub trait Stream<'sval> {
         self.map_key_begin()?;
 
         if let Some(label) = label.try_get_static() {
-            label.stream(&mut *self)?;
+            self.value(label)?;
         } else {
-            self.text_begin(Some(label.len()))?;
-            self.text_fragment_computed(&label)?;
-            self.text_end()?;
+            self.value_computed(&*label)?;
         }
 
         self.map_key_end()?;
@@ -286,12 +288,12 @@ pub trait Stream<'sval> {
 macro_rules! impl_stream_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
-            fn value<V: Value>(&mut self, v: &'sval V) -> Result {
+            fn value<V: Value + ?Sized>(&mut self, v: &'sval V) -> Result {
                 let $bind = self;
                 ($($forward)*).value(v)
             }
 
-            fn value_computed<V: Value>(&mut self, v: &V) -> Result {
+            fn value_computed<V: Value + ?Sized>(&mut self, v: &V) -> Result {
                 let $bind = self;
                 ($($forward)*).value_computed(v)
             }
@@ -543,11 +545,11 @@ pub(crate) trait DefaultUnsupported<'sval> {
         IntoStream(self)
     }
 
-    fn value<V: Value>(&mut self, _: &'sval V) -> Result {
+    fn value<V: Value + ?Sized>(&mut self, _: &'sval V) -> Result {
         crate::result::unsupported()
     }
 
-    fn value_computed<V: Value>(&mut self, _: &V) -> Result {
+    fn value_computed<V: Value + ?Sized>(&mut self, _: &V) -> Result {
         crate::result::unsupported()
     }
 

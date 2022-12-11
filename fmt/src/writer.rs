@@ -414,15 +414,23 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     ) -> sval::Result {
         self.is_text_quoted = true;
 
-        if tag != Some(sval::TAG_RUST_OPTION_NONE) {
-            if let Some(label) = label {
-                self.write_str(&*label)?;
+        match tag {
+            Some(sval::tags::RUST_OPTION_NONE) => Ok(()),
+            Some(sval::tags::NUMBER) => {
+                self.is_text_quoted = false;
+
+                Ok(())
             }
+            _ => {
+                if let Some(label) = label {
+                    self.write_str(&*label)?;
+                }
 
-            self.write_char('(')?;
+                self.write_char('(')?;
+
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 
     fn tagged_end(
@@ -431,11 +439,19 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
-        if tag != Some(sval::TAG_RUST_OPTION_NONE) {
-            self.write_char(')')?;
-        }
+        match tag {
+            Some(sval::tags::RUST_OPTION_NONE) => Ok(()),
+            Some(sval::tags::NUMBER) => {
+                self.is_text_quoted = true;
 
-        Ok(())
+                Ok(())
+            }
+            _ => {
+                self.write_char(')')?;
+
+                Ok(())
+            }
+        }
     }
 
     fn record_begin(
@@ -510,40 +526,6 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<sval::Index>,
     ) -> sval::Result {
         self.write_char(')')?;
-
-        Ok(())
-    }
-
-    fn constant_begin(
-        &mut self,
-        _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        self.is_text_quoted = false;
-
-        Ok(())
-    }
-
-    fn constant_end(
-        &mut self,
-        _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        self.is_text_quoted = true;
-
-        Ok(())
-    }
-
-    fn number_begin(&mut self) -> sval::Result {
-        self.is_text_quoted = false;
-
-        Ok(())
-    }
-
-    fn number_end(&mut self) -> sval::Result {
-        self.is_text_quoted = true;
 
         Ok(())
     }

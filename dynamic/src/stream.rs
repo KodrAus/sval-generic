@@ -1,5 +1,7 @@
 mod private {
     pub trait DispatchStream<'sval> {
+        fn dispatch_value_computed(&mut self, value: &dyn crate::Value) -> sval::Result;
+
         fn dispatch_dynamic_begin(&mut self) -> sval::Result;
 
         fn dispatch_dynamic_end(&mut self) -> sval::Result;
@@ -85,7 +87,7 @@ mod private {
         fn dispatch_tag(
             &mut self,
             tag: Option<sval::Tag>,
-            label: sval::Label,
+            label: Option<sval::Label>,
             index: Option<sval::Index>,
         ) -> sval::Result;
 
@@ -163,6 +165,10 @@ impl<'sval, R: sval::Stream<'sval>> private::EraseStream<'sval> for R {
 }
 
 impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
+    fn dispatch_value_computed(&mut self, value: &dyn crate::Value) -> sval::Result {
+        self.value_computed(value)
+    }
+
     fn dispatch_dynamic_begin(&mut self) -> sval::Result {
         self.dynamic_begin()
     }
@@ -320,7 +326,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
     fn dispatch_tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: sval::Label,
+        label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
         self.tag(tag, label, index)
@@ -402,6 +408,10 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 macro_rules! impl_stream {
     ($($impl:tt)*) => {
         $($impl)* {
+            fn value_computed<V: sval::Value + ?Sized>(&mut self, v: &V) -> sval::Result {
+                self.erase_stream().0.dispatch_value_computed(&v)
+            }
+
             fn dynamic_begin(&mut self) -> sval::Result {
                 self.erase_stream().0.dispatch_dynamic_begin()
             }
@@ -549,7 +559,7 @@ macro_rules! impl_stream {
             fn tag(
                 &mut self,
                 tag: Option<sval::Tag>,
-                label: sval::Label,
+                label: Option<sval::Label>,
                 index: Option<sval::Index>,
             ) -> sval::Result {
                 self.erase_stream().0.dispatch_tag(tag, label, index)

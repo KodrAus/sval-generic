@@ -6,7 +6,7 @@ impl<T: Value> Value for [T] {
 
         for elem in self {
             stream.seq_value_begin()?;
-            elem.stream(stream)?;
+            stream.value(elem)?;
             stream.seq_value_end()?;
         }
 
@@ -25,7 +25,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
 
         for elem in self {
             stream.seq_value_begin()?;
-            elem.stream(stream)?;
+            stream.value(elem)?;
             stream.seq_value_end()?;
         }
 
@@ -49,7 +49,7 @@ macro_rules! tuple {
 
                     $(
                         stream.tuple_value_begin(Index::new($i))?;
-                        self.$i.stream(stream)?;
+                        stream.value(&self.$i)?;
                         stream.tuple_value_end(Index::new($i))?;
                     )+
 

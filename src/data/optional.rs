@@ -1,7 +1,7 @@
 use crate::{tags, Index, Label, Result, Stream, Value};
 
 pub(crate) fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
-    mut stream: &mut S,
+    stream: &mut S,
     some: impl FnOnce(&mut S) -> Result,
 ) -> Result {
     stream.tagged_begin(
@@ -17,7 +17,7 @@ pub(crate) fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
     )
 }
 
-pub(crate) fn stream_none<'sval, S: Stream<'sval> + ?Sized>(mut stream: &mut S) -> Result {
+pub(crate) fn stream_none<'sval, S: Stream<'sval> + ?Sized>(stream: &mut S) -> Result {
     stream.tagged_begin(
         Some(tags::RUST_OPTION_NONE),
         Some(Label::new("None")),
@@ -37,7 +37,7 @@ impl<T: Value> Value for Option<T> {
 
         match self {
             None => stream_none(stream)?,
-            Some(v) => stream_some(stream, |stream| v.stream(stream))?,
+            Some(v) => stream_some(stream, |stream| stream.value(v))?,
         }
 
         stream.dynamic_end()

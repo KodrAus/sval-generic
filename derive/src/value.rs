@@ -233,14 +233,14 @@ fn stream_record(
             quote!({
                 stream.record_value_begin(#label)?;
                 stream.tagged_begin(Some(#tag), None, None)?;
-                sval::stream(stream, #ident)?;
+                stream.value(#ident)?;
                 stream.tagged_end(Some(#tag), None, None)?;
                 stream.record_value_end(#label)?;
             })
         } else {
             quote!({
                 stream.record_value_begin(#label)?;
-                sval::stream(stream, #ident)?;
+                stream.value(#ident)?;
                 stream.record_value_end(#label)?;
             })
         });
@@ -269,7 +269,7 @@ fn stream_newtype(
 
     quote!(#path(ref field0) => {
         stream.tagged_begin(None, #label, #index)?;
-        sval::stream(stream, field0)?;
+        stream.value(field0)?;
         stream.tagged_end(None, #label, #index)?;
     })
 }
@@ -295,14 +295,14 @@ fn stream_tuple(
             quote!({
                 stream.tuple_value_begin(sval::Index::new(#index))?;
                 stream.tagged_begin(Some(#tag), None, None)?;
-                sval::stream(stream, #ident)?;
+                stream.value(#ident)?;
                 stream.tagged_end(Some(#tag), None, None)?;
                 stream.tuple_value_end(sval::Index::new(#index))?;
             })
         } else {
             quote!({
                 stream.tuple_value_begin(sval::Index::new(#index))?;
-                sval::stream(stream, #ident)?;
+                stream.value(#ident)?;
                 stream.tuple_value_end(sval::Index::new(#index))?;
             })
         });

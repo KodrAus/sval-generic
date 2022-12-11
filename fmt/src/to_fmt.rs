@@ -243,30 +243,4 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
     ) -> sval::Result {
         self.0.tuple_end(tag, label, index)
     }
-
-    fn constant_begin(
-        &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
-    ) -> sval::Result {
-        self.0.constant_begin(tag, label, index)
-    }
-
-    fn constant_end(
-        &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
-    ) -> sval::Result {
-        self.0.constant_end(tag, label, index)
-    }
-
-    fn number_begin(&mut self) -> sval::Result {
-        self.0.number_begin()
-    }
-
-    fn number_end(&mut self) -> sval::Result {
-        self.0.number_end()
-    }
 }

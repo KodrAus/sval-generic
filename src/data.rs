@@ -15,7 +15,7 @@ use crate::{
     Result, Stream, Value,
 };
 
-pub use self::{binary::*, optional::*, text::*};
+pub use self::{binary::*, text::*};
 
 pub mod tags {
     use super::Tag;
