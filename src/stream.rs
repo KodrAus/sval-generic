@@ -1,8 +1,5 @@
 use crate::{
-    data::{
-        self,
-        optional::{stream_none, stream_some},
-    },
+    data::{self, optional::stream_option},
     Index, Label, Result, Tag, Value,
 };
 
@@ -191,17 +188,13 @@ pub trait Stream<'sval> {
     fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
         self.tagged_begin(tag, label, index)?;
 
-        if let Some(label) = label {
-            stream_some(self, |stream| {
-                if let Some(label) = label.try_get_static() {
-                    stream.value(label)
-                } else {
-                    stream.value_computed(&*label)
-                }
-            })?;
-        } else {
-            stream_none(self)?;
-        }
+        stream_option(self, label, |stream, label| {
+            if let Some(label) = label.try_get_static() {
+                stream.value(label)
+            } else {
+                stream.value_computed(&*label)
+            }
+        })?;
 
         self.tagged_end(tag, label, index)
     }

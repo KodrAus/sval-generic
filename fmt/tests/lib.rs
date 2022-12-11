@@ -82,3 +82,8 @@ fn debug_enum() {
 
     assert_debug(Enum::Tagged(42));
 }
+
+#[test]
+fn debug_unit() {
+    assert_debug(());
+}

@@ -360,12 +360,16 @@ where
     fn tag(
         &mut self,
         _: Option<sval::Tag>,
-        label: sval::Label,
+        label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
-        self.out.write_str("\"")?;
-        escape_str(&*label, &mut self.out)?;
-        self.out.write_str("\"")?;
+        if let Some(label) = label {
+            self.out.write_str("\"")?;
+            escape_str(&*label, &mut self.out)?;
+            self.out.write_str("\"")?;
+        } else {
+            self.null()?;
+        }
 
         self.is_internally_tagged = false;
 

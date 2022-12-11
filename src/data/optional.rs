@@ -1,6 +1,22 @@
 use crate::{tags, Index, Label, Result, Stream, Value};
 
-pub(crate) fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
+pub(crate) fn stream_option<'sval, S: Stream<'sval> + ?Sized, V>(
+    stream: &mut S,
+    v: Option<V>,
+    some: impl FnOnce(&mut S, V) -> Result,
+) -> Result {
+    stream.dynamic_begin()?;
+
+    if let Some(v) = v {
+        stream_some(stream, |stream| some(stream, v))?;
+    } else {
+        stream_none(stream)?;
+    }
+
+    stream.dynamic_end()
+}
+
+fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
     stream: &mut S,
     some: impl FnOnce(&mut S) -> Result,
 ) -> Result {
@@ -17,7 +33,7 @@ pub(crate) fn stream_some<'sval, S: Stream<'sval> + ?Sized>(
     )
 }
 
-pub(crate) fn stream_none<'sval, S: Stream<'sval> + ?Sized>(stream: &mut S) -> Result {
+fn stream_none<'sval, S: Stream<'sval> + ?Sized>(stream: &mut S) -> Result {
     stream.tagged_begin(
         Some(tags::RUST_OPTION_NONE),
         Some(Label::new("None")),
@@ -33,18 +49,11 @@ pub(crate) fn stream_none<'sval, S: Stream<'sval> + ?Sized>(stream: &mut S) -> R
 
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream.dynamic_begin()?;
-
-        match self {
-            None => stream_none(stream)?,
-            Some(v) => stream_some(stream, |stream| stream.value(v))?,
-        }
-
-        stream.dynamic_end()
+        stream_option(stream, self.as_ref(), |stream, some| stream.value(some))
     }
 
     fn is_dynamic(&self) -> bool {
-        false
+        true
     }
 
     fn to_bool(&self) -> Option<bool> {

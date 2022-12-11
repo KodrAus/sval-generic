@@ -3,6 +3,7 @@ use core::fmt::{self, Debug, Write};
 pub(crate) struct Writer<W> {
     is_current_depth_empty: bool,
     is_text_quoted: bool,
+    is_none: bool,
     out: W,
 }
 
@@ -142,6 +143,7 @@ impl<W> Writer<W> {
         Writer {
             is_current_depth_empty: true,
             is_text_quoted: true,
+            is_none: false,
             out,
         }
     }
@@ -167,7 +169,9 @@ impl<W: fmt::Write> Write for Writer<W> {
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn null(&mut self) -> sval::Result {
-        self.write_str("None")?;
+        if !self.is_none {
+            self.write_str("()")?;
+        }
 
         Ok(())
     }
@@ -415,9 +419,15 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.is_text_quoted = true;
 
         match tag {
-            Some(sval::tags::RUST_OPTION_NONE) => Ok(()),
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = false;
+
+                Ok(())
+            }
+            Some(sval::tags::RUST_OPTION_NONE) => {
+                self.is_none = true;
+
+                self.write_str("None")?;
 
                 Ok(())
             }
@@ -440,9 +450,13 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<sval::Index>,
     ) -> sval::Result {
         match tag {
-            Some(sval::tags::RUST_OPTION_NONE) => Ok(()),
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = true;
+
+                Ok(())
+            }
+            Some(sval::tags::RUST_OPTION_NONE) => {
+                self.is_none = false;
 
                 Ok(())
             }
@@ -452,6 +466,21 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
                 Ok(())
             }
         }
+    }
+
+    fn tag(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        if let Some(label) = label {
+            self.write_str(&label)?;
+        } else {
+            self.null()?;
+        }
+
+        Ok(())
     }
 
     fn record_begin(

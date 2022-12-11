@@ -247,9 +247,7 @@ impl Index {
 
 impl Value for () {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
-        stream.tagged_begin(Some(tags::RUST_UNIT), None, None)?;
-        stream.null()?;
-        stream.tagged_begin(Some(tags::RUST_UNIT), None, None)
+        stream.tag(Some(tags::RUST_UNIT), None, None)
     }
 
     fn is_dynamic(&self) -> bool {
