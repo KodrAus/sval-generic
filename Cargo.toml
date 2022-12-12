@@ -9,6 +9,7 @@ members = [
     "dynamic",
     "fmt",
     "fmt/test",
+    "serde",
     "json",
 ]
 
