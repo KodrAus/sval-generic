@@ -1,5 +1,7 @@
 use core::fmt::{self, Write};
 
+use sval::Stream as _;
+
 use crate::tags;
 
 pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
@@ -222,22 +224,6 @@ where
         Ok(())
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        self.is_internally_tagged = false;
-
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
-        }
-
-        escape_str(&*label, &mut self.out)?;
-
-        self.out.write_str("\":")?;
-
-        self.map_value_begin()
-    }
-
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if !self.is_text_quoted {
             return sval::result::unsupported();
@@ -283,6 +269,21 @@ where
         Ok(())
     }
 
+    fn enum_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        if self.is_internally_tagged {
+            self.internally_tagged_map_end()?;
+
+            self.is_internally_tagged = false;
+        }
+
+        Ok(())
+    }
+
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
@@ -292,8 +293,6 @@ where
         match tag {
             Some(tags::JSON_NATIVE) => {
                 self.is_json_native = true;
-
-                Ok(())
             }
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = false;
@@ -301,29 +300,13 @@ where
                 if !self.is_json_native {
                     self.text_handler = Some(TextHandler::number());
                 }
-
-                Ok(())
             }
-            _ => {
-                // If we're inside an enum then use the label as the internal tag
-                if self.is_internally_tagged {
-                    // If there's a label then begin a map, using the label as the key
-                    if let Some(label) = label {
-                        self.map_begin(Some(1))?;
-
-                        self.map_key_begin()?;
-                        escape_str(&*label, &mut self.out)?;
-                        self.map_key_end()?;
-
-                        self.map_value_begin()?;
-                    }
-                }
-
-                self.is_internally_tagged = false;
-
-                Ok(())
-            }
+            _ => (),
         }
+
+        self.internally_tagged_begin(label)?;
+
+        Ok(())
     }
 
     fn tagged_end(
@@ -335,8 +318,6 @@ where
         match tag {
             Some(tags::JSON_NATIVE) => {
                 self.is_json_native = false;
-
-                Ok(())
             }
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = true;
@@ -346,18 +327,11 @@ where
                         number.end(&mut self.out)?;
                     }
                 }
-
-                Ok(())
             }
-            _ => {
-                // If we're inside an enum then close off the internally tagged map
-                if label.is_some() {
-                    self.is_internally_tagged = true;
-                }
-
-                Ok(())
-            }
+            _ => (),
         }
+
+        self.internally_tagged_end(label)
     }
 
     fn tag(
@@ -380,18 +354,103 @@ where
         }
     }
 
-    fn enum_end(
+    fn record_begin(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
+        label: Option<sval::Label>,
         _: Option<sval::Index>,
+        num_entries_hint: Option<usize>,
     ) -> sval::Result {
-        if self.is_internally_tagged {
-            self.map_value_end()?;
-            self.map_end()?;
+        self.internally_tagged_begin(label)?;
+        self.map_begin(num_entries_hint)
+    }
+
+    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+        self.is_internally_tagged = false;
+
+        if !self.is_current_depth_empty {
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
         }
 
-        self.is_internally_tagged = false;
+        escape_str(&*label, &mut self.out)?;
+
+        self.out.write_str("\":")?;
+
+        self.map_value_begin()
+    }
+
+    fn record_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        self.map_end()?;
+        self.internally_tagged_end(label)
+    }
+
+    fn tuple_begin(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+        num_entries_hint: Option<usize>,
+    ) -> sval::Result {
+        self.internally_tagged_begin(label)?;
+        self.seq_begin(num_entries_hint)
+    }
+
+    fn tuple_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        self.seq_end()?;
+        self.internally_tagged_end(label)
+    }
+}
+
+impl<'sval, W> Formatter<W>
+where
+    W: Write,
+{
+    fn internally_tagged_begin(&mut self, label: Option<sval::Label>) -> sval::Result {
+        // If there's a label then begin a map, using the label as the key
+        if self.is_internally_tagged {
+            if let Some(label) = label {
+                self.internally_tagged_map_begin(label)?;
+            }
+
+            self.is_internally_tagged = false;
+        }
+
+        Ok(())
+    }
+
+    fn internally_tagged_end(&mut self, label: Option<sval::Label>) -> sval::Result {
+        if label.is_some() {
+            self.is_internally_tagged = true;
+        }
+
+        Ok(())
+    }
+
+    fn internally_tagged_map_begin(&mut self, label: sval::Label) -> sval::Result {
+        self.map_begin(Some(1))?;
+
+        self.map_key_begin()?;
+        escape_str(&*label, &mut self.out)?;
+        self.map_key_end()?;
+
+        self.map_value_begin()
+    }
+
+    fn internally_tagged_map_end(&mut self) -> sval::Result {
+        self.map_value_end()?;
+        self.map_end()?;
 
         Ok(())
     }
