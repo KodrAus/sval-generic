@@ -8,7 +8,7 @@ members = [
     "derive",
     "dynamic",
     "fmt",
-    "fmt/tests",
+    "fmt/test",
     "json",
 ]
 

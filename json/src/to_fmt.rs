@@ -78,24 +78,6 @@ where
         Ok(())
     }
 
-    fn binary_begin(&mut self, size: Option<usize>) -> sval::Result {
-        self.seq_begin(size)
-    }
-
-    fn binary_fragment_computed(&mut self, v: &[u8]) -> sval::Result {
-        for b in v {
-            self.seq_value_begin()?;
-            self.u8(*b)?;
-            self.seq_value_end()?;
-        }
-
-        Ok(())
-    }
-
-    fn binary_end(&mut self) -> sval::Result {
-        self.seq_end()
-    }
-
     fn u8(&mut self, v: u8) -> sval::Result {
         self.out.write_str(itoa::Buffer::new().format(v))?;
 
@@ -297,6 +279,7 @@ where
             Some(sval::tags::NUMBER) => {
                 self.is_text_quoted = false;
 
+                // If the number isn't guaranteed to be valid JSON then create an adapter
                 if !self.is_json_native {
                     self.text_handler = Some(TextHandler::number());
                 }
@@ -338,7 +321,7 @@ where
         &mut self,
         tag: Option<sval::Tag>,
         label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
         self.is_internally_tagged = false;
 

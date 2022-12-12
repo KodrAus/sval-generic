@@ -1,5 +1,5 @@
 [package]
-name = "sval-fmt-tests"
+name = "sval-fmt-test"
 version = "0.0.0"
 publish = false
 edition = "2021"

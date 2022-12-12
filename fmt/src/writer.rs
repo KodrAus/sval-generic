@@ -423,9 +423,8 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
             _ => {
                 if let Some(label) = label {
                     self.write_str(&*label)?;
+                    self.write_char('(')?;
                 }
-
-                self.write_char('(')?;
 
                 Ok(())
             }
@@ -435,7 +434,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn tagged_end(
         &mut self,
         tag: Option<sval::Tag>,
-        _: Option<sval::Label>,
+        label: Option<sval::Label>,
         _: Option<sval::Index>,
     ) -> sval::Result {
         match tag {
@@ -445,7 +444,9 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
                 Ok(())
             }
             _ => {
-                self.write_char(')')?;
+                if label.is_some() {
+                    self.write_char(')')?;
+                }
 
                 Ok(())
             }

@@ -3,6 +3,9 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+extern crate std;
+
 mod from_slice;
 mod to_fmt;
 pub use self::{
@@ -25,3 +28,9 @@ mod to_string;
 
 #[cfg(feature = "alloc")]
 pub use self::to_string::to_string;
+
+#[cfg(feature = "std")]
+mod to_writer;
+
+#[cfg(feature = "std")]
+pub use self::to_writer::to_writer;
