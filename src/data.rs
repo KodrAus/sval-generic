@@ -1,7 +1,7 @@
 pub(crate) mod binary;
 pub(crate) mod map;
 pub(crate) mod number;
-pub(crate) mod optional;
+pub(crate) mod option;
 pub(crate) mod seq;
 pub(crate) mod text;
 
@@ -18,6 +18,10 @@ use crate::{
 pub use self::{binary::*, text::*};
 
 pub mod tags {
+    /*!
+    Built-in tags for fundamental types.
+    */
+
     use super::Tag;
 
     /**
@@ -32,8 +36,6 @@ pub mod tags {
 
     /**
     A tag for Rust's `()` type.
-
-    This tag is applied to `null`s to indicate that they're a unit value.
     */
     pub const RUST_UNIT: Tag<'static> = Tag::new("r()");
 

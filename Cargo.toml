@@ -10,7 +10,6 @@ members = [
     "fmt",
     "fmt/tests",
     "json",
-    "examples/stream-simple",
 ]
 
 [features]

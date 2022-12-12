@@ -222,6 +222,22 @@ where
         Ok(())
     }
 
+    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+        self.is_internally_tagged = false;
+
+        if !self.is_current_depth_empty {
+            self.out.write_str(",\"")?;
+        } else {
+            self.out.write_char('"')?;
+        }
+
+        escape_str(&*label, &mut self.out)?;
+
+        self.out.write_str("\":")?;
+
+        self.map_value_begin()
+    }
+
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if !self.is_text_quoted {
             return sval::result::unsupported();
@@ -267,22 +283,6 @@ where
         Ok(())
     }
 
-    fn enum_end(
-        &mut self,
-        _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
-    ) -> sval::Result {
-        if self.is_internally_tagged {
-            self.map_value_end()?;
-            self.map_end()?;
-        }
-
-        self.is_internally_tagged = false;
-
-        Ok(())
-    }
-
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
@@ -305,7 +305,9 @@ where
                 Ok(())
             }
             _ => {
+                // If we're inside an enum then use the label as the internal tag
                 if self.is_internally_tagged {
+                    // If there's a label then begin a map, using the label as the key
                     if let Some(label) = label {
                         self.map_begin(Some(1))?;
 
@@ -348,6 +350,7 @@ where
                 Ok(())
             }
             _ => {
+                // If we're inside an enum then close off the internally tagged map
                 if label.is_some() {
                     self.is_internally_tagged = true;
                 }
@@ -357,20 +360,40 @@ where
         }
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn tag(
+        &mut self,
+        tag: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
         self.is_internally_tagged = false;
 
-        if !self.is_current_depth_empty {
-            self.out.write_str(",\"")?;
-        } else {
-            self.out.write_char('"')?;
+        match tag {
+            Some(sval::tags::RUST_OPTION_NONE) => self.null(),
+            _ => {
+                if let Some(label) = label {
+                    self.value(&*label)
+                } else {
+                    self.null()
+                }
+            }
+        }
+    }
+
+    fn enum_end(
+        &mut self,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
+    ) -> sval::Result {
+        if self.is_internally_tagged {
+            self.map_value_end()?;
+            self.map_end()?;
         }
 
-        escape_str(&*label, &mut self.out)?;
+        self.is_internally_tagged = false;
 
-        self.out.write_str("\":")?;
-
-        self.map_value_begin()
+        Ok(())
     }
 }
 

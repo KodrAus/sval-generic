@@ -1,32 +1,3 @@
-fn main() -> sval::Result {
-    stream(42);
-    stream(true);
-
-    stream(Some(42));
-    stream(None::<i32>);
-
-    stream({
-        use std::collections::BTreeMap;
-
-        let mut map = BTreeMap::new();
-
-        map.insert("a", 1);
-        map.insert("b", 2);
-        map.insert("c", 3);
-
-        map
-    });
-
-    stream(vec![vec!["Hello", "world"], vec!["Hello", "world"]]);
-
-    Ok(())
-}
-
-fn stream(v: impl sval::Value) {
-    v.stream(&mut MyStream).expect("failed to stream");
-    println!();
-}
-
 pub struct MyStream;
 
 impl<'sval> sval::Stream<'sval> for MyStream {
@@ -84,4 +55,35 @@ impl<'sval> sval::Stream<'sval> for MyStream {
         print!("]");
         Ok(())
     }
+}
+
+fn main() -> sval::Result {
+    stream(42);
+    stream(true);
+
+    stream(Some(42));
+    stream(None::<i32>);
+
+    #[cfg(feature = "alloc")]
+    stream({
+        use std::collections::BTreeMap;
+
+        let mut map = BTreeMap::new();
+
+        map.insert("a", 1);
+        map.insert("b", 2);
+        map.insert("c", 3);
+
+        map
+    });
+
+    #[cfg(feature = "alloc")]
+    stream(vec![vec!["Hello", "world"], vec!["Hello", "world"]]);
+
+    Ok(())
+}
+
+fn stream(v: impl sval::Value) {
+    v.stream(&mut MyStream).expect("failed to stream");
+    println!();
 }

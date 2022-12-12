@@ -1,7 +1,4 @@
-use crate::{
-    data::{self, optional::stream_option},
-    Index, Label, Result, Tag, Value,
-};
+use crate::{data, tags, Index, Label, Result, Tag, Value};
 
 pub trait Stream<'sval> {
     fn value<V: Value + ?Sized>(&mut self, v: &'sval V) -> Result {
@@ -186,25 +183,7 @@ pub trait Stream<'sval> {
     }
 
     fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.tagged_begin(tag, label, index)?;
-
-        self.dynamic_begin()?;
-
-        if let Some(crate::tags::RUST_OPTION_NONE) = tag {
-            self.null()?;
-        } else {
-            stream_option(self, label, |stream, label| {
-                if let Some(label) = label.try_get_static() {
-                    stream.value(label)
-                } else {
-                    stream.value_computed(&*label)
-                }
-            })?;
-        }
-
-        self.dynamic_end()?;
-
-        self.tagged_end(tag, label, index)
+        stream_tag_default(self, tag, label, index)
     }
 
     fn record_begin(
@@ -284,6 +263,34 @@ pub trait Stream<'sval> {
         self.seq_end()?;
         self.tagged_end(tag, label, index)
     }
+}
+
+pub fn stream_tag_default<'sval>(
+    stream: &mut (impl Stream<'sval> + ?Sized),
+    tag: Option<Tag>,
+    label: Option<Label>,
+    index: Option<Index>,
+) -> Result {
+    stream.tagged_begin(tag, label, index)?;
+
+    // Rust's `Option` is fundamental enough that we handle it specially here
+    if let Some(tags::RUST_OPTION_NONE) = tag {
+        stream.null()?;
+    }
+    // If the tag has a label then stream it as its value
+    else if let Some(label) = label {
+        if let Some(label) = label.try_get_static() {
+            stream.value(label)?;
+        } else {
+            stream.value_computed(&*label)?;
+        }
+    }
+    // If the tag doesn't have a label then stream null
+    else {
+        stream.null()?;
+    }
+
+    stream.tagged_end(tag, label, index)
 }
 
 macro_rules! impl_stream_forward {

@@ -62,3 +62,11 @@ mod alloc_support {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn string_cast() {
+        todo!()
+    }
+}

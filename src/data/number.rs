@@ -59,3 +59,11 @@ convert!(
     to_f32 => f32,
     to_f64 => f64,
 );
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn number_cast() {
+        todo!()
+    }
+}
