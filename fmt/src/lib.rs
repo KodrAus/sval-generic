@@ -9,8 +9,8 @@ mod to_debug;
 mod to_fmt;
 
 pub use self::{
-    to_debug::{debug, Debug},
-    to_fmt::{to_fmt, Formatter},
+    to_debug::{to_debug, ToDebug},
+    to_fmt::{stream_to_fmt, Formatter},
 };
 
 #[cfg(feature = "alloc")]

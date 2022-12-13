@@ -4,7 +4,7 @@ use sval::Stream as _;
 
 use crate::tags;
 
-pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
+pub fn stream_to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(&mut Formatter::new(fmt))
 }
 

@@ -1,6 +1,6 @@
 use std::{fmt, io::Write};
 
-pub fn to_writer(io: impl Write, v: impl sval::Value) -> sval::Result {
+pub fn stream_to_writer(io: impl Write, v: impl sval::Value) -> sval::Result {
     struct IoToFmt<W>(W);
 
     impl<W: Write> fmt::Write for IoToFmt<W> {
@@ -11,5 +11,5 @@ pub fn to_writer(io: impl Write, v: impl sval::Value) -> sval::Result {
         }
     }
 
-    crate::to_fmt(IoToFmt(io), v)
+    crate::stream_to_fmt(IoToFmt(io), v)
 }

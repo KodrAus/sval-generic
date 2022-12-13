@@ -2,13 +2,13 @@ use core::fmt;
 
 use crate::writer::Writer;
 
-pub fn debug<V: sval::Value>(value: V) -> Debug<V> {
-    Debug(value)
+pub fn to_debug<V: sval::Value>(value: V) -> ToDebug<V> {
+    ToDebug(value)
 }
 
-pub struct Debug<V>(V);
+pub struct ToDebug<V>(V);
 
-impl<V: sval::Value> fmt::Debug for Debug<V> {
+impl<V: sval::Value> fmt::Debug for ToDebug<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.stream(&mut Writer::new(f))?;
 

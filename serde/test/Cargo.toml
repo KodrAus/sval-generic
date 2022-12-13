@@ -1,0 +1,27 @@
+[package]
+name = "sval-serde-test"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+
+[dependencies.sval-serde]
+path = "../"
+
+[dependencies.sval]
+path = "../../"
+features = ["std"]
+
+[dependencies.sval-derive]
+path = "../../derive"
+
+[dependencies.serde]
+version = "1"
+
+[dependencies.serde_derive]
+version = "1"
+
+[dependencies.serde_test]
+version = "1"

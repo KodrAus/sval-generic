@@ -9,8 +9,8 @@ extern crate std;
 mod from_slice;
 mod to_fmt;
 pub use self::{
-    from_slice::{slice, JsonSlice, JsonSliceReader},
-    to_fmt::{to_fmt, Formatter},
+    from_slice::{from_slice, JsonSlice, JsonSliceReader},
+    to_fmt::{stream_to_fmt, Formatter},
 };
 
 pub mod tags {
@@ -33,4 +33,4 @@ pub use self::to_string::to_string;
 mod to_writer;
 
 #[cfg(feature = "std")]
-pub use self::to_writer::to_writer;
+pub use self::to_writer::stream_to_writer;

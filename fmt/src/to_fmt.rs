@@ -1,7 +1,7 @@
 use crate::writer::{GenericWriter, Writer};
 use core::fmt::Write;
 
-pub fn to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
+pub fn stream_to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
     v.stream(&mut Formatter::new(fmt))
 }
 

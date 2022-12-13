@@ -2,7 +2,7 @@ use core::{cmp::Ordering, mem};
 
 use crate::tags;
 
-pub fn slice(json: &str) -> &JsonSlice {
+pub fn from_slice(json: &str) -> &JsonSlice {
     JsonSlice::new(json)
 }
 

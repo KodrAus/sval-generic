@@ -7,7 +7,7 @@ use std::fmt;
 
 fn assert_debug(v: impl sval::Value + fmt::Debug) {
     let expected = format!("{:?}", v);
-    let actual = format!("{:?}", sval_fmt::debug(v));
+    let actual = format!("{:?}", sval_fmt::to_debug(v));
 
     assert_eq!(expected, actual);
 }
@@ -123,7 +123,7 @@ fn debug_exotic_record() {
         "{ field_0: 42, field_1: true, field_2: \"Hello\" }",
         format!(
             "{:?}",
-            sval_fmt::debug(&UnnamedRecord {
+            sval_fmt::to_debug(&UnnamedRecord {
                 field_0: 42,
                 field_1: true,
                 field_2: "Hello",
@@ -166,7 +166,7 @@ fn debug_exotic_nested_enum() {
         }
     }
 
-    assert_eq!("Variant", format!("{:?}", sval_fmt::debug(NestedEnum)));
+    assert_eq!("Variant", format!("{:?}", sval_fmt::to_debug(NestedEnum)));
 }
 
 #[test]
@@ -204,6 +204,6 @@ fn debug_exotic_unnamed_enum() {
 
     assert_eq!(
         "42",
-        format!("{:?}", sval_fmt::debug(UntaggedEnum::I32(42)))
+        format!("{:?}", sval_fmt::to_debug(UntaggedEnum::I32(42)))
     );
 }

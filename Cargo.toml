@@ -10,6 +10,7 @@ members = [
     "fmt",
     "fmt/test",
     "serde",
+    "serde/test",
     "json",
 ]
 
