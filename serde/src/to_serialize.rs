@@ -34,8 +34,8 @@ struct Serializer<'sval, S: serde::Serializer> {
 }
 
 enum Buffered<'sval> {
-    Text(&'sval str),
-    Binary(&'sval [u8]),
+    Text(sval_buffer::TextBuf<'sval>),
+    Binary(sval_buffer::BinaryBuf<'sval>),
 }
 
 struct Bytes<'sval>(&'sval [u8]);
@@ -194,24 +194,22 @@ impl<'sval, S: serde::Serializer> Serializer<'sval, S> {
     }
 
     fn buffer_text_begin(&mut self) -> sval::Result {
-        self.buffered = Some(Buffered::Text(""));
+        self.buffered = Some(Buffered::Text(sval_buffer::TextBuf::new()));
         Ok(())
     }
 
     fn buffer_text_fragment(&mut self, fragment: &'sval str) -> sval::Result {
         match self.buffered {
-            Some(Buffered::Text(ref mut text)) if *text == "" => {
-                *text = fragment;
+            Some(Buffered::Text(ref mut text)) => match text.push_fragment(fragment) {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                    self.state = State::Done(Err(S::Error::custom(
+                        "cannot buffer multiple text fragments",
+                    )));
 
-                Ok(())
-            }
-            Some(Buffered::Text(_)) => {
-                self.state = State::Done(Err(S::Error::custom(
-                    "cannot buffer multiple text fragments",
-                )));
-
-                Err(sval::Error::unsupported())
-            }
+                    Err(e)
+                }
+            },
             _ => {
                 self.state = State::Done(Err(S::Error::custom("unexpected buffer state")));
 
@@ -229,24 +227,22 @@ impl<'sval, S: serde::Serializer> Serializer<'sval, S> {
     }
 
     fn buffer_binary_begin(&mut self) -> sval::Result {
-        self.buffered = Some(Buffered::Binary(&[]));
+        self.buffered = Some(Buffered::Binary(sval_buffer::BinaryBuf::new()));
         Ok(())
     }
 
     fn buffer_binary_fragment(&mut self, fragment: &'sval [u8]) -> sval::Result {
         match self.buffered {
-            Some(Buffered::Binary(ref mut binary)) if *binary == &[] => {
-                *binary = fragment;
+            Some(Buffered::Binary(ref mut binary)) => match binary.push_fragment(fragment) {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                    self.state = State::Done(Err(S::Error::custom(
+                        "cannot buffer multiple binary fragments",
+                    )));
 
-                Ok(())
-            }
-            Some(Buffered::Binary(_)) => {
-                self.state = State::Done(Err(S::Error::custom(
-                    "cannot buffer multiple binary fragments",
-                )));
-
-                Err(sval::Error::unsupported())
-            }
+                    Err(e)
+                }
+            },
             _ => {
                 self.state = State::Done(Err(S::Error::custom("unexpected buffer state")));
 
@@ -265,8 +261,8 @@ impl<'sval, S: serde::Serializer> Serializer<'sval, S> {
 
     fn buffer_end(&mut self) -> sval::Result {
         match self.buffered.take() {
-            Some(Buffered::Text(v)) => self.serialize_value(v),
-            Some(Buffered::Binary(v)) => self.serialize_value(Bytes(v)),
+            Some(Buffered::Text(v)) => self.serialize_value(v.get()),
+            Some(Buffered::Binary(v)) => self.serialize_value(Bytes(v.get())),
             None => panic!("missing buffered value"),
         }
     }

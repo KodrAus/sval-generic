@@ -6,6 +6,9 @@ edition = "2021"
 [dependencies.sval]
 path = "../"
 
+[dependencies.sval-buffer]
+path = "../buffer"
+
 [dependencies.serde]
 version = "1"
 default-features = false
