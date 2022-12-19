@@ -1,7 +1,7 @@
-use std::ops::Deref;
+use crate::std::ops::Deref;
 
 #[cfg(feature = "alloc")]
-use std::borrow::Cow;
+use crate::std::borrow::{Cow, ToOwned};
 
 pub struct TextBuf<'sval>(FragmentBuf<'sval, str>);
 
@@ -11,7 +11,11 @@ impl<'sval> TextBuf<'sval> {
     }
 
     pub fn push_fragment(&mut self, fragment: &'sval str) -> sval::Result {
-        self.0.push(fragment, |value| value.len() == 0)
+        self.0.push(fragment)
+    }
+
+    pub fn push_fragment_computed(&mut self, fragment: &str) -> sval::Result {
+        self.0.push_computed(fragment)
     }
 
     pub fn try_get(&self) -> Option<&'sval str> {
@@ -51,7 +55,11 @@ impl<'sval> BinaryBuf<'sval> {
     }
 
     pub fn push_fragment(&mut self, fragment: &'sval [u8]) -> sval::Result {
-        self.0.push(fragment, |value| value.len() == 0)
+        self.0.push(fragment)
+    }
+
+    pub fn push_fragment_computed(&mut self, fragment: &[u8]) -> sval::Result {
+        self.0.push_computed(fragment)
     }
 
     pub fn try_get(&self) -> Option<&'sval [u8]> {
@@ -83,49 +91,97 @@ impl<'sval> Deref for BinaryBuf<'sval> {
     }
 }
 
-struct FragmentBuf<'sval, T: ?Sized> {
+#[cfg(not(feature = "alloc"))]
+trait Fragment {
+    fn to_fragment<'sval>(&'sval self) -> &'sval self {
+        self
+    }
+
+    fn can_replace(&self) -> bool;
+}
+
+#[cfg(feature = "alloc")]
+trait Fragment: ToOwned {
+    fn to_fragment<'sval>(&'sval self) -> Cow<'sval, Self> {
+        Cow::Borrowed(self)
+    }
+
+    fn extend(buf: &mut Cow<Self>, fragment: &Self);
+
+    fn can_replace(&self) -> bool;
+}
+
+impl Fragment for str {
+    #[cfg(feature = "alloc")]
+    fn extend(buf: &mut Cow<Self>, fragment: &Self) {
+        buf.to_mut().push_str(fragment);
+    }
+
+    fn can_replace(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl Fragment for [u8] {
+    #[cfg(feature = "alloc")]
+    fn extend(buf: &mut Cow<Self>, fragment: &Self) {
+        buf.to_mut().extend(fragment);
+    }
+
+    fn can_replace(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+struct FragmentBuf<'sval, T: ?Sized + Fragment> {
     #[cfg(not(feature = "alloc"))]
     value: &'sval T,
     #[cfg(feature = "alloc")]
     value: Cow<'sval, T>,
 }
 
-impl<'sval, T: ?Sized> FragmentBuf<'sval, T> {
+impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
     fn new(value: &'sval T) -> Self {
         FragmentBuf {
-            value: value.into(),
+            value: value.to_fragment(),
         }
     }
 }
 
-impl<'sval, T: ?Sized> FragmentBuf<'sval, T> {
-    fn push(&mut self, fragment: &'sval T, can_replace: impl FnOnce(&T) -> bool) -> sval::Result {
-        #[cfg(not(feature = "alloc"))]
-        {
-            let _ = extend;
-
-            if can_replace(self.value) {
-                self.value = fragment;
-
-                Ok(())
-            } else {
-                Err(sval::Error::unsupported())
-            }
-        }
-
-        #[cfg(feature = "alloc")]
-        {
-            if can_replace(&self.value) {
-                self.value = fragment.into();
-            } else {
-                self.value.get_mut()
-            }
+impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
+    fn push(&mut self, fragment: &'sval T) -> sval::Result {
+        if self.value.can_replace() {
+            self.value = fragment.to_fragment();
 
             Ok(())
+        } else {
+            self.push_computed(fragment)
+        }
+    }
+
+    fn push_computed(&mut self, fragment: &T) -> sval::Result {
+        #[cfg(feature = "alloc")]
+        {
+            Fragment::extend(&mut self.value, fragment);
+
+            Ok(())
+        }
+
+        #[cfg(not(feature = "alloc"))]
+        {
+            Err(sval::Error::unsupported())
         }
     }
 
     fn try_get(&self) -> Option<&'sval T> {
+        #[cfg(feature = "alloc")]
+        {
+            match self.value {
+                Cow::Borrowed(value) => Some(value),
+                Cow::Owned(_) => None,
+            }
+        }
+
         #[cfg(not(feature = "alloc"))]
         {
             Some(self.value)
@@ -133,6 +189,11 @@ impl<'sval, T: ?Sized> FragmentBuf<'sval, T> {
     }
 
     fn get(&self) -> &T {
+        #[cfg(feature = "alloc")]
+        {
+            &*self.value
+        }
+
         #[cfg(not(feature = "alloc"))]
         {
             self.value
