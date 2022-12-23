@@ -1,13 +1,16 @@
-use crate::std::vec::Vec;
-
-use crate::{BinaryBuf, TextBuf};
+use crate::{std::vec::Vec, BinaryBuf, TextBuf};
 
 pub struct ValueBuf<'sval> {
     parts: Vec<ValuePart<'sval>>,
+    stack: Vec<StackEntry>,
 }
 
 struct ValuePart<'sval> {
     kind: ValueKind<'sval>,
+}
+
+struct StackEntry {
+    start_idx: usize,
 }
 
 enum ValueKind<'sval> {
@@ -27,11 +30,11 @@ enum ValueKind<'sval> {
     F64(f64),
     Text(TextBuf<'sval>),
     Binary(BinaryBuf<'sval>),
-    Map { num_entries_hint: Option<usize> },
-    MapKey,
-    MapValue,
-    Seq { num_entries_hint: Option<usize> },
-    SeqValue,
+    Map { end_idx: Option<usize>, num_entries_hint: Option<usize> },
+    MapKey { end_idx: Option<usize> },
+    MapValue { end_idx: Option<usize> },
+    Seq { end_idx: Option<usize>, num_entries_hint: Option<usize> },
+    SeqValue { end_idx: Option<usize> },
     Dynamic,
 }
 
@@ -179,28 +182,43 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        self.push_kind(ValueKind::Map { num_entries_hint });
+        self.stack.push(StackEntry { start_idx: self.parts.len() });
+        self.push_kind(ValueKind::Map { end_idx: None, num_entries_hint });
 
         Ok(())
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.push_kind(ValueKind::MapKey);
+        self.stack.push(StackEntry { start_idx: self.parts.len() });
+        self.push_kind(ValueKind::MapKey { end_idx: None });
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
+        if let Some(StackEntry { start_idx }) = self.stack.pop() {
+            if let ValueKind::MapKey { ref mut end_idx } = &mut self.parts[start_idx].kind {
+                *end_idx = Some(self.parts.len());
+            }
+        }
+
         Ok(())
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        self.push_kind(ValueKind::MapValue);
+        self.stack.push(StackEntry { start_idx: self.parts.len() });
+        self.push_kind(ValueKind::MapValue { end_idx: None });
 
         Ok(())
     }
 
     fn map_value_end(&mut self) -> sval::Result {
+        if let Some(StackEntry { start_idx }) = self.stack.pop() {
+            if let ValueKind::MapValue { ref mut end_idx } = &mut self.parts[start_idx].kind {
+                *end_idx = Some(self.parts.len());
+            }
+        }
+
         Ok(())
     }
 

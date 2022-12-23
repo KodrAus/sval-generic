@@ -93,7 +93,7 @@ impl<'sval> Deref for BinaryBuf<'sval> {
 
 #[cfg(not(feature = "alloc"))]
 trait Fragment {
-    fn to_fragment<'sval>(&'sval self) -> &'sval self {
+    fn to_fragment<'sval>(&'sval self) -> &'sval Self {
         self
     }
 
@@ -198,5 +198,82 @@ impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
         {
             self.value
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn text_fragment_replace() {
+        let mut buf = TextBuf::new();
+
+        assert_eq!("", buf.get());
+        assert_eq!(Some(""), buf.try_get());
+
+        buf.push_fragment("abc").unwrap();
+
+        assert_eq!("abc", buf.get());
+        assert_eq!(Some("abc"), buf.try_get());
+    }
+
+    #[test]
+    fn binary_fragment_replace() {
+        let mut buf = BinaryBuf::new();
+
+        assert_eq!(b"" as &[u8], buf.get());
+        assert_eq!(Some(b"" as &[u8]), buf.try_get());
+
+        buf.push_fragment(b"abc").unwrap();
+
+        assert_eq!(b"abc", buf.get());
+        assert_eq!(Some(b"abc" as &[u8]), buf.try_get());
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn text_fragment_computed() {
+        let mut buf = TextBuf::new();
+
+        buf.push_fragment_computed("abc").unwrap();
+
+        assert_eq!("abc", buf.get());
+        assert_eq!(None, buf.try_get());
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn binary_fragment_computed() {
+        let mut buf = BinaryBuf::new();
+
+        buf.push_fragment_computed(b"abc").unwrap();
+
+        assert_eq!(b"abc" as &[u8], buf.get());
+        assert_eq!(None, buf.try_get());
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn text_fragment_extend() {
+        let mut buf = TextBuf::new();
+
+        buf.push_fragment("abc").unwrap();
+        buf.push_fragment("def").unwrap();
+
+        assert_eq!("abcdef", buf.get());
+        assert_eq!(None, buf.try_get());
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn binary_fragment_extend() {
+        let mut buf = BinaryBuf::new();
+
+        buf.push_fragment(b"abc").unwrap();
+        buf.push_fragment(b"def").unwrap();
+
+        assert_eq!(b"abcdef" as &[u8], buf.get());
+        assert_eq!(None, buf.try_get());
     }
 }
