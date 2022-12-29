@@ -1,8 +1,9 @@
-use crate::std::ops::Deref;
+use crate::std::{fmt, ops::Deref};
 
 #[cfg(feature = "alloc")]
 use crate::std::borrow::{Cow, ToOwned};
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct TextBuf<'sval>(FragmentBuf<'sval, str>);
 
 impl<'sval> TextBuf<'sval> {
@@ -47,6 +48,7 @@ impl<'sval> Deref for TextBuf<'sval> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct BinaryBuf<'sval>(FragmentBuf<'sval, [u8]>);
 
 impl<'sval> BinaryBuf<'sval> {
@@ -139,6 +141,49 @@ struct FragmentBuf<'sval, T: ?Sized + Fragment> {
     #[cfg(feature = "alloc")]
     value: Cow<'sval, T>,
 }
+
+#[cfg(not(feature = "alloc"))]
+impl<'sval, T: ?Sized + Fragment + fmt::Debug> fmt::Debug for FragmentBuf<'sval, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'sval, T: ?Sized + Fragment + fmt::Debug> fmt::Debug for FragmentBuf<'sval, T>
+where
+    T::Owned: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl<'sval, T: ?Sized + Fragment + PartialEq> PartialEq for FragmentBuf<'sval, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'sval, T: ?Sized + Fragment + PartialEq> PartialEq for FragmentBuf<'sval, T>
+where
+    T::Owned: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl<'sval, T: ?Sized + Fragment + PartialEq> Eq for FragmentBuf<'sval, T> { }
+
+#[cfg(feature = "alloc")]
+impl<'sval, T: ?Sized + Fragment + Eq> Eq for FragmentBuf<'sval, T>
+where
+    T::Owned: Eq,
+{ }
 
 impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
     fn new(value: &'sval T) -> Self {
