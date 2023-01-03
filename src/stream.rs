@@ -65,7 +65,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i64(value)
         } else {
-            data::number::u128_int(value, self)
+            data::stream_u128(value, self)
         }
     }
 
@@ -87,7 +87,7 @@ pub trait Stream<'sval> {
         if let Ok(value) = value.try_into() {
             self.i64(value)
         } else {
-            data::number::i128_int(value, self)
+            data::stream_i128(value, self)
         }
     }
 
@@ -133,26 +133,16 @@ pub trait Stream<'sval> {
 
     fn seq_end(&mut self) -> Result;
 
-    fn dynamic_begin(&mut self) -> Result {
-        Ok(())
-    }
-
-    fn dynamic_end(&mut self) -> Result {
-        Ok(())
-    }
-
     fn enum_begin(
         &mut self,
         tag: Option<Tag>,
         label: Option<Label>,
         index: Option<Index>,
     ) -> Result {
-        self.tagged_begin(tag, label, index)?;
-        self.dynamic_begin()
+        self.tagged_begin(tag, label, index)
     }
 
     fn enum_end(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.dynamic_end()?;
         self.tagged_end(tag, label, index)
     }
 
@@ -183,7 +173,26 @@ pub trait Stream<'sval> {
     }
 
     fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
-        stream_tag_default(self, tag, label, index)
+        self.tagged_begin(tag, label, index)?;
+
+        // Rust's `Option` is fundamental enough that we handle it specially here
+        if let Some(tags::RUST_OPTION_NONE) = tag {
+            self.null()?;
+        }
+        // If the tag has a label then stream it as its value
+        else if let Some(label) = label {
+            if let Some(label) = label.try_get_static() {
+                self.value(label)?;
+            } else {
+                self.value_computed(&*label)?;
+            }
+        }
+        // If the tag doesn't have a label then stream null
+        else {
+            self.null()?;
+        }
+
+        self.tagged_end(tag, label, index)
     }
 
     fn record_begin(
@@ -208,14 +217,12 @@ pub trait Stream<'sval> {
 
         self.map_key_end()?;
 
-        self.map_value_begin()?;
-        self.dynamic_begin()
+        self.map_value_begin()
     }
 
     fn record_value_end(&mut self, label: Label) -> Result {
         let _ = label;
 
-        self.dynamic_end()?;
         self.map_value_end()
     }
 
@@ -243,14 +250,12 @@ pub trait Stream<'sval> {
     fn tuple_value_begin(&mut self, index: Index) -> Result {
         let _ = index;
 
-        self.seq_value_begin()?;
-        self.dynamic_begin()
+        self.seq_value_begin()
     }
 
     fn tuple_value_end(&mut self, index: Index) -> Result {
         let _ = index;
 
-        self.dynamic_end()?;
         self.seq_value_end()
     }
 
@@ -265,34 +270,6 @@ pub trait Stream<'sval> {
     }
 }
 
-pub fn stream_tag_default<'sval>(
-    stream: &mut (impl Stream<'sval> + ?Sized),
-    tag: Option<Tag>,
-    label: Option<Label>,
-    index: Option<Index>,
-) -> Result {
-    stream.tagged_begin(tag, label, index)?;
-
-    // Rust's `Option` is fundamental enough that we handle it specially here
-    if let Some(tags::RUST_OPTION_NONE) = tag {
-        stream.null()?;
-    }
-    // If the tag has a label then stream it as its value
-    else if let Some(label) = label {
-        if let Some(label) = label.try_get_static() {
-            stream.value(label)?;
-        } else {
-            stream.value_computed(&*label)?;
-        }
-    }
-    // If the tag doesn't have a label then stream null
-    else {
-        stream.null()?;
-    }
-
-    stream.tagged_end(tag, label, index)
-}
-
 macro_rules! impl_stream_forward {
     ({ $($r:tt)* } => $bind:ident => { $($forward:tt)* }) => {
         $($r)* {
@@ -304,16 +281,6 @@ macro_rules! impl_stream_forward {
             fn value_computed<V: Value + ?Sized>(&mut self, v: &V) -> Result {
                 let $bind = self;
                 ($($forward)*).value_computed(v)
-            }
-
-            fn dynamic_begin(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).dynamic_begin()
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                let $bind = self;
-                ($($forward)*).dynamic_end()
             }
 
             fn null(&mut self) -> Result {
@@ -561,14 +528,6 @@ pub(crate) trait DefaultUnsupported<'sval> {
         crate::result::unsupported()
     }
 
-    fn dynamic_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn dynamic_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
     fn null(&mut self) -> Result {
         crate::result::unsupported()
     }
@@ -789,14 +748,6 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn binary_fragment(&mut self, fragment: &'b [u8]) -> Result {
             self.0.binary_fragment_computed(fragment)
-        }
-
-        fn dynamic_begin(&mut self) -> Result {
-            self.0.dynamic_begin()
-        }
-
-        fn dynamic_end(&mut self) -> Result {
-            self.0.dynamic_end()
         }
 
         fn null(&mut self) -> Result {

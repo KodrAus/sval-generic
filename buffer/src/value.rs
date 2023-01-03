@@ -31,56 +31,83 @@ enum ValueKind<'sval> {
     F64(f64),
     Text(TextBuf<'sval>),
     Binary(BinaryBuf<'sval>),
-    MapBegin { range: Range<usize>, num_entries_hint: Option<usize> },
-    MapEnd,
-    MapKeyBegin { range: Range<usize> },
-    MapKeyEnd,
-    MapValueBegin { range: Range<usize> },
-    MapValueEnd,
-    SeqBegin { range: Range<usize>, num_entries_hint: Option<usize> },
-    SeqEnd,
-    SeqValueBegin { range: Range<usize> },
-    SeqValueEnd,
-    DynamicBegin,
-    DynamicEnd,
+    MapBegin {
+        range: Range<usize>,
+        num_entries_hint: Option<usize>,
+    },
+    MapEnd {
+        range: Range<usize>,
+    },
+    MapKeyBegin {
+        range: Range<usize>,
+    },
+    MapKeyEnd {
+        range: Range<usize>,
+    },
+    MapValueBegin {
+        range: Range<usize>,
+    },
+    MapValueEnd {
+        range: Range<usize>,
+    },
+    SeqBegin {
+        range: Range<usize>,
+        num_entries_hint: Option<usize>,
+    },
+    SeqEnd {
+        range: Range<usize>,
+    },
+    SeqValueBegin {
+        range: Range<usize>,
+    },
+    SeqValueEnd {
+        range: Range<usize>,
+    },
 }
 
 impl<'sval> ValueBuf<'sval> {
     pub fn new() -> Self {
         ValueBuf {
             parts: Vec::new(),
-            start: 0,
+            stack: Vec::new(),
         }
     }
 
     fn push_kind(&mut self, kind: ValueKind<'sval>) {
         let range = self.parts.len()..self.parts.len() + 1;
 
-        self.parts.push(ValuePart { kind, range });
+        self.parts.push(ValuePart { kind });
     }
 
-    fn push_begin(&mut self, kind: ValueKind<'sval>) {
+    fn push_begin(&mut self, kind: impl FnOnce(Range<usize>) -> ValueKind<'sval>) {
         let start = self.parts.len();
         let end = start + 1;
 
         let range = start..end;
 
-        self.parts.push(ValuePart { kind, range });
-        self.start = start;
+        self.stack.push(self.parts.len());
+        self.parts.push(ValuePart { kind: kind(range) });
     }
 
-    fn push_end(&mut self, kind: ValueKind<'sval>) {
-        let start = self.start;
+    fn push_end(&mut self, kind: impl FnOnce(Range<usize>) -> ValueKind<'sval>) {
+        let index = self.stack.pop().expect("missing stack frame");
+
         let end = self.parts.len() + 1;
 
-        let range = start..end;
+        let range = match self.parts[index].kind {
+            ValueKind::MapBegin { ref mut range, .. } => range,
+            ValueKind::MapKeyBegin { ref mut range } => range,
+            ValueKind::MapValueBegin { ref mut range } => range,
+            ValueKind::SeqBegin { ref mut range, .. } => range,
+            ValueKind::SeqValueBegin { ref mut range } => range,
+            _ => panic!("can't end at this index"),
+        };
 
-        self.parts.push(ValuePart { kind, range });
+        range.end = end;
 
-        let begin = &mut self.parts[start];
-        begin.range.end = end;
+        let range = range.clone();
 
-        self.start = self.parts[start.saturating_sub(1)].range.start;
+        self.parts.push(ValuePart { kind: kind(range) });
     }
 
     fn current_mut(&mut self) -> &mut ValuePart<'sval> {
@@ -228,37 +255,40 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        self.push_begin(ValueKind::MapBegin { num_entries_hint });
+        self.push_begin(|range| ValueKind::MapBegin {
+            range,
+            num_entries_hint,
+        });
 
         Ok(())
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.push_begin(ValueKind::MapKeyBegin);
+        self.push_begin(|range| ValueKind::MapKeyBegin { range });
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.push_end(ValueKind::MapKeyEnd);
+        self.push_end(|range| ValueKind::MapKeyEnd { range });
 
         Ok(())
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        self.push_begin(ValueKind::MapValueBegin);
+        self.push_begin(|range| ValueKind::MapValueBegin { range });
 
         Ok(())
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        self.push_end(ValueKind::MapValueEnd);
+        self.push_end(|range| ValueKind::MapValueEnd { range });
 
         Ok(())
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.push_end(ValueKind::MapEnd);
+        self.push_end(|range| ValueKind::MapEnd { range });
 
         Ok(())
     }
@@ -277,14 +307,6 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
 
     fn seq_end(&mut self) -> sval::Result {
         todo!()
-    }
-
-    fn dynamic_begin(&mut self) -> sval::Result {
-        todo!()
-    }
-
-    fn dynamic_end(&mut self) -> sval::Result {
-        Ok(())
     }
 
     fn enum_begin(
@@ -389,8 +411,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
 
 #[cfg(test)]
 mod tests {
-    use crate::std::vec;
     use super::*;
+    use crate::std::vec;
 
     use sval::Stream as _;
 
@@ -400,9 +422,9 @@ mod tests {
 
         value.i32(42).unwrap();
 
-        let expected = vec![
-            ValuePart { kind: ValueKind::I32(42), range: 0..1 },
-        ];
+        let expected = vec![ValuePart {
+            kind: ValueKind::I32(42),
+        }];
 
         assert_eq!(expected, value.parts);
     }
@@ -431,9 +453,9 @@ mod tests {
 
         value.map_end().unwrap();
 
-        let expected = vec![
-            ValuePart { kind: ValueKind::I32(42), range: 0..1 },
-        ];
+        let expected = vec![ValuePart {
+            kind: ValueKind::I32(42),
+        }];
 
         assert_eq!(expected, value.parts);
     }

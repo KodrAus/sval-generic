@@ -18,7 +18,9 @@ pub fn stream_fmt<'sval, T: fmt::Display>(
     }
 
     stream.text_begin(None)?;
+
     write!(Writer(&mut stream), "{}", text)?;
+
     stream.text_end()
 }
 

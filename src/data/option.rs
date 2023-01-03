@@ -1,40 +1,28 @@
 use crate::{tags, Index, Label, Result, Stream, Value};
 
-pub(crate) fn stream_option<'sval, S: Stream<'sval> + ?Sized, V>(
-    stream: &mut S,
-    v: Option<V>,
-    some: impl FnOnce(&mut S, V) -> Result,
-) -> Result {
-    if let Some(v) = v {
-        stream.tagged_begin(
-            Some(tags::RUST_OPTION_SOME),
-            Some(Label::new("Some")),
-            Some(Index::new(1)),
-        )?;
-        some(stream, v)?;
-        stream.tagged_end(
-            Some(tags::RUST_OPTION_SOME),
-            Some(Label::new("Some")),
-            Some(Index::new(1)),
-        )
-    } else {
-        stream.tag(
-            Some(tags::RUST_OPTION_NONE),
-            Some(Label::new("None")),
-            Some(Index::new(0)),
-        )
-    }
-}
-
 impl<T: Value> Value for Option<T> {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream.dynamic_begin()?;
-        stream_option(stream, self.as_ref(), |stream, some| stream.value(some))?;
-        stream.dynamic_end()
-    }
+        if let Some(some) = self {
+            stream.tagged_begin(
+                Some(tags::RUST_OPTION_SOME),
+                Some(Label::new("Some")),
+                Some(Index::new(1)),
+            )?;
 
-    fn is_dynamic(&self) -> bool {
-        true
+            stream.value(some)?;
+
+            stream.tagged_end(
+                Some(tags::RUST_OPTION_SOME),
+                Some(Label::new("Some")),
+                Some(Index::new(1)),
+            )
+        } else {
+            stream.tag(
+                Some(tags::RUST_OPTION_NONE),
+                Some(Label::new("None")),
+                Some(Index::new(0)),
+            )
+        }
     }
 
     fn to_bool(&self) -> Option<bool> {

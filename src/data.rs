@@ -1,9 +1,9 @@
-pub(crate) mod binary;
-pub(crate) mod map;
-pub(crate) mod number;
-pub(crate) mod option;
-pub(crate) mod seq;
-pub(crate) mod text;
+mod binary;
+mod map;
+mod number;
+mod option;
+mod seq;
+mod text;
 
 use crate::{
     std::{
@@ -14,6 +14,8 @@ use crate::{
     },
     Result, Stream, Value,
 };
+
+pub(crate) use self::number::*;
 
 pub use self::{binary::*, text::*};
 
@@ -251,19 +253,11 @@ impl Value for () {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         stream.tag(Some(tags::RUST_UNIT), None, None)
     }
-
-    fn is_dynamic(&self) -> bool {
-        false
-    }
 }
 
 impl Value for bool {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
         stream.bool(*self)
-    }
-
-    fn is_dynamic(&self) -> bool {
-        false
     }
 
     fn to_bool(&self) -> Option<bool> {

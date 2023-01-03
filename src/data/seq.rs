@@ -12,10 +12,6 @@ impl<T: Value> Value for [T] {
 
         stream.seq_end()
     }
-
-    fn is_dynamic(&self) -> bool {
-        false
-    }
 }
 
 impl<T: Value, const N: usize> Value for [T; N] {
@@ -31,10 +27,6 @@ impl<T: Value, const N: usize> Value for [T; N] {
 
         stream.seq_end()?;
         stream.tagged_end(Some(tags::CONSTANT_SIZE), None, None)
-    }
-
-    fn is_dynamic(&self) -> bool {
-        false
     }
 }
 
@@ -54,10 +46,6 @@ macro_rules! tuple {
                     )+
 
                     stream.tuple_end(None, None, None)
-                }
-
-                fn is_dynamic(&self) -> bool {
-                    false
                 }
             }
         )+
@@ -244,10 +232,6 @@ mod alloc_support {
     impl<T: Value> Value for Vec<T> {
         fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
             (&**self).stream(stream)
-        }
-
-        fn is_dynamic(&self) -> bool {
-            false
         }
     }
 }

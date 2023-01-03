@@ -4,41 +4,10 @@ pub trait Value {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result;
 
     #[inline]
-    fn is_dynamic(&self) -> bool {
-        struct Check(bool);
-
-        impl<'sval> DefaultUnsupported<'sval> for Check {
-            fn dynamic_begin(&mut self) -> Result {
-                self.0 = true;
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-        }
-
-        let mut check = Check(false).into_stream();
-        if let Ok(()) = self.stream(&mut check) {
-            (check.0).0
-        } else {
-            false
-        }
-    }
-
-    #[inline]
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn bool(&mut self, value: bool) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -55,14 +24,6 @@ pub trait Value {
         struct Extract(Option<f32>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn f32(&mut self, value: f32) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -79,14 +40,6 @@ pub trait Value {
         struct Extract(Option<f64>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn f64(&mut self, value: f64) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -123,14 +76,6 @@ pub trait Value {
         struct Extract(Option<i128>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn i128(&mut self, value: i128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -167,14 +112,6 @@ pub trait Value {
         struct Extract(Option<u128>);
 
         impl<'sval> DefaultUnsupported<'sval> for Extract {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn u128(&mut self, value: u128) -> Result {
                 self.0 = Some(value);
                 Ok(())
@@ -194,14 +131,6 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn text_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -248,14 +177,6 @@ pub trait Value {
         }
 
         impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
-            fn dynamic_begin(&mut self) -> Result {
-                Ok(())
-            }
-
-            fn dynamic_end(&mut self) -> Result {
-                Ok(())
-            }
-
             fn binary_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -301,12 +222,6 @@ macro_rules! impl_value_forward {
             fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
                 let $bind = self;
                 ($($forward)*).stream(stream)
-            }
-
-            #[inline]
-            fn is_dynamic(&self) -> bool {
-                let $bind = self;
-                ($($forward)*).is_dynamic()
             }
 
             #[inline]

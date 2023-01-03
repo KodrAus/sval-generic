@@ -18,10 +18,6 @@ mod alloc_support {
 
             stream.map_end()
         }
-
-        fn is_dynamic(&self) -> bool {
-            false
-        }
     }
 }
 
@@ -47,10 +43,6 @@ mod std_support {
             }
 
             stream.map_end()
-        }
-
-        fn is_dynamic(&self) -> bool {
-            false
         }
     }
 }

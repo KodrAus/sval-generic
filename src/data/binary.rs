@@ -8,13 +8,14 @@ mod std_support {
     pub fn stream_read<'sval, R: Read>(
         stream: &mut (impl Stream<'sval> + ?Sized),
         mut read: R,
+        buf: &mut [u8],
     ) -> Result {
-        let mut buf = [0; 32];
+        assert_ne!(0, buf.len(), "attempt to read into zero-length buffer");
 
         stream.binary_begin(None)?;
 
         loop {
-            match read.read(&mut buf) {
+            match read.read(buf) {
                 Ok(0) => break,
                 Ok(n) => stream.binary_fragment_computed(&buf[..n])?,
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,

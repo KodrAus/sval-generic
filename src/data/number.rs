@@ -41,8 +41,8 @@ macro_rules! convert {
 }
 
 int!(
-    i128_int => i128,
-    u128_int => u128,
+    stream_i128 => i128,
+    stream_u128 => u128,
 );
 
 convert!(

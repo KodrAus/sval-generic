@@ -177,13 +177,10 @@ where
 }
 
 #[cfg(not(feature = "alloc"))]
-impl<'sval, T: ?Sized + Fragment + PartialEq> Eq for FragmentBuf<'sval, T> { }
+impl<'sval, T: ?Sized + Fragment + PartialEq> Eq for FragmentBuf<'sval, T> {}
 
 #[cfg(feature = "alloc")]
-impl<'sval, T: ?Sized + Fragment + Eq> Eq for FragmentBuf<'sval, T>
-where
-    T::Owned: Eq,
-{ }
+impl<'sval, T: ?Sized + Fragment + Eq> Eq for FragmentBuf<'sval, T> where T::Owned: Eq {}
 
 impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
     fn new(value: &'sval T) -> Self {
