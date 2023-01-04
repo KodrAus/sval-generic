@@ -511,220 +511,7 @@ macro_rules! impl_stream_forward {
     };
 }
 
-// Simplifies the default streams for extracting concrete types from values
-pub(crate) trait DefaultUnsupported<'sval> {
-    fn into_stream(self) -> IntoStream<Self>
-    where
-        Self: Sized,
-    {
-        IntoStream(self)
-    }
-
-    fn value<V: Value + ?Sized>(&mut self, _: &'sval V) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn value_computed<V: Value + ?Sized>(&mut self, _: &V) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn null(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn u8(&mut self, _: u8) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn u16(&mut self, _: u16) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn u32(&mut self, _: u32) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn u64(&mut self, _: u64) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn u128(&mut self, _: u128) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn i8(&mut self, _: i8) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn i16(&mut self, _: i16) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn i32(&mut self, _: i32) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn i64(&mut self, _: i64) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn i128(&mut self, _: i128) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn f32(&mut self, _: f32) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn f64(&mut self, _: f64) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn bool(&mut self, _: bool) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn text_begin(&mut self, _: Option<usize>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn text_fragment(&mut self, _: &'sval str) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn text_fragment_computed(&mut self, _: &str) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn text_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binary_begin(&mut self, _: Option<usize>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binary_fragment(&mut self, _: &'sval [u8]) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binary_fragment_computed(&mut self, _: &[u8]) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn binary_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_begin(&mut self, _: Option<usize>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_key_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_key_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_value_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_value_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn map_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn seq_begin(&mut self, _: Option<usize>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn seq_value_begin(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn seq_value_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn seq_end(&mut self) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tagged_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tagged_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tag(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn record_begin(
-        &mut self,
-        _: Option<Tag>,
-        _: Option<Label>,
-        _: Option<Index>,
-        _: Option<usize>,
-    ) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn record_value_begin(&mut self, _: Label) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn record_value_end(&mut self, _: Label) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn record_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tuple_begin(
-        &mut self,
-        _: Option<Tag>,
-        _: Option<Label>,
-        _: Option<Index>,
-        _: Option<usize>,
-    ) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tuple_value_begin(&mut self, _: Index) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tuple_value_end(&mut self, _: Index) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn tuple_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn enum_begin(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-
-    fn enum_end(&mut self, _: Option<Tag>, _: Option<Label>, _: Option<Index>) -> Result {
-        crate::result::unsupported()
-    }
-}
-
-pub(crate) struct IntoStream<T: ?Sized>(pub(crate) T);
-
 impl_stream_forward!({ impl<'sval, 'a, S: ?Sized> Stream<'sval> for &'a mut S where S: Stream<'sval> } => x => { **x });
-impl_stream_forward!({ impl<'sval, 'a, S> Stream<'sval> for IntoStream<S> where S: DefaultUnsupported<'sval> } => x => { x.0 });
 
 #[cfg(feature = "alloc")]
 mod alloc_support {
@@ -741,7 +528,11 @@ pub(crate) fn stream_computed<'a, 'b>(
 ) -> Result {
     struct Computed<S>(S);
 
-    impl<'a, 'b, S: Stream<'a>> Stream<'b> for Computed<S> {
+    impl<'a, 'b, 'c, S: Stream<'a>> Stream<'b> for Computed<S> {
+        fn value_computed<V: Value + ?Sized>(&mut self, v: &V) -> Result {
+            self.0.value_computed(v)
+        }
+
         fn text_fragment(&mut self, fragment: &'b str) -> Result {
             self.0.text_fragment_computed(fragment)
         }
@@ -966,4 +757,26 @@ pub(crate) fn stream_computed<'a, 'b>(
     }
 
     value.stream(&mut Computed(stream))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stream_computed() {
+        struct ComputedValue(usize);
+
+        impl Value for ComputedValue {
+            fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
+                if self.0 == 0 {
+                    stream.bool(true)
+                } else {
+                    stream.value_computed(&ComputedValue(self.0 - 1))
+                }
+            }
+        }
+
+        assert_eq!(true, ComputedValue(5).to_bool().unwrap());
+    }
 }

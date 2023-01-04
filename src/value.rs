@@ -1,4 +1,4 @@
-use crate::{result, std::convert::TryInto, stream::DefaultUnsupported, Result, Stream};
+use crate::{result, std::convert::TryInto, Result, Stream};
 
 pub trait Value {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result;
@@ -7,48 +7,172 @@ pub trait Value {
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract {
+        impl<'sval> Stream<'sval> for Extract {
             fn bool(&mut self, value: bool) -> Result {
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
-        let mut extract = Extract(None).into_stream();
+        let mut extract = Extract(None);
         self.stream(&mut extract).ok()?;
-        (extract.0).0
+        extract.0
     }
 
     #[inline]
     fn to_f32(&self) -> Option<f32> {
         struct Extract(Option<f32>);
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract {
+        impl<'sval> Stream<'sval> for Extract {
             fn f32(&mut self, value: f32) -> Result {
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
-        let mut extract = Extract(None).into_stream();
+        let mut extract = Extract(None);
         self.stream(&mut extract).ok()?;
-        (extract.0).0
+        extract.0
     }
 
     #[inline]
     fn to_f64(&self) -> Option<f64> {
         struct Extract(Option<f64>);
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract {
+        impl<'sval> Stream<'sval> for Extract {
             fn f64(&mut self, value: f64) -> Result {
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
-        let mut extract = Extract(None).into_stream();
+        let mut extract = Extract(None);
         self.stream(&mut extract).ok()?;
-        (extract.0).0
+        extract.0
     }
 
     #[inline]
@@ -75,16 +199,60 @@ pub trait Value {
     fn to_i128(&self) -> Option<i128> {
         struct Extract(Option<i128>);
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract {
+        impl<'sval> Stream<'sval> for Extract {
             fn i128(&mut self, value: i128) -> Result {
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
-        let mut extract = Extract(None).into_stream();
+        let mut extract = Extract(None);
         self.stream(&mut extract).ok()?;
-        (extract.0).0
+        extract.0
     }
 
     #[inline]
@@ -111,16 +279,60 @@ pub trait Value {
     fn to_u128(&self) -> Option<u128> {
         struct Extract(Option<u128>);
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract {
+        impl<'sval> Stream<'sval> for Extract {
             fn u128(&mut self, value: u128) -> Result {
                 self.0 = Some(value);
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
-        let mut extract = Extract(None).into_stream();
+        let mut extract = Extract(None);
         self.stream(&mut extract).ok()?;
-        (extract.0).0
+        extract.0
     }
 
     #[inline]
@@ -130,7 +342,7 @@ pub trait Value {
             seen_fragment: bool,
         }
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+        impl<'sval> Stream<'sval> for Extract<'sval> {
             fn text_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -157,16 +369,47 @@ pub trait Value {
             fn text_end(&mut self) -> Result {
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
         let mut extract = Extract {
             extracted: None,
             seen_fragment: false,
-        }
-        .into_stream();
+        };
 
         self.stream(&mut extract).ok()?;
-        extract.0.extracted
+        extract.extracted
     }
 
     #[inline]
@@ -176,7 +419,7 @@ pub trait Value {
             seen_fragment: bool,
         }
 
-        impl<'sval> DefaultUnsupported<'sval> for Extract<'sval> {
+        impl<'sval> Stream<'sval> for Extract<'sval> {
             fn binary_begin(&mut self, _: Option<usize>) -> Result {
                 Ok(())
             }
@@ -203,16 +446,59 @@ pub trait Value {
             fn binary_end(&mut self) -> Result {
                 Ok(())
             }
+
+            fn null(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn bool(&mut self, _: bool) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_fragment_computed(&mut self, _: &str) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn text_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn i64(&mut self, _: i64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn f64(&mut self, _: f64) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_begin(&mut self, _: Option<usize>) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_begin(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_value_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
+
+            fn seq_end(&mut self) -> Result {
+                crate::result::unsupported()
+            }
         }
 
         let mut extract = Extract {
             extracted: None,
             seen_fragment: false,
-        }
-        .into_stream();
+        };
 
         self.stream(&mut extract).ok()?;
-        extract.0.extracted
+        extract.extracted
     }
 }
 

@@ -1,12 +1,16 @@
 use crate::{
-    std::{ops::Range, vec::Vec},
+    std::{mem, ops::Range, vec::Vec},
     BinaryBuf, TextBuf,
 };
 
+#[derive(Debug, PartialEq)]
 pub struct ValueBuf<'sval> {
     parts: Vec<ValuePart<'sval>>,
     stack: Vec<usize>,
 }
+
+#[repr(transparent)]
+struct ValueSlice<'sval>([ValuePart<'sval>]);
 
 #[derive(Debug, PartialEq)]
 struct ValuePart<'sval> {
@@ -31,37 +35,22 @@ enum ValueKind<'sval> {
     F64(f64),
     Text(TextBuf<'sval>),
     Binary(BinaryBuf<'sval>),
-    MapBegin {
-        range: Range<usize>,
+    Map {
+        len: usize,
         num_entries_hint: Option<usize>,
     },
-    MapEnd {
-        range: Range<usize>,
+    MapKey {
+        len: usize,
     },
-    MapKeyBegin {
-        range: Range<usize>,
+    MapValue {
+        len: usize,
     },
-    MapKeyEnd {
-        range: Range<usize>,
-    },
-    MapValueBegin {
-        range: Range<usize>,
-    },
-    MapValueEnd {
-        range: Range<usize>,
-    },
-    SeqBegin {
-        range: Range<usize>,
+    Seq {
+        len: usize,
         num_entries_hint: Option<usize>,
     },
-    SeqEnd {
-        range: Range<usize>,
-    },
-    SeqValueBegin {
-        range: Range<usize>,
-    },
-    SeqValueEnd {
-        range: Range<usize>,
+    SeqValue {
+        len: usize,
     },
 }
 
@@ -73,41 +62,47 @@ impl<'sval> ValueBuf<'sval> {
         }
     }
 
-    fn push_kind(&mut self, kind: ValueKind<'sval>) {
-        let range = self.parts.len()..self.parts.len() + 1;
+    fn slice<'a>(&'a self) -> &'a ValueSlice<'sval> {
+        unsafe { mem::transmute::<&'a [ValuePart<'sval>], &'a ValueSlice<'sval>>(&self.parts) }
+    }
 
+    fn push_kind(&mut self, kind: ValueKind<'sval>) {
         self.parts.push(ValuePart { kind });
     }
 
-    fn push_begin(&mut self, kind: impl FnOnce(Range<usize>) -> ValueKind<'sval>) {
-        let start = self.parts.len();
-        let end = start + 1;
-
-        let range = start..end;
-
+    fn push_begin(&mut self, kind: ValueKind<'sval>) {
         self.stack.push(self.parts.len());
-        self.parts.push(ValuePart { kind: kind(range) });
+        self.parts.push(ValuePart { kind });
     }
 
-    fn push_end(&mut self, kind: impl FnOnce(Range<usize>) -> ValueKind<'sval>) {
+    fn push_end(&mut self) {
         let index = self.stack.pop().expect("missing stack frame");
 
-        let end = self.parts.len() + 1;
+        let len = self.parts.len() - index - 1;
 
-        let range = match self.parts[index].kind {
-            ValueKind::MapBegin { ref mut range, .. } => range,
-            ValueKind::MapKeyBegin { ref mut range } => range,
-            ValueKind::MapValueBegin { ref mut range } => range,
-            ValueKind::SeqBegin { ref mut range, .. } => range,
-            ValueKind::SeqValueBegin { ref mut range } => range,
-            _ => panic!("can't end at this index"),
-        };
-
-        range.end = end;
-
-        let range = range.clone();
-
-        self.parts.push(ValuePart { kind: kind(range) });
+        *match &mut self.parts[index].kind {
+            ValueKind::Map { len, .. } => len,
+            ValueKind::MapKey { len } => len,
+            ValueKind::MapValue { len } => len,
+            ValueKind::Seq { len, .. } => len,
+            ValueKind::SeqValue { len } => len,
+            ValueKind::Null
+            | ValueKind::Bool(_)
+            | ValueKind::U8(_)
+            | ValueKind::U16(_)
+            | ValueKind::U32(_)
+            | ValueKind::U64(_)
+            | ValueKind::U128(_)
+            | ValueKind::I8(_)
+            | ValueKind::I16(_)
+            | ValueKind::I32(_)
+            | ValueKind::I64(_)
+            | ValueKind::I128(_)
+            | ValueKind::F32(_)
+            | ValueKind::F64(_)
+            | ValueKind::Text(_)
+            | ValueKind::Binary(_) => panic!("can't end at this index"),
+        } = len;
     }
 
     fn current_mut(&mut self) -> &mut ValuePart<'sval> {
@@ -115,9 +110,119 @@ impl<'sval> ValueBuf<'sval> {
     }
 }
 
+impl<'sval> ValueSlice<'sval> {
+    fn slice<'a>(&'a self, range: Range<usize>) -> &'a ValueSlice<'sval> {
+        match self.0.get(range.clone()) {
+            Some(_) => (),
+            None => {
+                panic!("{:?} is out of range for {:?}", range, &self.0);
+            }
+        }
+
+        unsafe { mem::transmute::<&'a [ValuePart<'sval>], &'a ValueSlice<'sval>>(&self.0[range]) }
+    }
+}
+
 impl<'a> sval::Value for ValueBuf<'a> {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-        todo!()
+        self.slice().stream(stream)
+    }
+}
+
+impl<'a> sval::Value for ValueSlice<'a> {
+    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
+        let mut i = 0;
+
+        while let Some(part) = self.0.get(i) {
+            match &part.kind {
+                ValueKind::Null => stream.null()?,
+                ValueKind::Bool(v) => v.stream(stream)?,
+                ValueKind::U8(v) => v.stream(stream)?,
+                ValueKind::U16(v) => v.stream(stream)?,
+                ValueKind::U32(v) => v.stream(stream)?,
+                ValueKind::U64(v) => v.stream(stream)?,
+                ValueKind::U128(v) => v.stream(stream)?,
+                ValueKind::I8(v) => v.stream(stream)?,
+                ValueKind::I16(v) => v.stream(stream)?,
+                ValueKind::I32(v) => v.stream(stream)?,
+                ValueKind::I64(v) => v.stream(stream)?,
+                ValueKind::I128(v) => v.stream(stream)?,
+                ValueKind::F32(v) => v.stream(stream)?,
+                ValueKind::F64(v) => v.stream(stream)?,
+                ValueKind::Text(v) => v.stream(stream)?,
+                ValueKind::Binary(v) => v.stream(stream)?,
+                ValueKind::Map {
+                    len,
+                    num_entries_hint,
+                } => {
+                    stream.map_begin(*num_entries_hint)?;
+
+                    let start = i + 1;
+                    let end = start + *len;
+
+                    self.slice(start..end).stream(stream)?;
+
+                    stream.map_end()?;
+
+                    i += *len;
+                }
+                ValueKind::MapKey { len } => {
+                    stream.map_key_begin()?;
+
+                    let start = i + 1;
+                    let end = start + *len;
+
+                    stream.value(self.slice(start..end))?;
+
+                    stream.map_key_end()?;
+
+                    i += *len;
+                }
+                ValueKind::MapValue { len } => {
+                    stream.map_value_begin()?;
+
+                    let start = i + 1;
+                    let end = start + *len;
+
+                    stream.value(self.slice(start..end))?;
+
+                    stream.map_value_end()?;
+
+                    i += *len;
+                }
+                ValueKind::Seq {
+                    len,
+                    num_entries_hint,
+                } => {
+                    stream.seq_begin(*num_entries_hint)?;
+
+                    let start = i + 1;
+                    let end = start + *len;
+
+                    self.slice(start..end).stream(stream)?;
+
+                    stream.seq_end()?;
+
+                    i += *len;
+                }
+                ValueKind::SeqValue { len } => {
+                    stream.seq_value_begin()?;
+
+                    let start = i + 1;
+                    let end = start + *len;
+
+                    stream.value(self.slice(start..end))?;
+
+                    stream.seq_value_end()?;
+
+                    i += *len;
+                }
+            }
+
+            i += 1;
+        }
+
+        Ok(())
     }
 }
 
@@ -255,8 +360,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     }
 
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        self.push_begin(|range| ValueKind::MapBegin {
-            range,
+        self.push_begin(ValueKind::Map {
+            len: 0,
             num_entries_hint,
         });
 
@@ -264,49 +369,60 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
-        self.push_begin(|range| ValueKind::MapKeyBegin { range });
+        self.push_begin(ValueKind::MapKey { len: 0 });
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.push_end(|range| ValueKind::MapKeyEnd { range });
+        self.push_end();
 
         Ok(())
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
-        self.push_begin(|range| ValueKind::MapValueBegin { range });
+        self.push_begin(ValueKind::MapValue { len: 0 });
 
         Ok(())
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        self.push_end(|range| ValueKind::MapValueEnd { range });
+        self.push_end();
 
         Ok(())
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.push_end(|range| ValueKind::MapEnd { range });
+        self.push_end();
 
         Ok(())
     }
 
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::Seq {
+            len: 0,
+            num_entries_hint,
+        });
+
+        Ok(())
     }
 
     fn seq_value_begin(&mut self) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::SeqValue { len: 0 });
+
+        Ok(())
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 
     fn enum_begin(
@@ -430,6 +546,25 @@ mod tests {
     }
 
     #[test]
+    fn buffer_roundtrip() {
+        let value = vec![
+            vec![],
+            vec![vec![1, 2, 3], vec![4]],
+            vec![vec![5, 6], vec![7, 8, 9]],
+        ];
+
+        let mut value_1 = ValueBuf::new();
+
+        value_1.value(&value).unwrap();
+
+        let mut value_2 = ValueBuf::new();
+
+        value_2.value(&value_1).unwrap();
+
+        assert_eq!(value_1, value_2);
+    }
+
+    #[test]
     fn buffer_map() {
         let mut value = ValueBuf::new();
 
@@ -453,9 +588,38 @@ mod tests {
 
         value.map_end().unwrap();
 
-        let expected = vec![ValuePart {
-            kind: ValueKind::I32(42),
-        }];
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Map {
+                    len: 8,
+                    num_entries_hint: Some(2),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::MapKey { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::I32(0),
+            },
+            ValuePart {
+                kind: ValueKind::MapValue { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(false),
+            },
+            ValuePart {
+                kind: ValueKind::MapKey { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::I32(1),
+            },
+            ValuePart {
+                kind: ValueKind::MapValue { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(true),
+            },
+        ];
 
         assert_eq!(expected, value.parts);
     }
