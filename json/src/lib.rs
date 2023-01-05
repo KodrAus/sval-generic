@@ -20,7 +20,7 @@ pub mod tags {
     For strings, that means they either don't need escaping or are already escaped.
     For numbers, that means they're already in a JSON compatible format.
     */
-    pub const JSON_NATIVE: sval::Tag<'static> = sval::Tag::new("svaljsonnat");
+    pub const JSON_NATIVE: sval::Tag = sval::Tag::new("svaljsonnat");
 }
 
 #[cfg(feature = "alloc")]

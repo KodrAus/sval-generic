@@ -1,7 +1,9 @@
 use crate::{
-    std::{mem, ops::Range, vec::Vec},
+    std::{borrow::Cow, mem, ops::Range, vec::Vec},
     BinaryBuf, TextBuf,
 };
+
+use sval::{Stream as _, Value as _};
 
 #[derive(Debug, PartialEq)]
 pub struct ValueBuf<'sval> {
@@ -52,6 +54,64 @@ enum ValueKind<'sval> {
     SeqValue {
         len: usize,
     },
+    Tag {
+        tag: Option<sval::Tag>,
+        label: Option<LabelBuf>,
+        index: Option<sval::Index>,
+    },
+    Enum {
+        len: usize,
+        tag: Option<sval::Tag>,
+        label: Option<LabelBuf>,
+        index: Option<sval::Index>,
+    },
+    Tagged {
+        len: usize,
+        tag: Option<sval::Tag>,
+        label: Option<LabelBuf>,
+        index: Option<sval::Index>,
+    },
+    Record {
+        len: usize,
+        tag: Option<sval::Tag>,
+        label: Option<LabelBuf>,
+        index: Option<sval::Index>,
+        num_entries: Option<usize>,
+    },
+    RecordValue {
+        len: usize,
+        label: LabelBuf,
+    },
+    Tuple {
+        len: usize,
+        tag: Option<sval::Tag>,
+        label: Option<LabelBuf>,
+        index: Option<sval::Index>,
+        num_entries: Option<usize>,
+    },
+    TupleValue {
+        len: usize,
+        index: sval::Index,
+    },
+}
+
+#[derive(Debug, PartialEq)]
+struct LabelBuf(Cow<'static, str>);
+
+impl LabelBuf {
+    fn new<'a>(label: sval::Label<'a>) -> Self {
+        label
+            .try_get_static()
+            .map(|label| LabelBuf(Cow::Borrowed(label)))
+            .unwrap_or_else(|| LabelBuf(Cow::Owned(label.get().into())))
+    }
+
+    fn get(&self) -> sval::Label {
+        match self.0 {
+            Cow::Borrowed(label) => sval::Label::new(label),
+            Cow::Owned(ref label) => sval::Label::computed(label),
+        }
+    }
 }
 
 impl<'sval> ValueBuf<'sval> {
@@ -60,6 +120,14 @@ impl<'sval> ValueBuf<'sval> {
             parts: Vec::new(),
             stack: Vec::new(),
         }
+    }
+
+    pub fn collect(v: &'sval (impl sval::Value + ?Sized)) -> sval::Result<Self> {
+        let mut buf = ValueBuf::new();
+
+        v.stream(&mut buf)?;
+
+        Ok(buf)
     }
 
     fn slice<'a>(&'a self) -> &'a ValueSlice<'sval> {
@@ -86,6 +154,12 @@ impl<'sval> ValueBuf<'sval> {
             ValueKind::MapValue { len } => len,
             ValueKind::Seq { len, .. } => len,
             ValueKind::SeqValue { len } => len,
+            ValueKind::Enum { len, .. } => len,
+            ValueKind::Tagged { len, .. } => len,
+            ValueKind::Record { len, .. } => len,
+            ValueKind::RecordValue { len, .. } => len,
+            ValueKind::Tuple { len, .. } => len,
+            ValueKind::TupleValue { len, .. } => len,
             ValueKind::Null
             | ValueKind::Bool(_)
             | ValueKind::U8(_)
@@ -101,7 +175,8 @@ impl<'sval> ValueBuf<'sval> {
             | ValueKind::F32(_)
             | ValueKind::F64(_)
             | ValueKind::Text(_)
-            | ValueKind::Binary(_) => panic!("can't end at this index"),
+            | ValueKind::Binary(_)
+            | ValueKind::Tag { .. } => panic!("can't end at this index"),
         } = len;
     }
 
@@ -133,6 +208,27 @@ impl<'a> sval::Value for ValueSlice<'a> {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         let mut i = 0;
 
+        fn stream_value<'sval, S: sval::Stream<'sval> + ?Sized>(
+            stream: &mut S,
+            i: &mut usize,
+            len: usize,
+            value: &'sval ValueSlice,
+            f: impl FnOnce(&mut S, &'sval ValueSlice) -> sval::Result,
+        ) -> sval::Result {
+            let value = value.slice({
+                let start = *i + 1;
+                let end = start + len;
+
+                start..end
+            });
+
+            f(stream, value)?;
+
+            *i += len;
+
+            Ok(())
+        }
+
         while let Some(part) = self.0.get(i) {
             match &part.kind {
                 ValueKind::Null => stream.null()?,
@@ -155,67 +251,132 @@ impl<'a> sval::Value for ValueSlice<'a> {
                     len,
                     num_entries_hint,
                 } => {
-                    stream.map_begin(*num_entries_hint)?;
-
-                    let start = i + 1;
-                    let end = start + *len;
-
-                    self.slice(start..end).stream(stream)?;
-
-                    stream.map_end()?;
-
-                    i += *len;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.map_begin(*num_entries_hint)?;
+                        body.stream(stream)?;
+                        stream.map_end()
+                    })?;
                 }
                 ValueKind::MapKey { len } => {
-                    stream.map_key_begin()?;
-
-                    let start = i + 1;
-                    let end = start + *len;
-
-                    stream.value(self.slice(start..end))?;
-
-                    stream.map_key_end()?;
-
-                    i += *len;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.map_key_begin()?;
+                        stream.value(body)?;
+                        stream.map_key_end()
+                    })?;
                 }
                 ValueKind::MapValue { len } => {
-                    stream.map_value_begin()?;
-
-                    let start = i + 1;
-                    let end = start + *len;
-
-                    stream.value(self.slice(start..end))?;
-
-                    stream.map_value_end()?;
-
-                    i += *len;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.map_value_begin()?;
+                        stream.value(body)?;
+                        stream.map_value_end()
+                    })?;
                 }
                 ValueKind::Seq {
                     len,
                     num_entries_hint,
                 } => {
-                    stream.seq_begin(*num_entries_hint)?;
-
-                    let start = i + 1;
-                    let end = start + *len;
-
-                    self.slice(start..end).stream(stream)?;
-
-                    stream.seq_end()?;
-
-                    i += *len;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.seq_begin(*num_entries_hint)?;
+                        body.stream(stream)?;
+                        stream.seq_end()
+                    })?;
                 }
                 ValueKind::SeqValue { len } => {
-                    stream.seq_value_begin()?;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.seq_value_begin()?;
+                        stream.value(body)?;
+                        stream.seq_value_end()
+                    })?;
+                }
+                ValueKind::Tag { tag, label, index } => {
+                    let index = *index;
+                    let label = label.as_ref().map(LabelBuf::get);
 
-                    let start = i + 1;
-                    let end = start + *len;
+                    stream.tag(*tag, label, index)?;
+                }
+                ValueKind::Enum {
+                    len,
+                    tag,
+                    label,
+                    index,
+                } => {
+                    let index = *index;
+                    let tag = *tag;
+                    let label = label.as_ref().map(LabelBuf::get);
 
-                    stream.value(self.slice(start..end))?;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.enum_begin(tag, label, index)?;
+                        body.stream(stream)?;
+                        stream.enum_end(tag, label, index)
+                    })?;
+                }
+                ValueKind::Tagged {
+                    len,
+                    tag,
+                    label,
+                    index,
+                } => {
+                    let index = *index;
+                    let tag = *tag;
+                    let label = label.as_ref().map(LabelBuf::get);
 
-                    stream.seq_value_end()?;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.tagged_begin(tag, label, index)?;
+                        stream.value(body)?;
+                        stream.tagged_end(tag, label, index)
+                    })?;
+                }
+                ValueKind::Record {
+                    len,
+                    tag,
+                    label,
+                    index,
+                    num_entries,
+                } => {
+                    let index = *index;
+                    let tag = *tag;
+                    let label = label.as_ref().map(LabelBuf::get);
 
-                    i += *len;
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.record_begin(tag, label, index, *num_entries)?;
+                        body.stream(stream)?;
+                        stream.record_end(tag, label, index)
+                    })?;
+                }
+                ValueKind::RecordValue { len, label } => {
+                    let label = label.get();
+
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.record_value_begin(label)?;
+                        stream.value(body)?;
+                        stream.record_value_end(label)
+                    })?;
+                }
+                ValueKind::Tuple {
+                    len,
+                    tag,
+                    label,
+                    index,
+                    num_entries,
+                } => {
+                    let index = *index;
+                    let tag = *tag;
+                    let label = label.as_ref().map(LabelBuf::get);
+
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.tuple_begin(tag, label, index, *num_entries)?;
+                        body.stream(stream)?;
+                        stream.tuple_end(tag, label, index)
+                    })?;
+                }
+                ValueKind::TupleValue { len, index } => {
+                    let index = *index;
+
+                    stream_value(stream, &mut i, *len, self, |stream, body| {
+                        stream.tuple_value_begin(index)?;
+                        stream.value(body)?;
+                        stream.tuple_value_end(index)
+                    })?;
                 }
             }
 
@@ -431,16 +592,25 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::Enum {
+            len: 0,
+            tag,
+            index,
+            label: label.map(LabelBuf::new),
+        });
+
+        Ok(())
     }
 
     fn enum_end(
         &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 
     fn tagged_begin(
@@ -449,16 +619,25 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::Tagged {
+            len: 0,
+            tag,
+            index,
+            label: label.map(LabelBuf::new),
+        });
+
+        Ok(())
     }
 
     fn tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 
     fn tag(
@@ -467,7 +646,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_kind(ValueKind::Tag {
+            tag,
+            index,
+            label: label.map(LabelBuf::new),
+        });
+
+        Ok(())
     }
 
     fn record_begin(
@@ -477,24 +662,41 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::Record {
+            len: 0,
+            tag,
+            index,
+            label: label.map(LabelBuf::new),
+            num_entries,
+        });
+
+        Ok(())
     }
 
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::RecordValue {
+            len: 0,
+            label: LabelBuf::new(label),
+        });
+
+        Ok(())
     }
 
-    fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+    fn record_value_end(&mut self, _: sval::Label) -> sval::Result {
+        self.push_end();
+
+        Ok(())
     }
 
     fn record_end(
         &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 
     fn tuple_begin(
@@ -504,24 +706,38 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::Tuple {
+            len: 0,
+            tag,
+            index,
+            label: label.map(LabelBuf::new),
+            num_entries,
+        });
+
+        Ok(())
     }
 
     fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
-        todo!()
+        self.push_begin(ValueKind::TupleValue { len: 0, index });
+
+        Ok(())
     }
 
-    fn tuple_value_end(&mut self, index: sval::Index) -> sval::Result {
-        todo!()
+    fn tuple_value_end(&mut self, _: sval::Index) -> sval::Result {
+        self.push_end();
+
+        Ok(())
     }
 
     fn tuple_end(
         &mut self,
-        tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        _: Option<sval::Tag>,
+        _: Option<sval::Label>,
+        _: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.push_end();
+
+        Ok(())
     }
 }
 
@@ -530,38 +746,105 @@ mod tests {
     use super::*;
     use crate::std::vec;
 
-    use sval::Stream as _;
-
     #[test]
     fn buffer_primitive() {
-        let mut value = ValueBuf::new();
-
-        value.i32(42).unwrap();
-
-        let expected = vec![ValuePart {
-            kind: ValueKind::I32(42),
-        }];
-
-        assert_eq!(expected, value.parts);
+        for (value, expected) in [
+            (
+                ValueBuf::collect(&true).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::Bool(true),
+                }],
+            ),
+            (
+                ValueBuf::collect(&1i8).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::I8(1),
+                }],
+            ),
+            (
+                ValueBuf::collect(&2i16).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::I16(2),
+                }],
+            ),
+            (
+                ValueBuf::collect(&3i32).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::I32(3),
+                }],
+            ),
+            (
+                ValueBuf::collect(&4i64).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::I64(4),
+                }],
+            ),
+            (
+                ValueBuf::collect(&5i128).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::I128(5),
+                }],
+            ),
+            (
+                ValueBuf::collect(&1u8).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::U8(1),
+                }],
+            ),
+            (
+                ValueBuf::collect(&2u16).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::U16(2),
+                }],
+            ),
+            (
+                ValueBuf::collect(&3u32).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::U32(3),
+                }],
+            ),
+            (
+                ValueBuf::collect(&4u64).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::U64(4),
+                }],
+            ),
+            (
+                ValueBuf::collect(&5u128).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::U128(5),
+                }],
+            ),
+            (
+                ValueBuf::collect(&3.14f32).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::F32(3.14),
+                }],
+            ),
+            (
+                ValueBuf::collect(&3.1415f64).unwrap(),
+                vec![ValuePart {
+                    kind: ValueKind::F64(3.1415),
+                }],
+            ),
+        ] {
+            assert_eq!(expected, value.parts, "{:?}", value);
+        }
     }
 
     #[test]
-    fn buffer_roundtrip() {
-        let value = vec![
-            vec![],
-            vec![vec![1, 2, 3], vec![4]],
-            vec![vec![5, 6], vec![7, 8, 9]],
-        ];
+    fn buffer_option() {
+        let expected = vec![ValuePart {
+            kind: ValueKind::Null,
+        }];
 
-        let mut value_1 = ValueBuf::new();
+        assert_eq!(expected, ValueBuf::collect(&None::<i32>).unwrap().parts);
 
-        value_1.value(&value).unwrap();
+        let expected = vec![ValuePart {
+            kind: ValueKind::Null,
+        }];
 
-        let mut value_2 = ValueBuf::new();
-
-        value_2.value(&value_1).unwrap();
-
-        assert_eq!(value_1, value_2);
+        assert_eq!(expected, ValueBuf::collect(&Some(42i32)).unwrap().parts);
     }
 
     #[test]
@@ -622,5 +905,62 @@ mod tests {
         ];
 
         assert_eq!(expected, value.parts);
+    }
+
+    #[test]
+    fn buffer_seq() {
+        let mut value = ValueBuf::new();
+
+        value.seq_begin(Some(2)).unwrap();
+
+        value.seq_value_begin().unwrap();
+        value.bool(false).unwrap();
+        value.seq_value_end().unwrap();
+
+        value.seq_value_begin().unwrap();
+        value.bool(true).unwrap();
+        value.seq_value_end().unwrap();
+
+        value.seq_end().unwrap();
+
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Seq {
+                    len: 4,
+                    num_entries_hint: Some(2),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::SeqValue { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(false),
+            },
+            ValuePart {
+                kind: ValueKind::SeqValue { len: 1 },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(true),
+            },
+        ];
+
+        assert_eq!(expected, value.parts);
+    }
+
+    #[test]
+    fn buffer_roundtrip() {
+        for value_1 in [
+            ValueBuf::collect(&42i32).unwrap(),
+            ValueBuf::collect(&vec![
+                vec![],
+                vec![vec![1, 2, 3], vec![4]],
+                vec![vec![5, 6], vec![7, 8, 9]],
+            ])
+            .unwrap(),
+        ] {
+            let value_2 = ValueBuf::collect(&value_1).unwrap();
+
+            assert_eq!(value_1, value_2, "{:?}", value_1);
+        }
     }
 }

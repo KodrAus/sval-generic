@@ -29,27 +29,27 @@ pub mod tags {
     /**
     A tag for a value that represents the `Some` variant of a Rust `Option`.
     */
-    pub const RUST_OPTION_SOME: Tag<'static> = Tag::new("rsome");
+    pub const RUST_OPTION_SOME: Tag = Tag::new("rsome");
 
     /**
     A tag for a value that represents the `None` variant of a Rust `Option`.
     */
-    pub const RUST_OPTION_NONE: Tag<'static> = Tag::new("rnone");
+    pub const RUST_OPTION_NONE: Tag = Tag::new("rnone");
 
     /**
     A tag for Rust's `()` type.
     */
-    pub const RUST_UNIT: Tag<'static> = Tag::new("r()");
+    pub const RUST_UNIT: Tag = Tag::new("r()");
 
     /**
     A tag for arbitrary-precision decimal numbers.
     */
-    pub const NUMBER: Tag<'static> = Tag::new("svalnum");
+    pub const NUMBER: Tag = Tag::new("svalnum");
 
     /**
     A tag for values that have a constant size.
     */
-    pub const CONSTANT_SIZE: Tag<'static> = Tag::new("svalcs");
+    pub const CONSTANT_SIZE: Tag = Tag::new("svalcs");
 }
 
 /**
@@ -63,7 +63,7 @@ pub struct Label<'computed> {
 
 impl<'computed> Label<'computed> {
     /**
-    Create a new label from a static static value.
+    Create a new label from a static string value.
 
     For labels that can't satisfy the `'static` lifetime, use [`Label::computed`].
     */
@@ -142,16 +142,16 @@ Tags are additional hints that a stream may use to interpret a value differently
 or to avoid some unnecessary work.
 */
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub struct Tag<'a> {
+pub struct Tag {
     id: u64,
-    data: &'a str,
+    data: &'static str,
 }
 
-impl<'a> Tag<'a> {
+impl Tag {
     /**
-    Create a new tag with a given value.
+    Create a new tag from a static string value.
     */
-    pub const fn new(data: &'a str) -> Self {
+    pub const fn new(data: &'static str) -> Self {
         // Fast, non-cryptographic hash used by rustc and Firefox.
         // Adapted from: https://github.com/rust-lang/rustc-hash/blob/master/src/lib.rs to work in CTFE
         //
@@ -227,7 +227,7 @@ impl<'a> Tag<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Tag<'a> {
+impl fmt::Debug for Tag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.data.fmt(f)
     }
