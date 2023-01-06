@@ -9,3 +9,6 @@ alloc = ["sval/alloc"]
 
 [dependencies.sval]
 path = "../"
+
+[dev-dependencies.sval-derive]
+path = "../derive"

@@ -3,7 +3,7 @@ use crate::{
     BinaryBuf, TextBuf,
 };
 
-use sval::{Stream as _, Value as _};
+use sval::Stream as _;
 
 #[derive(Debug, PartialEq)]
 pub struct ValueBuf<'sval> {
@@ -128,6 +128,10 @@ impl<'sval> ValueBuf<'sval> {
         v.stream(&mut buf)?;
 
         Ok(buf)
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.stack.len() == 0
     }
 
     fn slice<'a>(&'a self) -> &'a ValueSlice<'sval> {
@@ -746,6 +750,8 @@ mod tests {
     use super::*;
     use crate::std::vec;
 
+    use sval_derive::*;
+
     #[test]
     fn buffer_primitive() {
         for (value, expected) in [
@@ -835,14 +841,28 @@ mod tests {
     #[test]
     fn buffer_option() {
         let expected = vec![ValuePart {
-            kind: ValueKind::Null,
+            kind: ValueKind::Tag {
+                tag: Some(sval::Tag::new("rnone")),
+                label: Some(LabelBuf(Cow::Borrowed("None"))),
+                index: Some(sval::Index::new(0)),
+            },
         }];
 
         assert_eq!(expected, ValueBuf::collect(&None::<i32>).unwrap().parts);
 
-        let expected = vec![ValuePart {
-            kind: ValueKind::Null,
-        }];
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Tagged {
+                    len: 1,
+                    tag: Some(sval::Tag::new("rsome")),
+                    label: Some(LabelBuf(Cow::Borrowed("Some"))),
+                    index: Some(sval::Index::new(1)),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::I32(42),
+            },
+        ];
 
         assert_eq!(expected, ValueBuf::collect(&Some(42i32)).unwrap().parts);
     }
@@ -948,6 +968,175 @@ mod tests {
     }
 
     #[test]
+    fn buffer_record() {
+        let mut value = ValueBuf::new();
+
+        value
+            .record_begin(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+                Some(2),
+            )
+            .unwrap();
+
+        value.record_value_begin(sval::Label::new("a")).unwrap();
+        value.bool(false).unwrap();
+        value.record_value_end(sval::Label::new("a")).unwrap();
+
+        value.record_value_begin(sval::Label::new("b")).unwrap();
+        value.bool(true).unwrap();
+        value.record_value_end(sval::Label::new("b")).unwrap();
+
+        value
+            .record_end(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+            )
+            .unwrap();
+
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Record {
+                    len: 4,
+                    tag: Some(sval::Tag::new("test")),
+                    label: Some(LabelBuf(Cow::Borrowed("A"))),
+                    index: Some(sval::Index::new(1)),
+                    num_entries: Some(2),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::RecordValue {
+                    len: 1,
+                    label: LabelBuf(Cow::Borrowed("a")),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(false),
+            },
+            ValuePart {
+                kind: ValueKind::RecordValue {
+                    len: 1,
+                    label: LabelBuf(Cow::Borrowed("b")),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(true),
+            },
+        ];
+
+        assert_eq!(expected, value.parts);
+    }
+
+    #[test]
+    fn buffer_tuple() {
+        let mut value = ValueBuf::new();
+
+        value
+            .tuple_begin(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+                Some(2),
+            )
+            .unwrap();
+
+        value.tuple_value_begin(sval::Index::new(0)).unwrap();
+        value.bool(false).unwrap();
+        value.tuple_value_end(sval::Index::new(0)).unwrap();
+
+        value.tuple_value_begin(sval::Index::new(1)).unwrap();
+        value.bool(true).unwrap();
+        value.tuple_value_end(sval::Index::new(1)).unwrap();
+
+        value
+            .tuple_end(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+            )
+            .unwrap();
+
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Tuple {
+                    len: 4,
+                    tag: Some(sval::Tag::new("test")),
+                    label: Some(LabelBuf(Cow::Borrowed("A"))),
+                    index: Some(sval::Index::new(1)),
+                    num_entries: Some(2),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::TupleValue {
+                    len: 1,
+                    index: sval::Index::new(0),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(false),
+            },
+            ValuePart {
+                kind: ValueKind::TupleValue {
+                    len: 1,
+                    index: sval::Index::new(1),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::Bool(true),
+            },
+        ];
+
+        assert_eq!(expected, value.parts);
+    }
+
+    #[test]
+    fn buffer_enum() {
+        let mut value = ValueBuf::new();
+
+        value
+            .enum_begin(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+            )
+            .unwrap();
+
+        value
+            .tag(None, Some(sval::Label::new("B")), Some(sval::Index::new(0)))
+            .unwrap();
+
+        value
+            .enum_end(
+                Some(sval::Tag::new("test")),
+                Some(sval::Label::new("A")),
+                Some(sval::Index::new(1)),
+            )
+            .unwrap();
+
+        let expected = vec![
+            ValuePart {
+                kind: ValueKind::Enum {
+                    len: 1,
+                    tag: Some(sval::Tag::new("test")),
+                    label: Some(LabelBuf(Cow::Borrowed("A"))),
+                    index: Some(sval::Index::new(1)),
+                },
+            },
+            ValuePart {
+                kind: ValueKind::Tag {
+                    tag: None,
+                    label: Some(LabelBuf(Cow::Borrowed("B"))),
+                    index: Some(sval::Index::new(0)),
+                },
+            },
+        ];
+
+        assert_eq!(expected, value.parts);
+    }
+
+    #[test]
     fn buffer_roundtrip() {
         for value_1 in [
             ValueBuf::collect(&42i32).unwrap(),
@@ -956,6 +1145,32 @@ mod tests {
                 vec![vec![1, 2, 3], vec![4]],
                 vec![vec![5, 6], vec![7, 8, 9]],
             ])
+            .unwrap(),
+            ValueBuf::collect(&{
+                #[derive(Value)]
+                struct Record {
+                    a: i32,
+                    b: bool,
+                }
+
+                Record { a: 42, b: true }
+            })
+            .unwrap(),
+            ValueBuf::collect(&{
+                #[derive(Value)]
+                struct Tuple(i32, bool);
+
+                Tuple(42, true)
+            })
+            .unwrap(),
+            ValueBuf::collect(&{
+                #[derive(Value)]
+                enum Enum {
+                    A,
+                }
+
+                Enum::A
+            })
             .unwrap(),
         ] {
             let value_2 = ValueBuf::collect(&value_1).unwrap();

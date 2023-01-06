@@ -1,14 +1,11 @@
 #![no_std]
 
 #[cfg(not(feature = "alloc"))]
-#[macro_use]
 extern crate core as std;
 
 #[cfg(feature = "alloc")]
-#[macro_use]
 extern crate alloc;
 #[cfg(feature = "alloc")]
-#[macro_use]
 extern crate core;
 
 #[cfg(feature = "alloc")]

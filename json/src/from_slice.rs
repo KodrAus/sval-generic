@@ -23,11 +23,6 @@ impl sval::Value for JsonSlice {
 
         Ok(())
     }
-
-    #[inline]
-    fn is_dynamic(&self) -> bool {
-        true
-    }
 }
 
 pub struct JsonSliceReader<'a> {
@@ -175,8 +170,6 @@ impl<'a> JsonSliceReader<'a> {
         } else {
             self.stack.finish()?;
 
-            stream.dynamic_end()?;
-
             Ok(false)
         }
     }
@@ -188,10 +181,6 @@ impl<'a> JsonSliceReader<'a> {
     where
         'a: 'b,
     {
-        if self.head == 0 {
-            stream.dynamic_begin()?;
-        }
-
         if self.in_str {
             let (fragment, partial, head) = str_fragment(self.src, self.head)?;
 

@@ -36,6 +36,7 @@ struct Serializer<'sval, S: serde::Serializer> {
 enum Buffered<'sval> {
     Text(sval_buffer::TextBuf<'sval>),
     Binary(sval_buffer::BinaryBuf<'sval>),
+    Value(sval_buffer::ValueBuf<'sval>),
 }
 
 struct Bytes<'sval>(&'sval [u8]);
@@ -575,14 +576,6 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn seq_end(&mut self) -> sval::Result {
         self.serialize_seq_end()
-    }
-
-    fn dynamic_begin(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn dynamic_end(&mut self) -> sval::Result {
-        Ok(())
     }
 
     fn enum_begin(

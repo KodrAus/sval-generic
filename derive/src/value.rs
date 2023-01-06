@@ -49,10 +49,6 @@ fn derive_struct<'a>(ident: &Ident, generics: &Generics, fields: &FieldsNamed) -
 
                     Ok(())
                 }
-
-                fn is_dynamic(&self) -> bool {
-                    false
-                }
             }
         };
     })
@@ -77,10 +73,6 @@ fn derive_unit_struct<'a>(ident: &Ident, generics: &Generics) -> TokenStream {
                     }
 
                     Ok(())
-                }
-
-                fn is_dynamic(&self) -> bool {
-                    false
                 }
             }
         };
@@ -107,10 +99,6 @@ fn derive_newtype<'a>(ident: &Ident, generics: &Generics) -> TokenStream {
 
                     Ok(())
                 }
-
-                fn is_dynamic(&self) -> bool {
-                    false
-                }
             }
         };
     })
@@ -135,10 +123,6 @@ fn derive_tuple<'a>(ident: &Ident, generics: &Generics, fields: &FieldsUnnamed) 
                     }
 
                     Ok(())
-                }
-
-                fn is_dynamic(&self) -> bool {
-                    false
                 }
             }
         };
@@ -201,10 +185,6 @@ fn derive_enum<'a>(
                     }
 
                     stream.enum_end(None, #label, #index)
-                }
-
-                fn is_dynamic(&self) -> bool {
-                    false
                 }
             }
         };
