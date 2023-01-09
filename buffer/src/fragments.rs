@@ -28,6 +28,12 @@ impl<'sval> TextBuf<'sval> {
     }
 }
 
+impl<'sval> Default for TextBuf<'sval> {
+    fn default() -> Self {
+        TextBuf::new()
+    }
+}
+
 impl<'sval> From<&'sval str> for TextBuf<'sval> {
     fn from(fragment: &'sval str) -> Self {
         TextBuf(FragmentBuf::new(fragment))
@@ -84,6 +90,12 @@ impl<'sval> BinaryBuf<'sval> {
 
     pub fn get(&self) -> &[u8] {
         self.0.get()
+    }
+}
+
+impl<'sval> Default for BinaryBuf<'sval> {
+    fn default() -> Self {
+        BinaryBuf::new()
     }
 }
 

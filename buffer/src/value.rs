@@ -11,6 +11,12 @@ pub struct ValueBuf<'sval> {
     stack: Vec<usize>,
 }
 
+impl<'sval> Default for ValueBuf<'sval> {
+    fn default() -> Self {
+        ValueBuf::new()
+    }
+}
+
 #[repr(transparent)]
 struct ValueSlice<'sval>([ValuePart<'sval>]);
 
