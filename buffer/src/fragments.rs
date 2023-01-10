@@ -54,20 +54,6 @@ impl<'sval> Deref for TextBuf<'sval> {
     }
 }
 
-impl<'a> sval::Value for TextBuf<'a> {
-    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-        stream.text_begin(Some(self.len()))?;
-
-        if let Some(v) = self.try_get() {
-            stream.text_fragment(v)?;
-        } else {
-            stream.text_fragment_computed(self)?;
-        }
-
-        stream.text_end()
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct BinaryBuf<'sval>(FragmentBuf<'sval, [u8]>);
 
@@ -116,20 +102,6 @@ impl<'sval> Deref for BinaryBuf<'sval> {
 
     fn deref(&self) -> &[u8] {
         self.get()
-    }
-}
-
-impl<'a> sval::Value for BinaryBuf<'a> {
-    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-        stream.binary_begin(Some(self.len()))?;
-
-        if let Some(v) = self.try_get() {
-            stream.binary_fragment(v)?;
-        } else {
-            stream.binary_fragment_computed(self)?;
-        }
-
-        stream.binary_end()
     }
 }
 

@@ -6,7 +6,13 @@ extern crate sval_derive;
 #[macro_use]
 extern crate serde_derive;
 
+use serde_test::assert_ser_tokens;
+
 use std::collections::BTreeMap;
+
+type Map = BTreeMap<&'static str, i32>;
+
+type Seq = Vec<i32>;
 
 #[derive(Value, Serialize)]
 struct MapStruct {
@@ -33,42 +39,77 @@ enum Enum {
     SeqStruct(i32, bool, &'static str),
 }
 
+fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test::Token]) {
+    assert_ser_tokens(&sval_serde::to_serialize(&v), tokens);
+    assert_ser_tokens(&v, tokens);
+}
+
 #[test]
-fn complex_map_to_serialize() {
-    use serde_test::{assert_ser_tokens, Token::*};
+fn map_to_serialize() {
+    serialize_case(
+        {
+            let mut map = Map::new();
 
-    let map = {
-        let mut map = BTreeMap::new();
+            map.insert("a", 1);
+            map.insert("b", 2);
 
-        map.insert("a", vec![1, 2, 3]);
-        map.insert("b", vec![4, 5, 6]);
-
-        map
-    };
-
-    let tokens = &[
-        Map {
-            len: Option::Some(2),
+            map
         },
-        Str("a"),
-        Seq {
-            len: Option::Some(3),
-        },
-        I32(1),
-        I32(2),
-        I32(3),
-        SeqEnd,
-        Str("b"),
-        Seq {
-            len: Option::Some(3),
-        },
-        I32(4),
-        I32(5),
-        I32(6),
-        SeqEnd,
-        MapEnd,
-    ];
+        {
+            use serde_test::Token::*;
 
-    assert_ser_tokens(&map, tokens);
-    assert_ser_tokens(&sval_serde::to_serialize(&map), tokens);
+            &[
+                Map {
+                    len: Option::Some(2),
+                },
+                Str("a"),
+                I32(1),
+                Str("b"),
+                I32(2),
+                MapEnd,
+            ]
+        },
+    );
+}
+
+#[test]
+fn seq_to_serialize() {
+    serialize_case(
+        {
+            let mut seq = Seq::new();
+
+            seq.push(1);
+            seq.push(2);
+
+            seq
+        },
+        {
+            use serde_test::Token::*;
+
+            &[
+                Seq {
+                    len: Option::Some(2),
+                },
+                I32(1),
+                I32(2),
+                SeqEnd,
+            ]
+        },
+    );
+}
+
+#[test]
+fn map_struct_to_serialize() {
+    serialize_case(
+        MapStruct {
+            field_0: 1,
+            field_1: true,
+            field_2: "a",
+        },
+        {
+            use serde_test::Token::*;
+
+            &[None]
+        },
+    );
 }
