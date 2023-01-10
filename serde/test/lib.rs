@@ -152,3 +152,15 @@ fn seq_struct_unnamed_to_serialize() {
         &[Tuple { len: 3 }, I32(1), Bool(true), Str("a"), TupleEnd]
     });
 }
+
+#[test]
+fn enum_tag_to_serialize() {
+    serialize_case(Enum::Constant, {
+        use serde_test::Token::*;
+
+        &[UnitVariant {
+            name: "Enum",
+            variant: "Constant",
+        }]
+    });
+}
