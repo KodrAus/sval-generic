@@ -192,10 +192,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.buffer_or_serialize_with(
-            |buf| buf.map_key_end(),
-            |serializer| serializer.with_map(|_| Ok(())),
-        )
+        self.buffer_or_serialize_with(|buf| buf.map_key_end(), |_| Ok(()))
     }
 
     fn map_value_begin(&mut self) -> sval::Result {
@@ -212,10 +209,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     }
 
     fn map_value_end(&mut self) -> sval::Result {
-        self.buffer_or_serialize_with(
-            |buf| buf.map_value_end(),
-            |serializer| serializer.with_map(|_| Ok(())),
-        )
+        self.buffer_or_serialize_with(|buf| buf.map_value_end(), |_| Ok(()))
     }
 
     fn map_end(&mut self) -> sval::Result {
@@ -237,17 +231,11 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     }
 
     fn seq_value_begin(&mut self) -> sval::Result {
-        self.buffer_or_serialize_with(
-            |buf| buf.seq_value_begin(),
-            |serializer| serializer.with_seq(|_| Ok(())),
-        )
+        self.buffer_or_serialize_with(|buf| buf.seq_value_begin(), |_| Ok(()))
     }
 
     fn seq_value_end(&mut self) -> sval::Result {
-        self.buffer_or_serialize_with(
-            |buf| buf.seq_value_begin(),
-            |serializer| serializer.with_seq(|_| Ok(())),
-        )
+        self.buffer_or_serialize_with(|buf| buf.seq_value_begin(), |_| Ok(()))
     }
 
     fn seq_end(&mut self) -> sval::Result {
@@ -324,16 +312,50 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        // struct variant
-        todo!()
+        self.buffer_or_transition_any_with(
+            |buf| buf.record_begin(tag, label, index, num_entries),
+            |serializer| {
+                let struct_label = label
+                    .and_then(|label| label.try_get_static())
+                    .ok_or_else(|| S::Error::custom("missing struct label"))?;
+
+                let num_entries =
+                    num_entries.ok_or_else(|| S::Error::custom("missing struct field count"))?;
+
+                Ok(State::Struct(Some(Struct {
+                    serializer: serializer
+                        .serializer
+                        .serialize_struct(struct_label, num_entries)?,
+                    label: None,
+                })))
+            },
+        )
     }
 
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.buffer_or_serialize_with(
+            |buf| buf.record_value_begin(label),
+            |serializer| {
+                serializer.with_struct(|serializer| {
+                    serializer.label = label.try_get_static();
+
+                    Ok(())
+                })
+            },
+        )
     }
 
     fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
-        todo!()
+        self.buffer_or_serialize_with(
+            |buf| buf.record_value_end(label),
+            |serializer| {
+                serializer.with_struct(|serializer| {
+                    serializer.label = None;
+
+                    Ok(())
+                })
+            },
+        )
     }
 
     fn record_end(
@@ -342,7 +364,10 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.buffer_or_transition_done_with(
+            |buf| buf.record_end(tag, label, index),
+            |serializer| serializer.take_struct()?.serializer.end(),
+        )
     }
 
     fn tuple_begin(
@@ -352,16 +377,35 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        // tuple variant
-        todo!()
+        self.buffer_or_transition_any_with(
+            |buf| buf.tuple_begin(tag, label, index, num_entries),
+            |serializer| {
+                let struct_label = label.and_then(|label| label.try_get_static());
+
+                let num_entries =
+                    num_entries.ok_or_else(|| S::Error::custom("missing struct field count"))?;
+
+                if let Some(struct_label) = struct_label {
+                    Ok(State::TupleStruct(Some(TupleStruct {
+                        serializer: serializer
+                            .serializer
+                            .serialize_tuple_struct(struct_label, num_entries)?,
+                    })))
+                } else {
+                    Ok(State::Tuple(Some(Tuple {
+                        serializer: serializer.serializer.serialize_tuple(num_entries)?,
+                    })))
+                }
+            },
+        )
     }
 
     fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
-        todo!()
+        self.buffer_or_serialize_with(|buf| buf.tuple_value_begin(index), |_| Ok(()))
     }
 
     fn tuple_value_end(&mut self, index: sval::Index) -> sval::Result {
-        todo!()
+        self.buffer_or_serialize_with(|buf| buf.tuple_value_end(index), |_| Ok(()))
     }
 
     fn tuple_end(
@@ -370,7 +414,13 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        todo!()
+        self.buffer_or_transition_done_with(
+            |buf| buf.tuple_end(tag, label, index),
+            |serializer| match serializer.take_tuple()? {
+                TakeTuple::Tuple(serializer) => serializer.serializer.end(),
+                TakeTuple::TupleStruct(serializer) => serializer.serializer.end(),
+            },
+        )
     }
 }
 
@@ -649,6 +699,53 @@ impl<'sval, S: serde::Serializer> Serializer<'sval, S> {
         }
     }
 
+    fn with_struct(
+        &mut self,
+        f: impl FnOnce(&mut Struct<S>) -> Result<(), S::Error>,
+    ) -> sval::Result {
+        try_catch(self, |serializer| match serializer {
+            Serializer {
+                buffered: None,
+                state: State::Struct(Some(s)),
+            } => f(s),
+            _ => Err(S::Error::custom("invalid serializer state")),
+        })
+    }
+
+    fn take_struct(&mut self) -> Result<Struct<S>, S::Error> {
+        match self {
+            Serializer {
+                buffered: None,
+                state: State::Struct(s),
+            } => s
+                .take()
+                .ok_or_else(|| S::Error::custom("invalid serializer state")),
+            _ => Err(S::Error::custom("invalid serializer state")),
+        }
+    }
+
+    fn take_tuple(&mut self) -> Result<TakeTuple<S>, S::Error> {
+        match self {
+            Serializer {
+                buffered: None,
+                state: State::Tuple(s),
+            } => {
+                Ok(TakeTuple::Tuple(s.take().ok_or_else(|| {
+                    S::Error::custom("invalid serializer state")
+                })?))
+            }
+            Serializer {
+                buffered: None,
+                state: State::TupleStruct(s),
+            } => {
+                Ok(TakeTuple::TupleStruct(s.take().ok_or_else(|| {
+                    S::Error::custom("invalid serializer state")
+                })?))
+            }
+            _ => Err(S::Error::custom("invalid serializer state")),
+        }
+    }
+
     fn with_text(&mut self, f: impl FnOnce(&mut TextBuf<'sval>) -> sval::Result) -> sval::Result {
         try_catch(self, |serializer| match serializer.buffered {
             Some(Buffered::Text(ref mut buf)) => {
@@ -753,6 +850,11 @@ struct TupleStruct<S: serde::Serializer> {
 }
 struct TupleVariant<S: serde::Serializer> {
     serializer: S::SerializeTupleVariant,
+}
+
+enum TakeTuple<S: serde::Serializer> {
+    Tuple(Tuple<S>),
+    TupleStruct(TupleStruct<S>),
 }
 
 struct Bytes<'sval>(&'sval [u8]);

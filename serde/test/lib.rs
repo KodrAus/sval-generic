@@ -109,7 +109,46 @@ fn map_struct_to_serialize() {
         {
             use serde_test::Token::*;
 
-            &[None]
+            &[
+                Struct {
+                    name: "MapStruct",
+                    len: 3,
+                },
+                Str("field_0"),
+                I32(1),
+                Str("field_1"),
+                Bool(true),
+                Str("field_2"),
+                Str("a"),
+                StructEnd,
+            ]
         },
     );
+}
+
+#[test]
+fn seq_struct_named_to_serialize() {
+    serialize_case((1, true, "a"), {
+        use serde_test::Token::*;
+
+        &[
+            TupleStruct {
+                name: "SeqStruct",
+                len: 3,
+            },
+            I32(1),
+            Bool(true),
+            Str("a"),
+            TupleStructEnd,
+        ]
+    });
+}
+
+#[test]
+fn seq_struct_unnamed_to_serialize() {
+    serialize_case((1, true, "a"), {
+        use serde_test::Token::*;
+
+        &[Tuple { len: 3 }, I32(1), Bool(true), Str("a"), TupleEnd]
+    });
 }
