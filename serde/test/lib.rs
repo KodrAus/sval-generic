@@ -154,6 +154,15 @@ fn seq_struct_unnamed_to_serialize() {
 }
 
 #[test]
+fn tagged_struct_to_serialize() {
+    serialize_case(Tagged(1), {
+        use serde_test::Token::*;
+
+        &[NewtypeStruct { name: "Tagged" }, I32(1)]
+    })
+}
+
+#[test]
 fn enum_tag_to_serialize() {
     serialize_case(Enum::Constant, {
         use serde_test::Token::*;
