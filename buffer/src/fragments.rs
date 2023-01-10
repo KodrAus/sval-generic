@@ -223,6 +223,7 @@ impl<'sval, T: ?Sized + Fragment> FragmentBuf<'sval, T> {
 
         #[cfg(not(feature = "alloc"))]
         {
+            let _ = fragment;
             Err(sval::Error::unsupported())
         }
     }

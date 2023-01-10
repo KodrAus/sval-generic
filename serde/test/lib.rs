@@ -128,7 +128,7 @@ fn map_struct_to_serialize() {
 
 #[test]
 fn seq_struct_named_to_serialize() {
-    serialize_case((1, true, "a"), {
+    serialize_case(SeqStruct(1, true, "a"), {
         use serde_test::Token::*;
 
         &[

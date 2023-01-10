@@ -3,6 +3,9 @@ name = "sval-serde"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+alloc = ["serde/alloc", "sval/alloc", "sval-buffer/alloc"]
+
 [dependencies.sval]
 path = "../"
 

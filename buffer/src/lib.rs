@@ -12,16 +12,11 @@ extern crate core;
 mod std {
     pub use crate::{
         alloc::{borrow, boxed, collections, string, vec},
-        core::{convert, fmt, hash, mem, ops, result, str},
+        core::{convert, fmt, hash, marker, mem, ops, result, str},
     };
 }
 
 mod fragments;
-
-pub use self::fragments::*;
-
-#[cfg(feature = "alloc")]
 mod value;
 
-#[cfg(feature = "alloc")]
-pub use self::value::*;
+pub use self::{fragments::*, value::*};
