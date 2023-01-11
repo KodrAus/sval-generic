@@ -41,6 +41,14 @@ enum Enum {
 
 fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test::Token]) {
     assert_ser_tokens(&sval_serde::to_serialize(&v), tokens);
+    assert_ser_tokens(
+        &sval_serde::to_serialize(sval_buffer::stream_to_value(&v).unwrap()),
+        tokens,
+    );
+    assert_ser_tokens(
+        &sval_serde::to_serialize(&v as &dyn sval_dynamic::Value),
+        tokens,
+    );
     assert_ser_tokens(&v, tokens);
 }
 

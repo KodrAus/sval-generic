@@ -215,3 +215,17 @@ fn stream_exotic_unnamed_enum() {
         )
     );
 }
+
+#[test]
+fn json_slice_roundtrip() {
+    let json = sval_json::stream_to_string(MapStruct {
+        field_0: 42,
+        field_1: true,
+        field_2: "abc",
+    })
+    .unwrap();
+
+    let slice = sval_json::from_slice(&json);
+
+    assert_eq!(json, sval_json::stream_to_string(slice).unwrap());
+}

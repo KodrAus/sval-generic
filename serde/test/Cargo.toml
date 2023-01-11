@@ -17,6 +17,13 @@ features = ["std"]
 [dependencies.sval-derive]
 path = "../../derive"
 
+[dependencies.sval-buffer]
+path = "../../buffer"
+features = ["alloc"]
+
+[dependencies.sval-dynamic]
+path = "../../dynamic"
+
 [dependencies.serde]
 version = "1"
 

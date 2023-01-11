@@ -4,9 +4,9 @@ use crate::std::marker::PhantomData;
 use crate::{std::vec::Vec, BinaryBuf, TextBuf};
 
 #[cfg(feature = "alloc")]
-use alloc_support::*;
+pub use alloc_support::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct ValueBuf<'sval> {
     #[cfg(feature = "alloc")]
     parts: Vec<ValuePart<'sval>>,
@@ -770,6 +770,10 @@ mod alloc_support {
         BinaryBuf, TextBuf,
     };
 
+    pub fn stream_to_value<'sval>(v: &'sval (impl sval::Value + ?Sized)) -> sval::Result<ValueBuf> {
+        ValueBuf::collect(v)
+    }
+
     #[repr(transparent)]
     pub(super) struct ValueSlice<'sval>([ValuePart<'sval>]);
 
@@ -1135,6 +1139,7 @@ mod alloc_support {
         use super::*;
         use crate::std::vec;
 
+        use sval::Stream as _;
         use sval_derive::*;
 
         #[test]
@@ -1560,7 +1565,7 @@ mod alloc_support {
             ] {
                 let value_2 = ValueBuf::collect(&value_1).unwrap();
 
-                assert_eq!(value_1, value_2, "{:?}", value_1);
+                assert_eq!(value_1.parts, value_2.parts, "{:?}", value_1);
             }
         }
     }

@@ -4,8 +4,8 @@ use sval::Stream as _;
 
 use crate::tags;
 
-pub fn stream_to_fmt(fmt: impl Write, v: impl sval::Value) -> sval::Result {
-    v.stream(&mut Formatter::new(fmt))
+pub fn stream_to_fmt(fmt: impl Write, v: impl sval::Value) -> fmt::Result {
+    v.stream(&mut Formatter::new(fmt)).map_err(|_| fmt::Error)
 }
 
 pub struct Formatter<W> {
