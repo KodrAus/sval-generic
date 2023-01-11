@@ -67,8 +67,10 @@ mod alloc_support {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn string_cast() {
-        todo!()
+        assert_eq!(Some("a string"), "a string".to_text());
     }
 }

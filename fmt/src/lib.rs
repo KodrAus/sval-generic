@@ -17,4 +17,4 @@ pub use self::{
 mod to_string;
 
 #[cfg(feature = "alloc")]
-pub use self::to_string::to_string;
+pub use self::to_string::stream_to_string;

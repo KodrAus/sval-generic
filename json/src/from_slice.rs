@@ -164,7 +164,7 @@ impl<'a> JsonSliceReader<'a> {
         }
     }
 
-    fn maybe_done<'b>(&mut self, mut stream: impl sval::Stream<'b>) -> sval::Result<bool> {
+    fn maybe_done<'b>(&mut self) -> sval::Result<bool> {
         if self.head < self.src.len() {
             Ok(true)
         } else {
@@ -192,7 +192,7 @@ impl<'a> JsonSliceReader<'a> {
 
                 self.in_str = false;
 
-                self.maybe_done(&mut *stream)
+                self.maybe_done()
             } else {
                 stream.text_fragment(fragment)?;
 
@@ -221,7 +221,7 @@ impl<'a> JsonSliceReader<'a> {
                     return if !partial {
                         stream.text_end()?;
 
-                        self.maybe_done(&mut *stream)
+                        self.maybe_done()
                     }
                     // If the string has escapes then yield this fragment
                     // The next time we loop through we'll grab the next one
@@ -245,7 +245,7 @@ impl<'a> JsonSliceReader<'a> {
 
                     self.map_end(&mut *stream)?;
 
-                    return self.maybe_done(&mut *stream);
+                    return self.maybe_done();
                 }
                 // Begin a seq
                 b'[' => {
@@ -261,7 +261,7 @@ impl<'a> JsonSliceReader<'a> {
 
                     self.seq_end(&mut *stream)?;
 
-                    return self.maybe_done(&mut *stream);
+                    return self.maybe_done();
                 }
                 // End a map key
                 b':' => {
@@ -288,7 +288,7 @@ impl<'a> JsonSliceReader<'a> {
 
                         stream.bool(true)?;
 
-                        return self.maybe_done(&mut *stream);
+                        return self.maybe_done();
                     } else {
                         todo!()
                     }
@@ -302,7 +302,7 @@ impl<'a> JsonSliceReader<'a> {
 
                         stream.bool(false)?;
 
-                        return self.maybe_done(&mut *stream);
+                        return self.maybe_done();
                     } else {
                         todo!()
                     }
@@ -316,7 +316,7 @@ impl<'a> JsonSliceReader<'a> {
 
                         stream.null()?;
 
-                        return self.maybe_done(&mut *stream);
+                        return self.maybe_done();
                     } else {
                         todo!()
                     }
@@ -341,13 +341,13 @@ impl<'a> JsonSliceReader<'a> {
                     stream.tagged_end(Some(sval::tags::NUMBER), None, None)?;
                     stream.tagged_end(Some(tags::JSON_NATIVE), None, None)?;
 
-                    return self.maybe_done(&mut *stream);
+                    return self.maybe_done();
                 }
                 _ => todo!(),
             }
         }
 
-        self.maybe_done(&mut *stream)
+        self.maybe_done()
     }
 }
 

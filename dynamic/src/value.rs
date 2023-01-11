@@ -5,7 +5,6 @@ mod private {
 
     pub trait DispatchValue {
         fn dispatch_stream<'sval>(&'sval self, stream: &mut dyn Stream<'sval>) -> sval::Result;
-        fn dispatch_is_dynamic(&self) -> bool;
         fn dispatch_to_bool(&self) -> Option<bool>;
         fn dispatch_to_f32(&self) -> Option<f32>;
         fn dispatch_to_f64(&self) -> Option<f64>;
@@ -41,10 +40,6 @@ impl<T: sval::Value> private::EraseValue for T {
 impl<T: sval::Value> private::DispatchValue for T {
     fn dispatch_stream<'sval>(&'sval self, stream: &mut dyn Stream<'sval>) -> sval::Result {
         self.stream(stream)
-    }
-
-    fn dispatch_is_dynamic(&self) -> bool {
-        self.is_dynamic()
     }
 
     fn dispatch_to_bool(&self) -> Option<bool> {
@@ -112,17 +107,7 @@ macro_rules! impl_value {
     ($($impl:tt)*) => {
         $($impl)* {
             fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, mut stream: &mut S) -> sval::Result {
-                if self.is_dynamic() {
-                    self.erase_value().0.dispatch_stream(&mut stream)
-                } else {
-                    stream.dynamic_begin()?;
-                    self.erase_value().0.dispatch_stream(&mut stream)?;
-                    stream.dynamic_end()
-                }
-            }
-
-            fn is_dynamic(&self) -> bool {
-                self.erase_value().0.dispatch_is_dynamic()
+                self.erase_value().0.dispatch_stream(&mut stream)
             }
 
             fn to_bool(&self) -> Option<bool> {

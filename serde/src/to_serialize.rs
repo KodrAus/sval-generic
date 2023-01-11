@@ -1,9 +1,9 @@
 use core::mem;
 
 use serde::ser::{
-    Error as _, Serialize as _, SerializeMap as _, SerializeSeq as _, SerializeStruct as _,
+    Error as _, SerializeMap as _, SerializeSeq as _, SerializeStruct as _,
     SerializeStructVariant as _, SerializeTuple as _, SerializeTupleStruct as _,
-    SerializeTupleVariant as _, Serializer as _,
+    SerializeTupleVariant as _,
 };
 
 use sval_buffer::{BinaryBuf, TextBuf, ValueBuf};
@@ -20,6 +20,7 @@ impl<V: sval::Value> serde::Serialize for ToSerialize<V> {
             buffered: None,
             state: State::Any(Some(Any {
                 serializer,
+                is_option: false,
                 struct_label: None,
                 variant_label: None,
                 variant_index: None,
@@ -282,11 +283,21 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         self.buffer_or_transition_any_with(
             |buf| buf.tagged_begin(tag, label, index),
             |mut serializer| {
-                if serializer.struct_label.is_none() {
-                    serializer.struct_label = label.and_then(|label| label.try_get_static());
-                } else {
-                    serializer.variant_label = label.and_then(|label| label.try_get_static());
-                    serializer.variant_index = index.and_then(|index| index.get().try_into().ok());
+                match tag {
+                    Some(sval::tags::RUST_OPTION_SOME) => {
+                        serializer.is_option = true;
+                    }
+                    _ => {
+                        if serializer.struct_label.is_none() {
+                            serializer.struct_label =
+                                label.and_then(|label| label.try_get_static());
+                        } else {
+                            serializer.variant_label =
+                                label.and_then(|label| label.try_get_static());
+                            serializer.variant_index =
+                                index.and_then(|index| index.get().try_into().ok());
+                        }
+                    }
                 }
 
                 Ok(State::Any(Some(serializer)))
@@ -312,36 +323,38 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        self.buffer_or_transition_any_with(
-            |buf| buf.tag(tag, label, index),
-            |serializer| {
-                let r = match tag {
-                    Some(sval::tags::RUST_OPTION_NONE) => serializer.serializer.serialize_none(),
-                    Some(sval::tags::RUST_UNIT) => serializer.serializer.serialize_unit(),
-                    _ => {
-                        let unit_label = label
-                            .and_then(|label| label.try_get_static())
-                            .ok_or_else(|| S::Error::custom("missing unit label"))?;
+        match tag {
+            Some(sval::tags::RUST_OPTION_NONE) => {
+                self.buffer_or_value(|buf| buf.tag(tag, label, index), || None::<()>)
+            }
+            Some(sval::tags::RUST_UNIT) => {
+                self.buffer_or_value(|buf| buf.tag(tag, label, index), || ())
+            }
+            _ => self.buffer_or_transition_any_with(
+                |buf| buf.tag(tag, label, index),
+                |serializer| {
+                    let unit_label = label
+                        .and_then(|label| label.try_get_static())
+                        .ok_or_else(|| S::Error::custom("missing unit label"))?;
 
-                        if let Some(struct_label) = serializer.struct_label {
-                            let variant_index = index
-                                .and_then(|index| index.get().try_into().ok())
-                                .ok_or_else(|| S::Error::custom("missing variant index"))?;
+                    let r = if let Some(struct_label) = serializer.struct_label {
+                        let variant_index = index
+                            .and_then(|index| index.get().try_into().ok())
+                            .ok_or_else(|| S::Error::custom("missing variant index"))?;
 
-                            serializer.serializer.serialize_unit_variant(
-                                struct_label,
-                                variant_index,
-                                unit_label,
-                            )
-                        } else {
-                            serializer.serializer.serialize_unit_struct(unit_label)
-                        }
-                    }
-                };
+                        serializer.serializer.serialize_unit_variant(
+                            struct_label,
+                            variant_index,
+                            unit_label,
+                        )
+                    } else {
+                        serializer.serializer.serialize_unit_struct(unit_label)
+                    };
 
-                Ok(State::Done(Some(r)))
-            },
-        )
+                    Ok(State::Done(Some(r)))
+                },
+            ),
+        }
     }
 
     fn record_begin(
@@ -463,48 +476,6 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         self.buffer_or_transition_any_with(
             |buf| buf.tuple_begin(tag, label, index, num_entries),
             |serializer| {
-                /*
-                let tuple_label = label.and_then(|label| label.try_get_static());
-
-                match (serializer.struct_label, tuple_label) {
-                    (Some(struct_label), Some(variant_label)) => {
-                        let num_entries = num_entries
-                            .ok_or_else(|| S::Error::custom("missing struct field count"))?;
-
-                        let variant_index = index
-                            .and_then(|index| index.get().try_into().ok())
-                            .ok_or_else(|| S::Error::custom("missing variant index"))?;
-
-                        todo!()
-                    }
-                    (None, Some(struct_label)) | (Some(struct_label), None) => {
-                        let num_entries = num_entries
-                            .ok_or_else(|| S::Error::custom("missing struct field count"))?;
-
-                        todo!()
-                    }
-                    (None, None) => todo!(),
-                }
-                */
-
-                /*
-                let struct_label = label.and_then(|label| label.try_get_static());
-
-                let num_entries =
-                    num_entries.ok_or_else(|| S::Error::custom("missing struct field count"))?;
-
-                if let Some(struct_label) = struct_label {
-                    Ok(State::Tuple(Some(Tuple::Struct(StructTuple {
-                        serializer: serializer
-                            .serializer
-                            .serialize_tuple_struct(struct_label, num_entries)?,
-                    }))))
-                } else {
-                    Ok(State::Tuple(Some(Tuple::Anonymous(AnonymousTuple {
-                        serializer: serializer.serializer.serialize_tuple(num_entries)?,
-                    }))))
-                }
-                */
                 let tuple_label = label.and_then(|label| label.try_get_static());
 
                 let num_entries =
@@ -575,15 +546,22 @@ impl<S: serde::Serializer> State<S> {
 
                 let r = match serializer {
                     Any {
+                        is_option: true,
+                        serializer,
+                        ..
+                    } => serializer.serialize_some(&v),
+                    Any {
                         struct_label: Some(struct_label),
                         variant_label: None,
-                        variant_index: _,
+                        variant_index: None,
+                        is_option: false,
                         serializer,
                     } => serializer.serialize_newtype_struct(struct_label, &v),
                     Any {
                         struct_label: Some(struct_label),
                         variant_label: Some(variant_label),
                         variant_index: Some(variant_index),
+                        is_option: false,
                         serializer,
                     } => serializer.serialize_newtype_variant(
                         struct_label,
@@ -942,6 +920,7 @@ enum State<S: serde::Serializer> {
 
 struct Any<S: serde::Serializer> {
     serializer: S,
+    is_option: bool,
     struct_label: Option<&'static str>,
     variant_label: Option<&'static str>,
     variant_index: Option<u32>,
@@ -996,36 +975,5 @@ struct Bytes<'sval>(&'sval [u8]);
 impl<'sval> serde::Serialize for Bytes<'sval> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.0)
-    }
-}
-
-struct UnitVariant {
-    struct_label: &'static str,
-    variant_label: Option<&'static str>,
-    variant_index: Option<u32>,
-}
-
-impl serde::Serialize for UnitVariant {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_unit_variant(
-            self.struct_label,
-            self.variant_index
-                .ok_or_else(|| S::Error::custom("missing struct index"))?,
-            self.variant_label
-                .ok_or_else(|| S::Error::custom("missing struct label"))?,
-        )
-    }
-}
-
-struct UnitStruct {
-    struct_label: Option<&'static str>,
-}
-
-impl serde::Serialize for UnitStruct {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_unit_struct(
-            self.struct_label
-                .ok_or_else(|| S::Error::custom("missing struct label"))?,
-        )
     }
 }

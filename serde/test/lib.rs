@@ -45,6 +45,33 @@ fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test
 }
 
 #[test]
+fn unit_to_serialize() {
+    serialize_case((), {
+        use serde_test::Token::*;
+
+        &[Unit]
+    })
+}
+
+#[test]
+fn option_some_to_serialize() {
+    serialize_case(Some(1i32), {
+        use serde_test::Token::*;
+
+        &[Some, I32(1)]
+    })
+}
+
+#[test]
+fn option_none_to_serialize() {
+    serialize_case(None::<i32>, {
+        use serde_test::Token::*;
+
+        &[None]
+    })
+}
+
+#[test]
 fn map_to_serialize() {
     serialize_case(
         {

@@ -1,6 +1,6 @@
 use alloc::string::String;
 
-pub fn to_string(v: impl sval::Value) -> sval::Result<String> {
+pub fn stream_to_string(v: impl sval::Value) -> sval::Result<String> {
     let mut out = String::new();
     crate::to_fmt(&mut out, v)?;
 

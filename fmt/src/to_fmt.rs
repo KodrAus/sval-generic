@@ -146,14 +146,6 @@ impl<'sval, W: Write> sval::Stream<'sval> for Formatter<W> {
         self.0.seq_end()
     }
 
-    fn dynamic_begin(&mut self) -> sval::Result {
-        self.0.dynamic_begin()
-    }
-
-    fn dynamic_end(&mut self) -> sval::Result {
-        self.0.dynamic_end()
-    }
-
     fn enum_begin(
         &mut self,
         tag: Option<sval::Tag>,
