@@ -173,3 +173,66 @@ fn enum_tag_to_serialize() {
         }]
     });
 }
+
+#[test]
+fn enum_tagged_to_serialize() {
+    serialize_case(Enum::Tagged(1), {
+        use serde_test::Token::*;
+
+        &[
+            NewtypeVariant {
+                name: "Enum",
+                variant: "Tagged",
+            },
+            I32(1),
+        ]
+    });
+}
+
+#[test]
+fn enum_record_to_serialize() {
+    serialize_case(
+        Enum::MapStruct {
+            field_0: 1,
+            field_1: true,
+            field_2: "a",
+        },
+        {
+            use serde_test::Token::*;
+
+            &[
+                StructVariant {
+                    name: "Enum",
+                    variant: "MapStruct",
+                    len: 3,
+                },
+                Str("field_0"),
+                I32(1),
+                Str("field_1"),
+                Bool(true),
+                Str("field_2"),
+                Str("a"),
+                StructVariantEnd,
+            ]
+        },
+    );
+}
+
+#[test]
+fn enum_tuple_to_serialize() {
+    serialize_case(Enum::SeqStruct(1, true, "a"), {
+        use serde_test::Token::*;
+
+        &[
+            TupleVariant {
+                name: "Enum",
+                variant: "SeqStruct",
+                len: 3,
+            },
+            I32(1),
+            Bool(true),
+            Str("a"),
+            TupleVariantEnd,
+        ]
+    });
+}
