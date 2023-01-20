@@ -17,8 +17,14 @@ members = [
 ]
 
 [features]
+default = ["derive"]
 std = ["alloc"]
 alloc = []
+derive = ["dep:sval-derive"]
+
+[dependencies.sval-derive]
+path = "./derive"
+optional = true
 
 [profile.release]
 debug = true

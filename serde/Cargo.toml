@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [features]
+std = ["alloc"]
 alloc = ["serde/alloc", "sval/alloc", "sval-buffer/alloc"]
 
 [dependencies.sval]

@@ -3,8 +3,5 @@ name = "sval-dynamic"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-alloc = ["sval/alloc"]
-
 [dependencies.sval]
 path = "../"

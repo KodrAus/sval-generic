@@ -150,24 +150,24 @@ fn derive_enum<'a>(
             Fields::Named(ref fields) => stream_record(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u32),
+                Some(variant_match_arms.len()),
                 fields,
             ),
             Fields::Unnamed(ref fields) if fields.unnamed.len() == 1 => stream_newtype(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u32),
+                Some(variant_match_arms.len()),
             ),
             Fields::Unnamed(ref fields) => stream_tuple(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u32),
+                Some(variant_match_arms.len()),
                 fields,
             ),
             Fields::Unit => stream_tag(
                 quote!(#ident :: #variant_ident),
                 &variant.ident,
-                Some(variant_match_arms.len() as u32),
+                Some(variant_match_arms.len()),
             ),
         });
     }
@@ -194,7 +194,7 @@ fn derive_enum<'a>(
 fn stream_record(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    index: Option<u32>,
+    index: Option<usize>,
     fields: &FieldsNamed,
 ) -> proc_macro2::TokenStream {
     let (label, index) = label_index(label, index);
@@ -243,7 +243,7 @@ fn stream_record(
 fn stream_newtype(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    index: Option<u32>,
+    index: Option<usize>,
 ) -> proc_macro2::TokenStream {
     let (label, index) = label_index(label, index);
 
@@ -257,7 +257,7 @@ fn stream_newtype(
 fn stream_tuple(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    index: Option<u32>,
+    index: Option<usize>,
     fields: &FieldsUnnamed,
 ) -> proc_macro2::TokenStream {
     let (label, index) = label_index(label, index);
@@ -267,7 +267,7 @@ fn stream_tuple(
     let mut field_count = 0usize;
 
     for field in &fields.unnamed {
-        let index = field_count as u32;
+        let index = field_count;
 
         let ident = Ident::new(&format!("field{}", field_count), field.span());
 
@@ -305,7 +305,7 @@ fn stream_tuple(
 fn stream_tag(
     path: proc_macro2::TokenStream,
     label: &Ident,
-    index: Option<u32>,
+    index: Option<usize>,
 ) -> proc_macro2::TokenStream {
     let (label, index) = label_index(label, index);
 
@@ -316,7 +316,7 @@ fn stream_tag(
 
 fn label_index(
     label: &Ident,
-    index: Option<u32>,
+    index: Option<usize>,
 ) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     let label = label.to_string();
     match index {

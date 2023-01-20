@@ -15,3 +15,9 @@ impl<V: sval::Value> fmt::Debug for ToDebug<V> {
         Ok(())
     }
 }
+
+impl<V: sval::Value> fmt::Display for ToDebug<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}

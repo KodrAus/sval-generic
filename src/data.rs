@@ -237,14 +237,20 @@ impl fmt::Debug for Tag {
 The index of a value in its parent context.
 */
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Index(u32);
+pub struct Index(usize);
 
 impl Index {
-    pub const fn new(index: u32) -> Self {
+    /**
+    Create a new index from a numeric value.
+    */
+    pub const fn new(index: usize) -> Self {
         Index(index)
     }
 
-    pub const fn get(&self) -> u32 {
+    /**
+    Get the index as a numeric value.
+    */
+    pub const fn get(&self) -> usize {
         self.0
     }
 }
