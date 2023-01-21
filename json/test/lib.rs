@@ -13,20 +13,20 @@ fn assert_json(v: impl sval::Value + serde::Serialize) {
     assert_eq!(expected, actual);
 }
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct MapStruct {
     field_0: i32,
     field_1: bool,
     field_2: &'static str,
 }
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct SeqStruct(i32, bool, &'static str);
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct Tagged(i32);
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 enum Enum {
     Constant,
     Tagged(i32),
@@ -217,15 +217,21 @@ fn stream_exotic_unnamed_enum() {
 }
 
 #[test]
-fn json_slice_roundtrip() {
-    let json = sval_json::stream_to_string(MapStruct {
-        field_0: 42,
-        field_1: true,
-        field_2: "abc",
-    })
+fn stream_to_io() {
+    let mut buf = Vec::new();
+
+    sval_json::stream_to_writer(
+        &mut buf,
+        MapStruct {
+            field_0: 42,
+            field_1: true,
+            field_2: "a",
+        },
+    )
     .unwrap();
 
-    let slice = sval_json::from_slice(&json);
-
-    assert_eq!(json, sval_json::stream_to_string(slice).unwrap());
+    assert_eq!(
+        "{\"field_0\":42,\"field_1\":true,\"field_2\":\"a\"}",
+        String::from_utf8(buf).unwrap()
+    );
 }

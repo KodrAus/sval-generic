@@ -1,7 +1,5 @@
 use core::{cmp::Ordering, mem};
 
-use crate::tags;
-
 pub fn from_slice(json: &str) -> &JsonSlice {
     JsonSlice::new(json)
 }
@@ -333,13 +331,13 @@ impl<'a> JsonSliceReader<'a> {
 
                     self.value_begin(&mut *stream)?;
 
-                    stream.tagged_begin(Some(tags::JSON_NATIVE), None, None)?;
+                    stream.tagged_begin(Some(sval_json::tags::JSON_NATIVE), None, None)?;
                     stream.tagged_begin(Some(sval::tags::NUMBER), None, None)?;
                     stream.text_begin(Some(n.len()))?;
                     stream.text_fragment(n)?;
                     stream.text_end()?;
                     stream.tagged_end(Some(sval::tags::NUMBER), None, None)?;
-                    stream.tagged_end(Some(tags::JSON_NATIVE), None, None)?;
+                    stream.tagged_end(Some(sval_json::tags::JSON_NATIVE), None, None)?;
 
                     return self.maybe_done();
                 }

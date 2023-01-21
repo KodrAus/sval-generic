@@ -12,7 +12,7 @@ path = "../../"
 
 [dependencies.sval-json]
 path = "../"
-features = ["alloc"]
+features = ["std"]
 
 [dependencies.sval-derive]
 path = "../../derive"

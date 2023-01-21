@@ -3,6 +3,7 @@ Structured, streaming values.
 
 `sval` is a serialization framework that treats data as a flat stream of tokens.
 The source of that data could be some Rust object or parsed from some encoding.
+It's well suited to self-describing, text-based formats like JSON.
 
 # Getting started
 
@@ -28,6 +29,8 @@ features = ["std"]
 through visitors called _streams_. `Value` is like `serde`'s `Serialize`.
 
 Many standard types in Rust implement the `Value` trait.
+
+`Value` can be derived when the `derive` feature is enabled.
 
 # The `Stream` trait
 
@@ -56,6 +59,8 @@ the structure of _values_. `Stream` is like `serde`'s `Serializer`.
 [`Tag`] is a type for extending `sval`'s data-model with new kinds of values.
 Rust's own `()` and `Option<T>` types are expressed as tags. Other examples of
 tags include text that encodes RFC3339 timestamps or RFC4122 UUIDs.
+
+The [`tags`] module contains built-in tags. Other libraries may define their own tags too.
 
 # Buffering
 

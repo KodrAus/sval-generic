@@ -14,20 +14,20 @@ type Map = BTreeMap<&'static str, i32>;
 
 type Seq = Vec<i32>;
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct MapStruct {
     field_0: i32,
     field_1: bool,
     field_2: &'static str,
 }
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct SeqStruct(i32, bool, &'static str);
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 struct Tagged(i32);
 
-#[derive(Value, Serialize)]
+#[derive(derive_value, Serialize)]
 enum Enum {
     Constant,
     Tagged(i32),

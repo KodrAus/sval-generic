@@ -1537,7 +1537,7 @@ mod alloc_support {
                 ])
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(Value)]
+                    #[derive(derive_value)]
                     struct Record {
                         a: i32,
                         b: bool,
@@ -1547,14 +1547,14 @@ mod alloc_support {
                 })
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(Value)]
+                    #[derive(derive_value)]
                     struct Tuple(i32, bool);
 
                     Tuple(42, true)
                 })
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(Value)]
+                    #[derive(derive_value)]
                     enum Enum {
                         A,
                     }

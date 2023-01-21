@@ -1,3 +1,10 @@
+/*!
+Buffering support for `sval`.
+
+This crate provides the [`ValueBuf`] type, which can buffer a flat
+stream of data into a tree of borrowed values.
+*/
+
 #![no_std]
 
 #[cfg(not(feature = "alloc"))]

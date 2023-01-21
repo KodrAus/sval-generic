@@ -1,0 +1,18 @@
+[package]
+name = "sval-experiments"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies.sval]
+path = "../"
+
+[dependencies.sval-json]
+path = "../json"
+
+[dev-dependencies.sval-json]
+path = "../json"
+features = ["std"]
+
+[dev-dependencies.sval-derive]
+path = "../derive"

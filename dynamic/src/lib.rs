@@ -1,3 +1,11 @@
+/*!
+Object-safe wrappers for `sval::Stream` and `sval::Value`.
+
+This crate makes it possible to erase a concrete `sval::Value` or `sval::Stream`
+as a `dyn Value` or `dyn Stream`. It doesn't require any allocator,
+so it's possible to use in no-std environments.
+*/
+
 #![no_std]
 
 mod stream;

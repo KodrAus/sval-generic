@@ -1,3 +1,10 @@
+/*!
+JSON support for `sval`.
+
+This crate provides the [`Formatter`] type, an `sval::Stream` that produces JSON.
+Data is serialized in a `serde`-compatible way.
+*/
+
 #![no_std]
 
 #[cfg(feature = "alloc")]
@@ -6,12 +13,8 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-mod from_slice;
 mod to_fmt;
-pub use self::{
-    from_slice::{from_slice, JsonSlice, JsonSliceReader},
-    to_fmt::{stream_to_fmt, Formatter},
-};
+pub use self::to_fmt::{stream_to_fmt, Formatter};
 
 pub mod tags {
     /**

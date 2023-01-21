@@ -12,20 +12,20 @@ fn assert_debug(v: impl sval::Value + fmt::Debug) {
     assert_eq!(expected, actual);
 }
 
-#[derive(Value, Debug)]
+#[derive(derive_value, Debug)]
 struct MapStruct {
     field_0: i32,
     field_1: bool,
     field_2: &'static str,
 }
 
-#[derive(Value, Debug)]
+#[derive(derive_value, Debug)]
 struct SeqStruct(i32, bool, &'static str);
 
-#[derive(Value, Debug)]
+#[derive(derive_value, Debug)]
 struct Tagged(i32);
 
-#[derive(Value, Debug)]
+#[derive(derive_value, Debug)]
 enum Enum {
     Constant,
     Tagged(i32),
