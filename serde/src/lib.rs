@@ -18,5 +18,6 @@ produce errors during serialization.
 */
 
 mod to_serialize;
+mod to_value;
 
-pub use self::to_serialize::*;
+pub use self::{to_serialize::*, to_value::*};

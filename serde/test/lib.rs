@@ -7,6 +7,7 @@ extern crate sval_derive;
 extern crate serde_derive;
 
 use serde_test::assert_ser_tokens;
+use sval_test::assert_tokens;
 
 use std::collections::BTreeMap;
 
@@ -14,20 +15,20 @@ type Map = BTreeMap<&'static str, i32>;
 
 type Seq = Vec<i32>;
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct MapStruct {
     field_0: i32,
     field_1: bool,
     field_2: &'static str,
 }
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct SeqStruct(i32, bool, &'static str);
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct Tagged(i32);
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 enum Enum {
     Constant,
     Tagged(i32),
@@ -50,6 +51,13 @@ fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test
         tokens,
     );
     assert_ser_tokens(&v, tokens);
+}
+
+fn stream_case(v: (impl sval::Value + serde::Serialize), tokens: &[sval_test::Token]) {
+    assert_tokens(&sval_serde::to_value(&v), tokens);
+    assert_tokens(&sval_buffer::stream_to_value(&v).unwrap(), tokens);
+    assert_tokens(&v as &dyn sval_dynamic::Value, tokens);
+    assert_tokens(&v, tokens);
 }
 
 #[test]
@@ -270,4 +278,13 @@ fn enum_tuple_to_serialize() {
             TupleVariantEnd,
         ]
     });
+}
+
+#[test]
+fn primitive_to_value() {
+    stream_case("abc", {
+        use sval_test::Token::*;
+
+        &[TextBegin(Some(3)), TextFragment("abc"), TextEnd]
+    })
 }

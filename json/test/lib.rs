@@ -13,20 +13,20 @@ fn assert_json(v: impl sval::Value + serde::Serialize) {
     assert_eq!(expected, actual);
 }
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct MapStruct {
     field_0: i32,
     field_1: bool,
     field_2: &'static str,
 }
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct SeqStruct(i32, bool, &'static str);
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 struct Tagged(i32);
 
-#[derive(derive_value, Serialize)]
+#[derive(Value, Serialize)]
 enum Enum {
     Constant,
     Tagged(i32),

@@ -1,18 +1,38 @@
 use core::mem;
 
 use serde::ser::{
-    Error as _, SerializeMap as _, SerializeSeq as _, SerializeStruct as _,
+    Error as _, Serialize as _, SerializeMap as _, SerializeSeq as _, SerializeStruct as _,
     SerializeStructVariant as _, SerializeTuple as _, SerializeTupleStruct as _,
     SerializeTupleVariant as _,
 };
 
 use sval_buffer::{BinaryBuf, TextBuf, ValueBuf};
 
+pub fn serialize<S: serde::Serializer, V: sval::Value>(
+    serializer: S,
+    value: V,
+) -> Result<S::Ok, S::Error> {
+    to_serialize(value).serialize(serializer)
+}
+
 pub fn to_serialize<V: sval::Value>(value: V) -> ToSerialize<V> {
     ToSerialize(value)
 }
 
-pub struct ToSerialize<V>(V);
+#[repr(transparent)]
+pub struct ToSerialize<V: ?Sized>(V);
+
+impl<V> ToSerialize<V> {
+    pub fn new(value: V) -> Self {
+        ToSerialize(value)
+    }
+}
+
+impl<V: ?Sized> ToSerialize<V> {
+    pub fn new_ref<'a>(value: &'a V) -> &'a ToSerialize<V> {
+        unsafe { &*(value as *const _ as *const ToSerialize<V>) }
+    }
+}
 
 impl<V: sval::Value> serde::Serialize for ToSerialize<V> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

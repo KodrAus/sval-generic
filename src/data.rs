@@ -270,3 +270,26 @@ impl Value for bool {
         Some(*self)
     }
 }
+
+#[cfg(feature = "alloc")]
+mod alloc_support {
+    use super::*;
+
+    use crate::std::borrow::Cow;
+
+    impl<'computed> Label<'computed> {
+        pub fn to_cow(&self) -> Cow<'static, str> {
+            match self.value_static {
+                Some(borrowed) => Cow::Borrowed(borrowed),
+                None => Cow::Owned(self.value_computed.into()),
+            }
+        }
+
+        pub fn from_cow(cow: &'computed Cow<'static, str>) -> Self {
+            match cow {
+                Cow::Borrowed(borrowed) => Label::new(borrowed),
+                Cow::Owned(owned) => Label::computed(owned),
+            }
+        }
+    }
+}

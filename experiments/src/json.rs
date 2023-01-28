@@ -8,7 +8,7 @@ mod tests {
 
     use sval_derive::*;
 
-    #[derive(derive_value)]
+    #[derive(Value)]
     struct MapStruct {
         field_0: i32,
         field_1: bool,

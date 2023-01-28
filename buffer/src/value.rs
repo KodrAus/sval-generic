@@ -520,7 +520,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(LabelBuf::new),
+                label: label.map(|label| label.to_cow()),
             });
 
             Ok(())
@@ -562,7 +562,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(LabelBuf::new),
+                label: label.map(|label| label.to_cow()),
             });
 
             Ok(())
@@ -603,7 +603,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
             self.push_kind(ValueKind::Tag {
                 tag,
                 index,
-                label: label.map(LabelBuf::new),
+                label: label.map(|label| label.to_cow()),
             });
 
             Ok(())
@@ -628,7 +628,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(LabelBuf::new),
+                label: label.map(|label| label.to_cow()),
                 num_entries,
             });
 
@@ -646,7 +646,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             self.push_begin(ValueKind::RecordValue {
                 len: 0,
-                label: LabelBuf::new(label),
+                label: label.to_cow(),
             });
 
             Ok(())
@@ -702,7 +702,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(LabelBuf::new),
+                label: label.map(|label| label.to_cow()),
                 num_entries,
             });
 
@@ -819,36 +819,36 @@ mod alloc_support {
         },
         Tag {
             tag: Option<sval::Tag>,
-            label: Option<LabelBuf>,
+            label: Option<Cow<'static, str>>,
             index: Option<sval::Index>,
         },
         Enum {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<LabelBuf>,
+            label: Option<Cow<'static, str>>,
             index: Option<sval::Index>,
         },
         Tagged {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<LabelBuf>,
+            label: Option<Cow<'static, str>>,
             index: Option<sval::Index>,
         },
         Record {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<LabelBuf>,
+            label: Option<Cow<'static, str>>,
             index: Option<sval::Index>,
             num_entries: Option<usize>,
         },
         RecordValue {
             len: usize,
-            label: LabelBuf,
+            label: Cow<'static, str>,
         },
         Tuple {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<LabelBuf>,
+            label: Option<Cow<'static, str>>,
             index: Option<sval::Index>,
             num_entries: Option<usize>,
         },
@@ -856,25 +856,6 @@ mod alloc_support {
             len: usize,
             index: sval::Index,
         },
-    }
-
-    #[derive(Debug, PartialEq)]
-    pub(super) struct LabelBuf(Cow<'static, str>);
-
-    impl LabelBuf {
-        pub(super) fn new<'a>(label: sval::Label<'a>) -> Self {
-            label
-                .try_get_static()
-                .map(|label| LabelBuf(Cow::Borrowed(label)))
-                .unwrap_or_else(|| LabelBuf(Cow::Owned(label.get().into())))
-        }
-
-        pub(super) fn get(&self) -> sval::Label {
-            match self.0 {
-                Cow::Borrowed(label) => sval::Label::new(label),
-                Cow::Owned(ref label) => sval::Label::computed(label),
-            }
-        }
     }
 
     impl<'sval> ValueBuf<'sval> {
@@ -1037,7 +1018,7 @@ mod alloc_support {
                     }
                     ValueKind::Tag { tag, label, index } => {
                         let index = *index;
-                        let label = label.as_ref().map(LabelBuf::get);
+                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream.tag(*tag, label, index)?;
                     }
@@ -1049,7 +1030,7 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(LabelBuf::get);
+                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.enum_begin(tag, label, index)?;
@@ -1065,7 +1046,7 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(LabelBuf::get);
+                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.tagged_begin(tag, label, index)?;
@@ -1082,7 +1063,7 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(LabelBuf::get);
+                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.record_begin(tag, label, index, *num_entries)?;
@@ -1091,7 +1072,7 @@ mod alloc_support {
                         })?;
                     }
                     ValueKind::RecordValue { len, label } => {
-                        let label = label.get();
+                        let label = sval::Label::from_cow(label);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.record_value_begin(label)?;
@@ -1108,7 +1089,7 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(LabelBuf::get);
+                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.tuple_begin(tag, label, index, *num_entries)?;
@@ -1233,7 +1214,7 @@ mod alloc_support {
             let expected = vec![ValuePart {
                 kind: ValueKind::Tag {
                     tag: Some(sval::Tag::new("rnone")),
-                    label: Some(LabelBuf(Cow::Borrowed("None"))),
+                    label: Some(Cow::Borrowed("None")),
                     index: Some(sval::Index::new(0)),
                 },
             }];
@@ -1245,7 +1226,7 @@ mod alloc_support {
                     kind: ValueKind::Tagged {
                         len: 1,
                         tag: Some(sval::Tag::new("rsome")),
-                        label: Some(LabelBuf(Cow::Borrowed("Some"))),
+                        label: Some(Cow::Borrowed("Some")),
                         index: Some(sval::Index::new(1)),
                     },
                 },
@@ -1391,7 +1372,7 @@ mod alloc_support {
                     kind: ValueKind::Record {
                         len: 4,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(LabelBuf(Cow::Borrowed("A"))),
+                        label: Some(Cow::Borrowed("A")),
                         index: Some(sval::Index::new(1)),
                         num_entries: Some(2),
                     },
@@ -1399,7 +1380,7 @@ mod alloc_support {
                 ValuePart {
                     kind: ValueKind::RecordValue {
                         len: 1,
-                        label: LabelBuf(Cow::Borrowed("a")),
+                        label: Cow::Borrowed("a"),
                     },
                 },
                 ValuePart {
@@ -1408,7 +1389,7 @@ mod alloc_support {
                 ValuePart {
                     kind: ValueKind::RecordValue {
                         len: 1,
-                        label: LabelBuf(Cow::Borrowed("b")),
+                        label: Cow::Borrowed("b"),
                     },
                 },
                 ValuePart {
@@ -1453,7 +1434,7 @@ mod alloc_support {
                     kind: ValueKind::Tuple {
                         len: 4,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(LabelBuf(Cow::Borrowed("A"))),
+                        label: Some(Cow::Borrowed("A")),
                         index: Some(sval::Index::new(1)),
                         num_entries: Some(2),
                     },
@@ -1510,14 +1491,14 @@ mod alloc_support {
                     kind: ValueKind::Enum {
                         len: 1,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(LabelBuf(Cow::Borrowed("A"))),
+                        label: Some(Cow::Borrowed("A")),
                         index: Some(sval::Index::new(1)),
                     },
                 },
                 ValuePart {
                     kind: ValueKind::Tag {
                         tag: None,
-                        label: Some(LabelBuf(Cow::Borrowed("B"))),
+                        label: Some(Cow::Borrowed("B")),
                         index: Some(sval::Index::new(0)),
                     },
                 },
@@ -1537,7 +1518,7 @@ mod alloc_support {
                 ])
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(derive_value)]
+                    #[derive(Value)]
                     struct Record {
                         a: i32,
                         b: bool,
@@ -1547,14 +1528,14 @@ mod alloc_support {
                 })
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(derive_value)]
+                    #[derive(Value)]
                     struct Tuple(i32, bool);
 
                     Tuple(42, true)
                 })
                 .unwrap(),
                 ValueBuf::collect(&{
-                    #[derive(derive_value)]
+                    #[derive(Value)]
                     enum Enum {
                         A,
                     }
