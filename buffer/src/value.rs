@@ -520,7 +520,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(|label| label.to_cow()),
+                label: label.map(|label| label.to_owned()),
             });
 
             Ok(())
@@ -562,7 +562,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(|label| label.to_cow()),
+                label: label.map(|label| label.to_owned()),
             });
 
             Ok(())
@@ -603,7 +603,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
             self.push_kind(ValueKind::Tag {
                 tag,
                 index,
-                label: label.map(|label| label.to_cow()),
+                label: label.map(|label| label.to_owned()),
             });
 
             Ok(())
@@ -628,7 +628,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(|label| label.to_cow()),
+                label: label.map(|label| label.to_owned()),
                 num_entries,
             });
 
@@ -646,7 +646,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             self.push_begin(ValueKind::RecordValue {
                 len: 0,
-                label: label.to_cow(),
+                label: label.to_owned(),
             });
 
             Ok(())
@@ -702,7 +702,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
                 len: 0,
                 tag,
                 index,
-                label: label.map(|label| label.to_cow()),
+                label: label.map(|label| label.to_owned()),
                 num_entries,
             });
 
@@ -766,7 +766,7 @@ mod alloc_support {
     use super::*;
 
     use crate::{
-        std::{borrow::Cow, mem, ops::Range},
+        std::{mem, ops::Range},
         BinaryBuf, TextBuf,
     };
 
@@ -819,36 +819,36 @@ mod alloc_support {
         },
         Tag {
             tag: Option<sval::Tag>,
-            label: Option<Cow<'static, str>>,
+            label: Option<sval::Label<'static>>,
             index: Option<sval::Index>,
         },
         Enum {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<Cow<'static, str>>,
+            label: Option<sval::Label<'static>>,
             index: Option<sval::Index>,
         },
         Tagged {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<Cow<'static, str>>,
+            label: Option<sval::Label<'static>>,
             index: Option<sval::Index>,
         },
         Record {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<Cow<'static, str>>,
+            label: Option<sval::Label<'static>>,
             index: Option<sval::Index>,
             num_entries: Option<usize>,
         },
         RecordValue {
             len: usize,
-            label: Cow<'static, str>,
+            label: sval::Label<'static>,
         },
         Tuple {
             len: usize,
             tag: Option<sval::Tag>,
-            label: Option<Cow<'static, str>>,
+            label: Option<sval::Label<'static>>,
             index: Option<sval::Index>,
             num_entries: Option<usize>,
         },
@@ -1018,7 +1018,7 @@ mod alloc_support {
                     }
                     ValueKind::Tag { tag, label, index } => {
                         let index = *index;
-                        let label = label.as_ref().map(sval::Label::from_cow);
+                        let label = label.as_ref().map(|label| label.by_ref());
 
                         stream.tag(*tag, label, index)?;
                     }
@@ -1030,12 +1030,15 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.enum_begin(tag, label, index)?;
+                            stream.enum_begin(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                            )?;
                             body.stream(stream)?;
-                            stream.enum_end(tag, label, index)
+                            stream.enum_end(tag, label.as_ref().map(|label| label.by_ref()), index)
                         })?;
                     }
                     ValueKind::Tagged {
@@ -1046,12 +1049,19 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.tagged_begin(tag, label, index)?;
+                            stream.tagged_begin(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                            )?;
                             stream.value(body)?;
-                            stream.tagged_end(tag, label, index)
+                            stream.tagged_end(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                            )
                         })?;
                     }
                     ValueKind::Record {
@@ -1063,21 +1073,27 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.record_begin(tag, label, index, *num_entries)?;
+                            stream.record_begin(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                                *num_entries,
+                            )?;
                             body.stream(stream)?;
-                            stream.record_end(tag, label, index)
+                            stream.record_end(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                            )
                         })?;
                     }
                     ValueKind::RecordValue { len, label } => {
-                        let label = sval::Label::from_cow(label);
-
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.record_value_begin(label)?;
+                            stream.record_value_begin(label.by_ref())?;
                             stream.value(body)?;
-                            stream.record_value_end(label)
+                            stream.record_value_end(label.by_ref())
                         })?;
                     }
                     ValueKind::Tuple {
@@ -1089,12 +1105,16 @@ mod alloc_support {
                     } => {
                         let index = *index;
                         let tag = *tag;
-                        let label = label.as_ref().map(sval::Label::from_cow);
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.tuple_begin(tag, label, index, *num_entries)?;
+                            stream.tuple_begin(
+                                tag,
+                                label.as_ref().map(|label| label.by_ref()),
+                                index,
+                                *num_entries,
+                            )?;
                             body.stream(stream)?;
-                            stream.tuple_end(tag, label, index)
+                            stream.tuple_end(tag, label.as_ref().map(|label| label.by_ref()), index)
                         })?;
                     }
                     ValueKind::TupleValue { len, index } => {
@@ -1214,7 +1234,7 @@ mod alloc_support {
             let expected = vec![ValuePart {
                 kind: ValueKind::Tag {
                     tag: Some(sval::Tag::new("rnone")),
-                    label: Some(Cow::Borrowed("None")),
+                    label: Some(sval::Label::new("None")),
                     index: Some(sval::Index::new(0)),
                 },
             }];
@@ -1226,7 +1246,7 @@ mod alloc_support {
                     kind: ValueKind::Tagged {
                         len: 1,
                         tag: Some(sval::Tag::new("rsome")),
-                        label: Some(Cow::Borrowed("Some")),
+                        label: Some(sval::Label::new("Some")),
                         index: Some(sval::Index::new(1)),
                     },
                 },
@@ -1372,7 +1392,7 @@ mod alloc_support {
                     kind: ValueKind::Record {
                         len: 4,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(Cow::Borrowed("A")),
+                        label: Some(sval::Label::new("A")),
                         index: Some(sval::Index::new(1)),
                         num_entries: Some(2),
                     },
@@ -1380,7 +1400,7 @@ mod alloc_support {
                 ValuePart {
                     kind: ValueKind::RecordValue {
                         len: 1,
-                        label: Cow::Borrowed("a"),
+                        label: sval::Label::new("a"),
                     },
                 },
                 ValuePart {
@@ -1389,7 +1409,7 @@ mod alloc_support {
                 ValuePart {
                     kind: ValueKind::RecordValue {
                         len: 1,
-                        label: Cow::Borrowed("b"),
+                        label: sval::Label::new("b"),
                     },
                 },
                 ValuePart {
@@ -1434,7 +1454,7 @@ mod alloc_support {
                     kind: ValueKind::Tuple {
                         len: 4,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(Cow::Borrowed("A")),
+                        label: Some(sval::Label::new("A")),
                         index: Some(sval::Index::new(1)),
                         num_entries: Some(2),
                     },
@@ -1491,14 +1511,14 @@ mod alloc_support {
                     kind: ValueKind::Enum {
                         len: 1,
                         tag: Some(sval::Tag::new("test")),
-                        label: Some(Cow::Borrowed("A")),
+                        label: Some(sval::Label::new("A")),
                         index: Some(sval::Index::new(1)),
                     },
                 },
                 ValuePart {
                     kind: ValueKind::Tag {
                         tag: None,
-                        label: Some(Cow::Borrowed("B")),
+                        label: Some(sval::Label::new("B")),
                         index: Some(sval::Index::new(0)),
                     },
                 },

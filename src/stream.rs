@@ -173,18 +173,18 @@ pub trait Stream<'sval> {
     }
 
     fn tag(&mut self, tag: Option<Tag>, label: Option<Label>, index: Option<Index>) -> Result {
-        self.tagged_begin(tag, label, index)?;
+        self.tagged_begin(tag, label.as_ref().map(|label| label.by_ref()), index)?;
 
         // Rust's `Option` is fundamental enough that we handle it specially here
         if let Some(tags::RUST_OPTION_NONE) = tag {
             self.null()?;
         }
         // If the tag has a label then stream it as its value
-        else if let Some(label) = label {
+        else if let Some(ref label) = label {
             if let Some(label) = label.try_get_static() {
                 self.value(label)?;
             } else {
-                self.value_computed(&*label)?;
+                self.value_computed(label.get())?;
             }
         }
         // If the tag doesn't have a label then stream null

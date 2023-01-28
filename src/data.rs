@@ -10,10 +10,14 @@ use crate::{
         borrow::Borrow,
         fmt,
         hash::{Hash, Hasher},
+        marker::PhantomData,
         ops::Deref,
     },
     Result, Stream, Value,
 };
+
+#[cfg(feature = "alloc")]
+use crate::std::string::String;
 
 pub(crate) use self::number::*;
 
@@ -55,10 +59,19 @@ pub mod tags {
 /**
 A textual label for some value.
 */
-#[derive(Clone, Copy)]
+// NOTE: Implementing `Clone` on this type would need to be done manually
+// If `value_computed` points to `_value_owned` then the clone will need
+// to update its pointer accordingly
 pub struct Label<'computed> {
-    value_computed: &'computed str,
+    // This field may point to some external data borrowed for `'computed`
+    // or to the `_value_owned` field. It could be a `Cow<'computed, str>`,
+    // but this way is cheaper to access because it avoids checking the
+    // `Cow` variant
+    value_computed: *const str,
     value_static: Option<&'static str>,
+    #[cfg(feature = "alloc")]
+    _value_owned: Option<String>,
+    _marker: PhantomData<&'computed str>,
 }
 
 impl<'computed> Label<'computed> {
@@ -69,8 +82,11 @@ impl<'computed> Label<'computed> {
     */
     pub const fn new(label: &'static str) -> Self {
         Label {
-            value_computed: label,
+            value_computed: label as *const str,
             value_static: Some(label),
+            #[cfg(feature = "alloc")]
+            _value_owned: None,
+            _marker: PhantomData,
         }
     }
 
@@ -79,16 +95,33 @@ impl<'computed> Label<'computed> {
     */
     pub const fn computed(label: &'computed str) -> Self {
         Label {
-            value_computed: label,
+            value_computed: label as *const str,
             value_static: None,
+            #[cfg(feature = "alloc")]
+            _value_owned: None,
+            _marker: PhantomData,
+        }
+    }
+
+    /**
+    Get an owned label that references this one.
+    */
+    pub fn by_ref<'a>(&'a self) -> Label<'a> {
+        if let Some(value_static) = self.value_static {
+            Label::new(value_static)
+        } else {
+            Label::computed(self.get())
         }
     }
 
     /**
     Get the value of the label as a string.
     */
-    pub const fn get(&self) -> &'computed str {
-        self.value_computed
+    pub const fn get(&self) -> &str {
+        // SAFETY: The borrow of the `value_computed` field can't outlive
+        // the label itself, so even if `value_computed` points to `_value_owned`
+        // it will never dangle.
+        unsafe { &*self.value_computed }
     }
 
     /**
@@ -105,13 +138,13 @@ impl<'a> Deref for Label<'a> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.value_computed
+        self.get()
     }
 }
 
 impl<'a, 'b> PartialEq<Label<'b>> for Label<'a> {
     fn eq(&self, other: &Label<'b>) -> bool {
-        self.value_computed == other.value_computed
+        self.get() == other.get()
     }
 }
 
@@ -119,19 +152,19 @@ impl<'a> Eq for Label<'a> {}
 
 impl<'a> Hash for Label<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value_computed.hash(state)
+        self.get().hash(state)
     }
 }
 
 impl<'a> Borrow<str> for Label<'a> {
     fn borrow(&self) -> &str {
-        self.value_computed
+        self.get()
     }
 }
 
 impl<'a> fmt::Debug for Label<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.value_computed.fmt(f)
+        self.get().fmt(f)
     }
 }
 
@@ -275,20 +308,25 @@ impl Value for bool {
 mod alloc_support {
     use super::*;
 
-    use crate::std::borrow::Cow;
+    use crate::std::string::String;
 
     impl<'computed> Label<'computed> {
-        pub fn to_cow(&self) -> Cow<'static, str> {
-            match self.value_static {
-                Some(borrowed) => Cow::Borrowed(borrowed),
-                None => Cow::Owned(self.value_computed.into()),
+        pub fn to_owned(&self) -> Label<'static> {
+            if let Some(value_static) = self.value_static {
+                Label::new(value_static)
+            } else {
+                Label::owned(self.get().into())
             }
         }
+    }
 
-        pub fn from_cow(cow: &'computed Cow<'static, str>) -> Self {
-            match cow {
-                Cow::Borrowed(borrowed) => Label::new(borrowed),
-                Cow::Owned(owned) => Label::computed(owned),
+    impl Label<'static> {
+        pub fn owned(label: String) -> Self {
+            Label {
+                value_computed: label.as_str() as *const str,
+                value_static: None,
+                _value_owned: Some(label),
+                _marker: PhantomData,
             }
         }
     }

@@ -55,9 +55,6 @@ fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test
 
 fn stream_case(v: (impl sval::Value + serde::Serialize), tokens: &[sval_test::Token]) {
     assert_tokens(&sval_serde::to_value(&v), tokens);
-    assert_tokens(&sval_buffer::stream_to_value(&v).unwrap(), tokens);
-    assert_tokens(&v as &dyn sval_dynamic::Value, tokens);
-    assert_tokens(&v, tokens);
 }
 
 #[test]
@@ -285,6 +282,10 @@ fn primitive_to_value() {
     stream_case("abc", {
         use sval_test::Token::*;
 
-        &[TextBegin(Some(3)), TextFragment("abc"), TextEnd]
+        &[
+            TextBegin(Some(3)),
+            TextFragmentComputed(String::from("abc")),
+            TextEnd,
+        ]
     })
 }

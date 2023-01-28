@@ -1,9 +1,12 @@
-use std::borrow::Cow;
-
 pub fn assert_tokens<'sval>(value: &'sval (impl sval::Value + ?Sized), tokens: &[Token<'sval>]) {
-    todo!()
+    let mut stream = Stream(Vec::new());
+
+    value.stream(&mut stream).expect("infallible stream");
+
+    assert_eq!(tokens, &stream.0);
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Token<'a> {
     U8(u8),
     U16(u16),
@@ -19,7 +22,11 @@ pub enum Token<'a> {
     F64(f64),
     Bool(bool),
     Null,
-    Tag(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
+    Tag(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
     TextBegin(Option<usize>),
     TextFragment(&'a str),
     TextFragmentComputed(String),
@@ -38,18 +45,52 @@ pub enum Token<'a> {
     SeqValueBegin,
     SeqValueEnd,
     SeqEnd,
-    EnumBegin(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
-    EnumEnd(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
-    TaggedBegin(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
-    TaggedEnd(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
-    RecordBegin(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>, Option<usize>),
-    RecordValueBegin(Cow<'static, str>),
-    RecordValueEnd(Cow<'static, str>),
-    RecordEnd(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>),
-    TupleBegin(Option<sval::Tag>, Option<Cow<'static, str>>, Option<sval::Index>, Option<usize>),
-    TupleValueBegin(Option<sval::Index>),
-    TupleValueEnd(Option<sval::Index>),
-    TupleEnd,
+    EnumBegin(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
+    EnumEnd(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
+    TaggedBegin(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
+    TaggedEnd(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
+    RecordBegin(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+        Option<usize>,
+    ),
+    RecordValueBegin(sval::Label<'static>),
+    RecordValueEnd(sval::Label<'static>),
+    RecordEnd(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
+    TupleBegin(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+        Option<usize>,
+    ),
+    TupleValueBegin(sval::Index),
+    TupleValueEnd(sval::Index),
+    TupleEnd(
+        Option<sval::Tag>,
+        Option<sval::Label<'static>>,
+        Option<sval::Index>,
+    ),
 }
 
 struct Stream<'a>(Vec<Token<'a>>);
@@ -227,11 +268,26 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        self.tagged_begin(tag, label, index)
+        self.push(Token::EnumBegin(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
+        Ok(())
     }
 
-    fn enum_end(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
-        self.tagged_end(tag, label, index)
+    fn enum_end(
+        &mut self,
+        tag: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
+        self.push(Token::EnumEnd(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
+        Ok(())
     }
 
     fn tagged_begin(
@@ -240,10 +296,11 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        let _ = tag;
-        let _ = label;
-        let _ = index;
-
+        self.push(Token::TaggedBegin(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
         Ok(())
     }
 
@@ -253,34 +310,22 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        let _ = tag;
-        let _ = label;
-        let _ = index;
-
+        self.push(Token::TaggedEnd(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
         Ok(())
     }
 
-    fn tag(&mut self, tag: Option<sval::Tag>, label: Option<sval::Label>, index: Option<sval::Index>) -> sval::Result {
-        self.tagged_begin(tag, label, index)?;
-
-        // Rust's `Option` is fundamental enough that we handle it specially here
-        if let Some(sval::tags::RUST_OPTION_NONE) = tag {
-            self.null()?;
-        }
-        // If the tag has a label then stream it as its value
-        else if let Some(label) = label {
-            if let Some(label) = label.try_get_static() {
-                self.value(label)?;
-            } else {
-                self.value_computed(&*label)?;
-            }
-        }
-        // If the tag doesn't have a label then stream null
-        else {
-            self.null()?;
-        }
-
-        self.tagged_end(tag, label, index)
+    fn tag(
+        &mut self,
+        tag: Option<sval::Tag>,
+        label: Option<sval::Label>,
+        index: Option<sval::Index>,
+    ) -> sval::Result {
+        self.push(Token::Tag(tag, label.map(|label| label.to_owned()), index));
+        Ok(())
     }
 
     fn record_begin(
@@ -290,28 +335,23 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        self.tagged_begin(tag, label, index)?;
-        self.map_begin(num_entries)
+        self.push(Token::RecordBegin(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+            num_entries,
+        ));
+        Ok(())
     }
 
     fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
-        self.map_key_begin()?;
-
-        if let Some(label) = label.try_get_static() {
-            self.value(label)?;
-        } else {
-            self.value_computed(&*label)?;
-        }
-
-        self.map_key_end()?;
-
-        self.map_value_begin()
+        self.push(Token::RecordValueBegin(label.to_owned()));
+        Ok(())
     }
 
     fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
-        let _ = label;
-
-        self.map_value_end()
+        self.push(Token::RecordValueEnd(label.to_owned()));
+        Ok(())
     }
 
     fn record_end(
@@ -320,8 +360,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        self.map_end()?;
-        self.tagged_end(tag, label, index)
+        self.push(Token::RecordEnd(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
+        Ok(())
     }
 
     fn tuple_begin(
@@ -331,20 +375,23 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         index: Option<sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        self.tagged_begin(tag, label, index)?;
-        self.seq_begin(num_entries)
+        self.push(Token::TupleBegin(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+            num_entries,
+        ));
+        Ok(())
     }
 
     fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
-        let _ = index;
-
-        self.seq_value_begin()
+        self.push(Token::TupleValueBegin(index));
+        Ok(())
     }
 
     fn tuple_value_end(&mut self, index: sval::Index) -> sval::Result {
-        let _ = index;
-
-        self.seq_value_end()
+        self.push(Token::TupleValueEnd(index));
+        Ok(())
     }
 
     fn tuple_end(
@@ -353,7 +400,11 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         label: Option<sval::Label>,
         index: Option<sval::Index>,
     ) -> sval::Result {
-        self.seq_end()?;
-        self.tagged_end(tag, label, index)
+        self.push(Token::TupleEnd(
+            tag,
+            label.map(|label| label.to_owned()),
+            index,
+        ));
+        Ok(())
     }
 }
