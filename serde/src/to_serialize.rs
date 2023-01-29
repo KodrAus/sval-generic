@@ -269,15 +269,13 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn enum_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
-        let label = label.as_ref();
-
         self.buffer_or_transition_any_with(
-            |buf| buf.enum_begin(tag, label.map(|label| label.by_ref()), index),
+            |buf| buf.enum_begin(tag, label, index),
             |mut serializer| {
-                serializer.struct_label = label.and_then(|label| label.try_get_static());
+                serializer.struct_label = label.and_then(|label| label.try_as_static_str());
 
                 Ok(State::Any(Some(serializer)))
             },
@@ -287,8 +285,8 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn enum_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.buffer_or_transition_done_with(
             |buf| buf.enum_end(tag, label, index),
@@ -299,13 +297,11 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
-        let label = label.as_ref();
-
         self.buffer_or_transition_any_with(
-            |buf| buf.tagged_begin(tag, label.map(|label| label.by_ref()), index),
+            |buf| buf.tagged_begin(tag, label, index),
             |mut serializer| {
                 match tag {
                     Some(sval::tags::RUST_OPTION_SOME) => {
@@ -314,12 +310,11 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
                     _ => {
                         if serializer.struct_label.is_none() {
                             serializer.struct_label =
-                                label.and_then(|label| label.try_get_static());
+                                label.and_then(|label| label.try_as_static_str());
                         } else {
                             serializer.variant_label =
-                                label.and_then(|label| label.try_get_static());
-                            serializer.variant_index =
-                                index.and_then(|index| index.get().try_into().ok());
+                                label.and_then(|label| label.try_as_static_str());
+                            serializer.variant_index = index.and_then(|index| index.try_to_u32());
                         }
                     }
                 }
@@ -332,8 +327,8 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn tagged_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.buffer_or_transition_done_with(
             |buf| buf.tagged_end(tag, label, index),
@@ -344,8 +339,8 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
             Some(sval::tags::RUST_OPTION_NONE) => {
@@ -354,50 +349,44 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
             Some(sval::tags::RUST_UNIT) => {
                 self.buffer_or_value(|buf| buf.tag(tag, label, index), || ())
             }
-            _ => {
-                let label = label.as_ref();
+            _ => self.buffer_or_transition_any_with(
+                |buf| buf.tag(tag, label, index),
+                |serializer| {
+                    let unit_label = label
+                        .and_then(|label| label.try_as_static_str())
+                        .ok_or_else(|| S::Error::custom("missing unit label"))?;
 
-                self.buffer_or_transition_any_with(
-                    |buf| buf.tag(tag, label.map(|label| label.by_ref()), index),
-                    |serializer| {
-                        let unit_label = label
-                            .and_then(|label| label.try_get_static())
-                            .ok_or_else(|| S::Error::custom("missing unit label"))?;
+                    let r = if let Some(struct_label) = serializer.struct_label {
+                        let variant_index = index
+                            .and_then(|index| index.try_to_u32())
+                            .ok_or_else(|| S::Error::custom("missing variant index"))?;
 
-                        let r = if let Some(struct_label) = serializer.struct_label {
-                            let variant_index = index
-                                .and_then(|index| index.get().try_into().ok())
-                                .ok_or_else(|| S::Error::custom("missing variant index"))?;
+                        serializer.serializer.serialize_unit_variant(
+                            struct_label,
+                            variant_index,
+                            unit_label,
+                        )
+                    } else {
+                        serializer.serializer.serialize_unit_struct(unit_label)
+                    };
 
-                            serializer.serializer.serialize_unit_variant(
-                                struct_label,
-                                variant_index,
-                                unit_label,
-                            )
-                        } else {
-                            serializer.serializer.serialize_unit_struct(unit_label)
-                        };
-
-                        Ok(State::Done(Some(r)))
-                    },
-                )
-            }
+                    Ok(State::Done(Some(r)))
+                },
+            ),
         }
     }
 
     fn record_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        let label = label.as_ref();
-
         self.buffer_or_transition_any_with(
-            |buf| buf.record_begin(tag, label.map(|label| label.by_ref()), index, num_entries),
+            |buf| buf.record_begin(tag, label, index, num_entries),
             |serializer| {
-                let record_label = label.and_then(|label| label.try_get_static());
+                let record_label = label.and_then(|label| label.try_as_static_str());
 
                 let num_entries =
                     num_entries.ok_or_else(|| S::Error::custom("missing struct field count"))?;
@@ -405,7 +394,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
                 match (serializer.struct_label, record_label) {
                     (Some(struct_label), Some(variant_label)) => {
                         let variant_index = index
-                            .and_then(|index| index.get().try_into().ok())
+                            .and_then(|index| index.try_to_u32())
                             .ok_or_else(|| S::Error::custom("missing variant index"))?;
 
                         Ok(State::Record(Some(Record::Variant(VariantRecord {
@@ -434,23 +423,23 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
         self.buffer_or_serialize_with(
-            |buf| buf.record_value_begin(label.by_ref()),
+            |buf| buf.record_value_begin(label),
             |serializer| {
                 serializer.with_record(|serializer| match serializer {
                     Record::Anonymous(serializer) => {
-                        serializer.serializer.serialize_key(label.get())?;
+                        serializer.serializer.serialize_key(label.as_str())?;
 
                         Ok(())
                     }
                     Record::Struct(serializer) => {
-                        serializer.label = label.try_get_static();
+                        serializer.label = label.try_as_static_str();
 
                         Ok(())
                     }
                     Record::Variant(serializer) => {
-                        serializer.label = label.try_get_static();
+                        serializer.label = label.try_as_static_str();
 
                         Ok(())
                     }
@@ -459,7 +448,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_end(&mut self, label: &sval::Label) -> sval::Result {
         self.buffer_or_serialize_with(
             |buf| buf.record_value_end(label),
             |serializer| {
@@ -483,8 +472,8 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn record_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.buffer_or_transition_done_with(
             |buf| buf.record_end(tag, label, index),
@@ -499,16 +488,14 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
     fn tuple_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
-        let label = label.as_ref();
-
         self.buffer_or_transition_any_with(
-            |buf| buf.tuple_begin(tag, label.map(|label| label.by_ref()), index, num_entries),
+            |buf| buf.tuple_begin(tag, label, index, num_entries),
             |serializer| {
-                let tuple_label = label.and_then(|label| label.try_get_static());
+                let tuple_label = label.and_then(|label| label.try_as_static_str());
 
                 let num_entries =
                     num_entries.ok_or_else(|| S::Error::custom("missing tuple field count"))?;
@@ -516,7 +503,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
                 match (serializer.struct_label, tuple_label) {
                     (Some(struct_label), Some(variant_label)) => {
                         let variant_index = index
-                            .and_then(|index| index.get().try_into().ok())
+                            .and_then(|index| index.try_to_u32())
                             .ok_or_else(|| S::Error::custom("missing variant index"))?;
 
                         Ok(State::Tuple(Some(Tuple::Variant(VariantTuple {
@@ -543,19 +530,19 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
+    fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
         self.buffer_or_serialize_with(|buf| buf.tuple_value_begin(index), |_| Ok(()))
     }
 
-    fn tuple_value_end(&mut self, index: sval::Index) -> sval::Result {
+    fn tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
         self.buffer_or_serialize_with(|buf| buf.tuple_value_end(index), |_| Ok(()))
     }
 
     fn tuple_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.buffer_or_transition_done_with(
             |buf| buf.tuple_end(tag, label, index),

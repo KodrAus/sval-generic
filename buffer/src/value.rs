@@ -511,15 +511,15 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn enum_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_begin(ValueKind::Enum {
                 len: 0,
                 tag,
-                index,
+                index: index.cloned(),
                 label: label.map(|label| label.to_owned()),
             });
 
@@ -535,8 +535,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn enum_end(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
@@ -553,15 +553,15 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_begin(ValueKind::Tagged {
                 len: 0,
                 tag,
-                index,
+                index: index.cloned(),
                 label: label.map(|label| label.to_owned()),
             });
 
@@ -577,8 +577,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn tagged_end(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
@@ -595,14 +595,14 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_kind(ValueKind::Tag {
                 tag,
-                index,
+                index: index.cloned(),
                 label: label.map(|label| label.to_owned()),
             });
 
@@ -618,8 +618,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn record_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
@@ -627,7 +627,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
             self.push_begin(ValueKind::Record {
                 len: 0,
                 tag,
-                index,
+                index: index.cloned(),
                 label: label.map(|label| label.to_owned()),
                 num_entries,
             });
@@ -641,7 +641,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_begin(ValueKind::RecordValue {
@@ -658,7 +658,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
     }
 
-    fn record_value_end(&mut self, _: sval::Label) -> sval::Result {
+    fn record_value_end(&mut self, _: &sval::Label) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_end();
@@ -674,8 +674,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn record_end(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
@@ -692,8 +692,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn tuple_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
@@ -701,7 +701,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
             self.push_begin(ValueKind::Tuple {
                 len: 0,
                 tag,
-                index,
+                index: index.cloned(),
                 label: label.map(|label| label.to_owned()),
                 num_entries,
             });
@@ -715,10 +715,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
     }
 
-    fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
+    fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
-            self.push_begin(ValueKind::TupleValue { len: 0, index });
+            self.push_begin(ValueKind::TupleValue {
+                len: 0,
+                index: index.clone(),
+            });
 
             Ok(())
         }
@@ -729,7 +732,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
     }
 
-    fn tuple_value_end(&mut self, _: sval::Index) -> sval::Result {
+    fn tuple_value_end(&mut self, _: &sval::Index) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
             self.push_end();
@@ -745,8 +748,8 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
     fn tuple_end(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         #[cfg(feature = "alloc")]
         {
@@ -1017,10 +1020,7 @@ mod alloc_support {
                         })?;
                     }
                     ValueKind::Tag { tag, label, index } => {
-                        let index = *index;
-                        let label = label.as_ref().map(|label| label.by_ref());
-
-                        stream.tag(*tag, label, index)?;
+                        stream.tag(*tag, label.as_ref(), index.as_ref())?;
                     }
                     ValueKind::Enum {
                         len,
@@ -1028,17 +1028,12 @@ mod alloc_support {
                         label,
                         index,
                     } => {
-                        let index = *index;
                         let tag = *tag;
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.enum_begin(
-                                tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
-                            )?;
+                            stream.enum_begin(tag, label.as_ref(), index.as_ref())?;
                             body.stream(stream)?;
-                            stream.enum_end(tag, label.as_ref().map(|label| label.by_ref()), index)
+                            stream.enum_end(tag, label.as_ref(), index.as_ref())
                         })?;
                     }
                     ValueKind::Tagged {
@@ -1047,21 +1042,12 @@ mod alloc_support {
                         label,
                         index,
                     } => {
-                        let index = *index;
                         let tag = *tag;
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.tagged_begin(
-                                tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
-                            )?;
+                            stream.tagged_begin(tag, label.as_ref(), index.as_ref())?;
                             stream.value(body)?;
-                            stream.tagged_end(
-                                tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
-                            )
+                            stream.tagged_end(tag, label.as_ref(), index.as_ref())
                         })?;
                     }
                     ValueKind::Record {
@@ -1071,29 +1057,24 @@ mod alloc_support {
                         index,
                         num_entries,
                     } => {
-                        let index = *index;
                         let tag = *tag;
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.record_begin(
                                 tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
+                                label.as_ref(),
+                                index.as_ref(),
                                 *num_entries,
                             )?;
                             body.stream(stream)?;
-                            stream.record_end(
-                                tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
-                            )
+                            stream.record_end(tag, label.as_ref(), index.as_ref())
                         })?;
                     }
                     ValueKind::RecordValue { len, label } => {
                         stream_value(stream, &mut i, *len, self, |stream, body| {
-                            stream.record_value_begin(label.by_ref())?;
+                            stream.record_value_begin(label)?;
                             stream.value(body)?;
-                            stream.record_value_end(label.by_ref())
+                            stream.record_value_end(label)
                         })?;
                     }
                     ValueKind::Tuple {
@@ -1103,23 +1084,20 @@ mod alloc_support {
                         index,
                         num_entries,
                     } => {
-                        let index = *index;
                         let tag = *tag;
 
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.tuple_begin(
                                 tag,
-                                label.as_ref().map(|label| label.by_ref()),
-                                index,
+                                label.as_ref(),
+                                index.as_ref(),
                                 *num_entries,
                             )?;
                             body.stream(stream)?;
-                            stream.tuple_end(tag, label.as_ref().map(|label| label.by_ref()), index)
+                            stream.tuple_end(tag, label.as_ref(), index.as_ref())
                         })?;
                     }
                     ValueKind::TupleValue { len, index } => {
-                        let index = *index;
-
                         stream_value(stream, &mut i, *len, self, |stream, body| {
                             stream.tuple_value_begin(index)?;
                             stream.value(body)?;
@@ -1365,25 +1343,25 @@ mod alloc_support {
             value
                 .record_begin(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                     Some(2),
                 )
                 .unwrap();
 
-            value.record_value_begin(sval::Label::new("a")).unwrap();
+            value.record_value_begin(&sval::Label::new("a")).unwrap();
             value.bool(false).unwrap();
-            value.record_value_end(sval::Label::new("a")).unwrap();
+            value.record_value_end(&sval::Label::new("a")).unwrap();
 
-            value.record_value_begin(sval::Label::new("b")).unwrap();
+            value.record_value_begin(&sval::Label::new("b")).unwrap();
             value.bool(true).unwrap();
-            value.record_value_end(sval::Label::new("b")).unwrap();
+            value.record_value_end(&sval::Label::new("b")).unwrap();
 
             value
                 .record_end(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                 )
                 .unwrap();
 
@@ -1427,25 +1405,25 @@ mod alloc_support {
             value
                 .tuple_begin(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                     Some(2),
                 )
                 .unwrap();
 
-            value.tuple_value_begin(sval::Index::new(0)).unwrap();
+            value.tuple_value_begin(&sval::Index::new(0)).unwrap();
             value.bool(false).unwrap();
-            value.tuple_value_end(sval::Index::new(0)).unwrap();
+            value.tuple_value_end(&sval::Index::new(0)).unwrap();
 
-            value.tuple_value_begin(sval::Index::new(1)).unwrap();
+            value.tuple_value_begin(&sval::Index::new(1)).unwrap();
             value.bool(true).unwrap();
-            value.tuple_value_end(sval::Index::new(1)).unwrap();
+            value.tuple_value_end(&sval::Index::new(1)).unwrap();
 
             value
                 .tuple_end(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                 )
                 .unwrap();
 
@@ -1489,20 +1467,24 @@ mod alloc_support {
             value
                 .enum_begin(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                 )
                 .unwrap();
 
             value
-                .tag(None, Some(sval::Label::new("B")), Some(sval::Index::new(0)))
+                .tag(
+                    None,
+                    Some(&sval::Label::new("B")),
+                    Some(&sval::Index::new(0)),
+                )
                 .unwrap();
 
             value
                 .enum_end(
                     Some(sval::Tag::new("test")),
-                    Some(sval::Label::new("A")),
-                    Some(sval::Index::new(1)),
+                    Some(&sval::Label::new("A")),
+                    Some(&sval::Index::new(1)),
                 )
                 .unwrap();
 

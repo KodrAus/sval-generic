@@ -104,20 +104,9 @@ impl<'computed> Label<'computed> {
     }
 
     /**
-    Get an owned label that references this one.
-    */
-    pub fn by_ref<'a>(&'a self) -> Label<'a> {
-        if let Some(value_static) = self.value_static {
-            Label::new(value_static)
-        } else {
-            Label::computed(self.get())
-        }
-    }
-
-    /**
     Get the value of the label as a string.
     */
-    pub const fn get(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         // SAFETY: The borrow of the `value_computed` field can't outlive
         // the label itself, so even if `value_computed` points to `_value_owned`
         // it will never dangle.
@@ -129,7 +118,7 @@ impl<'computed> Label<'computed> {
 
     For labels that were created over computed data this method will return `None`.
     */
-    pub const fn try_get_static(&self) -> Option<&'static str> {
+    pub const fn try_as_static_str(&self) -> Option<&'static str> {
         self.value_static
     }
 }
@@ -138,13 +127,13 @@ impl<'a> Deref for Label<'a> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.get()
+        self.as_str()
     }
 }
 
 impl<'a, 'b> PartialEq<Label<'b>> for Label<'a> {
     fn eq(&self, other: &Label<'b>) -> bool {
-        self.get() == other.get()
+        self.as_str() == other.as_str()
     }
 }
 
@@ -152,19 +141,19 @@ impl<'a> Eq for Label<'a> {}
 
 impl<'a> Hash for Label<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.get().hash(state)
+        self.as_str().hash(state)
     }
 }
 
 impl<'a> Borrow<str> for Label<'a> {
     fn borrow(&self) -> &str {
-        self.get()
+        self.as_str()
     }
 }
 
 impl<'a> fmt::Debug for Label<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.get().fmt(f)
+        self.as_str().fmt(f)
     }
 }
 
@@ -269,7 +258,7 @@ impl fmt::Debug for Tag {
 /**
 The index of a value in its parent context.
 */
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Index(usize);
 
 impl Index {
@@ -281,10 +270,21 @@ impl Index {
     }
 
     /**
-    Get the index as a numeric value.
+    Try get the index as a numeric value.
     */
-    pub const fn get(&self) -> usize {
-        self.0
+    pub const fn try_to_usize(&self) -> Option<usize> {
+        Some(self.0)
+    }
+
+    /**
+    Try get the index as a 32-bit numeric value.
+    */
+    pub const fn try_to_u32(&self) -> Option<u32> {
+        if self.0 <= u32::MAX as usize {
+            Some(self.0 as u32)
+        } else {
+            None
+        }
     }
 }
 
@@ -315,7 +315,7 @@ mod alloc_support {
             if let Some(value_static) = self.value_static {
                 Label::new(value_static)
             } else {
-                Label::owned(self.get().into())
+                Label::owned(self.as_str().into())
             }
         }
     }

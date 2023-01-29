@@ -265,13 +265,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn enum_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::EnumBegin(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }
@@ -279,13 +279,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn enum_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::EnumEnd(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }
@@ -293,13 +293,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TaggedBegin(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }
@@ -307,13 +307,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn tagged_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TaggedEnd(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }
@@ -321,35 +321,39 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
-        self.push(Token::Tag(tag, label.map(|label| label.to_owned()), index));
+        self.push(Token::Tag(
+            tag,
+            label.map(|label| label.to_owned()),
+            index.cloned(),
+        ));
         Ok(())
     }
 
     fn record_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         self.push(Token::RecordBegin(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
             num_entries,
         ));
         Ok(())
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
         self.push(Token::RecordValueBegin(label.to_owned()));
         Ok(())
     }
 
-    fn record_value_end(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_end(&mut self, label: &sval::Label) -> sval::Result {
         self.push(Token::RecordValueEnd(label.to_owned()));
         Ok(())
     }
@@ -357,13 +361,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn record_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::RecordEnd(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }
@@ -371,39 +375,39 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
     fn tuple_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         self.push(Token::TupleBegin(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
             num_entries,
         ));
         Ok(())
     }
 
-    fn tuple_value_begin(&mut self, index: sval::Index) -> sval::Result {
-        self.push(Token::TupleValueBegin(index));
+    fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
+        self.push(Token::TupleValueBegin(index.clone()));
         Ok(())
     }
 
-    fn tuple_value_end(&mut self, index: sval::Index) -> sval::Result {
-        self.push(Token::TupleValueEnd(index));
+    fn tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
+        self.push(Token::TupleValueEnd(index.clone()));
         Ok(())
     }
 
     fn tuple_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        index: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TupleEnd(
             tag,
             label.map(|label| label.to_owned()),
-            index,
+            index.cloned(),
         ));
         Ok(())
     }

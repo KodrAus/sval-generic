@@ -104,17 +104,17 @@ fn stream_exotic_record() {
         ) -> sval::Result {
             stream.record_begin(None, None, None, Some(3))?;
 
-            stream.record_value_begin(sval::Label::new("field_0"))?;
+            stream.record_value_begin(&sval::Label::new("field_0"))?;
             stream.value(&self.field_0)?;
-            stream.record_value_end(sval::Label::new("field_0"))?;
+            stream.record_value_end(&sval::Label::new("field_0"))?;
 
-            stream.record_value_begin(sval::Label::new("field_1"))?;
+            stream.record_value_begin(&sval::Label::new("field_1"))?;
             stream.value(&self.field_1)?;
-            stream.record_value_end(sval::Label::new("field_1"))?;
+            stream.record_value_end(&sval::Label::new("field_1"))?;
 
-            stream.record_value_begin(sval::Label::new("field_2"))?;
+            stream.record_value_begin(&sval::Label::new("field_2"))?;
             stream.value(&self.field_2)?;
-            stream.record_value_end(sval::Label::new("field_2"))?;
+            stream.record_value_end(&sval::Label::new("field_2"))?;
 
             stream.record_end(None, None, None)
         }
@@ -144,27 +144,27 @@ fn stream_exotic_nested_enum() {
             &'sval self,
             stream: &mut S,
         ) -> sval::Result {
-            stream.enum_begin(None, Some(sval::Label::new("Outer")), None)?;
+            stream.enum_begin(None, Some(&sval::Label::new("Outer")), None)?;
 
             stream.enum_begin(
                 None,
-                Some(sval::Label::new("Inner")),
-                Some(sval::Index::new(1)),
+                Some(&sval::Label::new("Inner")),
+                Some(&sval::Index::new(1)),
             )?;
 
             stream.tag(
                 None,
-                Some(sval::Label::new("Variant")),
-                Some(sval::Index::new(0)),
+                Some(&sval::Label::new("Variant")),
+                Some(&sval::Index::new(0)),
             )?;
 
             stream.enum_end(
                 None,
-                Some(sval::Label::new("Inner")),
-                Some(sval::Index::new(1)),
+                Some(&sval::Label::new("Inner")),
+                Some(&sval::Index::new(1)),
             )?;
 
-            stream.enum_end(None, Some(sval::Label::new("Outer")), None)
+            stream.enum_end(None, Some(&sval::Label::new("Outer")), None)
         }
     }
 

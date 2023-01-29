@@ -205,7 +205,7 @@ fn stream_record(
 
     for field in &fields.named {
         let label = attr::name_of_field(field);
-        let label = quote!(sval::Label::new(#label));
+        let label = quote!(&sval::Label::new(#label));
 
         let ident = &field.ident;
 
@@ -273,17 +273,17 @@ fn stream_tuple(
 
         stream_field.push(if let Some(tag) = attr::tag(field) {
             quote!({
-                stream.tuple_value_begin(sval::Index::new(#index))?;
+                stream.tuple_value_begin(&sval::Index::new(#index))?;
                 stream.tagged_begin(Some(#tag), None, None)?;
                 stream.value(#ident)?;
                 stream.tagged_end(Some(#tag), None, None)?;
-                stream.tuple_value_end(sval::Index::new(#index))?;
+                stream.tuple_value_end(&sval::Index::new(#index))?;
             })
         } else {
             quote!({
-                stream.tuple_value_begin(sval::Index::new(#index))?;
+                stream.tuple_value_begin(&sval::Index::new(#index))?;
                 stream.value(#ident)?;
-                stream.tuple_value_end(sval::Index::new(#index))?;
+                stream.tuple_value_end(&sval::Index::new(#index))?;
             })
         });
 
@@ -321,9 +321,9 @@ fn label_index(
     let label = label.to_string();
     match index {
         Some(index) => (
-            quote!(Some(sval::Label::new(#label))),
-            quote!(Some(sval::Index::new(#index))),
+            quote!(Some(&sval::Label::new(#label))),
+            quote!(Some(&sval::Index::new(#index))),
         ),
-        None => (quote!(Some(sval::Label::new(#label))), quote!(None)),
+        None => (quote!(Some(&sval::Label::new(#label))), quote!(None)),
     }
 }

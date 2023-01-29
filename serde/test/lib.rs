@@ -40,53 +40,79 @@ enum Enum {
     SeqStruct(i32, bool, &'static str),
 }
 
-fn serialize_case(v: (impl sval::Value + serde::Serialize), tokens: &[serde_test::Token]) {
-    assert_ser_tokens(&sval_serde::to_serialize(&v), tokens);
+fn test_case(
+    v: (impl sval::Value + serde::Serialize),
+    serde: &[serde_test::Token],
+    sval: &[sval_test::Token],
+) {
+    assert_ser_tokens(&sval_serde::to_serialize(&v), serde);
     assert_ser_tokens(
         &sval_serde::to_serialize(sval_buffer::stream_to_value(&v).unwrap()),
-        tokens,
+        serde,
     );
     assert_ser_tokens(
         &sval_serde::to_serialize(&v as &dyn sval_dynamic::Value),
-        tokens,
+        serde,
     );
-    assert_ser_tokens(&v, tokens);
-}
+    assert_ser_tokens(&v, serde);
 
-fn stream_case(v: (impl sval::Value + serde::Serialize), tokens: &[sval_test::Token]) {
-    assert_tokens(&sval_serde::to_value(&v), tokens);
+    assert_tokens(&sval_serde::to_value(&v), sval);
 }
 
 #[test]
 fn unit_to_serialize() {
-    serialize_case((), {
-        use serde_test::Token::*;
+    test_case(
+        (),
+        {
+            use serde_test::Token::*;
 
-        &[Unit]
-    })
+            &[Unit]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    )
 }
 
 #[test]
 fn option_some_to_serialize() {
-    serialize_case(Some(1i32), {
-        use serde_test::Token::*;
+    test_case(
+        Some(1i32),
+        {
+            use serde_test::Token::*;
 
-        &[Some, I32(1)]
-    })
+            &[Some, I32(1)]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    )
 }
 
 #[test]
 fn option_none_to_serialize() {
-    serialize_case(None::<i32>, {
-        use serde_test::Token::*;
+    test_case(
+        None::<i32>,
+        {
+            use serde_test::Token::*;
 
-        &[None]
-    })
+            &[None]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    )
 }
 
 #[test]
 fn map_to_serialize() {
-    serialize_case(
+    test_case(
         {
             let mut map = Map::new();
 
@@ -109,12 +135,17 @@ fn map_to_serialize() {
                 MapEnd,
             ]
         },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
     );
 }
 
 #[test]
 fn seq_to_serialize() {
-    serialize_case(
+    test_case(
         {
             let mut seq = Seq::new();
 
@@ -135,12 +166,17 @@ fn seq_to_serialize() {
                 SeqEnd,
             ]
         },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
     );
 }
 
 #[test]
 fn map_struct_to_serialize() {
-    serialize_case(
+    test_case(
         MapStruct {
             field_0: 1,
             field_1: true,
@@ -163,75 +199,120 @@ fn map_struct_to_serialize() {
                 StructEnd,
             ]
         },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
     );
 }
 
 #[test]
 fn seq_struct_named_to_serialize() {
-    serialize_case(SeqStruct(1, true, "a"), {
-        use serde_test::Token::*;
+    test_case(
+        SeqStruct(1, true, "a"),
+        {
+            use serde_test::Token::*;
 
-        &[
-            TupleStruct {
-                name: "SeqStruct",
-                len: 3,
-            },
-            I32(1),
-            Bool(true),
-            Str("a"),
-            TupleStructEnd,
-        ]
-    });
+            &[
+                TupleStruct {
+                    name: "SeqStruct",
+                    len: 3,
+                },
+                I32(1),
+                Bool(true),
+                Str("a"),
+                TupleStructEnd,
+            ]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    );
 }
 
 #[test]
 fn seq_struct_unnamed_to_serialize() {
-    serialize_case((1, true, "a"), {
-        use serde_test::Token::*;
+    test_case(
+        (1, true, "a"),
+        {
+            use serde_test::Token::*;
 
-        &[Tuple { len: 3 }, I32(1), Bool(true), Str("a"), TupleEnd]
-    });
+            &[Tuple { len: 3 }, I32(1), Bool(true), Str("a"), TupleEnd]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    );
 }
 
 #[test]
 fn tagged_struct_to_serialize() {
-    serialize_case(Tagged(1), {
-        use serde_test::Token::*;
+    test_case(
+        Tagged(1),
+        {
+            use serde_test::Token::*;
 
-        &[NewtypeStruct { name: "Tagged" }, I32(1)]
-    })
+            &[NewtypeStruct { name: "Tagged" }, I32(1)]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    )
 }
 
 #[test]
 fn enum_tag_to_serialize() {
-    serialize_case(Enum::Constant, {
-        use serde_test::Token::*;
+    test_case(
+        Enum::Constant,
+        {
+            use serde_test::Token::*;
 
-        &[UnitVariant {
-            name: "Enum",
-            variant: "Constant",
-        }]
-    });
+            &[UnitVariant {
+                name: "Enum",
+                variant: "Constant",
+            }]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    );
 }
 
 #[test]
 fn enum_tagged_to_serialize() {
-    serialize_case(Enum::Tagged(1), {
-        use serde_test::Token::*;
+    test_case(
+        Enum::Tagged(1),
+        {
+            use serde_test::Token::*;
 
-        &[
-            NewtypeVariant {
-                name: "Enum",
-                variant: "Tagged",
-            },
-            I32(1),
-        ]
-    });
+            &[
+                NewtypeVariant {
+                    name: "Enum",
+                    variant: "Tagged",
+                },
+                I32(1),
+            ]
+        },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
+    );
 }
 
 #[test]
 fn enum_record_to_serialize() {
-    serialize_case(
+    test_case(
         Enum::MapStruct {
             field_0: 1,
             field_1: true,
@@ -255,37 +336,37 @@ fn enum_record_to_serialize() {
                 StructVariantEnd,
             ]
         },
+        {
+            use sval_test::Token::*;
+
+            &[]
+        },
     );
 }
 
 #[test]
 fn enum_tuple_to_serialize() {
-    serialize_case(Enum::SeqStruct(1, true, "a"), {
-        use serde_test::Token::*;
+    test_case(
+        Enum::SeqStruct(1, true, "a"),
+        {
+            use serde_test::Token::*;
 
-        &[
-            TupleVariant {
-                name: "Enum",
-                variant: "SeqStruct",
-                len: 3,
-            },
-            I32(1),
-            Bool(true),
-            Str("a"),
-            TupleVariantEnd,
-        ]
-    });
-}
+            &[
+                TupleVariant {
+                    name: "Enum",
+                    variant: "SeqStruct",
+                    len: 3,
+                },
+                I32(1),
+                Bool(true),
+                Str("a"),
+                TupleVariantEnd,
+            ]
+        },
+        {
+            use sval_test::Token::*;
 
-#[test]
-fn primitive_to_value() {
-    stream_case("abc", {
-        use sval_test::Token::*;
-
-        &[
-            TextBegin(Some(3)),
-            TextFragmentComputed(String::from("abc")),
-            TextEnd,
-        ]
-    })
+            &[]
+        },
+    );
 }

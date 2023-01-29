@@ -243,8 +243,8 @@ where
     fn enum_begin(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         self.is_internally_tagged = true;
 
@@ -254,8 +254,8 @@ where
     fn enum_end(
         &mut self,
         _: Option<sval::Tag>,
-        _: Option<sval::Label>,
-        _: Option<sval::Index>,
+        _: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         if self.is_internally_tagged {
             self.internally_tagged_map_end()?;
@@ -269,8 +269,8 @@ where
     fn tagged_begin(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
             Some(tags::JSON_NATIVE) => {
@@ -295,8 +295,8 @@ where
     fn tagged_end(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
             Some(tags::JSON_NATIVE) => {
@@ -320,8 +320,8 @@ where
     fn tag(
         &mut self,
         tag: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         self.is_internally_tagged = false;
 
@@ -329,7 +329,7 @@ where
             Some(sval::tags::RUST_OPTION_NONE) => self.null(),
             _ => {
                 if let Some(label) = label {
-                    self.value(&*label)
+                    self.value(label.as_str())
                 } else {
                     self.null()
                 }
@@ -340,15 +340,15 @@ where
     fn record_begin(
         &mut self,
         _: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         self.internally_tagged_begin(label)?;
         self.map_begin(num_entries_hint)
     }
 
-    fn record_value_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
@@ -367,8 +367,8 @@ where
     fn record_end(
         &mut self,
         _: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         self.map_end()?;
         self.internally_tagged_end(label)
@@ -377,8 +377,8 @@ where
     fn tuple_begin(
         &mut self,
         _: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         self.internally_tagged_begin(label)?;
@@ -388,8 +388,8 @@ where
     fn tuple_end(
         &mut self,
         _: Option<sval::Tag>,
-        label: Option<sval::Label>,
-        _: Option<sval::Index>,
+        label: Option<&sval::Label>,
+        _: Option<&sval::Index>,
     ) -> sval::Result {
         self.seq_end()?;
         self.internally_tagged_end(label)
@@ -400,7 +400,7 @@ impl<'sval, W> Formatter<W>
 where
     W: Write,
 {
-    fn internally_tagged_begin(&mut self, label: Option<sval::Label>) -> sval::Result {
+    fn internally_tagged_begin(&mut self, label: Option<&sval::Label>) -> sval::Result {
         // If there's a label then begin a map, using the label as the key
         if self.is_internally_tagged {
             if let Some(label) = label {
@@ -413,7 +413,7 @@ where
         Ok(())
     }
 
-    fn internally_tagged_end(&mut self, label: Option<sval::Label>) -> sval::Result {
+    fn internally_tagged_end(&mut self, label: Option<&sval::Label>) -> sval::Result {
         if label.is_some() {
             self.is_internally_tagged = true;
         }
@@ -421,7 +421,7 @@ where
         Ok(())
     }
 
-    fn internally_tagged_map_begin(&mut self, label: sval::Label) -> sval::Result {
+    fn internally_tagged_map_begin(&mut self, label: &sval::Label) -> sval::Result {
         self.map_begin(Some(1))?;
 
         self.map_key_begin()?;
