@@ -167,20 +167,21 @@ impl<W: fmt::Write> Write for Writer<W> {
 
 impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     fn null(&mut self) -> sval::Result {
-        self.write_str("()")?;
+        self.write_str("()").map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn bool(&mut self, value: bool) -> sval::Result {
-        self.write_str(if value { "true" } else { "false" })?;
+        self.write_str(if value { "true" } else { "false" })
+            .map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_text_quoted {
-            self.write_char('"')?;
+            self.write_char('"').map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
@@ -200,17 +201,21 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
                 // If char needs escaping, flush backlog so far and write, else skip
                 if c != '\'' && esc.len() != 1 {
-                    self.out.write_str(&fragment[from..i])?;
+                    self.out
+                        .write_str(&fragment[from..i])
+                        .map_err(|_| sval::Error::new())?;
                     for c in esc {
-                        self.out.write_char(c)?;
+                        self.out.write_char(c).map_err(|_| sval::Error::new())?;
                     }
                     from = i + c.len_utf8();
                 }
             }
 
-            self.out.write_str(&fragment[from..])?;
+            self.out
+                .write_str(&fragment[from..])
+                .map_err(|_| sval::Error::new())?;
         } else {
-            self.write_str(fragment)?;
+            self.write_str(fragment).map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
@@ -218,7 +223,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn text_end(&mut self) -> sval::Result {
         if self.is_text_quoted {
-            self.write_char('"')?;
+            self.write_char('"').map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
@@ -243,73 +248,73 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn u8(&mut self, value: u8) -> sval::Result {
-        self.out.write_u8(value)?;
+        self.out.write_u8(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn u16(&mut self, value: u16) -> sval::Result {
-        self.out.write_u16(value)?;
+        self.out.write_u16(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn u32(&mut self, value: u32) -> sval::Result {
-        self.out.write_u32(value)?;
+        self.out.write_u32(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn u64(&mut self, value: u64) -> sval::Result {
-        self.out.write_u64(value)?;
+        self.out.write_u64(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn u128(&mut self, value: u128) -> sval::Result {
-        self.out.write_u128(value)?;
+        self.out.write_u128(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn i8(&mut self, value: i8) -> sval::Result {
-        self.out.write_i8(value)?;
+        self.out.write_i8(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn i16(&mut self, value: i16) -> sval::Result {
-        self.out.write_i16(value)?;
+        self.out.write_i16(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn i32(&mut self, value: i32) -> sval::Result {
-        self.out.write_i32(value)?;
+        self.out.write_i32(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn i64(&mut self, value: i64) -> sval::Result {
-        self.out.write_i64(value)?;
+        self.out.write_i64(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn i128(&mut self, value: i128) -> sval::Result {
-        self.out.write_i128(value)?;
+        self.out.write_i128(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn f32(&mut self, value: f32) -> sval::Result {
-        self.out.write_f32(value)?;
+        self.out.write_f32(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn f64(&mut self, value: f64) -> sval::Result {
-        self.out.write_f64(value)?;
+        self.out.write_f64(value).map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
@@ -318,23 +323,23 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.is_text_quoted = true;
         self.is_current_depth_empty = true;
 
-        self.write_char('{')?;
+        self.write_char('{').map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn map_key_begin(&mut self) -> sval::Result {
         if !self.is_current_depth_empty {
-            self.write_str(", ")?;
+            self.write_str(", ").map_err(|_| sval::Error::new())?;
         } else {
-            self.write_char(' ')?;
+            self.write_char(' ').map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.write_str(": ")?;
+        self.write_str(": ").map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
@@ -351,9 +356,9 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn map_end(&mut self) -> sval::Result {
         if !self.is_current_depth_empty {
-            self.write_str(" }")?;
+            self.write_str(" }").map_err(|_| sval::Error::new())?;
         } else {
-            self.write_char('}')?;
+            self.write_char('}').map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
@@ -363,14 +368,14 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.is_text_quoted = true;
         self.is_current_depth_empty = true;
 
-        self.write_char('[')?;
+        self.write_char('[').map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
 
     fn seq_value_begin(&mut self) -> sval::Result {
         if !self.is_current_depth_empty {
-            self.write_str(", ")?;
+            self.write_str(", ").map_err(|_| sval::Error::new())?;
         }
 
         Ok(())
@@ -383,7 +388,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        self.write_char(']')?;
+        self.write_char(']').map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
@@ -422,8 +427,9 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
             }
             _ => {
                 if let Some(label) = label {
-                    self.write_str(label.as_str())?;
-                    self.write_char('(')?;
+                    self.write_str(label.as_str())
+                        .map_err(|_| sval::Error::new())?;
+                    self.write_char('(').map_err(|_| sval::Error::new())?;
                 }
 
                 Ok(())
@@ -445,7 +451,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
             }
             _ => {
                 if label.is_some() {
-                    self.write_char(')')?;
+                    self.write_char(')').map_err(|_| sval::Error::new())?;
                 }
 
                 Ok(())
@@ -460,7 +466,8 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<&sval::Index>,
     ) -> sval::Result {
         if let Some(label) = label {
-            self.write_str(label.as_str())?;
+            self.write_str(label.as_str())
+                .map_err(|_| sval::Error::new())?;
         } else {
             self.null()?;
         }
@@ -476,8 +483,9 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         if let Some(label) = label {
-            self.write_str(label.as_str())?;
-            self.write_char(' ')?;
+            self.write_str(label.as_str())
+                .map_err(|_| sval::Error::new())?;
+            self.write_char(' ').map_err(|_| sval::Error::new())?;
         }
 
         self.map_begin(num_entries_hint)
@@ -517,10 +525,11 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.is_current_depth_empty = true;
 
         if let Some(label) = label {
-            self.write_str(label.as_str())?;
+            self.write_str(label.as_str())
+                .map_err(|_| sval::Error::new())?;
         }
 
-        self.write_char('(')?;
+        self.write_char('(').map_err(|_| sval::Error::new())?;
 
         Ok(())
     }
@@ -539,7 +548,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
-        self.write_char(')')?;
+        self.write_char(')').map_err(|_| sval::Error::new())?;
 
         Ok(())
     }

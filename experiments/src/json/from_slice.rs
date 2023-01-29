@@ -382,7 +382,7 @@ impl Stack {
         self.map = self
             .map
             .checked_add(1 + self.seq)
-            .ok_or(sval::Error::unsupported())?;
+            .ok_or(sval::Error::new())?;
         Ok(())
     }
 
@@ -390,7 +390,7 @@ impl Stack {
         self.map = self
             .map
             .checked_sub(1 + self.seq)
-            .ok_or(sval::Error::unsupported())?;
+            .ok_or(sval::Error::new())?;
         Ok(())
     }
 
@@ -398,7 +398,7 @@ impl Stack {
         self.seq = self
             .seq
             .checked_add(1 + self.map)
-            .ok_or(sval::Error::unsupported())?;
+            .ok_or(sval::Error::new())?;
         Ok(())
     }
 
@@ -406,7 +406,7 @@ impl Stack {
         self.seq = self
             .seq
             .checked_sub(1 + self.map)
-            .ok_or(sval::Error::unsupported())?;
+            .ok_or(sval::Error::new())?;
         Ok(())
     }
 
@@ -422,7 +422,7 @@ impl Stack {
         if self.map == 0 && self.seq == 0 {
             Ok(())
         } else {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 }
@@ -440,7 +440,7 @@ fn number(src: &[u8], mut head: usize) -> sval::Result<(&str, usize)> {
         }
     }
 
-    let str = core::str::from_utf8(&src[start..head])?;
+    let str = core::str::from_utf8(&src[start..head]).map_err(|_| sval::Error::new())?;
 
     Ok((str, head))
 }
@@ -475,7 +475,7 @@ fn str_fragment(src: &[u8], mut head: usize) -> sval::Result<(&str, bool, usize)
         }
     }
 
-    let str = core::str::from_utf8(&src[start..head])?;
+    let str = core::str::from_utf8(&src[start..head]).map_err(|_| sval::Error::new())?;
 
     Ok((str, partial, if partial { head } else { head + 1 }))
 }

@@ -1,12 +1,14 @@
+use crate::{Error, ErrorKind};
+
 use std::{
     fmt,
     io::{self, Write},
 };
 
-pub fn stream_to_writer(io: impl Write, v: impl sval::Value) -> io::Result<()> {
+pub fn stream_to_writer(io: impl Write, v: impl sval::Value) -> Result<(), Error> {
     struct IoToFmt<W> {
         io: W,
-        result: io::Result<()>,
+        err: Option<io::Error>,
     }
 
     impl<W: Write> fmt::Write for IoToFmt<W> {
@@ -21,7 +23,7 @@ pub fn stream_to_writer(io: impl Write, v: impl sval::Value) -> io::Result<()> {
                     }
                     Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
                     Err(e) => {
-                        self.result = Err(e);
+                        self.err = Some(e);
                         return Err(fmt::Error);
                     }
                 }
@@ -31,9 +33,16 @@ pub fn stream_to_writer(io: impl Write, v: impl sval::Value) -> io::Result<()> {
         }
     }
 
-    let mut io = IoToFmt { io, result: Ok(()) };
+    let mut io = IoToFmt { io, err: None };
 
-    let _ = crate::stream_to_fmt(&mut io, v);
+    match crate::stream_to_fmt(&mut io, v) {
+        Ok(()) => Ok(()),
+        Err(mut e) => {
+            if let Some(io) = io.err {
+                e.kind = ErrorKind::IO(io);
+            }
 
-    io.result
+            Err(e)
+        }
+    }
 }

@@ -41,7 +41,7 @@ struct Error;
 
 impl From<Error> for sval::Error {
     fn from(_: Error) -> sval::Error {
-        sval::Error::unsupported()
+        sval::Error::new()
     }
 }
 

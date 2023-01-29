@@ -1,8 +1,17 @@
-use crate::{result, std::convert::TryInto, Result, Stream};
+use crate::{std::convert::TryInto, Result, Stream};
 
+/**
+A producer of structured data.
+*/
 pub trait Value {
+    /**
+    Stream this value through a [`Stream`].
+    */
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result;
 
+    /**
+    Try convert this value into a boolean.
+    */
     #[inline]
     fn to_bool(&self) -> Option<bool> {
         struct Extract(Option<bool>);
@@ -14,43 +23,43 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -59,6 +68,9 @@ pub trait Value {
         extract.0
     }
 
+    /**
+    Try convert this value into a 32bit binary floating point number.
+    */
     #[inline]
     fn to_f32(&self) -> Option<f32> {
         struct Extract(Option<f32>);
@@ -70,47 +82,47 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -119,6 +131,9 @@ pub trait Value {
         extract.0
     }
 
+    /**
+    Try convert this value into a 64bit binary floating point number.
+    */
     #[inline]
     fn to_f64(&self) -> Option<f64> {
         struct Extract(Option<f64>);
@@ -130,43 +145,43 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -175,26 +190,41 @@ pub trait Value {
         extract.0
     }
 
+    /**
+    Try convert this value into a signed 8bit integer.
+    */
     #[inline]
     fn to_i8(&self) -> Option<i8> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into a signed 16bit integer.
+    */
     #[inline]
     fn to_i16(&self) -> Option<i16> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into a signed 32bit integer.
+    */
     #[inline]
     fn to_i32(&self) -> Option<i32> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into a signed 64bit integer.
+    */
     #[inline]
     fn to_i64(&self) -> Option<i64> {
         self.to_i128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into a signed 128bit integer.
+    */
     #[inline]
     fn to_i128(&self) -> Option<i128> {
         struct Extract(Option<i128>);
@@ -206,47 +236,47 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -255,26 +285,41 @@ pub trait Value {
         extract.0
     }
 
+    /**
+    Try convert this value into an unsigned 8bit integer.
+    */
     #[inline]
     fn to_u8(&self) -> Option<u8> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into an unsigned 16bit integer.
+    */
     #[inline]
     fn to_u16(&self) -> Option<u16> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into an unsigned 32bit integer.
+    */
     #[inline]
     fn to_u32(&self) -> Option<u32> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into an unsigned 64bit integer.
+    */
     #[inline]
     fn to_u64(&self) -> Option<u64> {
         self.to_u128().and_then(|value| value.try_into().ok())
     }
 
+    /**
+    Try convert this value into an unsigned 128bit integer.
+    */
     #[inline]
     fn to_u128(&self) -> Option<u128> {
         struct Extract(Option<u128>);
@@ -286,47 +331,47 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -335,6 +380,9 @@ pub trait Value {
         extract.0
     }
 
+    /**
+    Try convert this value into a text string.
+    */
     #[inline]
     fn to_text(&self) -> Option<&str> {
         struct Extract<'sval> {
@@ -363,7 +411,7 @@ pub trait Value {
                 self.extracted = None;
                 self.seen_fragment = true;
 
-                result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
@@ -371,35 +419,35 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 
@@ -412,6 +460,9 @@ pub trait Value {
         extract.extracted
     }
 
+    /**
+    Try convert this value into a bitstring.
+    */
     #[inline]
     fn to_binary(&self) -> Option<&[u8]> {
         struct Extract<'sval> {
@@ -440,7 +491,7 @@ pub trait Value {
                 self.extracted = None;
                 self.seen_fragment = true;
 
-                result::unsupported()
+                crate::error()
             }
 
             fn binary_end(&mut self) -> Result {
@@ -448,47 +499,47 @@ pub trait Value {
             }
 
             fn null(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn bool(&mut self, _: bool) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_fragment_computed(&mut self, _: &str) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn text_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn i64(&mut self, _: i64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn f64(&mut self, _: f64) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_begin(&mut self, _: Option<usize>) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_begin(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_value_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
 
             fn seq_end(&mut self) -> Result {
-                crate::result::unsupported()
+                crate::error()
             }
         }
 

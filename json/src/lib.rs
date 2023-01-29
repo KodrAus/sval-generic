@@ -13,8 +13,13 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+mod error;
+
 mod to_fmt;
-pub use self::to_fmt::{stream_to_fmt, Formatter};
+pub use self::{
+    error::*,
+    to_fmt::{stream_to_fmt, Formatter},
+};
 
 pub mod tags {
     /**

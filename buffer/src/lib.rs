@@ -3,6 +3,10 @@ Buffering support for `sval`.
 
 This crate provides the [`ValueBuf`] type, which can buffer a flat
 stream of data into a tree of borrowed values.
+
+Some functionality requires the `alloc` Cargo feature to be enabled.
+Rather than conditionally compile these methods, this library stubs
+out functionality when an allocator isn't available.
 */
 
 #![no_std]

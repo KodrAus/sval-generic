@@ -6,7 +6,7 @@ macro_rules! int {
             pub(crate) fn $fi<'sval>(v: $i, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
-                crate::stream_fmt(stream, v)?;
+                crate::stream_fmt(stream, v).map_err(|_| crate::Error::new())?;
 
                 stream.tagged_end(Some(tags::NUMBER), None, None)
             }
@@ -14,7 +14,7 @@ macro_rules! int {
             pub(crate) fn $fu<'sval>(v: $u, stream: &mut (impl Stream<'sval> + ?Sized)) -> crate::Result {
                 stream.tagged_begin(Some(tags::NUMBER), None, None)?;
 
-                crate::stream_fmt(stream, v)?;
+                crate::stream_fmt(stream, v).map_err(|_| crate::Error::new())?;
 
                 stream.tagged_end(Some(tags::NUMBER), None, None)
             }

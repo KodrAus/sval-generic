@@ -668,7 +668,7 @@ impl<S: serde::Serializer> State<S> {
             Ok(None) => Ok(()),
             Err(e) => {
                 *self = State::Done(Some(Err(e)));
-                Err(sval::Error::unsupported())
+                Err(sval::Error::new())
             }
         }
     }
@@ -683,7 +683,7 @@ fn try_catch<'sval, T, S: serde::Serializer>(
         Err(e) => {
             serializer.state = State::Done(Some(Err(e)));
 
-            sval::result::unsupported()
+            sval::error()
         }
     }
 }

@@ -61,7 +61,7 @@ impl<'a> sval::Value for ValueBuf<'a> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = stream;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 }
@@ -76,7 +76,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -90,7 +90,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -103,7 +103,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -112,13 +112,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             match self.current_mut().kind {
                 ValueKind::Text(ref mut text) => text.push_fragment(fragment),
-                _ => Err(sval::Error::unsupported()),
+                _ => Err(sval::Error::new()),
             }
         }
         #[cfg(not(feature = "alloc"))]
         {
             let _ = fragment;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -127,13 +127,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             match self.current_mut().kind {
                 ValueKind::Text(ref mut text) => text.push_fragment_computed(fragment),
-                _ => Err(sval::Error::unsupported()),
+                _ => Err(sval::Error::new()),
             }
         }
         #[cfg(not(feature = "alloc"))]
         {
             let _ = fragment;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -144,7 +144,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -157,7 +157,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -166,13 +166,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             match self.current_mut().kind {
                 ValueKind::Binary(ref mut binary) => binary.push_fragment(fragment),
-                _ => Err(sval::Error::unsupported()),
+                _ => Err(sval::Error::new()),
             }
         }
         #[cfg(not(feature = "alloc"))]
         {
             let _ = fragment;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -181,13 +181,13 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         {
             match self.current_mut().kind {
                 ValueKind::Binary(ref mut binary) => binary.push_fragment_computed(fragment),
-                _ => Err(sval::Error::unsupported()),
+                _ => Err(sval::Error::new()),
             }
         }
         #[cfg(not(feature = "alloc"))]
         {
             let _ = fragment;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -198,7 +198,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -212,7 +212,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -226,7 +226,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -240,7 +240,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -254,7 +254,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -268,7 +268,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -282,7 +282,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -296,7 +296,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -310,7 +310,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -324,7 +324,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -338,7 +338,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -352,7 +352,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -366,7 +366,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = value;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -383,7 +383,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = num_entries_hint;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -396,7 +396,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -409,7 +409,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -422,7 +422,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -435,7 +435,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -448,7 +448,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -465,7 +465,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = num_entries_hint;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -478,7 +478,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -491,7 +491,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -504,7 +504,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -528,7 +528,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = (tag, label, index);
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -546,7 +546,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -570,7 +570,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = (tag, label, index);
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -588,7 +588,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -611,7 +611,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = (tag, label, index);
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -637,7 +637,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = (tag, label, index, num_entries);
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -654,7 +654,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = label;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -667,7 +667,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -685,7 +685,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -711,7 +711,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = (tag, label, index, num_entries);
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -728,7 +728,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         #[cfg(not(feature = "alloc"))]
         {
             let _ = index;
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -741,7 +741,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 
@@ -759,7 +759,7 @@ impl<'sval> sval::Stream<'sval> for ValueBuf<'sval> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            sval::result::unsupported()
+            sval::error()
         }
     }
 }

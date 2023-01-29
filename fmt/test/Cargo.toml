@@ -12,6 +12,7 @@ path = "../../"
 
 [dependencies.sval-fmt]
 path = "../"
+features = ["std"]
 
 [dependencies.sval-derive]
 path = "../../derive"

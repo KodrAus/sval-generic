@@ -1,4 +1,4 @@
-use crate::std::{fmt, str};
+use crate::std::fmt;
 
 /**
 An error encountered while streaming a value.
@@ -11,37 +11,18 @@ pub struct Error(());
 
 impl Error {
     /**
-    A kind of value is unsupported by this stream.
+    Create a new error.
+
+    More detailed diagnostic information will need to be stored elsewhere.
     */
-    pub fn unsupported() -> Self {
+    pub fn new() -> Self {
         Error(())
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error")
-    }
-}
-
-impl From<fmt::Error> for Error {
-    #[inline]
-    fn from(_: fmt::Error) -> Error {
-        Error(())
-    }
-}
-
-impl From<Error> for fmt::Error {
-    #[inline]
-    fn from(_: Error) -> fmt::Error {
-        fmt::Error
-    }
-}
-
-impl From<str::Utf8Error> for Error {
-    #[inline]
-    fn from(_: str::Utf8Error) -> Error {
-        Error(())
+        write!(f, "failed to stream data")
     }
 }
 
@@ -49,24 +30,16 @@ impl From<str::Utf8Error> for Error {
 mod std_support {
     use super::*;
 
-    use crate::std::{error, io};
+    use crate::std::error;
 
     impl error::Error for Error {}
-
-    impl From<io::Error> for Error {
-        #[inline]
-        fn from(_: io::Error) -> Error {
-            Error(())
-        }
-    }
-
-    impl From<Error> for io::Error {
-        fn from(e: Error) -> io::Error {
-            io::Error::new(io::ErrorKind::Other, e)
-        }
-    }
 }
 
-pub fn unsupported<T>() -> crate::Result<T> {
-    Err(Error::unsupported())
+/**
+A streaming result with a generic failure.
+
+More detailed diagnostic information will need to be stored elsewhere.
+*/
+pub fn error<T>() -> crate::Result<T> {
+    Err(Error::new())
 }

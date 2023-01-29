@@ -1,36 +1,72 @@
 use crate::{data, tags, Index, Label, Result, Tag, Value};
 
+/**
+A consumer of structured data.
+*/
 pub trait Stream<'sval> {
+    /**
+    Recurse into a nested value.
+    */
     fn value<V: Value + ?Sized>(&mut self, v: &'sval V) -> Result {
         v.stream(self)
     }
 
+    /**
+    Recurse into a nested value, borrowed for some arbitrarily short lifetime.
+    */
     fn value_computed<V: Value + ?Sized>(&mut self, v: &V) -> Result {
         stream_computed(self, v)
     }
 
+    /**
+    Stream null, the absence of any other meaningful value.
+    */
     fn null(&mut self) -> Result;
 
+    /**
+    Stream a boolean.
+    */
     fn bool(&mut self, value: bool) -> Result;
 
+    /**
+    Start a UTF8 text string.
+    */
     fn text_begin(&mut self, num_bytes_hint: Option<usize>) -> Result;
 
+    /**
+    Stream a fragment of UTF8 text.
+    */
     fn text_fragment(&mut self, fragment: &'sval str) -> Result {
         self.text_fragment_computed(fragment)
     }
 
+    /**
+    Stream a fragment of UTF8 text, borrowed for some arbitrarily short lifetime.
+    */
     fn text_fragment_computed(&mut self, fragment: &str) -> Result;
 
+    /**
+    Complete a UTF8 text string.
+    */
     fn text_end(&mut self) -> Result;
 
+    /**
+    Start a bitstring.
+    */
     fn binary_begin(&mut self, num_bytes_hint: Option<usize>) -> Result {
         self.seq_begin(num_bytes_hint)
     }
 
+    /**
+    Stream a fragment of a bitstring.
+    */
     fn binary_fragment(&mut self, fragment: &'sval [u8]) -> Result {
         self.binary_fragment_computed(fragment)
     }
 
+    /**
+    Stream a fragment of a bitstring, borrowed for some arbitrarily short lifetime.
+    */
     fn binary_fragment_computed(&mut self, fragment: &[u8]) -> Result {
         for byte in fragment {
             self.seq_value_begin()?;
@@ -41,26 +77,44 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
+    /**
+    Complete a bitstring.
+    */
     fn binary_end(&mut self) -> Result {
         self.seq_end()
     }
 
+    /**
+    Stream an unsigned 8bit integer.
+    */
     fn u8(&mut self, value: u8) -> Result {
         self.u16(value as u16)
     }
 
+    /**
+    Stream an unsigned 16bit integer.
+    */
     fn u16(&mut self, value: u16) -> Result {
         self.u32(value as u32)
     }
 
+    /**
+    Stream an unsigned 32bit integer.
+    */
     fn u32(&mut self, value: u32) -> Result {
         self.u64(value as u64)
     }
 
+    /**
+    Stream an unsigned 64bit integer.
+    */
     fn u64(&mut self, value: u64) -> Result {
         self.u128(value as u128)
     }
 
+    /**
+    Stream an unsigned 128bit integer.
+    */
     fn u128(&mut self, value: u128) -> Result {
         if let Ok(value) = value.try_into() {
             self.i64(value)
@@ -69,20 +123,35 @@ pub trait Stream<'sval> {
         }
     }
 
+    /**
+    Stream a signed 8bit integer.
+    */
     fn i8(&mut self, value: i8) -> Result {
         self.i16(value as i16)
     }
 
+    /**
+    Stream a signed 16bit integer.
+    */
     fn i16(&mut self, value: i16) -> Result {
         self.i32(value as i32)
     }
 
+    /**
+    Stream a signed 32bit integer.
+    */
     fn i32(&mut self, value: i32) -> Result {
         self.i64(value as i64)
     }
 
+    /**
+    Stream a signed 64bit integer.
+    */
     fn i64(&mut self, value: i64) -> Result;
 
+    /**
+    Stream a signed 128bit integer.
+    */
     fn i128(&mut self, value: i128) -> Result {
         if let Ok(value) = value.try_into() {
             self.i64(value)
@@ -91,48 +160,87 @@ pub trait Stream<'sval> {
         }
     }
 
+    /**
+    Stream a 32bit binary floating point number.
+    */
     fn f32(&mut self, value: f32) -> Result {
         self.f64(value as f64)
     }
 
+    /**
+    Stream a 64bit binary floating point number.
+    */
     fn f64(&mut self, value: f64) -> Result;
 
+    /**
+    Start a homogenous mapping of arbitrary keys to values.
+    */
     fn map_begin(&mut self, num_entries_hint: Option<usize>) -> Result {
         self.seq_begin(num_entries_hint)
     }
 
+    /**
+    Start a key in a key-value mapping.
+    */
     fn map_key_begin(&mut self) -> Result {
         self.seq_value_begin()?;
         self.tuple_begin(None, None, None, Some(2))?;
         self.tuple_value_begin(&Index::new(0))
     }
 
+    /**
+    Complete a key in a key-value mapping.
+    */
     fn map_key_end(&mut self) -> Result {
         self.tuple_value_end(&Index::new(0))
     }
 
+    /**
+    Start a value in a key-value mapping.
+    */
     fn map_value_begin(&mut self) -> Result {
         self.tuple_value_begin(&Index::new(1))
     }
 
+    /**
+    Complete a value in a key-value mapping.
+    */
     fn map_value_end(&mut self) -> Result {
         self.tuple_value_end(&Index::new(1))?;
         self.tuple_end(None, None, None)?;
         self.seq_value_end()
     }
 
+    /**
+    Complete a homogenous mapping of arbitrary keys to values.
+    */
     fn map_end(&mut self) -> Result {
         self.seq_end()
     }
 
+    /**
+    Start a homogenous sequence of values.
+    */
     fn seq_begin(&mut self, num_entries_hint: Option<usize>) -> Result;
 
+    /**
+    Start an individual value in a sequence.
+    */
     fn seq_value_begin(&mut self) -> Result;
 
+    /**
+    Complete an individual value in a sequence.
+    */
     fn seq_value_end(&mut self) -> Result;
 
+    /**
+    Complete a homogenous sequence of values.
+    */
     fn seq_end(&mut self) -> Result;
 
+    /**
+    Start a variant in an enumerated type.
+    */
     fn enum_begin(
         &mut self,
         tag: Option<Tag>,
@@ -142,6 +250,9 @@ pub trait Stream<'sval> {
         self.tagged_begin(tag, label, index)
     }
 
+    /**
+    Complete a variant in an enumerated type.
+    */
     fn enum_end(
         &mut self,
         tag: Option<Tag>,
@@ -151,6 +262,11 @@ pub trait Stream<'sval> {
         self.tagged_end(tag, label, index)
     }
 
+    /**
+    Start a tagged value.
+
+    Tagged values may be used as enum variants.
+    */
     fn tagged_begin(
         &mut self,
         tag: Option<Tag>,
@@ -164,6 +280,9 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
+    /**
+    Complete a tagged value.
+    */
     fn tagged_end(
         &mut self,
         tag: Option<Tag>,
@@ -177,6 +296,11 @@ pub trait Stream<'sval> {
         Ok(())
     }
 
+    /**
+    Stream a standalone tag.
+
+    Standalone tags may be used as enum variants.
+    */
     fn tag(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
         self.tagged_begin(tag, label, index)?;
 
@@ -200,17 +324,25 @@ pub trait Stream<'sval> {
         self.tagged_end(tag, label, index)
     }
 
+    /**
+    Start a record type.
+
+    Records may be used as enum variants.
+    */
     fn record_begin(
         &mut self,
         tag: Option<Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
-        num_entries: Option<usize>,
+        num_entries_hint: Option<usize>,
     ) -> Result {
         self.tagged_begin(tag, label, index)?;
-        self.map_begin(num_entries)
+        self.map_begin(num_entries_hint)
     }
 
+    /**
+    Start a field in a record.
+    */
     fn record_value_begin(&mut self, label: &Label) -> Result {
         self.map_key_begin()?;
 
@@ -225,12 +357,18 @@ pub trait Stream<'sval> {
         self.map_value_begin()
     }
 
+    /**
+    Complete a field in a record.
+    */
     fn record_value_end(&mut self, label: &Label) -> Result {
         let _ = label;
 
         self.map_value_end()
     }
 
+    /**
+    Complete a record type.
+    */
     fn record_end(
         &mut self,
         tag: Option<Tag>,
@@ -241,29 +379,43 @@ pub trait Stream<'sval> {
         self.tagged_end(tag, label, index)
     }
 
+    /**
+    Start a tuple type.
+
+    Tuples may be used as enum variants.
+    */
     fn tuple_begin(
         &mut self,
         tag: Option<Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
-        num_entries: Option<usize>,
+        num_entries_hint: Option<usize>,
     ) -> Result {
         self.tagged_begin(tag, label, index)?;
-        self.seq_begin(num_entries)
+        self.seq_begin(num_entries_hint)
     }
 
+    /**
+    Start a field in a tuple.
+    */
     fn tuple_value_begin(&mut self, index: &Index) -> Result {
         let _ = index;
 
         self.seq_value_begin()
     }
 
+    /**
+    Complete a field in a tuple.
+    */
     fn tuple_value_end(&mut self, index: &Index) -> Result {
         let _ = index;
 
         self.seq_value_end()
     }
 
+    /**
+    Complete a tuple type.
+    */
     fn tuple_end(
         &mut self,
         tag: Option<Tag>,

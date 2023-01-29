@@ -5,6 +5,11 @@ Structured, streaming values.
 The source of that data could be some Rust object or parsed from some encoding.
 It's well suited to self-describing, text-based formats like JSON.
 
+# A note on docs
+
+Even though this library's API is stable, these docs themselves are still a
+work-in-progress.
+
 # Getting started
 
 Add `sval` to your `Cargo.toml`:
@@ -73,6 +78,7 @@ The [`Value`] and [`Stream`] traits aren't object-safe themselves, but object-sa
 wrappers are provided by the [`sval-dynamic`] crate. This wrapper works in no-std.
 */
 
+#![deny(missing_docs)]
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(feature = "std")]
@@ -95,16 +101,21 @@ mod std {
 extern crate core as std;
 
 mod data;
+mod result;
 mod stream;
 mod value;
 
-pub mod result;
-
 #[doc(inline)]
-pub use self::{data::*, result::Error, stream::*, value::*};
+pub use self::{data::*, result::*, stream::*, value::*};
 
+/**
+A generic streaming result.
+*/
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
+/**
+Stream a value through a stream.
+*/
 pub fn stream<'sval, S: Stream<'sval> + ?Sized, V: Value + ?Sized>(
     stream: &mut S,
     value: &'sval V,

@@ -3,25 +3,28 @@ use crate::{
     Result, Stream, Value,
 };
 
+/**
+Stream the output of a generic format as a text string.
+*/
 pub fn stream_fmt<'sval, T: fmt::Display>(
     mut stream: &mut (impl Stream<'sval> + ?Sized),
     text: T,
-) -> Result {
+) -> fmt::Result {
     struct Writer<S>(S);
 
     impl<'a, S: Stream<'a>> Write for Writer<S> {
         fn write_str(&mut self, s: &str) -> fmt::Result {
-            self.0.text_fragment_computed(s)?;
+            self.0.text_fragment_computed(s).map_err(|_| fmt::Error)?;
 
             Ok(())
         }
     }
 
-    stream.text_begin(None)?;
+    stream.text_begin(None).map_err(|_| fmt::Error)?;
 
     write!(Writer(&mut stream), "{}", text)?;
 
-    stream.text_end()
+    stream.text_end().map_err(|_| fmt::Error)
 }
 
 impl Value for char {
