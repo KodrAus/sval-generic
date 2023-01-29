@@ -13,7 +13,7 @@ pub fn stream_to_fmt(fmt: impl Write, v: impl sval::Value) -> Result<(), Error> 
     }
 }
 
-pub struct Formatter<W> {
+pub(crate) struct Formatter<W> {
     is_internally_tagged: bool,
     is_current_depth_empty: bool,
     is_text_quoted: bool,
@@ -36,8 +36,9 @@ impl<W> Formatter<W> {
         }
     }
 
-    pub fn into_inner(self) -> W {
-        self.out
+    fn err(&mut self, e: Error) -> sval::Error {
+        self.err = Some(e);
+        sval::Error::new()
     }
 }
 
@@ -46,7 +47,9 @@ where
     W: Write,
 {
     fn null(&mut self) -> sval::Result {
-        self.out.write_str("null").map_err(|_| sval::Error::new())?;
+        self.out
+            .write_str("null")
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -54,14 +57,16 @@ where
     fn bool(&mut self, v: bool) -> sval::Result {
         self.out
             .write_str(if v { "true" } else { "false" })
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
 
     fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
         if self.is_text_quoted {
-            self.out.write_char('"').map_err(|_| sval::Error::new())?;
+            self.out
+                .write_char('"')
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -71,11 +76,13 @@ where
         if let Some(ref mut handler) = self.text_handler {
             handler
                 .text_fragment(v, &mut self.out)
-                .map_err(|_| sval::Error::new())?;
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         } else if !self.is_json_native {
-            escape_str(v, &mut self.out).map_err(|_| sval::Error::new())?;
+            escape_str(v, &mut self.out).map_err(|e| self.err(Error::from_fmt(e)))?;
         } else {
-            self.out.write_str(v).map_err(|_| sval::Error::new())?;
+            self.out
+                .write_str(v)
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -83,7 +90,9 @@ where
 
     fn text_end(&mut self) -> sval::Result {
         if self.is_text_quoted {
-            self.out.write_char('"').map_err(|_| sval::Error::new())?;
+            self.out
+                .write_char('"')
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -92,7 +101,7 @@ where
     fn u8(&mut self, v: u8) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -100,7 +109,7 @@ where
     fn u16(&mut self, v: u16) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -108,7 +117,7 @@ where
     fn u32(&mut self, v: u32) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -116,7 +125,7 @@ where
     fn u64(&mut self, v: u64) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -124,7 +133,7 @@ where
     fn u128(&mut self, v: u128) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -132,7 +141,7 @@ where
     fn i8(&mut self, v: i8) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -140,7 +149,7 @@ where
     fn i16(&mut self, v: i16) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -148,7 +157,7 @@ where
     fn i32(&mut self, v: i32) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -156,7 +165,7 @@ where
     fn i64(&mut self, v: i64) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -164,7 +173,7 @@ where
     fn i128(&mut self, v: i128) -> sval::Result {
         self.out
             .write_str(itoa::Buffer::new().format(v))
-            .map_err(|_| sval::Error::new())?;
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -175,7 +184,7 @@ where
         } else {
             self.out
                 .write_str(ryu::Buffer::new().format_finite(v))
-                .map_err(|_| sval::Error::new())?;
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -187,7 +196,7 @@ where
         } else {
             self.out
                 .write_str(ryu::Buffer::new().format_finite(v))
-                .map_err(|_| sval::Error::new())?;
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -195,11 +204,13 @@ where
 
     fn map_begin(&mut self, _: Option<usize>) -> sval::Result {
         if !self.is_text_quoted {
-            return sval::error();
+            return Err(self.err(Error::invalid_key()));
         }
 
         self.is_current_depth_empty = true;
-        self.out.write_char('{').map_err(|_| sval::Error::new())?;
+        self.out
+            .write_char('{')
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -209,16 +220,22 @@ where
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
-            self.out.write_str(",\"").map_err(|_| sval::Error::new())?;
+            self.out
+                .write_str(",\"")
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         } else {
-            self.out.write_char('"').map_err(|_| sval::Error::new())?;
+            self.out
+                .write_char('"')
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
     }
 
     fn map_key_end(&mut self) -> sval::Result {
-        self.out.write_str("\":").map_err(|_| sval::Error::new())?;
+        self.out
+            .write_str("\":")
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         self.is_text_quoted = true;
 
@@ -236,19 +253,23 @@ where
     }
 
     fn map_end(&mut self) -> sval::Result {
-        self.out.write_char('}').map_err(|_| sval::Error::new())?;
+        self.out
+            .write_char('}')
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
 
     fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
         if !self.is_text_quoted {
-            return sval::error();
+            return Err(self.err(Error::invalid_key()));
         }
 
         self.is_current_depth_empty = true;
 
-        self.out.write_char('[').map_err(|_| sval::Error::new())?;
+        self.out
+            .write_char('[')
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -257,7 +278,9 @@ where
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
-            self.out.write_char(',').map_err(|_| sval::Error::new())?;
+            self.out
+                .write_char(',')
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
         Ok(())
@@ -270,7 +293,9 @@ where
     }
 
     fn seq_end(&mut self) -> sval::Result {
-        self.out.write_char(']').map_err(|_| sval::Error::new())?;
+        self.out
+            .write_char(']')
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         Ok(())
     }
@@ -342,7 +367,9 @@ where
 
                 if !self.is_json_native {
                     if let Some(TextHandler::Number(mut number)) = self.text_handler.take() {
-                        number.end(&mut self.out).map_err(|_| sval::Error::new())?;
+                        number
+                            .end(&mut self.out)
+                            .map_err(|e| self.err(Error::from_fmt(e)))?;
                     }
                 }
             }
@@ -387,14 +414,20 @@ where
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
-            self.out.write_str(",\"").map_err(|_| sval::Error::new())?;
+            self.out
+                .write_str(",\"")
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         } else {
-            self.out.write_char('"').map_err(|_| sval::Error::new())?;
+            self.out
+                .write_char('"')
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
-        escape_str(label.as_str(), &mut self.out).map_err(|_| sval::Error::new())?;
+        escape_str(label.as_str(), &mut self.out).map_err(|e| self.err(Error::from_fmt(e)))?;
 
-        self.out.write_str("\":").map_err(|_| sval::Error::new())?;
+        self.out
+            .write_str("\":")
+            .map_err(|e| self.err(Error::from_fmt(e)))?;
 
         self.map_value_begin()
     }
@@ -460,7 +493,7 @@ where
         self.map_begin(Some(1))?;
 
         self.map_key_begin()?;
-        escape_str(label.as_str(), &mut self.out).map_err(|_| sval::Error::new())?;
+        escape_str(label.as_str(), &mut self.out).map_err(|e| self.err(Error::from_fmt(e)))?;
         self.map_key_end()?;
 
         self.map_value_begin()

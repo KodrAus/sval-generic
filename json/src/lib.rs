@@ -16,10 +16,7 @@ extern crate std;
 mod error;
 
 mod to_fmt;
-pub use self::{
-    error::*,
-    to_fmt::{stream_to_fmt, Formatter},
-};
+pub use self::{error::*, to_fmt::*};
 
 pub mod tags {
     /**
@@ -35,10 +32,10 @@ pub mod tags {
 mod to_string;
 
 #[cfg(feature = "alloc")]
-pub use self::to_string::stream_to_string;
+pub use self::to_string::*;
 
 #[cfg(feature = "std")]
 mod to_writer;
 
 #[cfg(feature = "std")]
-pub use self::to_writer::stream_to_writer;
+pub use self::to_writer::*;

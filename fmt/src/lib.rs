@@ -16,10 +16,7 @@ mod writer;
 mod to_debug;
 mod to_fmt;
 
-pub use self::{
-    to_debug::{to_debug, ToDebug},
-    to_fmt::{stream_to_fmt, Formatter},
-};
+pub use self::{to_debug::*, to_fmt::*};
 
 #[cfg(feature = "alloc")]
 mod to_string;
