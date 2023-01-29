@@ -118,7 +118,7 @@ impl<'computed> Label<'computed> {
 
     For labels that were created over computed data this method will return `None`.
     */
-    pub const fn try_as_static_str(&self) -> Option<&'static str> {
+    pub const fn as_static_str(&self) -> Option<&'static str> {
         self.value_static
     }
 }
@@ -264,14 +264,14 @@ impl Index {
     /**
     Try get the index as a numeric value.
     */
-    pub const fn try_to_usize(&self) -> Option<usize> {
+    pub const fn to_usize(&self) -> Option<usize> {
         Some(self.0)
     }
 
     /**
     Try get the index as a 32-bit numeric value.
     */
-    pub const fn try_to_u32(&self) -> Option<u32> {
+    pub const fn to_u32(&self) -> Option<u32> {
         if self.0 <= u32::MAX as usize {
             Some(self.0 as u32)
         } else {

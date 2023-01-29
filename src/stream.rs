@@ -186,7 +186,7 @@ pub trait Stream<'sval> {
         }
         // If the tag has a label then stream it as its value
         else if let Some(ref label) = label {
-            if let Some(label) = label.try_as_static_str() {
+            if let Some(label) = label.as_static_str() {
                 self.value(label)?;
             } else {
                 self.value_computed(label.as_str())?;
@@ -214,7 +214,7 @@ pub trait Stream<'sval> {
     fn record_value_begin(&mut self, label: &Label) -> Result {
         self.map_key_begin()?;
 
-        if let Some(label) = label.try_as_static_str() {
+        if let Some(label) = label.as_static_str() {
             self.value(label)?;
         } else {
             self.value_computed(label.as_str())?;
