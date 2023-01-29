@@ -422,7 +422,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
             }
             _ => {
                 if let Some(label) = label {
-                    self.write_str(&*label)?;
+                    self.write_str(label.as_str())?;
                     self.write_char('(')?;
                 }
 
@@ -460,7 +460,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         _: Option<&sval::Index>,
     ) -> sval::Result {
         if let Some(label) = label {
-            self.write_str(&label)?;
+            self.write_str(label.as_str())?;
         } else {
             self.null()?;
         }
@@ -476,7 +476,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         num_entries_hint: Option<usize>,
     ) -> sval::Result {
         if let Some(label) = label {
-            self.write_str(&*label)?;
+            self.write_str(label.as_str())?;
             self.write_char(' ')?;
         }
 
@@ -517,7 +517,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.is_current_depth_empty = true;
 
         if let Some(label) = label {
-            self.write_str(&*label)?;
+            self.write_str(label.as_str())?;
         }
 
         self.write_char('(')?;

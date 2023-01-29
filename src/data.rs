@@ -11,7 +11,6 @@ use crate::{
         fmt,
         hash::{Hash, Hasher},
         marker::PhantomData,
-        ops::Deref,
     },
     Result, Stream, Value,
 };
@@ -78,7 +77,8 @@ impl<'computed> Label<'computed> {
     /**
     Create a new label from a static string value.
 
-    For labels that can't satisfy the `'static` lifetime, use [`Label::computed`].
+    For labels that can't satisfy the `'static` lifetime, use [`Label::from_computed`].
+    For labels that need owned values, use [`Label::from_owned`].
     */
     pub const fn new(label: &'static str) -> Self {
         Label {
@@ -91,9 +91,9 @@ impl<'computed> Label<'computed> {
     }
 
     /**
-    Create a new label from a string value.
+    Create a new label from a string value borrowed for the `'computed` lifetime.
     */
-    pub const fn computed(label: &'computed str) -> Self {
+    pub const fn from_computed(label: &'computed str) -> Self {
         Label {
             value_computed: label as *const str,
             value_static: None,
@@ -120,14 +120,6 @@ impl<'computed> Label<'computed> {
     */
     pub const fn try_as_static_str(&self) -> Option<&'static str> {
         self.value_static
-    }
-}
-
-impl<'a> Deref for Label<'a> {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_str()
     }
 }
 
@@ -311,17 +303,25 @@ mod alloc_support {
     use crate::std::string::String;
 
     impl<'computed> Label<'computed> {
+        /**
+        Create an owned label from this one.
+
+        This method will allocate if the label isn't based on a static string.
+        */
         pub fn to_owned(&self) -> Label<'static> {
             if let Some(value_static) = self.value_static {
                 Label::new(value_static)
             } else {
-                Label::owned(self.as_str().into())
+                Label::from_owned(self.as_str().into())
             }
         }
     }
 
     impl Label<'static> {
-        pub fn owned(label: String) -> Self {
+        /**
+        Create a new label from an owned string value.
+        */
+        pub fn from_owned(label: String) -> Self {
             Label {
                 value_computed: label.as_str() as *const str,
                 value_static: None,

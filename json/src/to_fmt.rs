@@ -357,7 +357,7 @@ where
             self.out.write_char('"')?;
         }
 
-        escape_str(&*label, &mut self.out)?;
+        escape_str(label.as_str(), &mut self.out)?;
 
         self.out.write_str("\":")?;
 
@@ -425,7 +425,7 @@ where
         self.map_begin(Some(1))?;
 
         self.map_key_begin()?;
-        escape_str(&*label, &mut self.out)?;
+        escape_str(label.as_str(), &mut self.out)?;
         self.map_key_end()?;
 
         self.map_value_begin()
