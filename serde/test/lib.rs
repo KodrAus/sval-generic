@@ -57,6 +57,9 @@ fn test_case(
     assert_ser_tokens(&v, serde);
 
     assert_tokens(&sval_serde::to_value(&v), sval);
+
+    assert_ser_tokens(&sval_serde::to_serialize(sval_serde::to_value(&v)), serde);
+    assert_tokens(&sval_serde::to_value(sval_serde::to_serialize(&v)), sval);
 }
 
 #[test]
@@ -71,7 +74,7 @@ fn unit_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[Tag(Some(sval::tags::RUST_UNIT), None, None)]
         },
     )
 }
@@ -88,7 +91,19 @@ fn option_some_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                TaggedBegin(
+                    Some(sval::tags::RUST_OPTION_SOME),
+                    Some(sval::Label::new("Some")),
+                    Some(sval::Index::new(1)),
+                ),
+                I32(1),
+                TaggedEnd(
+                    Some(sval::tags::RUST_OPTION_SOME),
+                    Some(sval::Label::new("Some")),
+                    Some(sval::Index::new(1)),
+                ),
+            ]
         },
     )
 }
@@ -105,7 +120,11 @@ fn option_none_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[Tag(
+                Some(sval::tags::RUST_OPTION_NONE),
+                Some(sval::Label::new("None")),
+                Some(sval::Index::new(0)),
+            )]
         },
     )
 }
@@ -138,7 +157,26 @@ fn map_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                MapBegin(Some(2)),
+                MapKeyBegin,
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                MapKeyEnd,
+                MapValueBegin,
+                I32(1),
+                MapValueEnd,
+                MapKeyBegin,
+                TextBegin(Some(1)),
+                TextFragmentComputed("b".into()),
+                TextEnd,
+                MapKeyEnd,
+                MapValueBegin,
+                I32(2),
+                MapValueEnd,
+                MapEnd,
+            ]
         },
     );
 }
@@ -169,7 +207,16 @@ fn seq_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                SeqBegin(Some(2)),
+                SeqValueBegin,
+                I32(1),
+                SeqValueEnd,
+                SeqValueBegin,
+                I32(2),
+                SeqValueEnd,
+                SeqEnd,
+            ]
         },
     );
 }
@@ -202,7 +249,21 @@ fn map_struct_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                RecordBegin(None, Some(sval::Label::new("MapStruct")), None, Some(3)),
+                RecordValueBegin(sval::Label::new("field_0")),
+                I32(1),
+                RecordValueEnd(sval::Label::new("field_0")),
+                RecordValueBegin(sval::Label::new("field_1")),
+                Bool(true),
+                RecordValueEnd(sval::Label::new("field_1")),
+                RecordValueBegin(sval::Label::new("field_2")),
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                RecordValueEnd(sval::Label::new("field_2")),
+                RecordEnd(None, Some(sval::Label::new("MapStruct")), None),
+            ]
         },
     );
 }
@@ -228,7 +289,21 @@ fn seq_struct_named_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                TupleBegin(None, Some(sval::Label::new("SeqStruct")), None, Some(3)),
+                TupleValueBegin(sval::Index::new(0)),
+                I32(1),
+                TupleValueEnd(sval::Index::new(0)),
+                TupleValueBegin(sval::Index::new(1)),
+                Bool(true),
+                TupleValueEnd(sval::Index::new(1)),
+                TupleValueBegin(sval::Index::new(2)),
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                TupleValueEnd(sval::Index::new(2)),
+                TupleEnd(None, Some(sval::Label::new("SeqStruct")), None),
+            ]
         },
     );
 }
@@ -245,7 +320,21 @@ fn seq_struct_unnamed_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                TupleBegin(None, None, None, Some(3)),
+                TupleValueBegin(sval::Index::new(0)),
+                I32(1),
+                TupleValueEnd(sval::Index::new(0)),
+                TupleValueBegin(sval::Index::new(1)),
+                Bool(true),
+                TupleValueEnd(sval::Index::new(1)),
+                TupleValueBegin(sval::Index::new(2)),
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                TupleValueEnd(sval::Index::new(2)),
+                TupleEnd(None, None, None),
+            ]
         },
     );
 }
@@ -262,7 +351,11 @@ fn tagged_struct_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                TaggedBegin(None, Some(sval::Label::new("Tagged")), None),
+                I32(1),
+                TaggedEnd(None, Some(sval::Label::new("Tagged")), None),
+            ]
         },
     )
 }
@@ -282,7 +375,15 @@ fn enum_tag_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                EnumBegin(None, Some(sval::Label::new("Enum")), None),
+                Tag(
+                    None,
+                    Some(sval::Label::new("Constant")),
+                    Some(sval::Index::new(0)),
+                ),
+                EnumEnd(None, Some(sval::Label::new("Enum")), None),
+            ]
         },
     );
 }
@@ -305,7 +406,21 @@ fn enum_tagged_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                EnumBegin(None, Some(sval::Label::new("Enum")), None),
+                TaggedBegin(
+                    None,
+                    Some(sval::Label::new("Tagged")),
+                    Some(sval::Index::new(1)),
+                ),
+                I32(1),
+                TaggedEnd(
+                    None,
+                    Some(sval::Label::new("Tagged")),
+                    Some(sval::Index::new(1)),
+                ),
+                EnumEnd(None, Some(sval::Label::new("Enum")), None),
+            ]
         },
     );
 }
@@ -339,7 +454,32 @@ fn enum_record_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                EnumBegin(None, Some(sval::Label::new("Enum")), None),
+                RecordBegin(
+                    None,
+                    Some(sval::Label::new("MapStruct")),
+                    Some(sval::Index::new(2)),
+                    Some(3),
+                ),
+                RecordValueBegin(sval::Label::new("field_0")),
+                I32(1),
+                RecordValueEnd(sval::Label::new("field_0")),
+                RecordValueBegin(sval::Label::new("field_1")),
+                Bool(true),
+                RecordValueEnd(sval::Label::new("field_1")),
+                RecordValueBegin(sval::Label::new("field_2")),
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                RecordValueEnd(sval::Label::new("field_2")),
+                RecordEnd(
+                    None,
+                    Some(sval::Label::new("MapStruct")),
+                    Some(sval::Index::new(2)),
+                ),
+                EnumEnd(None, Some(sval::Label::new("Enum")), None),
+            ]
         },
     );
 }
@@ -366,7 +506,32 @@ fn enum_tuple_to_serialize() {
         {
             use sval_test::Token::*;
 
-            &[]
+            &[
+                EnumBegin(None, Some(sval::Label::new("Enum")), None),
+                TupleBegin(
+                    None,
+                    Some(sval::Label::new("SeqStruct")),
+                    Some(sval::Index::new(3)),
+                    Some(3),
+                ),
+                TupleValueBegin(sval::Index::new(0)),
+                I32(1),
+                TupleValueEnd(sval::Index::new(0)),
+                TupleValueBegin(sval::Index::new(1)),
+                Bool(true),
+                TupleValueEnd(sval::Index::new(1)),
+                TupleValueBegin(sval::Index::new(2)),
+                TextBegin(Some(1)),
+                TextFragmentComputed("a".into()),
+                TextEnd,
+                TupleValueEnd(sval::Index::new(2)),
+                TupleEnd(
+                    None,
+                    Some(sval::Label::new("SeqStruct")),
+                    Some(sval::Index::new(3)),
+                ),
+                EnumEnd(None, Some(sval::Label::new("Enum")), None),
+            ]
         },
     );
 }

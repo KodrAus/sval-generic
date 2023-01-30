@@ -145,7 +145,7 @@ impl<'a> Borrow<str> for Label<'a> {
 
 impl<'a> fmt::Debug for Label<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_str().fmt(f)
+        f.debug_tuple("Label").field(&self.as_str()).finish()
     }
 }
 
@@ -243,14 +243,14 @@ impl Tag {
 
 impl fmt::Debug for Tag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.data.fmt(f)
+        f.debug_tuple("Tag").field(&self.data).finish()
     }
 }
 
 /**
 The index of a value in its parent context.
 */
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Index(usize);
 
 impl Index {
@@ -284,6 +284,12 @@ impl Index {
         } else {
             None
         }
+    }
+}
+
+impl fmt::Debug for Index {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Index").field(&self.0).finish()
     }
 }
 
