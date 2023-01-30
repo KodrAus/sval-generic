@@ -122,3 +122,13 @@ pub fn stream<'sval, S: Stream<'sval> + ?Sized, V: Value + ?Sized>(
 ) -> Result {
     stream.value(value)
 }
+
+/**
+Stream a value through a stream with an arbitrarily short lifetime.
+*/
+pub fn stream_computed<'sval, S: Stream<'sval> + ?Sized, V: Value + ?Sized>(
+    stream: &mut S,
+    value: &V,
+) -> Result {
+    stream.value_computed(value)
+}

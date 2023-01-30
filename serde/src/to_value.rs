@@ -2,11 +2,11 @@ use core::fmt;
 
 use serde::ser::Error as _;
 
-pub fn stream<'sval, S: sval::Stream<'sval> + ?Sized, V: serde::Serialize>(
+pub fn stream<'sval, S: sval::Stream<'sval> + ?Sized, V: serde::Serialize + ?Sized>(
     stream: &mut S,
     value: &'_ V,
 ) -> sval::Result {
-    stream.value_computed(ToValue::new_ref(value))
+    stream.value_computed(&ToValue(value))
 }
 
 pub fn to_value<V: serde::Serialize>(value: V) -> ToValue<V> {

@@ -145,10 +145,6 @@ impl<W> Writer<W> {
             out,
         }
     }
-
-    pub fn into_inner(self) -> W {
-        self.out
-    }
 }
 
 impl<W: fmt::Write> Write for Writer<W> {
