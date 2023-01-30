@@ -1,4 +1,4 @@
-name: fmt
+name: dynamic
 
 on: [push, pull_request]
 
