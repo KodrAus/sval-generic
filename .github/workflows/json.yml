@@ -28,7 +28,7 @@ jobs:
         run: cargo hack test --feature-powerset
 
       - name: Powerset (Tests)
-        working-directory: ./json/tests
+        working-directory: ./json/test
         run: cargo hack test --feature-powerset
 
   embedded:
