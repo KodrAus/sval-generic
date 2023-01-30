@@ -1,4 +1,4 @@
-name: fmt
+name: serde
 
 on: [push, pull_request]
 
@@ -24,7 +24,11 @@ jobs:
         run: cargo install cargo-hack
 
       - name: Powerset
-        working-directory: ./dynamic
+        working-directory: ./serde
+        run: cargo hack test --feature-powerset
+
+      - name: Powerset (Tests)
+        working-directory: ./serde/tests
         run: cargo hack test --feature-powerset
 
   embedded:
@@ -46,5 +50,5 @@ jobs:
         run: cargo install cargo-hack
 
       - name: Powerset
-        working-directory: ./fmt
+        working-directory: ./serde
         run: cargo hack check --each-feature --exclude-features std,alloc -Z avoid-dev-deps --target thumbv6m-none-eabi

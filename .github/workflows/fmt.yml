@@ -1,4 +1,4 @@
-name: fmt
+name: dynamic
 
 on: [push, pull_request]
 
@@ -24,7 +24,11 @@ jobs:
         run: cargo install cargo-hack
 
       - name: Powerset
-        working-directory: ./dynamic
+        working-directory: ./fmt
+        run: cargo hack test --feature-powerset
+
+      - name: Powerset (Tests)
+        working-directory: ./fmt/tests
         run: cargo hack test --feature-powerset
 
   embedded:
