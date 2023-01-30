@@ -262,6 +262,13 @@ impl Index {
     }
 
     /**
+    Create a new index from a 32bit numeric value.
+    */
+    pub const fn new_u32(index: u32) -> Self {
+        Index(index as usize)
+    }
+
+    /**
     Try get the index as a numeric value.
     */
     pub const fn to_usize(&self) -> Option<usize> {

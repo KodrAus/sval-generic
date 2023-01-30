@@ -1,5 +1,7 @@
 use core::fmt;
 
+use serde::ser::Error as _;
+
 pub fn stream<'sval, S: sval::Stream<'sval> + ?Sized, V: serde::Serialize>(
     stream: &mut S,
     value: &'_ V,
@@ -28,13 +30,41 @@ impl<V: ?Sized> ToValue<V> {
 
 impl<V: serde::Serialize> sval::Value for ToValue<V> {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
-        self.0.serialize(Stream(stream))?;
+        self.0.serialize(Stream { stream })?;
 
         Ok(())
     }
 }
 
-struct Stream<S>(S);
+struct Stream<S> {
+    stream: S,
+}
+
+struct StreamTuple<S> {
+    stream: S,
+    label: Option<sval::Label<'static>>,
+    index: usize,
+}
+
+struct StreamTupleVariant<S> {
+    stream: S,
+    enum_label: sval::Label<'static>,
+    variant_label: sval::Label<'static>,
+    variant_index: sval::Index,
+    index: usize,
+}
+
+struct StreamRecord<S> {
+    stream: S,
+    label: Option<sval::Label<'static>>,
+}
+
+struct StreamRecordVariant<S> {
+    stream: S,
+    enum_label: sval::Label<'static>,
+    variant_label: sval::Label<'static>,
+    variant_index: sval::Index,
+}
 
 #[derive(Debug)]
 struct Error;
@@ -70,7 +100,7 @@ impl serde::ser::StdError for Error {}
 
 impl<'sval, S: sval::Stream<'sval>> Stream<S> {
     fn stream_value(&mut self, v: impl sval::Value) -> Result<(), Error> {
-        self.0.value_computed(&v)?;
+        self.stream.value_computed(&v)?;
 
         Ok(())
     }
@@ -81,12 +111,12 @@ impl<'sval, S: sval::Stream<'sval>> serde::Serializer for Stream<S> {
     type Error = Error;
 
     type SerializeSeq = Self;
-    type SerializeTuple = Self;
-    type SerializeTupleStruct = Self;
-    type SerializeTupleVariant = Self;
+    type SerializeTuple = StreamTuple<S>;
+    type SerializeTupleStruct = StreamTuple<S>;
+    type SerializeTupleVariant = StreamTupleVariant<S>;
     type SerializeMap = Self;
-    type SerializeStruct = Self;
-    type SerializeStructVariant = Self;
+    type SerializeStruct = StreamRecord<S>;
+    type SerializeStructVariant = StreamRecordVariant<S>;
 
     fn serialize_bool(mut self, v: bool) -> Result<Self::Ok, Self::Error> {
         self.stream_value(v)
@@ -160,31 +190,53 @@ impl<'sval, S: sval::Stream<'sval>> serde::Serializer for Stream<S> {
     }
 
     fn serialize_unit_struct(mut self, name: &'static str) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .tag(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tag"))
     }
 
     fn serialize_unit_variant(
-        self,
+        mut self,
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .enum_begin(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tag variant"))?;
+        self.stream
+            .tag(
+                None,
+                Some(&sval::Label::new(variant)),
+                Some(&sval::Index::new_u32(variant_index)),
+            )
+            .map_err(|_| Error::custom("failed to stream a tag variant"))?;
+        self.stream
+            .enum_end(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tag variant"))
     }
 
     fn serialize_newtype_struct<T: ?Sized>(
-        self,
+        mut self,
         name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .tagged_begin(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tagged value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a tagged value"))?;
+        self.stream
+            .tagged_end(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tagged value"))
     }
 
     fn serialize_newtype_variant<T: ?Sized>(
-        self,
+        mut self,
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
@@ -193,55 +245,143 @@ impl<'sval, S: sval::Stream<'sval>> serde::Serializer for Stream<S> {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .enum_begin(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tagged variant"))?;
+        self.stream
+            .tagged_begin(
+                None,
+                Some(&sval::Label::new(variant)),
+                Some(&sval::Index::new_u32(variant_index)),
+            )
+            .map_err(|_| Error::custom("failed to stream a tagged variant"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a tagged variant"))?;
+        self.stream
+            .tagged_end(
+                None,
+                Some(&sval::Label::new(variant)),
+                Some(&sval::Index::new_u32(variant_index)),
+            )
+            .map_err(|_| Error::custom("failed to stream a tagged variant"))?;
+        self.stream
+            .enum_end(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tagged variant"))
     }
 
     fn serialize_seq(mut self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        todo!()
+        self.stream
+            .seq_begin(len)
+            .map_err(|_| Error::custom("failed to stream a sequence"))?;
+
+        Ok(self)
     }
 
     fn serialize_tuple(mut self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        todo!()
+        self.stream
+            .tuple_begin(None, None, None, Some(len))
+            .map_err(|_| Error::custom("failed to stream a tuple"))?;
+
+        Ok(StreamTuple {
+            stream: self.stream,
+            label: None,
+            index: 0,
+        })
     }
 
     fn serialize_tuple_struct(
-        self,
+        mut self,
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        todo!()
+        self.stream
+            .tuple_begin(None, Some(&sval::Label::new(name)), None, Some(len))
+            .map_err(|_| Error::custom("failed to stream a tuple"))?;
+
+        Ok(StreamTuple {
+            stream: self.stream,
+            label: Some(sval::Label::new(name)),
+            index: 0,
+        })
     }
 
     fn serialize_tuple_variant(
-        self,
+        mut self,
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        todo!()
+        self.stream
+            .enum_begin(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a tuple variant"))?;
+        self.stream
+            .tuple_begin(
+                None,
+                Some(&sval::Label::new(variant)),
+                Some(&sval::Index::new_u32(variant_index)),
+                Some(len),
+            )
+            .map_err(|_| Error::custom("failed to stream a tuple variant"))?;
+
+        Ok(StreamTupleVariant {
+            stream: self.stream,
+            enum_label: sval::Label::new(name),
+            variant_label: sval::Label::new(variant),
+            variant_index: sval::Index::new_u32(variant_index),
+            index: 0,
+        })
     }
 
     fn serialize_map(mut self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        todo!()
+        self.stream
+            .map_begin(len)
+            .map_err(|_| Error::custom("failed to stream a map"))?;
+
+        Ok(self)
     }
 
     fn serialize_struct(
-        self,
+        mut self,
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        todo!()
+        self.stream
+            .record_begin(None, Some(&sval::Label::new(name)), None, Some(len))
+            .map_err(|_| Error::custom("failed to stream a record"))?;
+
+        Ok(StreamRecord {
+            stream: self.stream,
+            label: Some(sval::Label::new(name)),
+        })
     }
 
     fn serialize_struct_variant(
-        self,
+        mut self,
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        todo!()
+        self.stream
+            .enum_begin(None, Some(&sval::Label::new(name)), None)
+            .map_err(|_| Error::custom("failed to stream a record variant"))?;
+        self.stream
+            .record_begin(
+                None,
+                Some(&sval::Label::new(variant)),
+                Some(&sval::Index::new_u32(variant_index)),
+                Some(len),
+            )
+            .map_err(|_| Error::custom("failed to stream a record variant"))?;
+
+        Ok(StreamRecordVariant {
+            stream: self.stream,
+            enum_label: sval::Label::new(name),
+            variant_label: sval::Label::new(variant),
+            variant_index: sval::Index::new_u32(variant_index),
+        })
     }
 }
 
@@ -253,15 +393,25 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeSeq for Stream<S> {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .seq_value_begin()
+            .map_err(|_| Error::custom("failed to stream a sequence value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a sequence value"))?;
+        self.stream
+            .seq_value_end()
+            .map_err(|_| Error::custom("failed to stream a sequence value"))
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .seq_end()
+            .map_err(|_| Error::custom("failed to stream a sequence"))
     }
 }
 
-impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTuple for Stream<S> {
+impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTuple for StreamTuple<S> {
     type Ok = ();
     type Error = Error;
 
@@ -269,15 +419,29 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTuple for Stream<S> {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .tuple_value_begin(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+        self.stream
+            .tuple_value_end(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+
+        self.index += 1;
+
+        Ok(())
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .tuple_end(None, self.label.as_ref(), None)
+            .map_err(|_| Error::custom("failed to stream a tuple"))
     }
 }
 
-impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleStruct for Stream<S> {
+impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleStruct for StreamTuple<S> {
     type Ok = ();
     type Error = Error;
 
@@ -285,15 +449,29 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleStruct for Stream<
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .tuple_value_begin(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+        self.stream
+            .tuple_value_end(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+
+        self.index += 1;
+
+        Ok(())
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .tuple_end(None, self.label.as_ref(), None)
+            .map_err(|_| Error::custom("failed to stream a tuple"))
     }
 }
 
-impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleVariant for Stream<S> {
+impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleVariant for StreamTupleVariant<S> {
     type Ok = ();
     type Error = Error;
 
@@ -301,11 +479,28 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleVariant for Stream
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .tuple_value_begin(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple variant value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a tuple value"))?;
+        self.stream
+            .tuple_value_end(&sval::Index::new(self.index))
+            .map_err(|_| Error::custom("failed to stream a tuple variant value"))?;
+
+        self.index += 1;
+
+        Ok(())
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .tuple_end(None, Some(&self.variant_label), Some(&self.variant_index))
+            .map_err(|_| Error::custom("failed to stream a tuple variant"))?;
+        self.stream
+            .enum_end(None, Some(&self.enum_label), None)
+            .map_err(|_| Error::custom("failed to stream a tuple variant"))
     }
 }
 
@@ -317,22 +512,40 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeMap for Stream<S> {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .map_key_begin()
+            .map_err(|_| Error::custom("failed to stream a map key"))?;
+        self.stream
+            .value_computed(&ToValue(key))
+            .map_err(|_| Error::custom("failed to stream a map key"))?;
+        self.stream
+            .map_key_end()
+            .map_err(|_| Error::custom("failed to stream a map key"))
     }
 
     fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .map_value_begin()
+            .map_err(|_| Error::custom("failed to stream a map value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a map value"))?;
+        self.stream
+            .map_value_end()
+            .map_err(|_| Error::custom("failed to stream a map value"))
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .map_end()
+            .map_err(|_| Error::custom("failed to stream a map"))
     }
 }
 
-impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStruct for Stream<S> {
+impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStruct for StreamRecord<S> {
     type Ok = ();
     type Error = Error;
 
@@ -344,15 +557,25 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStruct for Stream<S> {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .record_value_begin(&sval::Label::new(key))
+            .map_err(|_| Error::custom("failed to stream a record value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a record value"))?;
+        self.stream
+            .record_value_end(&sval::Label::new(key))
+            .map_err(|_| Error::custom("failed to stream a record value"))
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .record_end(None, self.label.as_ref(), None)
+            .map_err(|_| Error::custom("failed to stream a record"))
     }
 }
 
-impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStructVariant for Stream<S> {
+impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStructVariant for StreamRecordVariant<S> {
     type Ok = ();
     type Error = Error;
 
@@ -364,11 +587,24 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStructVariant for Strea
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream
+            .record_value_begin(&sval::Label::new(key))
+            .map_err(|_| Error::custom("failed to stream a record variant value"))?;
+        self.stream
+            .value_computed(&ToValue(value))
+            .map_err(|_| Error::custom("failed to stream a record variant value"))?;
+        self.stream
+            .record_value_end(&sval::Label::new(key))
+            .map_err(|_| Error::custom("failed to stream a record variant value"))
     }
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream
+            .record_end(None, Some(&self.variant_label), Some(&self.variant_index))
+            .map_err(|_| Error::custom("failed to stream a record variant"))?;
+        self.stream
+            .enum_end(None, Some(&self.enum_label), None)
+            .map_err(|_| Error::custom("failed to stream a record variant"))
     }
 }
 
