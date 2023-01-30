@@ -38,6 +38,11 @@ enum Enum {
 }
 
 #[test]
+fn debug_retains_flags() {
+    assert_eq!("0042", format!("{:>04?}", sval_fmt::to_debug(42i64)));
+}
+
+#[test]
 fn debug_primitive() {
     assert_debug(42i32);
 }
