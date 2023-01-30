@@ -1,4 +1,4 @@
-name: sval
+name: buffer
 
 on: [push, pull_request]
 
@@ -15,8 +15,6 @@ jobs:
         os:
           - ubuntu-latest
         rust:
-          - stable
-          - beta
           - nightly
     steps:
       - name: Checkout sources
@@ -33,10 +31,8 @@ jobs:
         run: cargo install cargo-hack
 
       - name: Powerset
+        working-directory: ./buffer
         run: cargo hack test --feature-powerset
-
-      - name: All
-        run: cargo test --all
 
   embedded:
     name: Build (embedded)
@@ -57,4 +53,5 @@ jobs:
         run: cargo install cargo-hack
 
       - name: Powerset
+        working-directory: ./buffer
         run: cargo hack check --each-feature --exclude-features std,alloc -Z avoid-dev-deps --target thumbv6m-none-eabi
