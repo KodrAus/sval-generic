@@ -1,68 +1,24 @@
-pub struct MyStream;
+/*!
+Streams have a simple core data-model that consists of:
 
-impl<'sval> sval::Stream<'sval> for MyStream {
-    fn null(&mut self) -> sval::Result {
-        print!("null");
-        Ok(())
-    }
+- Nulls: the lack of any meaningful value.
+- Booleans: `true` and `false`.
+- Signed integers.
+- Binary floating point numbers.
+- Text strings.
+- Sequences of values.
 
-    fn bool(&mut self, v: bool) -> sval::Result {
-        print!("{}", v);
-        Ok(())
-    }
+This example implements a simple stream that writes directly to stdout.
+*/
 
-    fn i64(&mut self, v: i64) -> sval::Result {
-        print!("{}", v);
-        Ok(())
-    }
-
-    fn f64(&mut self, v: f64) -> sval::Result {
-        print!("{}", v);
-        Ok(())
-    }
-
-    fn text_begin(&mut self, _: Option<usize>) -> sval::Result {
-        print!("\"");
-        Ok(())
-    }
-
-    fn text_fragment_computed(&mut self, fragment: &str) -> sval::Result {
-        print!("{}", fragment.escape_debug());
-
-        Ok(())
-    }
-
-    fn text_end(&mut self) -> sval::Result {
-        print!("\"");
-        Ok(())
-    }
-
-    fn seq_begin(&mut self, _: Option<usize>) -> sval::Result {
-        print!("[ ");
-        Ok(())
-    }
-
-    fn seq_value_begin(&mut self) -> sval::Result {
-        Ok(())
-    }
-
-    fn seq_value_end(&mut self) -> sval::Result {
-        print!(", ");
-        Ok(())
-    }
-
-    fn seq_end(&mut self) -> sval::Result {
-        print!("]");
-        Ok(())
-    }
-}
+pub mod stream;
 
 fn main() -> sval::Result {
-    stream(42);
-    stream(true);
+    stream(42)?;
+    stream(true)?;
 
-    stream(Some(42));
-    stream(None::<i32>);
+    stream(Some(42))?;
+    stream(None::<i32>)?;
 
     #[cfg(feature = "alloc")]
     stream({
@@ -75,15 +31,17 @@ fn main() -> sval::Result {
         map.insert("c", 3);
 
         map
-    });
+    })?;
 
     #[cfg(feature = "alloc")]
-    stream(vec![vec!["Hello", "world"], vec!["Hello", "world"]]);
+    stream(vec![vec!["Hello", "world"], vec!["Hello", "world"]])?;
 
     Ok(())
 }
 
-fn stream(v: impl sval::Value) {
-    v.stream(&mut MyStream).expect("failed to stream");
+fn stream(v: impl sval::Value) -> sval::Result {
+    v.stream(&mut stream::simple::MyStream)?;
     println!();
+
+    Ok(())
 }

@@ -30,6 +30,12 @@ members = [
 std = ["alloc"]
 alloc = []
 
+[dev-dependencies.sval_derive]
+path = "derive"
+
+[dev-dependencies.humantime]
+version = "2"
+
 [profile.release]
 debug = true
 opt-level = 3

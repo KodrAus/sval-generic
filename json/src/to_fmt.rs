@@ -410,7 +410,7 @@ where
         self.map_begin(num_entries_hint)
     }
 
-    fn record_value_begin(&mut self, _: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
@@ -423,7 +423,14 @@ where
                 .map_err(|e| self.err(Error::from_fmt(e)))?;
         }
 
-        escape_str(label.as_str(), &mut self.out).map_err(|e| self.err(Error::from_fmt(e)))?;
+        // If the field is JSON native then it doesn't require escaping
+        if let Some(&tags::JSON_NATIVE) = tag {
+            self.out
+                .write_str(label.as_str())
+                .map_err(|e| self.err(Error::from_fmt(e)))?;
+        } else {
+            escape_str(label.as_str(), &mut self.out).map_err(|e| self.err(Error::from_fmt(e)))?;
+        }
 
         self.out
             .write_str("\":")
