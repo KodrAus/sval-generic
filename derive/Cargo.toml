@@ -1,7 +1,15 @@
 [package]
 name = "sval-derive"
 version = "0.0.0"
+authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"
+license = "Apache-2.0 OR MIT"
+documentation = "https://docs.rs/sval-derive"
+description = "Derive support for sval"
+repository = "https://github.com/sval-rs/sval"
+readme = "README.md"
+keywords = ["serialization", "no_std"]
+categories = ["encoding", "no-std"]
 
 [lib]
 proc-macro = true
