@@ -11,6 +11,9 @@ readme = "README.md"
 keywords = ["serialization", "no_std"]
 categories = ["encoding", "no-std"]
 
+[package.metadata.docs.rs]
+features = ["std"]
+
 [workspace]
 members = [
     "derive",
