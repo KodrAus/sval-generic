@@ -1,10 +1,10 @@
 [package]
-name = "sval-serde"
+name = "sval_serde"
 version = "0.0.0"
 authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"
 license = "Apache-2.0 OR MIT"
-documentation = "https://docs.rs/sval-serde"
+documentation = "https://docs.rs/sval_serde"
 description = "Integration between serde::Serialize and sval::Value"
 repository = "https://github.com/sval-rs/sval"
 keywords = ["serialization", "no_std"]
@@ -12,12 +12,12 @@ categories = ["encoding", "no-std"]
 
 [features]
 std = ["alloc"]
-alloc = ["serde/alloc", "sval/alloc", "sval-buffer/alloc"]
+alloc = ["serde/alloc", "sval/alloc", "sval_buffer/alloc"]
 
 [dependencies.sval]
 path = "../"
 
-[dependencies.sval-buffer]
+[dependencies.sval_buffer]
 path = "../buffer"
 
 [dependencies.serde]

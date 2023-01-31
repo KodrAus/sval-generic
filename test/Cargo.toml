@@ -1,5 +1,5 @@
 [package]
-name = "sval-test"
+name = "sval_test"
 version = "0.0.0"
 authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"

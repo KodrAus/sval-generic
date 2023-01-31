@@ -1,10 +1,10 @@
 [package]
-name = "sval-derive"
+name = "sval_derive"
 version = "0.0.0"
 authors = ["Ashley Mannix <ashleymannix@live.com.au>"]
 edition = "2021"
 license = "Apache-2.0 OR MIT"
-documentation = "https://docs.rs/sval-derive"
+documentation = "https://docs.rs/sval_derive"
 description = "Derive support for sval"
 repository = "https://github.com/sval-rs/sval"
 keywords = ["serialization", "no_std"]

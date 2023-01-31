@@ -1,5 +1,5 @@
 [package]
-name = "sval-serde-test"
+name = "sval_serde_test"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -7,24 +7,24 @@ edition = "2021"
 [lib]
 path = "lib.rs"
 
-[dependencies.sval-serde]
+[dependencies.sval_serde]
 path = "../"
 
 [dependencies.sval]
 path = "../../"
 features = ["std"]
 
-[dependencies.sval-derive]
+[dependencies.sval_derive]
 path = "../../derive"
 
-[dependencies.sval-buffer]
+[dependencies.sval_buffer]
 path = "../../buffer"
 features = ["alloc"]
 
-[dependencies.sval-dynamic]
+[dependencies.sval_dynamic]
 path = "../../dynamic"
 
-[dependencies.sval-test]
+[dependencies.sval_test]
 path = "../../test"
 
 [dependencies.serde]

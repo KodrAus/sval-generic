@@ -1,5 +1,5 @@
 [package]
-name = "sval-json-test"
+name = "sval_json_test"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -10,11 +10,11 @@ path = "lib.rs"
 [dependencies.sval]
 path = "../../"
 
-[dependencies.sval-json]
+[dependencies.sval_json]
 path = "../"
 features = ["std"]
 
-[dependencies.sval-derive]
+[dependencies.sval_derive]
 path = "../../derive"
 
 [dependencies.serde]
