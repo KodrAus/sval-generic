@@ -16,7 +16,7 @@ impl<T: Value> Value for [T] {
 
 impl<T: Value, const N: usize> Value for [T; N] {
     fn stream<'a, S: Stream<'a> + ?Sized>(&'a self, stream: &mut S) -> Result {
-        stream.tagged_begin(Some(tags::CONSTANT_SIZE), None, None)?;
+        stream.tagged_begin(Some(&tags::CONSTANT_SIZE), None, None)?;
         stream.seq_begin(Some(self.len()))?;
 
         for elem in self {
@@ -26,7 +26,7 @@ impl<T: Value, const N: usize> Value for [T; N] {
         }
 
         stream.seq_end()?;
-        stream.tagged_end(Some(tags::CONSTANT_SIZE), None, None)
+        stream.tagged_end(Some(&tags::CONSTANT_SIZE), None, None)
     }
 }
 
@@ -40,9 +40,9 @@ macro_rules! tuple {
                     stream.tuple_begin(None, None, None, Some($len))?;
 
                     $(
-                        stream.tuple_value_begin(&Index::new($i))?;
+                        stream.tuple_value_begin(None, &Index::new($i))?;
                         stream.value(&self.$i)?;
-                        stream.tuple_value_end(&Index::new($i))?;
+                        stream.tuple_value_end(None, &Index::new($i))?;
                     )+
 
                     stream.tuple_end(None, None, None)

@@ -5,6 +5,8 @@ mod option;
 mod seq;
 mod text;
 
+pub mod tags;
+
 use crate::{
     std::{
         borrow::Borrow,
@@ -21,39 +23,6 @@ use crate::std::string::String;
 pub(crate) use self::number::*;
 
 pub use self::{binary::*, text::*};
-
-pub mod tags {
-    /*!
-    Built-in tags for fundamental types.
-    */
-
-    use super::Tag;
-
-    /**
-    A tag for a value that represents the `Some` variant of a Rust `Option`.
-    */
-    pub const RUST_OPTION_SOME: Tag = Tag::new("rsome");
-
-    /**
-    A tag for a value that represents the `None` variant of a Rust `Option`.
-    */
-    pub const RUST_OPTION_NONE: Tag = Tag::new("rnone");
-
-    /**
-    A tag for Rust's `()` type.
-    */
-    pub const RUST_UNIT: Tag = Tag::new("r()");
-
-    /**
-    A tag for arbitrary-precision decimal numbers.
-    */
-    pub const NUMBER: Tag = Tag::new("svalnum");
-
-    /**
-    A tag for values that have a constant size.
-    */
-    pub const CONSTANT_SIZE: Tag = Tag::new("svalcs");
-}
 
 /**
 A textual label for some value.
@@ -155,7 +124,7 @@ A type tag for a value.
 Tags are additional hints that a stream may use to interpret a value differently,
 or to avoid some unnecessary work.
 */
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Tag {
     id: u64,
     data: &'static str,
@@ -295,7 +264,7 @@ impl fmt::Debug for Index {
 
 impl Value for () {
     fn stream<'sval, S: Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> Result {
-        stream.tag(Some(tags::RUST_UNIT), None, None)
+        stream.tag(Some(&tags::RUST_UNIT), None, None)
     }
 }
 

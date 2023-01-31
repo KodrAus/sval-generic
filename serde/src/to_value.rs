@@ -428,13 +428,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTuple for StreamTuple<S
         T: serde::Serialize,
     {
         self.stream
-            .tuple_value_begin(&sval::Index::new(self.index))
+            .tuple_value_begin(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
         self.stream
             .value_computed(&ToValue(value))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
         self.stream
-            .tuple_value_end(&sval::Index::new(self.index))
+            .tuple_value_end(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
 
         self.index += 1;
@@ -458,13 +458,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleStruct for StreamT
         T: serde::Serialize,
     {
         self.stream
-            .tuple_value_begin(&sval::Index::new(self.index))
+            .tuple_value_begin(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
         self.stream
             .value_computed(&ToValue(value))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
         self.stream
-            .tuple_value_end(&sval::Index::new(self.index))
+            .tuple_value_end(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
 
         self.index += 1;
@@ -488,13 +488,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeTupleVariant for Stream
         T: serde::Serialize,
     {
         self.stream
-            .tuple_value_begin(&sval::Index::new(self.index))
+            .tuple_value_begin(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple variant value"))?;
         self.stream
             .value_computed(&ToValue(value))
             .map_err(|_| Error::custom("failed to stream a tuple value"))?;
         self.stream
-            .tuple_value_end(&sval::Index::new(self.index))
+            .tuple_value_end(None, &sval::Index::new(self.index))
             .map_err(|_| Error::custom("failed to stream a tuple variant value"))?;
 
         self.index += 1;
@@ -566,13 +566,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStruct for StreamRecord
         T: serde::Serialize,
     {
         self.stream
-            .record_value_begin(&sval::Label::new(key))
+            .record_value_begin(None, &sval::Label::new(key))
             .map_err(|_| Error::custom("failed to stream a record value"))?;
         self.stream
             .value_computed(&ToValue(value))
             .map_err(|_| Error::custom("failed to stream a record value"))?;
         self.stream
-            .record_value_end(&sval::Label::new(key))
+            .record_value_end(None, &sval::Label::new(key))
             .map_err(|_| Error::custom("failed to stream a record value"))
     }
 
@@ -596,13 +596,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::ser::SerializeStructVariant for Strea
         T: serde::Serialize,
     {
         self.stream
-            .record_value_begin(&sval::Label::new(key))
+            .record_value_begin(None, &sval::Label::new(key))
             .map_err(|_| Error::custom("failed to stream a record variant value"))?;
         self.stream
             .value_computed(&ToValue(value))
             .map_err(|_| Error::custom("failed to stream a record variant value"))?;
         self.stream
-            .record_value_end(&sval::Label::new(key))
+            .record_value_end(None, &sval::Label::new(key))
             .map_err(|_| Error::custom("failed to stream a record variant value"))
     }
 

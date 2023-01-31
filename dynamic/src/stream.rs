@@ -68,73 +68,89 @@ mod private {
 
         fn dispatch_tagged_begin(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_tagged_end(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_tag(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_record_begin(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
             num_entries: Option<usize>,
         ) -> sval::Result;
 
-        fn dispatch_record_value_begin(&mut self, label: &sval::Label) -> sval::Result;
+        fn dispatch_record_value_begin(
+            &mut self,
+            tag: Option<&sval::Tag>,
+            label: &sval::Label,
+        ) -> sval::Result;
 
-        fn dispatch_record_value_end(&mut self, label: &sval::Label) -> sval::Result;
+        fn dispatch_record_value_end(
+            &mut self,
+            tag: Option<&sval::Tag>,
+            label: &sval::Label,
+        ) -> sval::Result;
 
         fn dispatch_record_end(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_tuple_begin(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
             num_entries: Option<usize>,
         ) -> sval::Result;
 
-        fn dispatch_tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result;
+        fn dispatch_tuple_value_begin(
+            &mut self,
+            tag: Option<&sval::Tag>,
+            index: &sval::Index,
+        ) -> sval::Result;
 
-        fn dispatch_tuple_value_end(&mut self, index: &sval::Index) -> sval::Result;
+        fn dispatch_tuple_value_end(
+            &mut self,
+            tag: Option<&sval::Tag>,
+            index: &sval::Index,
+        ) -> sval::Result;
 
         fn dispatch_tuple_end(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_enum_begin(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
 
         fn dispatch_enum_end(
             &mut self,
-            tag: Option<sval::Tag>,
+            tag: Option<&sval::Tag>,
             label: Option<&sval::Label>,
             index: Option<&sval::Index>,
         ) -> sval::Result;
@@ -295,7 +311,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_tagged_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -304,7 +320,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -313,7 +329,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_tag(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -322,7 +338,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_record_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
@@ -330,17 +346,25 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
         self.record_begin(tag, label, index, num_entries)
     }
 
-    fn dispatch_record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
-        self.record_value_begin(label)
+    fn dispatch_record_value_begin(
+        &mut self,
+        tag: Option<&sval::Tag>,
+        label: &sval::Label,
+    ) -> sval::Result {
+        self.record_value_begin(tag, label)
     }
 
-    fn dispatch_record_value_end(&mut self, label: &sval::Label) -> sval::Result {
-        self.record_value_end(label)
+    fn dispatch_record_value_end(
+        &mut self,
+        tag: Option<&sval::Tag>,
+        label: &sval::Label,
+    ) -> sval::Result {
+        self.record_value_end(tag, label)
     }
 
     fn dispatch_record_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -349,7 +373,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_tuple_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
@@ -357,17 +381,25 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
         self.tuple_begin(tag, label, index, num_entries)
     }
 
-    fn dispatch_tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
-        self.tuple_value_begin(index)
+    fn dispatch_tuple_value_begin(
+        &mut self,
+        tag: Option<&sval::Tag>,
+        index: &sval::Index,
+    ) -> sval::Result {
+        self.tuple_value_begin(tag, index)
     }
 
-    fn dispatch_tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
-        self.tuple_value_end(index)
+    fn dispatch_tuple_value_end(
+        &mut self,
+        tag: Option<&sval::Tag>,
+        index: &sval::Index,
+    ) -> sval::Result {
+        self.tuple_value_end(tag, index)
     }
 
     fn dispatch_tuple_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -376,7 +408,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_enum_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -385,7 +417,7 @@ impl<'sval, R: sval::Stream<'sval>> private::DispatchStream<'sval> for R {
 
     fn dispatch_enum_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -528,60 +560,60 @@ macro_rules! impl_stream {
                 self.erase_stream().0.dispatch_seq_value_end()
             }
 
-            fn tagged_begin(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn tagged_begin(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_tagged_begin(tag, label, index)
             }
 
-            fn tagged_end(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn tagged_end(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_tagged_end(tag, label, index)
             }
 
             fn tag(
                 &mut self,
-                tag: Option<sval::Tag>,
+                tag: Option<&sval::Tag>,
                 label: Option<&sval::Label>,
                 index: Option<&sval::Index>,
             ) -> sval::Result {
                 self.erase_stream().0.dispatch_tag(tag, label, index)
             }
 
-            fn record_begin(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
+            fn record_begin(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_stream().0.dispatch_record_begin(tag, label, index, num_entries_hint)
             }
 
-            fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
-                self.erase_stream().0.dispatch_record_value_begin(label)
+            fn record_value_begin(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
+                self.erase_stream().0.dispatch_record_value_begin(tag, label)
             }
 
-            fn record_value_end(&mut self, label: &sval::Label) -> sval::Result {
-                self.erase_stream().0.dispatch_record_value_end(label)
+            fn record_value_end(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
+                self.erase_stream().0.dispatch_record_value_end(tag, label)
             }
 
-            fn record_end(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn record_end(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_record_end(tag, label, index)
             }
 
-            fn tuple_begin(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
+            fn tuple_begin(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>, num_entries_hint: Option<usize>) -> sval::Result {
                 self.erase_stream().0.dispatch_tuple_begin(tag, label, index, num_entries_hint)
             }
 
-            fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
-                self.erase_stream().0.dispatch_tuple_value_begin(index)
+            fn tuple_value_begin(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_value_begin(tag, index)
             }
 
-            fn tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
-                self.erase_stream().0.dispatch_tuple_value_end(index)
+            fn tuple_value_end(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+                self.erase_stream().0.dispatch_tuple_value_end(tag, index)
             }
 
-            fn tuple_end(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn tuple_end(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_tuple_end(tag, label, index)
             }
 
-            fn enum_begin(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn enum_begin(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_enum_begin(tag, label, index)
             }
 
-            fn enum_end(&mut self, tag: Option<sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
+            fn enum_end(&mut self, tag: Option<&sval::Tag>, label: Option<&sval::Label>, index: Option<&sval::Index>) -> sval::Result {
                 self.erase_stream().0.dispatch_enum_end(tag, label, index)
             }
         }

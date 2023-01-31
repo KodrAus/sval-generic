@@ -108,17 +108,17 @@ fn debug_exotic_record() {
         ) -> sval::Result {
             stream.record_begin(None, None, None, Some(3))?;
 
-            stream.record_value_begin(&sval::Label::new("field_0"))?;
+            stream.record_value_begin(None, &sval::Label::new("field_0"))?;
             stream.value(&self.field_0)?;
-            stream.record_value_end(&sval::Label::new("field_0"))?;
+            stream.record_value_end(None, &sval::Label::new("field_0"))?;
 
-            stream.record_value_begin(&sval::Label::new("field_1"))?;
+            stream.record_value_begin(None, &sval::Label::new("field_1"))?;
             stream.value(&self.field_1)?;
-            stream.record_value_end(&sval::Label::new("field_1"))?;
+            stream.record_value_end(None, &sval::Label::new("field_1"))?;
 
-            stream.record_value_begin(&sval::Label::new("field_2"))?;
+            stream.record_value_begin(None, &sval::Label::new("field_2"))?;
             stream.value(&self.field_2)?;
-            stream.record_value_end(&sval::Label::new("field_2"))?;
+            stream.record_value_end(None, &sval::Label::new("field_2"))?;
 
             stream.record_end(None, None, None)
         }

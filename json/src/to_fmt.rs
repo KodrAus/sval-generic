@@ -302,7 +302,7 @@ where
 
     fn enum_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -313,7 +313,7 @@ where
 
     fn enum_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -328,15 +328,15 @@ where
 
     fn tagged_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
-            Some(tags::JSON_NATIVE) => {
+            Some(&tags::JSON_NATIVE) => {
                 self.is_json_native = true;
             }
-            Some(sval::tags::NUMBER) => {
+            Some(&sval::tags::NUMBER) => {
                 self.is_text_quoted = false;
 
                 // If the number isn't guaranteed to be valid JSON then create an adapter
@@ -354,15 +354,15 @@ where
 
     fn tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
-            Some(tags::JSON_NATIVE) => {
+            Some(&tags::JSON_NATIVE) => {
                 self.is_json_native = false;
             }
-            Some(sval::tags::NUMBER) => {
+            Some(&sval::tags::NUMBER) => {
                 self.is_text_quoted = true;
 
                 if !self.is_json_native {
@@ -381,14 +381,14 @@ where
 
     fn tag(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
         self.is_internally_tagged = false;
 
         match tag {
-            Some(sval::tags::RUST_OPTION_NONE) => self.null(),
+            Some(&sval::tags::RUST_OPTION_NONE) => self.null(),
             _ => {
                 if let Some(label) = label {
                     self.value(label.as_str())
@@ -401,7 +401,7 @@ where
 
     fn record_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
         num_entries_hint: Option<usize>,
@@ -410,7 +410,7 @@ where
         self.map_begin(num_entries_hint)
     }
 
-    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, _: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
         self.is_internally_tagged = false;
 
         if !self.is_current_depth_empty {
@@ -434,7 +434,7 @@ where
 
     fn record_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -444,7 +444,7 @@ where
 
     fn tuple_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
         num_entries_hint: Option<usize>,
@@ -455,7 +455,7 @@ where
 
     fn tuple_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {

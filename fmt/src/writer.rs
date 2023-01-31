@@ -391,7 +391,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn enum_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -400,7 +400,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn enum_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -409,14 +409,14 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn tagged_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
         self.is_text_quoted = true;
 
         match tag {
-            Some(sval::tags::NUMBER) => {
+            Some(&sval::tags::NUMBER) => {
                 self.is_text_quoted = false;
 
                 Ok(())
@@ -435,12 +435,12 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
-            Some(sval::tags::NUMBER) => {
+            Some(&sval::tags::NUMBER) => {
                 self.is_text_quoted = true;
 
                 Ok(())
@@ -457,7 +457,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn tag(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -473,7 +473,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn record_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
         num_entries_hint: Option<usize>,
@@ -487,7 +487,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_begin(num_entries_hint)
     }
 
-    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, _: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
         self.is_text_quoted = false;
         self.map_key_begin()?;
         sval::stream(&mut *self, label.as_str())?;
@@ -497,13 +497,13 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         self.map_value_begin()
     }
 
-    fn record_value_end(&mut self, _: &sval::Label) -> sval::Result {
+    fn record_value_end(&mut self, _: Option<&sval::Tag>, _: &sval::Label) -> sval::Result {
         self.map_value_end()
     }
 
     fn record_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {
@@ -512,7 +512,7 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
 
     fn tuple_begin(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         _: Option<&sval::Index>,
         _: Option<usize>,
@@ -530,17 +530,17 @@ impl<'sval, W: Fmt> sval::Stream<'sval> for Writer<W> {
         Ok(())
     }
 
-    fn tuple_value_begin(&mut self, _: &sval::Index) -> sval::Result {
+    fn tuple_value_begin(&mut self, _: Option<&sval::Tag>, _: &sval::Index) -> sval::Result {
         self.seq_value_begin()
     }
 
-    fn tuple_value_end(&mut self, _: &sval::Index) -> sval::Result {
+    fn tuple_value_end(&mut self, _: Option<&sval::Tag>, _: &sval::Index) -> sval::Result {
         self.seq_value_end()
     }
 
     fn tuple_end(
         &mut self,
-        _: Option<sval::Tag>,
+        _: Option<&sval::Tag>,
         _: Option<&sval::Label>,
         _: Option<&sval::Index>,
     ) -> sval::Result {

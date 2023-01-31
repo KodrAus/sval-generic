@@ -7,7 +7,6 @@ license = "Apache-2.0 OR MIT"
 documentation = "https://docs.rs/sval-serde"
 description = "Integration between serde::Serialize and sval::Value"
 repository = "https://github.com/sval-rs/sval"
-readme = "README.md"
 keywords = ["serialization", "no_std"]
 categories = ["encoding", "no-std"]
 

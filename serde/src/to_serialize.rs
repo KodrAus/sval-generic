@@ -268,7 +268,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn enum_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -284,7 +284,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn enum_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -296,7 +296,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn tagged_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -304,7 +304,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
             |buf| buf.tagged_begin(tag, label, index),
             |mut serializer| {
                 match tag {
-                    Some(sval::tags::RUST_OPTION_SOME) => {
+                    Some(&sval::tags::RUST_OPTION_SOME) => {
                         serializer.is_option = true;
                     }
                     _ => {
@@ -325,7 +325,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -337,15 +337,15 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn tag(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         match tag {
-            Some(sval::tags::RUST_OPTION_NONE) => {
+            Some(&sval::tags::RUST_OPTION_NONE) => {
                 self.buffer_or_value(|buf| buf.tag(tag, label, index), || None::<()>)
             }
-            Some(sval::tags::RUST_UNIT) => {
+            Some(&sval::tags::RUST_UNIT) => {
                 self.buffer_or_value(|buf| buf.tag(tag, label, index), || ())
             }
             _ => self.buffer_or_transition_any_with(
@@ -377,7 +377,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn record_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
@@ -422,9 +422,9 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
+    fn record_value_begin(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
         self.buffer_or_serialize_with(
-            |buf| buf.record_value_begin(label),
+            |buf| buf.record_value_begin(tag, label),
             |serializer| {
                 serializer.with_record(|serializer| match serializer {
                     Record::Anonymous(serializer) => {
@@ -447,9 +447,9 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn record_value_end(&mut self, label: &sval::Label) -> sval::Result {
+    fn record_value_end(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
         self.buffer_or_serialize_with(
-            |buf| buf.record_value_end(label),
+            |buf| buf.record_value_end(tag, label),
             |serializer| {
                 serializer.with_record(|serializer| match serializer {
                     Record::Anonymous(_) => Ok(()),
@@ -470,7 +470,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn record_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
@@ -486,7 +486,7 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
 
     fn tuple_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
@@ -529,17 +529,17 @@ impl<'sval, S: serde::Serializer> sval::Stream<'sval> for Serializer<'sval, S> {
         )
     }
 
-    fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
-        self.buffer_or_serialize_with(|buf| buf.tuple_value_begin(index), |_| Ok(()))
+    fn tuple_value_begin(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+        self.buffer_or_serialize_with(|buf| buf.tuple_value_begin(tag, index), |_| Ok(()))
     }
 
-    fn tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
-        self.buffer_or_serialize_with(|buf| buf.tuple_value_end(index), |_| Ok(()))
+    fn tuple_value_end(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+        self.buffer_or_serialize_with(|buf| buf.tuple_value_end(tag, index), |_| Ok(()))
     }
 
     fn tuple_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {

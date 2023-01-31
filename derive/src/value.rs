@@ -211,17 +211,17 @@ fn stream_record(
 
         stream_field.push(if let Some(tag) = attr::tag(field) {
             quote!({
-                stream.record_value_begin(#label)?;
-                stream.tagged_begin(Some(#tag), None, None)?;
+                stream.record_value_begin(Some(&#tag), #label)?;
+                stream.tagged_begin(Some(&#tag), None, None)?;
                 stream.value(#ident)?;
-                stream.tagged_end(Some(#tag), None, None)?;
-                stream.record_value_end(#label)?;
+                stream.tagged_end(Some(&#tag), None, None)?;
+                stream.record_value_end(Some(&#tag), #label)?;
             })
         } else {
             quote!({
-                stream.record_value_begin(#label)?;
+                stream.record_value_begin(None, #label)?;
                 stream.value(#ident)?;
-                stream.record_value_end(#label)?;
+                stream.record_value_end(None, #label)?;
             })
         });
 
@@ -273,17 +273,17 @@ fn stream_tuple(
 
         stream_field.push(if let Some(tag) = attr::tag(field) {
             quote!({
-                stream.tuple_value_begin(&sval::Index::new(#index))?;
-                stream.tagged_begin(Some(#tag), None, None)?;
+                stream.tuple_value_begin(Some(&#tag), &sval::Index::new(#index))?;
+                stream.tagged_begin(Some(&#tag), None, None)?;
                 stream.value(#ident)?;
-                stream.tagged_end(Some(#tag), None, None)?;
-                stream.tuple_value_end(&sval::Index::new(#index))?;
+                stream.tagged_end(Some(&#tag), None, None)?;
+                stream.tuple_value_end(Some(&#tag), &sval::Index::new(#index))?;
             })
         } else {
             quote!({
-                stream.tuple_value_begin(&sval::Index::new(#index))?;
+                stream.tuple_value_begin(None, &sval::Index::new(#index))?;
                 stream.value(#ident)?;
-                stream.tuple_value_end(&sval::Index::new(#index))?;
+                stream.tuple_value_end(None, &sval::Index::new(#index))?;
             })
         });
 

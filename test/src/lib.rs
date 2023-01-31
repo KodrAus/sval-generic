@@ -71,8 +71,8 @@ pub enum Token<'a> {
         Option<sval::Index>,
         Option<usize>,
     ),
-    RecordValueBegin(sval::Label<'static>),
-    RecordValueEnd(sval::Label<'static>),
+    RecordValueBegin(Option<sval::Tag>, sval::Label<'static>),
+    RecordValueEnd(Option<sval::Tag>, sval::Label<'static>),
     RecordEnd(
         Option<sval::Tag>,
         Option<sval::Label<'static>>,
@@ -84,8 +84,8 @@ pub enum Token<'a> {
         Option<sval::Index>,
         Option<usize>,
     ),
-    TupleValueBegin(sval::Index),
-    TupleValueEnd(sval::Index),
+    TupleValueBegin(Option<sval::Tag>, sval::Index),
+    TupleValueEnd(Option<sval::Tag>, sval::Index),
     TupleEnd(
         Option<sval::Tag>,
         Option<sval::Label<'static>>,
@@ -264,12 +264,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn enum_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::EnumBegin(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -278,12 +278,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn enum_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::EnumEnd(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -292,12 +292,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn tagged_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TaggedBegin(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -306,12 +306,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn tagged_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TaggedEnd(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -320,12 +320,12 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn tag(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::Tag(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -334,13 +334,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn record_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         self.push(Token::RecordBegin(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
             num_entries,
@@ -348,24 +348,24 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         Ok(())
     }
 
-    fn record_value_begin(&mut self, label: &sval::Label) -> sval::Result {
-        self.push(Token::RecordValueBegin(label.to_owned()));
+    fn record_value_begin(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
+        self.push(Token::RecordValueBegin(tag.cloned(), label.to_owned()));
         Ok(())
     }
 
-    fn record_value_end(&mut self, label: &sval::Label) -> sval::Result {
-        self.push(Token::RecordValueEnd(label.to_owned()));
+    fn record_value_end(&mut self, tag: Option<&sval::Tag>, label: &sval::Label) -> sval::Result {
+        self.push(Token::RecordValueEnd(tag.cloned(), label.to_owned()));
         Ok(())
     }
 
     fn record_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::RecordEnd(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));
@@ -374,13 +374,13 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
 
     fn tuple_begin(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
         num_entries: Option<usize>,
     ) -> sval::Result {
         self.push(Token::TupleBegin(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
             num_entries,
@@ -388,24 +388,24 @@ impl<'sval> sval::Stream<'sval> for Stream<'sval> {
         Ok(())
     }
 
-    fn tuple_value_begin(&mut self, index: &sval::Index) -> sval::Result {
-        self.push(Token::TupleValueBegin(index.clone()));
+    fn tuple_value_begin(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+        self.push(Token::TupleValueBegin(tag.cloned(), index.clone()));
         Ok(())
     }
 
-    fn tuple_value_end(&mut self, index: &sval::Index) -> sval::Result {
-        self.push(Token::TupleValueEnd(index.clone()));
+    fn tuple_value_end(&mut self, tag: Option<&sval::Tag>, index: &sval::Index) -> sval::Result {
+        self.push(Token::TupleValueEnd(tag.cloned(), index.clone()));
         Ok(())
     }
 
     fn tuple_end(
         &mut self,
-        tag: Option<sval::Tag>,
+        tag: Option<&sval::Tag>,
         label: Option<&sval::Label>,
         index: Option<&sval::Index>,
     ) -> sval::Result {
         self.push(Token::TupleEnd(
-            tag,
+            tag.cloned(),
             label.map(|label| label.to_owned()),
             index.cloned(),
         ));

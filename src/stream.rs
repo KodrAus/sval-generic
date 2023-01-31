@@ -185,28 +185,28 @@ pub trait Stream<'sval> {
     fn map_key_begin(&mut self) -> Result {
         self.seq_value_begin()?;
         self.tuple_begin(None, None, None, Some(2))?;
-        self.tuple_value_begin(&Index::new(0))
+        self.tuple_value_begin(None, &Index::new(0))
     }
 
     /**
     Complete a key in a key-value mapping.
     */
     fn map_key_end(&mut self) -> Result {
-        self.tuple_value_end(&Index::new(0))
+        self.tuple_value_end(None, &Index::new(0))
     }
 
     /**
     Start a value in a key-value mapping.
     */
     fn map_value_begin(&mut self) -> Result {
-        self.tuple_value_begin(&Index::new(1))
+        self.tuple_value_begin(None, &Index::new(1))
     }
 
     /**
     Complete a value in a key-value mapping.
     */
     fn map_value_end(&mut self) -> Result {
-        self.tuple_value_end(&Index::new(1))?;
+        self.tuple_value_end(None, &Index::new(1))?;
         self.tuple_end(None, None, None)?;
         self.seq_value_end()
     }
@@ -243,7 +243,7 @@ pub trait Stream<'sval> {
     */
     fn enum_begin(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -255,7 +255,7 @@ pub trait Stream<'sval> {
     */
     fn enum_end(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -269,7 +269,7 @@ pub trait Stream<'sval> {
     */
     fn tagged_begin(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -285,7 +285,7 @@ pub trait Stream<'sval> {
     */
     fn tagged_end(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -301,11 +301,11 @@ pub trait Stream<'sval> {
 
     Standalone tags may be used as enum variants.
     */
-    fn tag(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+    fn tag(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
         self.tagged_begin(tag, label, index)?;
 
         // Rust's `Option` is fundamental enough that we handle it specially here
-        if let Some(tags::RUST_OPTION_NONE) = tag {
+        if let Some(&tags::RUST_OPTION_NONE) = tag {
             self.null()?;
         }
         // If the tag has a label then stream it as its value
@@ -331,7 +331,7 @@ pub trait Stream<'sval> {
     */
     fn record_begin(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
         num_entries_hint: Option<usize>,
@@ -343,7 +343,9 @@ pub trait Stream<'sval> {
     /**
     Start a field in a record.
     */
-    fn record_value_begin(&mut self, label: &Label) -> Result {
+    fn record_value_begin(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
+        let _ = tag;
+
         self.map_key_begin()?;
 
         if let Some(label) = label.as_static_str() {
@@ -360,7 +362,8 @@ pub trait Stream<'sval> {
     /**
     Complete a field in a record.
     */
-    fn record_value_end(&mut self, label: &Label) -> Result {
+    fn record_value_end(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
+        let _ = tag;
         let _ = label;
 
         self.map_value_end()
@@ -371,7 +374,7 @@ pub trait Stream<'sval> {
     */
     fn record_end(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -386,7 +389,7 @@ pub trait Stream<'sval> {
     */
     fn tuple_begin(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
         num_entries_hint: Option<usize>,
@@ -398,7 +401,8 @@ pub trait Stream<'sval> {
     /**
     Start a field in a tuple.
     */
-    fn tuple_value_begin(&mut self, index: &Index) -> Result {
+    fn tuple_value_begin(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
+        let _ = tag;
         let _ = index;
 
         self.seq_value_begin()
@@ -407,7 +411,8 @@ pub trait Stream<'sval> {
     /**
     Complete a field in a tuple.
     */
-    fn tuple_value_end(&mut self, index: &Index) -> Result {
+    fn tuple_value_end(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
+        let _ = tag;
         let _ = index;
 
         self.seq_value_end()
@@ -418,7 +423,7 @@ pub trait Stream<'sval> {
     */
     fn tuple_end(
         &mut self,
-        tag: Option<Tag>,
+        tag: Option<&Tag>,
         label: Option<&Label>,
         index: Option<&Index>,
     ) -> Result {
@@ -600,67 +605,67 @@ macro_rules! impl_stream_forward {
                 ($($forward)*).seq_value_end()
             }
 
-            fn tagged_begin(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn tagged_begin(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_begin(tag, label, index)
             }
 
-            fn tagged_end(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn tagged_end(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).tagged_end(tag, label, index)
             }
 
-            fn tag(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn tag(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).tag(tag, label, index)
             }
 
-            fn record_begin(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>, num_entries: Option<usize>) -> Result {
+            fn record_begin(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>, num_entries: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).record_begin(tag, label, index, num_entries)
             }
 
-            fn record_value_begin(&mut self, label: &Label) -> Result {
+            fn record_value_begin(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
                 let $bind = self;
-                ($($forward)*).record_value_begin(label)
+                ($($forward)*).record_value_begin(tag, label)
             }
 
-            fn record_value_end(&mut self, label: &Label) -> Result {
+            fn record_value_end(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
                 let $bind = self;
-                ($($forward)*).record_value_end(label)
+                ($($forward)*).record_value_end(tag, label)
             }
 
-            fn record_end(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn record_end(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).record_end(tag, label, index)
             }
 
-            fn tuple_begin(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>, num_entries: Option<usize>) -> Result {
+            fn tuple_begin(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>, num_entries: Option<usize>) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_begin(tag, label, index, num_entries)
             }
 
-            fn tuple_value_begin(&mut self, index: &Index) -> Result {
+            fn tuple_value_begin(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_value_begin(index)
+                ($($forward)*).tuple_value_begin(tag, index)
             }
 
-            fn tuple_value_end(&mut self, index: &Index) -> Result {
+            fn tuple_value_end(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
                 let $bind = self;
-                ($($forward)*).tuple_value_end(index)
+                ($($forward)*).tuple_value_end(tag, index)
             }
 
-            fn tuple_end(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn tuple_end(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).tuple_end(tag, label, index)
             }
 
-            fn enum_begin(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn enum_begin(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_begin(tag, label, index)
             }
 
-            fn enum_end(&mut self, tag: Option<Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
+            fn enum_end(&mut self, tag: Option<&Tag>, label: Option<&Label>, index: Option<&Index>) -> Result {
                 let $bind = self;
                 ($($forward)*).enum_end(tag, label, index)
             }
@@ -820,7 +825,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn tagged_begin(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -829,7 +834,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn tagged_end(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -838,7 +843,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn tag(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -847,7 +852,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn record_begin(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
             num_entries: Option<usize>,
@@ -855,17 +860,17 @@ pub(crate) fn stream_computed<'a, 'b>(
             self.0.record_begin(tag, label, index, num_entries)
         }
 
-        fn record_value_begin(&mut self, label: &Label) -> Result {
-            self.0.record_value_begin(label)
+        fn record_value_begin(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
+            self.0.record_value_begin(tag, label)
         }
 
-        fn record_value_end(&mut self, label: &Label) -> Result {
-            self.0.record_value_end(label)
+        fn record_value_end(&mut self, tag: Option<&Tag>, label: &Label) -> Result {
+            self.0.record_value_end(tag, label)
         }
 
         fn record_end(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -874,7 +879,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn tuple_begin(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
             num_entries: Option<usize>,
@@ -882,17 +887,17 @@ pub(crate) fn stream_computed<'a, 'b>(
             self.0.tuple_begin(tag, label, index, num_entries)
         }
 
-        fn tuple_value_begin(&mut self, index: &Index) -> Result {
-            self.0.tuple_value_begin(index)
+        fn tuple_value_begin(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
+            self.0.tuple_value_begin(tag, index)
         }
 
-        fn tuple_value_end(&mut self, index: &Index) -> Result {
-            self.0.tuple_value_end(index)
+        fn tuple_value_end(&mut self, tag: Option<&Tag>, index: &Index) -> Result {
+            self.0.tuple_value_end(tag, index)
         }
 
         fn tuple_end(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -901,7 +906,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn enum_begin(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
@@ -910,7 +915,7 @@ pub(crate) fn stream_computed<'a, 'b>(
 
         fn enum_end(
             &mut self,
-            tag: Option<Tag>,
+            tag: Option<&Tag>,
             label: Option<&Label>,
             index: Option<&Index>,
         ) -> Result {
