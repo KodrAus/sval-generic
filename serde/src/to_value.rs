@@ -170,6 +170,13 @@ impl<'sval, S: sval::Stream<'sval>> serde::Serializer for Stream<S> {
         self.stream_value(v)
     }
 
+    fn collect_str<T: ?Sized>(mut self, value: &T) -> Result<Self::Ok, Self::Error>
+    where
+        T: fmt::Display,
+    {
+        sval::stream_display(&mut self.stream, value).map_err(|_| Error::custom("failed to stream a string"))
+    }
+
     fn serialize_bytes(mut self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
         self.stream_value(Bytes(v))
     }
