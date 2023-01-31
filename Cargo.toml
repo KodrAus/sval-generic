@@ -38,9 +38,3 @@ path = "derive"
 
 [dev-dependencies.humantime]
 version = "2"
-
-[profile.release]
-debug = true
-opt-level = 3
-lto = "fat"
-codegen-units = 1
