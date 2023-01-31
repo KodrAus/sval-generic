@@ -17,6 +17,8 @@ Without the `alloc` feature, any values that require buffering will instead
 produce errors during serialization.
 */
 
+#![no_std]
+
 mod to_serialize;
 mod to_value;
 
