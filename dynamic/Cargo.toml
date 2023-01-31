@@ -11,4 +11,5 @@ keywords = ["serialization", "no_std"]
 categories = ["encoding", "no-std"]
 
 [dependencies.sval]
+version = "2.0.0"
 path = "../"
